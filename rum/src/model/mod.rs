@@ -4,6 +4,12 @@ pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
+impl ToSql for i32 {
+    fn to_sql(&self) -> String {
+        self.to_string()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     String(String),
@@ -23,6 +29,18 @@ impl ToSql for Value {
             Float(float) => float.to_string(),
             _ => todo!(),
         }
+    }
+}
+
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Value::String(value.to_string())
+    }
+}
+
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        Value::Integer(value)
     }
 }
 
@@ -88,9 +106,9 @@ impl ToSql for Values {
 
 #[derive(Debug)]
 pub enum Comparison {
-    Equal((Column, Column)),
-    In((Column, Values)), // LessThan(Column),
-                          // GreaterThan(Column),
+    Equal((Column, i32)),
+    In((Column, i32)), // LessThan(Column),
+                       // GreaterThan(Column),
 }
 
 #[derive(Debug)]
@@ -104,8 +122,8 @@ impl ToSql for ComparisonOp {
         use ComparisonOp::*;
 
         match self {
-            And(comparison) => format!("AND ({})", comparison.to_sql()),
-            Or(comparison) => format!("OR ({})", comparison.to_sql()),
+            And(comparison) => format!("({})", comparison.to_sql()),
+            Or(comparison) => format!("({})", comparison.to_sql()),
         }
     }
 }
@@ -115,8 +133,47 @@ impl ToSql for Comparison {
         use Comparison::*;
 
         match self {
-            Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
-            In((column, values)) => format!(r#"{} IN ({})"#, column.to_sql(), values.to_sql()),
+            Equal((a, b)) => format!(r#"{} = ${}"#, a.to_sql(), b.to_sql()),
+            In((column, values)) => format!(r#"{} IN (${})"#, column.to_sql(), values.to_sql()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum OrderColumn {
+    Asc(Column),
+    Desc(Column),
+}
+
+impl ToSql for OrderColumn {
+    fn to_sql(&self) -> String {
+        use OrderColumn::*;
+
+        match self {
+            Asc(column) => format!("{} ASC", column.to_sql()),
+            Desc(column) => format!("{} DESC", column.to_sql()),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct OrderBy {
+    order_by: Vec<OrderColumn>,
+}
+
+impl ToSql for OrderBy {
+    fn to_sql(&self) -> String {
+        if self.order_by.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                " ORDER BY {}",
+                self.order_by
+                    .iter()
+                    .map(|column| column.to_sql())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
         }
     }
 }
@@ -124,6 +181,7 @@ impl ToSql for Comparison {
 #[derive(Debug, Default)]
 pub struct Where {
     comparisons: Vec<ComparisonOp>,
+    values: Vec<Value>,
 }
 
 impl ToSql for Where {
@@ -131,12 +189,20 @@ impl ToSql for Where {
         if self.comparisons.is_empty() {
             "".into()
         } else {
-            format!(" WHERE {}", self.comparisons
-                .iter()
-                .map(|comparison| comparison.to_sql())
-                .collect::<Vec<_>>()
-                .join(" ")
-            )
+            let mut where_ = " WHERE ".to_string();
+
+            for (idx, comparison) in self.comparisons.iter().enumerate() {
+                if idx != 0 {
+                    match comparison {
+                        ComparisonOp::And(_) => where_.push_str(" AND "),
+                        ComparisonOp::Or(_) => where_.push_str(" OR "),
+                    }
+                }
+
+                where_.push_str(comparison.to_sql().as_str());
+            }
+
+            where_
         }
     }
 }
@@ -177,22 +243,169 @@ pub enum Query {
         table_name: String,
         columns: Columns,
         where_: Where,
+        order_by: OrderBy,
         limit: Limit,
-    }
+    },
 }
 
-impl ToSql for  Query {
+impl ToSql for Query {
     fn to_sql(&self) -> String {
         use Query::*;
 
         match self {
-            Select { table_name, columns, where_, limit } => format!(
-                r#"SELECT {} FROM "{}"{}{}"#,
+            Select {
+                table_name,
+                columns,
+                where_,
+                order_by,
+                limit,
+            } => format!(
+                r#"SELECT {} FROM "{}"{}{}{}"#,
                 columns.to_sql(),
                 table_name,
                 where_.to_sql(),
+                order_by.to_sql(),
                 limit.to_sql()
-            )
+            ),
+        }
+    }
+}
+
+impl Query {
+    fn select(table_name: impl ToString) -> Self {
+        Query::Select {
+            table_name: table_name.to_string(),
+            limit: Limit::default(),
+            columns: Columns::default(),
+            where_: Where::default(),
+            order_by: OrderBy::default(),
+        }
+    }
+
+    fn take_one(mut self) -> Self {
+        use Query::*;
+
+        match self {
+            Select {
+                table_name,
+                limit: _,
+                columns,
+                where_,
+                order_by,
+            } => Select {
+                table_name,
+                limit: Limit::new(1),
+                columns,
+                where_,
+                order_by,
+            },
+
+            _ => unreachable!(),
+        }
+    }
+
+    fn take_many(mut self, n: usize) -> Self {
+        use Query::*;
+
+        match self {
+            Select {
+                table_name,
+                limit: _,
+                columns,
+                where_,
+                order_by,
+            } => Select {
+                table_name,
+                limit: Limit::new(n),
+                columns,
+                where_,
+                order_by,
+            },
+
+            _ => unreachable!(),
+        }
+    }
+
+    fn first_one(self) -> Query {
+        use Query::*;
+
+        match self {
+            Select {
+                table_name,
+                limit: _,
+                columns,
+                where_,
+                order_by: _,
+            } => Select {
+                limit: Limit::new(1),
+                columns,
+                where_,
+                order_by: OrderBy {
+                    order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
+                },
+                table_name,
+            },
+
+            _ => unreachable!(),
+        }
+    }
+
+    fn first_many(self, n: usize) -> Query {
+        use Query::*;
+
+        match self {
+            Select {
+                table_name,
+                limit: _,
+                columns,
+                where_,
+                order_by: _,
+            } => Select {
+                limit: Limit::new(n),
+                columns,
+                where_,
+                order_by: OrderBy {
+                    order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
+                },
+                table_name,
+            },
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn filter(self, filter: &[(String, Value)]) -> Query {
+        use Query::*;
+
+        match self {
+            Select {
+                table_name,
+                limit,
+                columns,
+                mut where_,
+                order_by,
+            } => {
+                let start = where_.comparisons.len();
+                for (idx, column) in filter.into_iter().enumerate() {
+                    where_
+                        .comparisons
+                        .push(ComparisonOp::And(Comparison::Equal((
+                            Column::new(&table_name, &column.0),
+                            (idx + start) as i32 + 1,
+                        ))));
+
+                    where_.values.push(column.1.clone());
+                }
+                Select {
+                    table_name,
+                    limit,
+                    columns,
+                    where_,
+                    order_by,
+                }
+            }
+
+            _ => unreachable!(),
         }
     }
 }
@@ -200,22 +413,28 @@ impl ToSql for  Query {
 pub trait Model {
     fn table_name() -> String;
 
+    fn primary_key() -> String {
+        "id".to_string()
+    }
+
     fn take_one() -> Query {
-        Query::Select {
-            table_name: Self::table_name(),
-            limit: Limit::new(1),
-            columns: Columns::default(),
-            where_: Where::default(),
-        }
+        Query::select(Self::table_name()).take_one()
     }
 
     fn take_many(n: usize) -> Query {
-        Query::Select {
-            table_name: Self::table_name(),
-            limit: Limit::new(n),
-            columns: Columns::default(),
-            where_: Where::default(),
-        }
+        Query::select(Self::table_name()).take_many(n)
+    }
+
+    fn first_one() -> Query {
+        Query::select(Self::table_name()).first_one()
+    }
+
+    fn first_many(n: usize) -> Query {
+        Query::select(Self::table_name()).first_many(n)
+    }
+
+    fn all() -> Query {
+        Query::select(Self::table_name())
     }
 }
 
@@ -249,5 +468,75 @@ mod test {
         let query = Users::take_many(25).to_sql();
 
         assert_eq!(query, r#"SELECT * FROM "users" LIMIT 25"#);
+    }
+
+    #[test]
+    fn test_first_one() {
+        struct Users;
+        impl Model for Users {
+            fn table_name() -> String {
+                "users".into()
+            }
+        }
+
+        let query = Users::first_one().to_sql();
+
+        assert_eq!(
+            query,
+            r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 1"#
+        );
+    }
+
+    #[test]
+    fn test_first_many() {
+        struct Users;
+        impl Model for Users {
+            fn table_name() -> String {
+                "users".into()
+            }
+        }
+
+        let query = Users::first_many(25).to_sql();
+
+        assert_eq!(
+            query,
+            r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 25"#
+        );
+    }
+
+    #[test]
+    fn test_all() {
+        struct Users;
+        impl Model for Users {
+            fn table_name() -> String {
+                "users".into()
+            }
+        }
+
+        let query = Users::all().to_sql();
+
+        assert_eq!(query, r#"SELECT * FROM "users""#);
+    }
+
+    #[test]
+    fn test_filter() {
+        struct Users;
+        impl Model for Users {
+            fn table_name() -> String {
+                "users".into()
+            }
+        }
+
+        let query = Users::all()
+            .filter(&[
+                ("email".into(), "test@test.com".into()),
+                ("password".into(), "not_encrypted".into()),
+            ])
+            .filter(&[("id".into(), 5.into())]);
+
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT * FROM "users" WHERE ("users"."email" = $1) AND ("users"."password" = $2) AND ("users"."id" = $3)"#
+        );
     }
 }
