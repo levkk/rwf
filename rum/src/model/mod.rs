@@ -1,4 +1,13 @@
+use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
+use tokio_postgres::{
+    types::{to_sql_checked, Format, IsNull, Type},
+    Client,
+};
+
+pub mod select;
+
+pub use select::Select;
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
@@ -17,6 +26,88 @@ pub enum Value {
     Float(f64),
     TimestampT(OffsetDateTime),
     Timestamp(PrimitiveDateTime),
+    Tuple(Vec<Value>),
+}
+
+pub trait ToValue {
+    fn to_value(&self) -> Value;
+}
+
+impl ToValue for &str {
+    fn to_value(&self) -> Value {
+        Value::String(self.to_string())
+    }
+}
+
+impl ToValue for i64 {
+    fn to_value(&self) -> Value {
+        Value::Integer(*self)
+    }
+}
+
+impl ToValue for Value {
+    fn to_value(&self) -> Value {
+        self.clone()
+    }
+}
+
+impl ToValue for &[&str] {
+    fn to_value(&self) -> Value {
+        Value::Tuple(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+impl ToValue for &[i64] {
+    fn to_value(&self) -> Value {
+        Value::Tuple(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+pub trait Escape {
+    fn escape(&self) -> String;
+}
+
+impl Escape for Value {
+    fn escape(&self) -> String {
+        use Value::*;
+
+        match self {
+            String(string) => string.escape(),
+            Integer(integer) => format!("'{}'", integer),
+            Float(float) => format!("'{}'", float),
+            Tuple(values) => format!(
+                "({})",
+                values
+                    .into_iter()
+                    .map(|value| value.escape())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            _ => todo!(),
+        }
+    }
+}
+
+impl tokio_postgres::types::ToSql for Value {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
+        match self {
+            Value::String(string) => string.to_sql(ty, out),
+            Value::Integer(integer) => integer.to_sql(ty, out),
+            Value::Float(float) => float.to_sql(ty, out),
+            // Value::TimestampT(timestampt) => timestampt.to_sql(ty, out),
+            _ => todo!(),
+        }
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        todo!()
+    }
+
+    to_sql_checked!();
 }
 
 impl ToSql for Value {
@@ -52,7 +143,17 @@ pub struct Column {
 
 impl ToSql for Column {
     fn to_sql(&self) -> String {
-        format!(r#""{}"."{}""#, self.table_name, self.column_name)
+        format!(
+            r#""{}"."{}""#,
+            self.table_name.escape(),
+            self.column_name.escape()
+        )
+    }
+}
+
+impl Escape for String {
+    fn escape(&self) -> String {
+        self.replace("\"", "\"\"").replace("'", "''")
     }
 }
 
@@ -239,13 +340,8 @@ impl Limit {
 
 #[derive(Debug)]
 pub enum Query {
-    Select {
-        table_name: String,
-        columns: Columns,
-        where_: Where,
-        order_by: OrderBy,
-        limit: Limit,
-    },
+    Select(Select),
+    Update,
 }
 
 impl ToSql for Query {
@@ -253,13 +349,13 @@ impl ToSql for Query {
         use Query::*;
 
         match self {
-            Select {
+            Select(select::Select {
                 table_name,
                 columns,
                 where_,
                 order_by,
                 limit,
-            } => format!(
+            }) => format!(
                 r#"SELECT {} FROM "{}"{}{}{}"#,
                 columns.to_sql(),
                 table_name,
@@ -267,146 +363,104 @@ impl ToSql for Query {
                 order_by.to_sql(),
                 limit.to_sql()
             ),
+
+            Update => todo!(),
         }
     }
 }
 
 impl Query {
-    fn select(table_name: impl ToString) -> Self {
-        Query::Select {
+    pub fn select(table_name: impl ToString) -> Self {
+        Query::Select(Select {
             table_name: table_name.to_string(),
             limit: Limit::default(),
             columns: Columns::default(),
             where_: Where::default(),
             order_by: OrderBy::default(),
-        }
+        })
     }
 
-    fn take_one(mut self) -> Self {
+    pub fn take_one(mut self) -> Self {
         use Query::*;
 
         match self {
-            Select {
-                table_name,
-                limit: _,
-                columns,
-                where_,
-                order_by,
-            } => Select {
-                table_name,
-                limit: Limit::new(1),
-                columns,
-                where_,
-                order_by,
-            },
-
+            Select(mut select) => Select(select.limit(Limit::new(1))),
             _ => unreachable!(),
         }
     }
 
-    fn take_many(mut self, n: usize) -> Self {
+    pub fn take_many(mut self, n: usize) -> Self {
         use Query::*;
 
         match self {
-            Select {
-                table_name,
-                limit: _,
-                columns,
-                where_,
-                order_by,
-            } => Select {
-                table_name,
-                limit: Limit::new(n),
-                columns,
-                where_,
-                order_by,
-            },
-
+            Select(mut select) => Select(select.limit(Limit::new(n))),
             _ => unreachable!(),
         }
     }
 
-    fn first_one(self) -> Query {
+    pub fn first_one(self) -> Query {
         use Query::*;
 
         match self {
-            Select {
-                table_name,
-                limit: _,
-                columns,
-                where_,
-                order_by: _,
-            } => Select {
-                limit: Limit::new(1),
-                columns,
-                where_,
-                order_by: OrderBy {
+            Select(_) => self.first_many(1),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn first_many(self, n: usize) -> Query {
+        use Query::*;
+
+        match self {
+            Select(mut select) => {
+                let table_name = select.table_name.clone();
+                Select(select.limit(Limit::new(n)).order_by(OrderBy {
                     order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
-                },
-                table_name,
-            },
-
-            _ => unreachable!(),
-        }
-    }
-
-    fn first_many(self, n: usize) -> Query {
-        use Query::*;
-
-        match self {
-            Select {
-                table_name,
-                limit: _,
-                columns,
-                where_,
-                order_by: _,
-            } => Select {
-                limit: Limit::new(n),
-                columns,
-                where_,
-                order_by: OrderBy {
-                    order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
-                },
-                table_name,
-            },
-
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn filter(self, filter: &[(String, Value)]) -> Query {
-        use Query::*;
-
-        match self {
-            Select {
-                table_name,
-                limit,
-                columns,
-                mut where_,
-                order_by,
-            } => {
-                let start = where_.comparisons.len();
-                for (idx, column) in filter.into_iter().enumerate() {
-                    where_
-                        .comparisons
-                        .push(ComparisonOp::And(Comparison::Equal((
-                            Column::new(&table_name, &column.0),
-                            (idx + start) as i32 + 1,
-                        ))));
-
-                    where_.values.push(column.1.clone());
-                }
-                Select {
-                    table_name,
-                    limit,
-                    columns,
-                    where_,
-                    order_by,
-                }
+                }))
             }
 
             _ => unreachable!(),
         }
+    }
+
+    pub fn filter(self, filter: &[(impl ToString, impl ToValue)]) -> Query {
+        use Query::*;
+
+        match self {
+            Select(mut select) => {
+                let start = select.where_mut().comparisons.len();
+                let table_name = select.table_name.clone();
+                for (idx, column) in filter.into_iter().enumerate() {
+                    select
+                        .where_mut()
+                        .comparisons
+                        .push(ComparisonOp::And(Comparison::Equal((
+                            Column::new(&table_name, &column.0.to_string()),
+                            (idx + start) as i32 + 1,
+                        ))));
+
+                    select.where_mut().values.push(column.1.to_value().clone());
+                }
+
+                Select(select)
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn find_by(mut self, column: impl ToString, value: Value) -> Query {
+        use Query::*;
+
+        if let Select(select::Select { ref mut where_, .. }) = self {
+            where_.comparisons.clear();
+            where_.values.clear();
+        }
+
+        self.filter(&[(column.to_string(), value)])
+    }
+
+    pub fn limit(self, limit: usize) -> Query {
+        self.take_many(limit)
     }
 }
 
@@ -436,50 +490,71 @@ pub trait Model {
     fn all() -> Query {
         Query::select(Self::table_name())
     }
+
+    fn find_by(column: impl ToString, value: impl ToValue) -> Query {
+        Query::select(Self::table_name())
+            .find_by(column, value.to_value())
+            .take_one()
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use tokio_postgres::row::Row;
+
+    struct User {
+        id: i64,
+        email: String,
+        password: String,
+    }
+
+    impl TryFrom<Row> for User {
+        type Error = tokio_postgres::Error;
+
+        fn try_from(row: Row) -> Result<User, Self::Error> {
+            let id: i64 = row.try_get::<_, i64>("id")?;
+            let email: String = row.try_get::<_, String>("email")?;
+            let password: String = row.try_get::<_, String>("password")?;
+
+            Ok(User {
+                id,
+                email,
+                password,
+            })
+        }
+    }
+
+    impl Model for User {
+        fn table_name() -> String {
+            "users".into()
+        }
+    }
 
     #[test]
     fn test_take_one() {
-        struct Users;
-        impl Model for Users {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
-        let query = Users::take_one().to_sql();
+        let query = User::take_one().to_sql();
 
         assert_eq!(query, r#"SELECT * FROM "users" LIMIT 1"#);
     }
 
     #[test]
     fn test_take_many() {
-        struct Users;
-        impl Model for Users {
+        struct User;
+        impl Model for User {
             fn table_name() -> String {
                 "users".into()
             }
         }
 
-        let query = Users::take_many(25).to_sql();
+        let query = User::take_many(25).to_sql();
 
         assert_eq!(query, r#"SELECT * FROM "users" LIMIT 25"#);
     }
 
     #[test]
     fn test_first_one() {
-        struct Users;
-        impl Model for Users {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
-        let query = Users::first_one().to_sql();
+        let query = User::first_one().to_sql();
 
         assert_eq!(
             query,
@@ -489,14 +564,7 @@ mod test {
 
     #[test]
     fn test_first_many() {
-        struct Users;
-        impl Model for Users {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
-        let query = Users::first_many(25).to_sql();
+        let query = User::first_many(25).to_sql();
 
         assert_eq!(
             query,
@@ -506,37 +574,28 @@ mod test {
 
     #[test]
     fn test_all() {
-        struct Users;
-        impl Model for Users {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
-        let query = Users::all().to_sql();
+        let query = User::all().to_sql();
 
         assert_eq!(query, r#"SELECT * FROM "users""#);
     }
 
     #[test]
     fn test_filter() {
-        struct Users;
-        impl Model for Users {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
-        let query = Users::all()
-            .filter(&[
-                ("email".into(), "test@test.com".into()),
-                ("password".into(), "not_encrypted".into()),
+        let query = User::all()
+            .filter(&vec![
+                ("email", "test@test.com"),
+                ("password", "not_encrypted"),
             ])
-            .filter(&[("id".into(), 5.into())]);
+            .filter(&[("id", 5)]);
 
         assert_eq!(
             query.to_sql(),
             r#"SELECT * FROM "users" WHERE ("users"."email" = $1) AND ("users"."password" = $2) AND ("users"."id" = $3)"#
         );
+    }
+
+    #[test]
+    fn test_find_by() {
+        let query = User::find_by("email", "test@test.com");
     }
 }
