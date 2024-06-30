@@ -1,6 +1,7 @@
 use time::{OffsetDateTime, PrimitiveDateTime};
 
 pub mod column;
+pub mod error;
 pub mod escape;
 pub mod filter;
 pub mod limit;
@@ -9,6 +10,7 @@ pub mod select;
 pub mod value;
 
 pub use column::Column;
+pub use error::Error;
 pub use escape::Escape;
 pub use limit::Limit;
 pub use select::Select;
@@ -304,20 +306,26 @@ impl Query {
         todo!()
     }
 
-    async fn execute_internal(self, client: &tokio_postgres::Client) -> Vec<tokio_postgres::Row> {
+    async fn execute_internal(
+        self,
+        client: &tokio_postgres::Client,
+    ) -> Result<Vec<tokio_postgres::Row>, Error> {
         let query = self.to_sql();
 
         match self {
             Query::Select(select) => {
                 let values = select.where_.values();
-                return client.query(&query, &values).await.unwrap();
+                Ok(client.query(&query, &values).await?)
             }
 
             _ => todo!(),
         }
     }
 
-    pub async fn execute(self, client: &tokio_postgres::Client) -> Vec<tokio_postgres::Row> {
+    pub async fn execute(
+        self,
+        client: &tokio_postgres::Client,
+    ) -> Result<Vec<tokio_postgres::Row>, Error> {
         self.execute_internal(client).await
     }
 }

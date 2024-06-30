@@ -1,13 +1,13 @@
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::{
-    types::{to_sql_checked, Format, IsNull, Type},
+    types::{to_sql_checked, IsNull, Type},
     Client,
 };
 
-use std::ops::Range;
+use std::ops::{Deref, Range};
 
-use super::{Escape, ToSql};
+use super::{Error, Escape, ToSql};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -20,8 +20,6 @@ pub enum Value {
     Placeholder(i32),
     Range((Box<Value>, Box<Value>)),
 }
-
-unsafe impl Sync for Value {}
 
 impl Value {
     /// Create a new value.
@@ -79,17 +77,19 @@ impl tokio_postgres::types::ToSql for Value {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
-        println!("to_sql: {:?}", self);
         match self {
             Value::String(string) => string.to_sql(ty, out),
             Value::Integer(integer) => integer.to_sql(ty, out),
             Value::Float(float) => float.to_sql(ty, out),
-            // Value::TimestampT(timestampt) => timestampt.to_sql(ty, out),
-            _ => todo!(),
+            Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
+            Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
+            Value::List(values) => values.to_sql(ty, out),
+            value => return Err(Error::OrmSerializationError(value.clone()).boxed()),
         }
     }
 
     fn accepts(ty: &Type) -> bool {
+        // Handled by to_sql.
         true
     }
 
@@ -125,26 +125,6 @@ impl From<&[Value]> for Values {
             values: values.to_vec(),
         }
     }
-}
-
-impl tokio_postgres::types::ToSql for Values {
-    fn to_sql(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
-        for value in self.values.iter() {
-            tokio_postgres::types::ToSql::to_sql(&value, ty, out)?;
-        }
-
-        Ok(IsNull::No)
-    }
-
-    fn accepts(ty: &Type) -> bool {
-        true
-    }
-
-    to_sql_checked!();
 }
 
 impl ToSql for Value {

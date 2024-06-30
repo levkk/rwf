@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-time = "*"
-tokio-postgres = "*"
+time = "0.3"
+tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 bytes = "*"
 tokio = {version = "1", features = ["full"]}
+thiserror = "*"
