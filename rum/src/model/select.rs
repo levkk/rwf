@@ -1,4 +1,4 @@
-use crate::model::{Column, Columns, Limit, OrderBy, ToSql, Value, Where};
+use crate::model::{Columns, Limit, OrderBy, Where};
 
 #[derive(Debug)]
 pub struct Select {

@@ -1,11 +1,8 @@
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
-use tokio_postgres::{
-    types::{to_sql_checked, IsNull, Type},
-    Client,
-};
+use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 
-use std::ops::{Deref, Range};
+use std::ops::Range;
 
 use super::{Error, Escape, ToSql};
 
@@ -88,7 +85,7 @@ impl tokio_postgres::types::ToSql for Value {
         }
     }
 
-    fn accepts(ty: &Type) -> bool {
+    fn accepts(_ty: &Type) -> bool {
         // Handled by to_sql.
         true
     }

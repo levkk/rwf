@@ -1,5 +1,3 @@
-use time::{OffsetDateTime, PrimitiveDateTime};
-
 pub mod column;
 pub mod error;
 pub mod escape;
@@ -45,7 +43,8 @@ impl ToSql for Columns {
     }
 }
 
-pub struct Join {
+#[allow(dead_code)]
+struct Join {
     table_name: String,
     on: (String, String),
 }
@@ -90,6 +89,7 @@ impl ToSql for Comparison {
 pub enum OrderColumn {
     Asc(Column),
     Desc(Column),
+    Raw(String),
 }
 
 impl ToSql for OrderColumn {
@@ -99,6 +99,7 @@ impl ToSql for OrderColumn {
         match self {
             Asc(column) => format!("{} ASC", column.to_sql()),
             Desc(column) => format!("{} DESC", column.to_sql()),
+            Raw(raw) => raw.clone(),
         }
     }
 }
@@ -109,7 +110,9 @@ pub trait ToOrderBy {
 
 impl ToOrderBy for &str {
     fn to_order_by(&self) -> OrderBy {
-        todo!()
+        OrderBy {
+            order_by: vec![OrderColumn::Raw(self.to_string())],
+        }
     }
 }
 
@@ -215,20 +218,20 @@ impl Query {
         })
     }
 
-    pub fn take_one(mut self) -> Self {
+    pub fn take_one(self) -> Self {
         use Query::*;
 
         match self {
-            Select(mut select) => Select(select.limit(Limit::new(1))),
+            Select(select) => Select(select.limit(Limit::new(1))),
             _ => unreachable!(),
         }
     }
 
-    pub fn take_many(mut self, n: usize) -> Self {
+    pub fn take_many(self, n: usize) -> Self {
         use Query::*;
 
         match self {
-            Select(mut select) => Select(select.limit(Limit::new(n))),
+            Select(select) => Select(select.limit(Limit::new(n))),
             _ => unreachable!(),
         }
     }
@@ -246,7 +249,7 @@ impl Query {
         use Query::*;
 
         match self {
-            Select(mut select) => {
+            Select(select) => {
                 let table_name = select.table_name.clone();
                 Select(select.limit(Limit::new(n)).order_by(OrderBy {
                     order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
@@ -302,7 +305,7 @@ impl Query {
         self.take_many(limit)
     }
 
-    pub fn order(self, order: impl ToOrderBy) -> Query {
+    pub fn order(self, _order: impl ToOrderBy) -> Query {
         todo!()
     }
 
