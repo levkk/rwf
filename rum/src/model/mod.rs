@@ -1,13 +1,18 @@
-use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
-use tokio_postgres::{
-    types::{to_sql_checked, Format, IsNull, Type},
-    Client,
-};
 
+pub mod column;
+pub mod escape;
+pub mod filter;
+pub mod limit;
+pub mod order_by;
 pub mod select;
+pub mod value;
 
+pub use column::Column;
+pub use escape::Escape;
+pub use limit::Limit;
 pub use select::Select;
+pub use value::{ToValue, Value};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
@@ -16,170 +21,6 @@ pub trait ToSql {
 impl ToSql for i32 {
     fn to_sql(&self) -> String {
         self.to_string()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Value {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    TimestampT(OffsetDateTime),
-    Timestamp(PrimitiveDateTime),
-    List(Vec<Value>),
-    Placeholder(i32),
-}
-
-pub trait ToValue {
-    fn to_value(&self) -> Value;
-}
-
-impl ToValue for &str {
-    fn to_value(&self) -> Value {
-        Value::String(self.to_string())
-    }
-}
-
-impl ToValue for i64 {
-    fn to_value(&self) -> Value {
-        Value::Integer(*self)
-    }
-}
-
-impl ToValue for Value {
-    fn to_value(&self) -> Value {
-        self.clone()
-    }
-}
-
-impl ToValue for &[&str] {
-    fn to_value(&self) -> Value {
-        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
-    }
-}
-
-impl ToValue for &[i64] {
-    fn to_value(&self) -> Value {
-        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
-    }
-}
-
-// impl ToValue for [i64; 3] {
-//     fn to_value(&self) -> Value {
-//         self.to_value()
-//     }
-// }
-
-pub trait Escape {
-    fn escape(&self) -> String;
-}
-
-impl Escape for Value {
-    fn escape(&self) -> String {
-        use Value::*;
-
-        match self {
-            String(string) => string.escape(),
-            Integer(integer) => format!("'{}'", integer),
-            Float(float) => format!("'{}'", float),
-            List(values) => format!(
-                "{{{}}}", // '{1, 2, 3}'
-                values
-                    .into_iter()
-                    .map(|value| value.escape())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Placeholder(number) => format!("{}", number),
-            _ => todo!(),
-        }
-    }
-}
-
-impl tokio_postgres::types::ToSql for Value {
-    fn to_sql(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
-        match self {
-            Value::String(string) => string.to_sql(ty, out),
-            Value::Integer(integer) => integer.to_sql(ty, out),
-            Value::Float(float) => float.to_sql(ty, out),
-            // Value::TimestampT(timestampt) => timestampt.to_sql(ty, out),
-            _ => todo!(),
-        }
-    }
-
-    fn accepts(ty: &Type) -> bool {
-        todo!()
-    }
-
-    to_sql_checked!();
-}
-
-impl ToSql for Value {
-    fn to_sql(&self) -> String {
-        use Value::*;
-
-        match self {
-            Value::String(string) => format!("'{}'", string),
-            Integer(integer) => integer.to_string(),
-            Float(float) => float.to_string(),
-            Placeholder(number) => format!("${}", number),
-            _ => todo!(),
-        }
-    }
-}
-
-impl From<&str> for Value {
-    fn from(value: &str) -> Self {
-        Value::String(value.to_string())
-    }
-}
-
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
-        Value::Integer(value)
-    }
-}
-
-#[derive(Debug)]
-pub struct Column {
-    table_name: String,
-    column_name: String,
-}
-
-impl ToSql for Column {
-    fn to_sql(&self) -> String {
-        if self.table_name.is_empty() {
-            format!(r#""{}""#, self.column_name.escape())
-        } else {
-            format!(
-                r#""{}"."{}""#,
-                self.table_name.escape(),
-                self.column_name.escape()
-            )
-        }
-    }
-}
-
-impl Escape for String {
-    fn escape(&self) -> String {
-        self.replace("\"", "\"\"").replace("'", "''")
-    }
-}
-
-impl Column {
-    pub fn new(table_name: impl ToString, column_name: impl ToString) -> Self {
-        Self {
-            table_name: table_name.to_string(),
-            column_name: column_name.to_string(),
-        }
-    }
-
-    pub fn name(column_name: impl ToString) -> Self {
-        Self::new("", column_name)
     }
 }
 
@@ -331,36 +172,6 @@ impl ToSql for Where {
             }
 
             where_
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Limit {
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
-
-impl ToSql for Limit {
-    fn to_sql(&self) -> String {
-        let mut limit = String::new();
-        if let Some(ref rows) = self.limit {
-            limit += format!(" LIMIT {}", rows).as_str();
-        }
-
-        if let Some(ref offset) = self.offset {
-            limit += format!(" OFFSET {}", offset).as_str();
-        }
-
-        limit
-    }
-}
-
-impl Limit {
-    fn new(n: usize) -> Self {
-        Self {
-            limit: Some(n as i64),
-            offset: None,
         }
     }
 }
