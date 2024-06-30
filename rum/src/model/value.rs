@@ -5,7 +5,9 @@ use tokio_postgres::{
     Client,
 };
 
-use super::ToSql;
+use std::ops::Range;
+
+use super::{Escape, ToSql};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -16,6 +18,16 @@ pub enum Value {
     Timestamp(PrimitiveDateTime),
     List(Vec<Value>),
     Placeholder(i32),
+    Range((Box<Value>, Box<Value>)),
+}
+
+unsafe impl Sync for Value {}
+
+impl Value {
+    /// Create a new value.
+    pub fn new(value: impl ToValue) -> Self {
+        value.to_value()
+    }
 }
 
 pub trait ToValue {
@@ -52,12 +64,22 @@ impl ToValue for &[i64] {
     }
 }
 
+impl ToValue for Range<i64> {
+    fn to_value(&self) -> Value {
+        Value::Range((
+            Box::new(self.start.to_value()),
+            Box::new(self.end.to_value()),
+        ))
+    }
+}
+
 impl tokio_postgres::types::ToSql for Value {
     fn to_sql(
         &self,
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
+        println!("to_sql: {:?}", self);
         match self {
             Value::String(string) => string.to_sql(ty, out),
             Value::Integer(integer) => integer.to_sql(ty, out),
@@ -68,7 +90,58 @@ impl tokio_postgres::types::ToSql for Value {
     }
 
     fn accepts(ty: &Type) -> bool {
-        todo!()
+        true
+    }
+
+    to_sql_checked!();
+}
+
+#[derive(Debug)]
+pub struct Values {
+    values: Vec<Value>,
+}
+
+impl ToSql for Values {
+    fn to_sql(&self) -> String {
+        self.values
+            .iter()
+            .map(|value| value.to_sql())
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+impl Values {
+    pub fn new(values: &[Value]) -> Values {
+        Values {
+            values: values.to_vec(),
+        }
+    }
+}
+
+impl From<&[Value]> for Values {
+    fn from(values: &[Value]) -> Self {
+        Values {
+            values: values.to_vec(),
+        }
+    }
+}
+
+impl tokio_postgres::types::ToSql for Values {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
+        for value in self.values.iter() {
+            tokio_postgres::types::ToSql::to_sql(&value, ty, out)?;
+        }
+
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        true
     }
 
     to_sql_checked!();
@@ -79,10 +152,11 @@ impl ToSql for Value {
         use Value::*;
 
         match self {
-            Value::String(string) => format!("'{}'", string),
+            Value::String(string) => format!("'{}'", string.escape()),
             Integer(integer) => integer.to_string(),
             Float(float) => float.to_string(),
             Placeholder(number) => format!("${}", number),
+            Range((a, b)) => format!("BETWEEN {} AND {}", a.to_sql(), b.to_sql()),
             _ => todo!(),
         }
     }
@@ -97,5 +171,15 @@ impl From<&str> for Value {
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
         Value::Integer(value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_range_i64() {
+        let _value = Value::new(1_i64..25);
     }
 }

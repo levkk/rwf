@@ -9,3 +9,4 @@ edition = "2021"
 time = "*"
 tokio-postgres = "*"
 bytes = "*"
+tokio = {version = "1", features = ["full"]}

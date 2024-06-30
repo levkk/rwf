@@ -12,7 +12,7 @@ pub use column::Column;
 pub use escape::Escape;
 pub use limit::Limit;
 pub use select::Select;
-pub use value::{ToValue, Value};
+pub use value::{ToValue, Value, Values};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
@@ -49,25 +49,10 @@ pub struct Join {
 }
 
 #[derive(Debug)]
-pub struct Values {
-    values: Vec<Value>,
-}
-
-impl ToSql for Values {
-    fn to_sql(&self) -> String {
-        self.values
-            .iter()
-            .map(|value| value.to_sql())
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
-#[derive(Debug)]
 pub enum Comparison {
     Equal((Column, Value)),
-    In((Column, Value)), // LessThan(Column),
-                         // GreaterThan(Column),
+    In((Column, Value)),
+    NotIn((Column, Value)),
 }
 
 #[derive(Debug)]
@@ -93,7 +78,8 @@ impl ToSql for Comparison {
 
         match self {
             Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
-            In((column, values)) => format!(r#"{} = ANY({})"#, column.to_sql(), values.to_sql()),
+            In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
+            NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
         }
     }
 }
@@ -151,6 +137,15 @@ impl ToSql for OrderBy {
 pub struct Where {
     comparisons: Vec<ComparisonOp>,
     values: Vec<Value>,
+}
+
+impl Where {
+    pub fn values(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
+        self.values
+            .iter()
+            .map(|v| v as &(dyn tokio_postgres::types::ToSql + Sync))
+            .collect()
+    }
 }
 
 impl ToSql for Where {
@@ -308,6 +303,23 @@ impl Query {
     pub fn order(self, order: impl ToOrderBy) -> Query {
         todo!()
     }
+
+    async fn execute_internal(self, client: &tokio_postgres::Client) -> Vec<tokio_postgres::Row> {
+        let query = self.to_sql();
+
+        match self {
+            Query::Select(select) => {
+                let values = select.where_.values();
+                return client.query(&query, &values).await.unwrap();
+            }
+
+            _ => todo!(),
+        }
+    }
+
+    pub async fn execute(self, client: &tokio_postgres::Client) -> Vec<tokio_postgres::Row> {
+        self.execute_internal(client).await
+    }
 }
 
 pub trait Model {
@@ -348,6 +360,7 @@ pub trait Model {
 mod test {
     use super::*;
     use tokio_postgres::row::Row;
+    use tokio_postgres::{Error, NoTls};
 
     struct User {
         id: i64,
@@ -444,5 +457,42 @@ mod test {
     #[test]
     fn test_find_by() {
         let query = User::find_by("email", "test@test.com");
+    }
+
+    #[tokio::test]
+    async fn test_execute() {
+        let (client, connection) =
+            tokio_postgres::connect("host=localhost user=lev password=lev", NoTls)
+                .await
+                .expect("connect");
+
+        tokio::task::spawn(async move {
+            let _ = connection.await;
+        });
+
+        client.query("BEGIN", &[]).await.expect("transaction");
+        client
+            .query(
+                "CREATE TABLE users (id BIGINT, email VARCHAR, password VARCHAR);",
+                &[],
+            )
+            .await
+            .expect("table");
+        client
+            .query(
+                "INSERT INTO users VALUES (1, 'test@test.com', 'not_encrypted')",
+                &[],
+            )
+            .await
+            .expect("insert");
+
+        // let query = User::find_by("email", "test@test.com");
+        // query.execute(&client).await;
+
+        let rows = User::first_one().execute(&client).await;
+
+        assert_eq!(rows.len(), 1);
+
+        client.query("ROLLBACK", &[]).await.expect("rollback");
     }
 }
