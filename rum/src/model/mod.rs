@@ -26,7 +26,8 @@ pub enum Value {
     Float(f64),
     TimestampT(OffsetDateTime),
     Timestamp(PrimitiveDateTime),
-    Tuple(Vec<Value>),
+    List(Vec<Value>),
+    Placeholder(i32),
 }
 
 pub trait ToValue {
@@ -53,15 +54,21 @@ impl ToValue for Value {
 
 impl ToValue for &[&str] {
     fn to_value(&self) -> Value {
-        Value::Tuple(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
     }
 }
 
 impl ToValue for &[i64] {
     fn to_value(&self) -> Value {
-        Value::Tuple(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
     }
 }
+
+// impl ToValue for [i64; 3] {
+//     fn to_value(&self) -> Value {
+//         self.to_value()
+//     }
+// }
 
 pub trait Escape {
     fn escape(&self) -> String;
@@ -75,14 +82,15 @@ impl Escape for Value {
             String(string) => string.escape(),
             Integer(integer) => format!("'{}'", integer),
             Float(float) => format!("'{}'", float),
-            Tuple(values) => format!(
-                "({})",
+            List(values) => format!(
+                "{{{}}}", // '{1, 2, 3}'
                 values
                     .into_iter()
                     .map(|value| value.escape())
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Placeholder(number) => format!("{}", number),
             _ => todo!(),
         }
     }
@@ -118,6 +126,7 @@ impl ToSql for Value {
             Value::String(string) => format!("'{}'", string),
             Integer(integer) => integer.to_string(),
             Float(float) => float.to_string(),
+            Placeholder(number) => format!("${}", number),
             _ => todo!(),
         }
     }
@@ -143,11 +152,15 @@ pub struct Column {
 
 impl ToSql for Column {
     fn to_sql(&self) -> String {
-        format!(
-            r#""{}"."{}""#,
-            self.table_name.escape(),
-            self.column_name.escape()
-        )
+        if self.table_name.is_empty() {
+            format!(r#""{}""#, self.column_name.escape())
+        } else {
+            format!(
+                r#""{}"."{}""#,
+                self.table_name.escape(),
+                self.column_name.escape()
+            )
+        }
     }
 }
 
@@ -163,6 +176,10 @@ impl Column {
             table_name: table_name.to_string(),
             column_name: column_name.to_string(),
         }
+    }
+
+    pub fn name(column_name: impl ToString) -> Self {
+        Self::new("", column_name)
     }
 }
 
@@ -207,9 +224,9 @@ impl ToSql for Values {
 
 #[derive(Debug)]
 pub enum Comparison {
-    Equal((Column, i32)),
-    In((Column, i32)), // LessThan(Column),
-                       // GreaterThan(Column),
+    Equal((Column, Value)),
+    In((Column, Value)), // LessThan(Column),
+                         // GreaterThan(Column),
 }
 
 #[derive(Debug)]
@@ -234,8 +251,8 @@ impl ToSql for Comparison {
         use Comparison::*;
 
         match self {
-            Equal((a, b)) => format!(r#"{} = ${}"#, a.to_sql(), b.to_sql()),
-            In((column, values)) => format!(r#"{} IN (${})"#, column.to_sql(), values.to_sql()),
+            Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
+            In((column, values)) => format!(r#"{} = ANY({})"#, column.to_sql(), values.to_sql()),
         }
     }
 }
@@ -254,6 +271,16 @@ impl ToSql for OrderColumn {
             Asc(column) => format!("{} ASC", column.to_sql()),
             Desc(column) => format!("{} DESC", column.to_sql()),
         }
+    }
+}
+
+pub trait ToOrderBy {
+    fn to_order_by(&self) -> OrderBy;
+}
+
+impl ToOrderBy for &str {
+    fn to_order_by(&self) -> OrderBy {
+        todo!()
     }
 }
 
@@ -358,7 +385,7 @@ impl ToSql for Query {
             }) => format!(
                 r#"SELECT {} FROM "{}"{}{}{}"#,
                 columns.to_sql(),
-                table_name,
+                table_name.escape(),
                 where_.to_sql(),
                 order_by.to_sql(),
                 limit.to_sql()
@@ -430,15 +457,19 @@ impl Query {
                 let start = select.where_mut().comparisons.len();
                 let table_name = select.table_name.clone();
                 for (idx, column) in filter.into_iter().enumerate() {
-                    select
-                        .where_mut()
-                        .comparisons
-                        .push(ComparisonOp::And(Comparison::Equal((
-                            Column::new(&table_name, &column.0.to_string()),
-                            (idx + start) as i32 + 1,
-                        ))));
+                    let value = column.1.to_value();
+                    let column = Column::new(&table_name, &column.0.to_string());
+                    let placeholder = Value::Placeholder((idx + start) as i32 + 1);
+                    let comparison = match value {
+                        Value::List(ref _value) => {
+                            ComparisonOp::And(Comparison::In((column, placeholder)))
+                        }
+                        ref _value => ComparisonOp::And(Comparison::Equal((column, placeholder))),
+                    };
 
-                    select.where_mut().values.push(column.1.to_value().clone());
+                    select.where_mut().comparisons.push(comparison);
+
+                    select.where_mut().values.push(value);
                 }
 
                 Select(select)
@@ -461,6 +492,10 @@ impl Query {
 
     pub fn limit(self, limit: usize) -> Query {
         self.take_many(limit)
+    }
+
+    pub fn order(self, order: impl ToOrderBy) -> Query {
+        todo!()
     }
 }
 
@@ -586,11 +621,12 @@ mod test {
                 ("email", "test@test.com"),
                 ("password", "not_encrypted"),
             ])
-            .filter(&[("id", 5)]);
+            .filter(&[("id", 5)])
+            .filter(&[("id", [1_i64, 2, 3].as_slice())]);
 
         assert_eq!(
             query.to_sql(),
-            r#"SELECT * FROM "users" WHERE ("users"."email" = $1) AND ("users"."password" = $2) AND ("users"."id" = $3)"#
+            r#"SELECT * FROM "users" WHERE ("users"."email" = $1) AND ("users"."password" = $2) AND ("users"."id" = $3) AND ("users"."id" = ANY($4))"#
         );
     }
 
