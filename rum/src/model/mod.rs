@@ -7,7 +7,7 @@ pub mod order_by;
 pub mod select;
 pub mod value;
 
-pub use column::Column;
+pub use column::{Column, Columns};
 pub use error::Error;
 pub use escape::Escape;
 pub use limit::Limit;
@@ -21,25 +21,6 @@ pub trait ToSql {
 impl ToSql for i32 {
     fn to_sql(&self) -> String {
         self.to_string()
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Columns {
-    columns: Vec<Column>,
-}
-
-impl ToSql for Columns {
-    fn to_sql(&self) -> String {
-        if self.columns.is_empty() {
-            "*".to_string()
-        } else {
-            self.columns
-                .iter()
-                .map(|column| column.to_sql())
-                .collect::<Vec<_>>()
-                .join(", ")
-        }
     }
 }
 
