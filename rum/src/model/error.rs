@@ -10,6 +10,9 @@ pub enum Error {
     #[error("database error: {0}")]
     DatabaseError(tokio_postgres::Error),
 
+    #[error("query error: {0}, query: {1}")]
+    QueryError(String, String),
+
     #[error("ORM serialization error: {0:?}")]
     OrmSerializationError(Value),
 }

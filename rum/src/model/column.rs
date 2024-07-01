@@ -1,6 +1,6 @@
 use super::{Escape, ToSql};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Column {
     table_name: String,
     column_name: String,

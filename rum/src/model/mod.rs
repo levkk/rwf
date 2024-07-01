@@ -4,6 +4,7 @@ pub mod escape;
 pub mod filter;
 pub mod limit;
 pub mod order_by;
+pub mod row;
 pub mod select;
 pub mod value;
 
@@ -11,17 +12,13 @@ pub use column::{Column, Columns};
 pub use error::Error;
 pub use escape::Escape;
 pub use limit::Limit;
+pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
+pub use row::Row;
 pub use select::Select;
 pub use value::{ToValue, Value, Values};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
-}
-
-impl ToSql for i32 {
-    fn to_sql(&self) -> String {
-        self.to_string()
-    }
 }
 
 #[allow(dead_code)]
@@ -62,59 +59,6 @@ impl ToSql for Comparison {
             Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
             In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
             NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum OrderColumn {
-    Asc(Column),
-    Desc(Column),
-    Raw(String),
-}
-
-impl ToSql for OrderColumn {
-    fn to_sql(&self) -> String {
-        use OrderColumn::*;
-
-        match self {
-            Asc(column) => format!("{} ASC", column.to_sql()),
-            Desc(column) => format!("{} DESC", column.to_sql()),
-            Raw(raw) => raw.clone(),
-        }
-    }
-}
-
-pub trait ToOrderBy {
-    fn to_order_by(&self) -> OrderBy;
-}
-
-impl ToOrderBy for &str {
-    fn to_order_by(&self) -> OrderBy {
-        OrderBy {
-            order_by: vec![OrderColumn::Raw(self.to_string())],
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct OrderBy {
-    order_by: Vec<OrderColumn>,
-}
-
-impl ToSql for OrderBy {
-    fn to_sql(&self) -> String {
-        if self.order_by.is_empty() {
-            "".to_string()
-        } else {
-            format!(
-                " ORDER BY {}",
-                self.order_by
-                    .iter()
-                    .map(|column| column.to_sql())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
         }
     }
 }
@@ -161,6 +105,7 @@ impl ToSql for Where {
 pub enum Query {
     Select(Select),
     Update,
+    Raw(String),
 }
 
 impl ToSql for Query {
@@ -182,6 +127,8 @@ impl ToSql for Query {
                 order_by.to_sql(),
                 limit.to_sql()
             ),
+
+            Raw(query) => query.clone(),
 
             Update => todo!(),
         }
@@ -232,9 +179,13 @@ impl Query {
         match self {
             Select(select) => {
                 let table_name = select.table_name.clone();
-                Select(select.limit(Limit::new(n)).order_by(OrderBy {
-                    order_by: vec![OrderColumn::Asc(Column::new(table_name.as_str(), "id"))],
-                }))
+                let order_by = if select.order_by.is_empty() {
+                    OrderBy::asc(Column::new(table_name.as_str(), "id"))
+                } else {
+                    select.order_by.clone()
+                };
+
+                Select(select.limit(Limit::new(n)).order_by(order_by))
             }
 
             _ => unreachable!(),
@@ -286,30 +237,42 @@ impl Query {
         self.take_many(limit)
     }
 
-    pub fn order(self, _order: impl ToOrderBy) -> Query {
-        todo!()
-    }
-
-    async fn execute_internal(
-        self,
-        client: &tokio_postgres::Client,
-    ) -> Result<Vec<tokio_postgres::Row>, Error> {
-        let query = self.to_sql();
-
-        match self {
-            Query::Select(select) => {
-                let values = select.where_.values();
-                Ok(client.query(&query, &values).await?)
-            }
-
-            _ => todo!(),
+    pub fn order(self, order: impl ToOrderBy) -> Query {
+        if let Query::Select(mut select) = self {
+            select.order_by = select.order_by + order.to_order_by();
+            Query::Select(select)
+        } else {
+            self
         }
     }
 
-    pub async fn execute(
-        self,
-        client: &tokio_postgres::Client,
-    ) -> Result<Vec<tokio_postgres::Row>, Error> {
+    async fn execute_internal(self, client: &tokio_postgres::Client) -> Result<Vec<Row>, Error> {
+        let query = self.to_sql();
+
+        let rows = match self {
+            Query::Select(select) => {
+                let values = select.where_.values();
+                match client.query(&query, &values).await {
+                    Ok(rows) => rows,
+                    Err(err) => {
+                        return Err(Error::QueryError(
+                            query,
+                            err.as_db_error().expect("db error").message().to_string(),
+                        ))
+                    }
+                }
+            }
+
+            Query::Raw(query) => client.query(&query, &[]).await?,
+
+            _ => vec![],
+        };
+
+        Ok(rows.into_iter().map(|row| Row::new(row)).collect())
+    }
+
+    /// Execute a query and return an optional result.
+    pub async fn execute(self, client: &tokio_postgres::Client) -> Result<Vec<Row>, Error> {
         self.execute_internal(client).await
     }
 }
@@ -345,6 +308,14 @@ pub trait Model {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
             .take_one()
+    }
+
+    fn find_by_sql(query: impl ToString) -> Query {
+        Query::Raw(query.to_string())
+    }
+
+    fn order(order: impl ToOrderBy) -> Query {
+        Self::all().order(order)
     }
 }
 
@@ -478,12 +449,12 @@ mod test {
             .await
             .expect("insert");
 
-        // let query = User::find_by("email", "test@test.com");
-        // query.execute(&client).await;
+        let rows = User::order(("emails", "ASC"))
+            .first_one()
+            .execute(&client)
+            .await;
 
-        let rows = User::first_one().execute(&client).await;
-
-        assert_eq!(rows.len(), 1);
+        assert_eq!(rows.expect("result").len(), 1);
 
         client.query("ROLLBACK", &[]).await.expect("rollback");
     }

@@ -31,3 +31,9 @@ impl Escape for String {
         self.replace("\"", "\"\"").replace("'", "''")
     }
 }
+
+impl Escape for &str {
+    fn escape(&self) -> String {
+        self.to_string().escape()
+    }
+}
