@@ -6,6 +6,7 @@ use crate::model::{
 #[derive(Debug, Default)]
 pub struct Select {
     pub table_name: String,
+    pub primary_key: String,
     pub columns: Columns,
     pub order_by: OrderBy,
     pub limit: Limit,

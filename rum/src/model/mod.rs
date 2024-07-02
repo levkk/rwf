@@ -94,6 +94,7 @@ impl Query {
     pub fn select(table_name: impl ToString) -> Self {
         Query::Select(Select {
             table_name: table_name.to_string(),
+            primary_key: "id".to_string(),
             ..Default::default()
         })
     }
@@ -132,7 +133,7 @@ impl Query {
             Select(select) => {
                 let table_name = select.table_name.clone();
                 let order_by = if select.order_by.is_empty() {
-                    OrderBy::asc(Column::new(table_name.as_str(), "id"))
+                    OrderBy::asc(Column::new(table_name.as_str(), &select.primary_key))
                 } else {
                     select.order_by.clone()
                 };
@@ -366,7 +367,11 @@ mod test {
 
     #[test]
     fn test_find_by() {
-        let _query = User::find_by("email", "test@test.com");
+        let query = User::find_by("email", "test@test.com");
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT * FROM "users" WHERE "users"."email" = $1 LIMIT 1"#
+        );
     }
 
     #[tokio::test]
