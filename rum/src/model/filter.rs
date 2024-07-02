@@ -1,31 +1,67 @@
-use super::{Column, Comparison, ToSql, ToValue, Value};
+use super::{Column, ToSql, ToValue, Value};
 
+/// The WHERE clause of a SQL query.
 #[derive(Debug, Default)]
 pub struct WhereClause {
     filter: Filter,
 }
 
+#[derive(Debug, Clone)]
+enum Comparison {
+    /// x = 1
+    Equal((Column, Value)),
+    /// x IN (1, 2, 3)
+    In((Column, Value)),
+    /// X NOT IN (1, 2, 3)
+    NotIn((Column, Value)),
+    /// x <> 1
+    NotEqual((Column, Value)),
+    /// (x = 1 AND y = 2)
+    Filter(Filter),
+}
+
+impl ToSql for Comparison {
+    fn to_sql(&self) -> String {
+        use Comparison::*;
+
+        match self {
+            Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
+            In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
+            NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
+            NotEqual((column, value)) => format!(r#"{} <> {}"#, column.to_sql(), value.to_sql()),
+            Filter(filter) => format!("({})", filter.to_sql()),
+        }
+    }
+}
+
 impl WhereClause {
+    /// Add predicates to the WHERE clause using OR operator.
     pub fn or(&mut self, filter: Filter) {
         self.filter = self.filter.or(filter);
     }
 
+    /// Add predicates to the WHERE clause using AND operator.
     pub fn and(&mut self, filter: Filter) {
         self.filter = self.filter.and(filter);
     }
 
+    /// Add a single predicate to the WHERE clause, using the AND operator.
     pub fn add(&mut self, column: Column, value: impl ToValue) {
         self.filter.add(column, value);
     }
 
+    /// Append all predicates of the filter into the current WHERE clause, e.g.
+    /// (x = 1) "concat" (y = 2 AND z = 3) becomes (x = 1 AND y = 2 AND z = 3).
     pub fn concat(&mut self, filter: Filter) {
         self.filter = self.filter.concat(filter);
     }
 
+    /// Remove all predicates.
     pub fn clear(&mut self) {
         self.filter.clauses.clear();
     }
 
+    /// Clone the current filter.
     pub fn filter(&self) -> Filter {
         self.filter.clone()
     }
@@ -41,10 +77,13 @@ impl ToSql for WhereClause {
     }
 }
 
+/// Type of connecting operation between two filters.
 #[derive(Debug, Clone, Default, PartialEq, Copy)]
 pub enum JoinOp {
+    /// AND
     #[default]
     And,
+    /// OR
     Or,
 }
 
@@ -60,6 +99,17 @@ impl ToSql for JoinOp {
     }
 }
 
+/// A filter to be applied using the WHERE clause.
+///
+/// A filter is composed of multiple predicates joined by an operator,
+/// e.g. AND.
+///
+/// # Example
+///
+/// ```sql
+/// WHERE x = 1 AND b = 2
+/// ```
+///
 #[derive(Debug, Clone, Default)]
 pub struct Filter {
     clauses: Vec<Comparison>,
@@ -67,10 +117,14 @@ pub struct Filter {
 }
 
 impl Filter {
+    /// Merge a filter using the OR operator, e.g.
+    /// (x = 1) OR (y = 2 AND z = 3).
     pub fn or(&self, filter: Filter) -> Self {
         self.join(JoinOp::Or, filter)
     }
 
+    /// Merge a filter using the AND operator, e.g.
+    /// (x = 1) AND (y = 2 AND z = 3).
     pub fn and(&self, filter: Filter) -> Self {
         self.join(JoinOp::And, filter)
     }
@@ -79,28 +133,7 @@ impl Filter {
         self.clauses.is_empty()
     }
 
-    // pub fn new(table_name: &str, filters: &[(impl ToString, impl ToValue)]) -> Self {
-    //     let mut filter = Filter::default();
-    //     let table_name = select.table_name.clone();
-
-    //     for (column, value) in filters.into_iter() {
-    //         let column = Column::new(&table_name, &column.to_string().as_str());
-    //         let value = value.to_value();
-
-    //         let value = match value {
-    //             Value::List(_) => {
-    //                 let placeholder = select.placeholders_mut().add(&value);
-    //                 Value::Record(Box::new(placeholder))
-    //             }
-
-    //             value => select.placeholders_mut().add(&value),
-    //         };
-
-    //         filter.add(column, value);
-    //     }
-    //     Self::default()
-    // }
-
+    /// Add a predicate to the filter, using the AND operator.
     pub fn add(&mut self, column: Column, value: impl ToValue) {
         let value = value.to_value();
         match value {
@@ -113,6 +146,20 @@ impl Filter {
         }
     }
 
+    /// Add a negated predicate to the filter, using the AND operator.
+    pub fn add_not(&mut self, column: Column, value: impl ToValue) {
+        let value = value.to_value();
+        match value {
+            Value::Record(value) => {
+                self.clauses.push(Comparison::NotIn((column, *value)));
+            }
+            value => {
+                self.clauses.push(Comparison::NotEqual((column, value)));
+            }
+        }
+    }
+
+    /// Append all predicates of the filter into the current filter.
     pub fn concat(&self, filter: Filter) -> Self {
         assert_eq!(self.op, filter.op);
         let mut clauses = self.clauses.clone();
@@ -147,7 +194,7 @@ impl ToSql for Filter {
 
 #[cfg(test)]
 mod test {
-    use super::super::{Column, Comparison, Value};
+    use super::super::{Column, Value};
     use super::*;
 
     #[test]

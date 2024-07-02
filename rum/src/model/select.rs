@@ -1,7 +1,9 @@
 use crate::model::{
     filter::{Filter, JoinOp},
-    Column, Columns, Limit, OrderBy, Placeholders, ToValue, Value, WhereClause,
+    Column, Columns, Escape, Limit, OrderBy, Placeholders, ToSql, ToValue, Value, WhereClause,
 };
+
+use std::ops::Deref;
 
 #[derive(Debug, Default)]
 pub struct Select {
@@ -15,8 +17,13 @@ pub struct Select {
 }
 
 impl Select {
-    pub fn limit(mut self, limit: Limit) -> Self {
-        self.limit = limit;
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = Limit::new(limit);
+        self
+    }
+
+    pub fn offset(mut self, offset: usize) -> Self {
+        self.limit = self.limit.offset(offset);
         self
     }
 
@@ -25,32 +32,29 @@ impl Select {
         self
     }
 
-    pub fn where_clause_mut(&mut self) -> &mut WhereClause {
-        &mut self.where_clause
-    }
-
-    pub fn placeholders_mut(&mut self) -> &mut Placeholders {
-        &mut self.placeholders
-    }
-
-    pub fn filter(mut self, filters: &[(impl ToString, impl ToValue)], join_op: JoinOp) -> Self {
+    pub fn filter(mut self, filters: impl ToFilterable, join_op: JoinOp, not: bool) -> Self {
         let mut filter = Filter::default();
         let table_name = self.table_name.clone();
+        let filters = filters.to_filterable();
 
-        for (column, value) in filters.into_iter() {
+        for (column, value) in filters.deref() {
             let column = Column::new(&table_name, &column.to_string().as_str());
             let value = value.to_value();
 
             let value = match value {
                 Value::List(_) => {
-                    let placeholder = self.placeholders_mut().add(&value);
+                    let placeholder = self.placeholders.add(&value);
                     Value::Record(Box::new(placeholder))
                 }
 
-                value => self.placeholders_mut().add(&value),
+                value => self.placeholders.add(&value),
             };
 
-            filter.add(column, value);
+            if not {
+                filter.add_not(column, value);
+            } else {
+                filter.add(column, value);
+            }
         }
 
         match join_op {
@@ -61,13 +65,71 @@ impl Select {
         self
     }
 
-    pub fn filter_and(mut self, filters: &[(impl ToString, impl ToValue)]) -> Self {
-        self = self.filter(filters, JoinOp::And);
+    pub fn filter_and(mut self, filters: impl ToFilterable) -> Self {
+        self = self.filter(filters, JoinOp::And, false);
         self
     }
 
-    pub fn filter_or(mut self, filters: &[(impl ToString, impl ToValue)]) -> Self {
-        self = self.filter(filters, JoinOp::Or);
+    pub fn filter_or(mut self, filters: impl ToFilterable) -> Self {
+        self = self.filter(filters, JoinOp::Or, false);
         self
+    }
+
+    pub fn filter_not(mut self, filters: impl ToFilterable) -> Self {
+        self = self.filter(filters, JoinOp::And, true);
+        self
+    }
+
+    pub fn filter_or_not(mut self, filters: impl ToFilterable) -> Self {
+        self = self.filter(filters, JoinOp::Or, true);
+        self
+    }
+}
+
+impl ToSql for Select {
+    fn to_sql(&self) -> String {
+        format!(
+            r#"SELECT {} FROM "{}"{}{}{}"#,
+            self.columns.to_sql(),
+            self.table_name.escape(),
+            self.where_clause.to_sql(),
+            self.order_by.to_sql(),
+            self.limit.to_sql()
+        )
+    }
+}
+
+pub struct Filterable {
+    filters: Vec<(String, Value)>,
+}
+
+impl std::ops::Deref for Filterable {
+    type Target = Vec<(String, Value)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.filters
+    }
+}
+
+pub trait ToFilterable {
+    fn to_filterable(&self) -> Filterable;
+}
+
+impl<T: ToString, V: ToValue> ToFilterable for (T, V) {
+    fn to_filterable(&self) -> Filterable {
+        Filterable {
+            filters: vec![(self.0.to_string(), self.1.to_value())],
+        }
+    }
+}
+
+impl<T: ToString, V: ToValue> ToFilterable for &[(T, V)] {
+    fn to_filterable(&self) -> Filterable {
+        Filterable {
+            filters: self
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_value()))
+                .collect(),
+        }
     }
 }

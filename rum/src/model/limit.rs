@@ -28,4 +28,9 @@ impl Limit {
             offset: None,
         }
     }
+
+    pub fn offset(mut self, offset: usize) -> Self {
+        self.offset = Some(offset as i64);
+        self
+    }
 }

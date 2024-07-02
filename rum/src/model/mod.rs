@@ -19,7 +19,7 @@ pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::Pool;
 pub use row::Row;
-pub use select::Select;
+pub use select::{Select, ToFilterable};
 pub use value::{ToValue, Value, Values};
 
 pub trait ToSql {
@@ -30,29 +30,6 @@ pub trait ToSql {
 struct Join {
     table_name: String,
     on: (String, String),
-}
-
-#[derive(Debug, Clone)]
-pub enum Comparison {
-    Equal((Column, Value)),
-    In((Column, Value)),
-    NotIn((Column, Value)),
-    NotEqual((Column, Value)),
-    Filter(Filter),
-}
-
-impl ToSql for Comparison {
-    fn to_sql(&self) -> String {
-        use Comparison::*;
-
-        match self {
-            Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
-            In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
-            NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
-            NotEqual((column, value)) => format!(r#"{} <> {}"#, column.to_sql(), value.to_sql()),
-            Filter(filter) => format!("({})", filter.to_sql()),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -67,24 +44,8 @@ impl ToSql for Query {
         use Query::*;
 
         match self {
-            Select(select::Select {
-                table_name,
-                columns,
-                order_by,
-                limit,
-                where_clause,
-                ..
-            }) => format!(
-                r#"SELECT {} FROM "{}"{}{}{}"#,
-                columns.to_sql(),
-                table_name.escape(),
-                where_clause.to_sql(),
-                order_by.to_sql(),
-                limit.to_sql()
-            ),
-
+            Select(select) => select.to_sql(),
             Raw(query) => query.clone(),
-
             Update => todo!(),
         }
     }
@@ -103,7 +64,7 @@ impl Query {
         use Query::*;
 
         match self {
-            Select(select) => Select(select.limit(Limit::new(1))),
+            Select(select) => Select(select.limit(1)),
             _ => unreachable!(),
         }
     }
@@ -112,7 +73,7 @@ impl Query {
         use Query::*;
 
         match self {
-            Select(select) => Select(select.limit(Limit::new(n))),
+            Select(select) => Select(select.limit(n)),
             _ => unreachable!(),
         }
     }
@@ -138,7 +99,7 @@ impl Query {
                     select.order_by.clone()
                 };
 
-                Select(select.limit(Limit::new(n)).order_by(order_by))
+                Select(select.limit(n).order_by(order_by))
             }
 
             _ => unreachable!(),
@@ -150,8 +111,7 @@ impl Query {
 
         match self {
             Select(select) => Select(select.filter_and(filters)),
-
-            _ => unreachable!(),
+            _ => self,
         }
     }
 
@@ -160,8 +120,25 @@ impl Query {
 
         match self {
             Select(select) => Select(select.filter_or(filters)),
+            _ => self,
+        }
+    }
 
-            _ => unreachable!(),
+    pub fn not(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+        use Query::*;
+
+        match self {
+            Select(select) => Select(select.filter_not(filters)),
+            _ => self,
+        }
+    }
+
+    pub fn or_not(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+        use Query::*;
+
+        match self {
+            Select(select) => Select(select.filter_or_not(filters)),
+            _ => self,
         }
     }
 
@@ -181,6 +158,14 @@ impl Query {
 
     pub fn limit(self, limit: usize) -> Query {
         self.take_many(limit)
+    }
+
+    pub fn offset(self, offset: usize) -> Query {
+        if let Query::Select(mut select) = self {
+            Query::Select(select.offset(offset))
+        } else {
+            self
+        }
     }
 
     pub fn order(self, order: impl ToOrderBy) -> Query {
@@ -249,6 +234,10 @@ pub trait Model {
 
     fn all() -> Query {
         Query::select(Self::table_name())
+    }
+
+    fn filter(filters: &[(impl ToString, impl ToValue)]) -> Query {
+        Query::select(Self::table_name()).filter(filters)
     }
 
     fn find_by(column: impl ToString, value: impl ToValue) -> Query {
@@ -401,7 +390,7 @@ mod test {
             .await
             .expect("insert");
 
-        let rows = User::order(("email", "ASC"))
+        let rows = User::order(("email", "ASC NULLS LAST"))
             .first_one()
             .execute_internal(&client)
             .await;
@@ -421,6 +410,15 @@ mod test {
         assert_eq!(
             query.to_sql(),
             r#"SELECT * FROM "users" WHERE ("users"."email" = $1 AND "users"."password" = $2) OR ("users"."email" = $3)"#
+        );
+
+        let query = User::all()
+            .not(&[("email", "test@test.com")])
+            .or_not(&[("email", "another@test.com")]);
+
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT * FROM "users" WHERE ("users"."email" <> $1) OR ("users"."email" <> $2)"#
         );
     }
 }
