@@ -4,6 +4,8 @@ pub mod escape;
 pub mod filter;
 pub mod limit;
 pub mod order_by;
+pub mod placeholders;
+pub mod pool;
 pub mod row;
 pub mod select;
 pub mod value;
@@ -11,8 +13,11 @@ pub mod value;
 pub use column::{Column, Columns};
 pub use error::Error;
 pub use escape::Escape;
+pub use filter::{Filter, WhereClause};
 pub use limit::Limit;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
+pub use placeholders::Placeholders;
+pub use pool::Pool;
 pub use row::Row;
 pub use select::Select;
 pub use value::{ToValue, Value, Values};
@@ -27,28 +32,13 @@ struct Join {
     on: (String, String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Comparison {
     Equal((Column, Value)),
     In((Column, Value)),
     NotIn((Column, Value)),
-}
-
-#[derive(Debug)]
-pub enum ComparisonOp {
-    And(Comparison),
-    Or(Comparison),
-}
-
-impl ToSql for ComparisonOp {
-    fn to_sql(&self) -> String {
-        use ComparisonOp::*;
-
-        match self {
-            And(comparison) => format!("({})", comparison.to_sql()),
-            Or(comparison) => format!("({})", comparison.to_sql()),
-        }
-    }
+    NotEqual((Column, Value)),
+    Filter(Filter),
 }
 
 impl ToSql for Comparison {
@@ -59,44 +49,8 @@ impl ToSql for Comparison {
             Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
             In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
             NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Where {
-    comparisons: Vec<ComparisonOp>,
-    values: Vec<Value>,
-}
-
-impl Where {
-    pub fn values(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
-        self.values
-            .iter()
-            .map(|v| v as &(dyn tokio_postgres::types::ToSql + Sync))
-            .collect()
-    }
-}
-
-impl ToSql for Where {
-    fn to_sql(&self) -> String {
-        if self.comparisons.is_empty() {
-            "".into()
-        } else {
-            let mut where_ = " WHERE ".to_string();
-
-            for (idx, comparison) in self.comparisons.iter().enumerate() {
-                if idx != 0 {
-                    match comparison {
-                        ComparisonOp::And(_) => where_.push_str(" AND "),
-                        ComparisonOp::Or(_) => where_.push_str(" OR "),
-                    }
-                }
-
-                where_.push_str(comparison.to_sql().as_str());
-            }
-
-            where_
+            NotEqual((column, value)) => format!(r#"{} <> {}"#, column.to_sql(), value.to_sql()),
+            Filter(filter) => format!("({})", filter.to_sql()),
         }
     }
 }
@@ -116,14 +70,15 @@ impl ToSql for Query {
             Select(select::Select {
                 table_name,
                 columns,
-                where_,
                 order_by,
                 limit,
+                where_clause,
+                ..
             }) => format!(
                 r#"SELECT {} FROM "{}"{}{}{}"#,
                 columns.to_sql(),
                 table_name.escape(),
-                where_.to_sql(),
+                where_clause.to_sql(),
                 order_by.to_sql(),
                 limit.to_sql()
             ),
@@ -139,10 +94,7 @@ impl Query {
     pub fn select(table_name: impl ToString) -> Self {
         Query::Select(Select {
             table_name: table_name.to_string(),
-            limit: Limit::default(),
-            columns: Columns::default(),
-            where_: Where::default(),
-            order_by: OrderBy::default(),
+            ..Default::default()
         })
     }
 
@@ -192,31 +144,21 @@ impl Query {
         }
     }
 
-    pub fn filter(self, filter: &[(impl ToString, impl ToValue)]) -> Query {
+    pub fn filter(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
         use Query::*;
 
         match self {
-            Select(mut select) => {
-                let start = select.where_mut().comparisons.len();
-                let table_name = select.table_name.clone();
-                for (idx, column) in filter.into_iter().enumerate() {
-                    let value = column.1.to_value();
-                    let column = Column::new(&table_name, &column.0.to_string());
-                    let placeholder = Value::Placeholder((idx + start) as i32 + 1);
-                    let comparison = match value {
-                        Value::List(ref _value) => {
-                            ComparisonOp::And(Comparison::In((column, placeholder)))
-                        }
-                        ref _value => ComparisonOp::And(Comparison::Equal((column, placeholder))),
-                    };
+            Select(select) => Select(select.filter_and(filters)),
 
-                    select.where_mut().comparisons.push(comparison);
+            _ => unreachable!(),
+        }
+    }
 
-                    select.where_mut().values.push(value);
-                }
+    pub fn or(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+        use Query::*;
 
-                Select(select)
-            }
+        match self {
+            Select(select) => Select(select.filter_or(filters)),
 
             _ => unreachable!(),
         }
@@ -225,9 +167,12 @@ impl Query {
     pub fn find_by(mut self, column: impl ToString, value: Value) -> Query {
         use Query::*;
 
-        if let Select(select::Select { ref mut where_, .. }) = self {
-            where_.comparisons.clear();
-            where_.values.clear();
+        if let Select(select::Select {
+            ref mut where_clause,
+            ..
+        }) = self
+        {
+            where_clause.clear();
         }
 
         self.filter(&[(column.to_string(), value)])
@@ -251,7 +196,7 @@ impl Query {
 
         let rows = match self {
             Query::Select(select) => {
-                let values = select.where_.values();
+                let values = select.placeholders.values();
                 match client.query(&query, &values).await {
                     Ok(rows) => rows,
                     Err(err) => {
@@ -272,8 +217,9 @@ impl Query {
     }
 
     /// Execute a query and return an optional result.
-    pub async fn execute(self, client: &tokio_postgres::Client) -> Result<Vec<Row>, Error> {
-        self.execute_internal(client).await
+    pub async fn execute(self, pool: &Pool) -> Result<Vec<Row>, Error> {
+        let conn = pool.get().await?;
+        self.execute_internal(&conn).await
     }
 }
 
@@ -323,8 +269,9 @@ pub trait Model {
 mod test {
     use super::*;
     use tokio_postgres::row::Row;
-    use tokio_postgres::{Error, NoTls};
+    use tokio_postgres::NoTls;
 
+    #[allow(dead_code)]
     struct User {
         id: i64,
         email: String,
@@ -413,13 +360,13 @@ mod test {
 
         assert_eq!(
             query.to_sql(),
-            r#"SELECT * FROM "users" WHERE ("users"."email" = $1) AND ("users"."password" = $2) AND ("users"."id" = $3) AND ("users"."id" = ANY($4))"#
+            r#"SELECT * FROM "users" WHERE "users"."email" = $1 AND "users"."password" = $2 AND "users"."id" = $3 AND "users"."id" = ANY($4)"#
         );
     }
 
     #[test]
     fn test_find_by() {
-        let query = User::find_by("email", "test@test.com");
+        let _query = User::find_by("email", "test@test.com");
     }
 
     #[tokio::test]
@@ -449,13 +396,26 @@ mod test {
             .await
             .expect("insert");
 
-        let rows = User::order(("emails", "ASC"))
+        let rows = User::order(("email", "ASC"))
             .first_one()
-            .execute(&client)
+            .execute_internal(&client)
             .await;
 
         assert_eq!(rows.expect("result").len(), 1);
 
         client.query("ROLLBACK", &[]).await.expect("rollback");
+    }
+
+    #[test]
+    fn test_or() {
+        let query = User::all()
+            .filter(&[("email", "test@test.com")])
+            .filter(&[("password", "not_encrypted")])
+            .or(&[("email", "another@test.com")]);
+
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT * FROM "users" WHERE ("users"."email" = $1 AND "users"."password" = $2) OR ("users"."email" = $3)"#
+        );
     }
 }

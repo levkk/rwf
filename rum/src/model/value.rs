@@ -14,6 +14,7 @@ pub enum Value {
     TimestampT(OffsetDateTime),
     Timestamp(PrimitiveDateTime),
     List(Vec<Value>),
+    Record(Box<Value>),
     Placeholder(i32),
     Range((Box<Value>, Box<Value>)),
 }
@@ -134,6 +135,14 @@ impl ToSql for Value {
             Float(float) => float.to_string(),
             Placeholder(number) => format!("${}", number),
             Range((a, b)) => format!("BETWEEN {} AND {}", a.to_sql(), b.to_sql()),
+            List(values) => format!(
+                "{{{}}}",
+                values
+                    .iter()
+                    .map(|value| value.to_sql())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             _ => todo!(),
         }
     }

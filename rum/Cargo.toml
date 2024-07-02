@@ -11,3 +11,6 @@ tokio-postgres = {version = "0.7", features = ["with-time-0_3"]}
 bytes = "*"
 tokio = {version = "1", features = ["full"]}
 thiserror = "*"
+parking_lot = "*"
+once_cell = "*"
+tracing = "*"
