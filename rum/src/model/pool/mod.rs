@@ -12,9 +12,11 @@ use std::sync::Arc;
 use std::ops::Deref;
 
 pub mod connection;
+pub mod into_client;
 pub mod transaction;
 use super::Error;
 pub use connection::Connection;
+pub use into_client::{IntoWrapper, Wrapper};
 pub use transaction::Transaction;
 
 /// Smart pointer that automatically checks in the connection

@@ -21,14 +21,14 @@ pub use filter::{Filter, WhereClause};
 pub use limit::Limit;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::Pool;
+pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::{Select, ToFilterable};
 pub use value::{ToValue, Value, Values};
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
-pub trait FromRow {
+pub trait FromRow: Clone {
     fn from_row(row: &tokio_postgres::Row) -> Self
     where
         Self: Sized;
@@ -214,26 +214,31 @@ impl<T: FromRow> Query<T> {
         };
 
         Ok(rows)
-
-        // Ok(rows.into_iter().map(|row| Row::new(row)).collect())
     }
 
     fn get_pool() -> Result<Pool, Error> {
         POOL.get().cloned().ok_or(Error::PoolNotConfigured)
     }
 
+    /// Execute the query and fetch the first row from the database.
     pub async fn fetch(self, conn: &tokio_postgres::Client) -> Result<T, Error> {
-        match self.execute(conn).await?.pop() {
+        match self.execute(conn).await?.first().cloned() {
             Some(row) => Ok(row),
             None => Err(Error::RecordNotFound),
         }
     }
 
+    /// Execute the query and fetch all rows from the database.
     pub async fn fetch_all(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
         self.execute(conn).await
     }
 
+    /// Get the query plan from Postgres.
+    ///
+    /// Take the actual query, prepend `EXPLAIN` and execute.
     pub async fn explain(self, conn: &tokio_postgres::Client) -> Result<Explain, Error> {
+        use std::ops::Deref;
+
         let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
         match query.execute_internal(conn).await?.pop() {
             Some(explain) => Ok(Explain::from_row(&explain)),
@@ -243,6 +248,7 @@ impl<T: FromRow> Query<T> {
 
     /// Execute a query and return an optional result.
     pub async fn execute(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
+        use std::ops::Deref;
         Ok(self
             .execute_internal(conn)
             .await?
@@ -252,47 +258,7 @@ impl<T: FromRow> Query<T> {
     }
 }
 
-// pub struct QuerySet<'a> {
-//     query: Query,
-//     client: &'a tokio_postgres::Client,
-//     running: Option<Pin<Box<dyn Future<Output = Result<Vec<tokio_postgres::Row>, Error>>>>>,
-// }
-
-// impl<'a> QuerySet<'a> {
-//     pub fn new(query: Query, client: &'a tokio_postgres::Client) -> Self {
-//         Self {
-//             query,
-//             client,
-//             running: None,
-//         }
-//     }
-// }
-
-// impl QuerySet<'_> {
-//     pub fn to_sql(&self) -> String {
-//         self.query.to_sql()
-//     }
-// }
-
-// use std::future::Future;
-// use std::pin::Pin;
-// use std::task::Context;
-
-// impl Future for QuerySet<'_> {
-//     type Output = Result<Vec<tokio_postgres::Row>, Error>;
-
-//     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
-//         if self.running.is_none() {
-//             self.running = Some(std::pin::pin!(Box::new(self.query.execute_internal(self.client))));
-//         }
-//         let pinned = self.running.unwrap();
-//         // let mut pinned = std::pin::pin!(future);
-//         println!("polling");
-//         Future::poll(pinned.as_mut(), cx)
-//     }
-// }
-
-pub trait Model: FromRow + Sized {
+pub trait Model: FromRow {
     fn table_name() -> String;
 
     fn configure_pool(pool: Pool) -> Result<(), Error> {
@@ -356,6 +322,7 @@ mod test {
     use tokio_postgres::NoTls;
 
     #[allow(dead_code)]
+    #[derive(Clone)]
     struct User {
         id: i64,
         email: String,

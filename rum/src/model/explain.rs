@@ -1,6 +1,6 @@
 use super::FromRow;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Explain {
     plan: String,
 }
