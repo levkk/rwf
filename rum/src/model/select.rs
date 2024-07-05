@@ -1,12 +1,14 @@
 use crate::model::{
     filter::{Filter, JoinOp},
-    Column, Columns, Escape, Limit, OrderBy, Placeholders, ToSql, ToValue, Value, WhereClause,
+    Column, Columns, Escape, FromRow, Limit, OrderBy, Placeholders, ToSql, ToValue, Value,
+    WhereClause,
 };
 
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 #[derive(Debug, Default)]
-pub struct Select {
+pub struct Select<T: FromRow + ?Sized> {
     pub table_name: String,
     pub primary_key: String,
     pub columns: Columns,
@@ -14,9 +16,23 @@ pub struct Select {
     pub limit: Limit,
     pub placeholders: Placeholders,
     pub where_clause: WhereClause,
+    _phantom: PhantomData<T>,
 }
 
-impl Select {
+impl<T: FromRow> Select<T> {
+    pub fn new(table_name: &str, primary_key: &str) -> Self {
+        Self {
+            table_name: table_name.to_string(),
+            primary_key: primary_key.to_string(),
+            columns: Columns::default(),
+            order_by: OrderBy::default(),
+            limit: Limit::default(),
+            placeholders: Placeholders::default(),
+            where_clause: WhereClause::default(),
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = Limit::new(limit);
         self
@@ -65,6 +81,13 @@ impl Select {
         self
     }
 
+    pub fn or(mut self, query: Self) -> Self {
+        let other_filter = query.where_clause.filter();
+        let other_placeholders = query.placeholders;
+        self.where_clause.or(query.where_clause.filter());
+        self
+    }
+
     pub fn filter_and(mut self, filters: impl ToFilterable) -> Self {
         self = self.filter(filters, JoinOp::And, false);
         self
@@ -86,7 +109,7 @@ impl Select {
     }
 }
 
-impl ToSql for Select {
+impl<T: FromRow> ToSql for Select<T> {
     fn to_sql(&self) -> String {
         format!(
             r#"SELECT {} FROM "{}"{}{}{}"#,

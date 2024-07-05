@@ -1,4 +1,5 @@
 use tokio::sync::Notify;
+use tokio::task::spawn;
 use tokio::time::{timeout, Duration};
 
 use tokio_postgres::Client;
@@ -11,14 +12,17 @@ use std::sync::Arc;
 use std::ops::Deref;
 
 pub mod connection;
+pub mod transaction;
 use super::Error;
 pub use connection::Connection;
+pub use transaction::Transaction;
 
 /// Smart pointer that automatically checks in the connection
 /// back into the pool when the connection is dropped.
 pub struct ConnectionGuard {
     connection: Option<Connection>,
     pool: Pool,
+    rollback: bool,
 }
 
 impl ConnectionGuard {
@@ -33,14 +37,27 @@ impl ConnectionGuard {
         ConnectionGuard {
             connection: Some(connection),
             pool,
+            rollback: false,
         }
+    }
+
+    fn rollback(&mut self) {
+        self.rollback = true;
     }
 }
 
 impl Drop for ConnectionGuard {
     fn drop(&mut self) {
-        let connection = self.connection.take().unwrap();
-        self.pool.checkin(connection);
+        if let Some(connection) = self.connection.take() {
+            if self.rollback {
+                let pool = self.pool.clone();
+                spawn(async move {
+                    pool.checkin_rollback(connection).await;
+                });
+            } else {
+                self.pool.checkin(connection, false);
+            }
+        }
     }
 }
 
@@ -135,6 +152,12 @@ impl Pool {
         }
     }
 
+    pub async fn begin(&self) -> Result<Transaction, Error> {
+        let mut connection = self.get().await?;
+        connection.execute("BEGIN", &[]).await?;
+        Ok(Transaction::new(connection))
+    }
+
     async fn get_internal(&self) -> Result<ConnectionGuard, Error> {
         loop {
             let mut inner = self.inner.lock();
@@ -160,15 +183,28 @@ impl Pool {
         }
     }
 
-    fn checkin(&self, connection: Connection) {
+    fn checkin(&self, connection: Connection, drop: bool) {
         let mut inner = self.inner.lock();
-        if !connection.bad() {
+        if !connection.bad() && !drop {
             inner.connections.push_back(connection);
         } else {
             inner.expected -= 1;
         }
 
         self.checkin_notify.notify_one();
+    }
+
+    async fn checkin_rollback(&self, connection: Connection) {
+        match connection.execute("ROLLBACK", &[]).await {
+            Ok(_) => {
+                tracing::debug!("ROLLBACK");
+                self.checkin(connection, false)
+            }
+            Err(err) => {
+                tracing::error!("auto rollback failed: {:?}", err);
+                self.checkin(connection, true)
+            }
+        }
     }
 }
 

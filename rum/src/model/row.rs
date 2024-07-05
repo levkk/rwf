@@ -9,6 +9,14 @@ pub struct Row {
     changed: HashMap<String, Value>,
 }
 
+impl std::ops::Deref for Row {
+    type Target = tokio_postgres::Row;
+
+    fn deref(&self) -> &Self::Target {
+        &self.row
+    }
+}
+
 impl Row {
     pub fn new(row: tokio_postgres::Row) -> Self {
         Self {

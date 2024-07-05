@@ -1,6 +1,9 @@
+use once_cell::sync::OnceCell;
+
 pub mod column;
 pub mod error;
 pub mod escape;
+pub mod explain;
 pub mod filter;
 pub mod limit;
 pub mod order_by;
@@ -13,6 +16,7 @@ pub mod value;
 pub use column::{Column, Columns};
 pub use error::Error;
 pub use escape::Escape;
+pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
 pub use limit::Limit;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
@@ -21,6 +25,14 @@ pub use pool::Pool;
 pub use row::Row;
 pub use select::{Select, ToFilterable};
 pub use value::{ToValue, Value, Values};
+
+static POOL: OnceCell<Pool> = OnceCell::new();
+
+pub trait FromRow {
+    fn from_row(row: &tokio_postgres::Row) -> Self
+    where
+        Self: Sized;
+}
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
@@ -33,13 +45,13 @@ struct Join {
 }
 
 #[derive(Debug)]
-pub enum Query {
-    Select(Select),
+pub enum Query<T: FromRow + ?Sized> {
+    Select(Select<T>),
     Update,
     Raw(String),
 }
 
-impl ToSql for Query {
+impl<T: FromRow> ToSql for Query<T> {
     fn to_sql(&self) -> String {
         use Query::*;
 
@@ -51,13 +63,9 @@ impl ToSql for Query {
     }
 }
 
-impl Query {
+impl<T: FromRow> Query<T> {
     pub fn select(table_name: impl ToString) -> Self {
-        Query::Select(Select {
-            table_name: table_name.to_string(),
-            primary_key: "id".to_string(),
-            ..Default::default()
-        })
+        Query::Select(Select::new(table_name.to_string().as_str(), "id"))
     }
 
     pub fn take_one(self) -> Self {
@@ -78,7 +86,7 @@ impl Query {
         }
     }
 
-    pub fn first_one(self) -> Query {
+    pub fn first_one(self) -> Self {
         use Query::*;
 
         match self {
@@ -87,7 +95,7 @@ impl Query {
         }
     }
 
-    pub fn first_many(self, n: usize) -> Query {
+    pub fn first_many(self, n: usize) -> Self {
         use Query::*;
 
         match self {
@@ -106,7 +114,7 @@ impl Query {
         }
     }
 
-    pub fn filter(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+    pub fn filter(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
         use Query::*;
 
         match self {
@@ -115,16 +123,19 @@ impl Query {
         }
     }
 
-    pub fn or(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
-        use Query::*;
+    // pub fn or(self, other: Query<Self>) -> Self {
+    //     use Query::*;
 
-        match self {
-            Select(select) => Select(select.filter_or(filters)),
-            _ => self,
-        }
-    }
+    //     match self {
+    //         Select(select) => match other {
+    //             Select(other) => Select(select.or(other)),
+    //             _ => Select(select),
+    //         },
+    //         _ => self,
+    //     }
+    // }
 
-    pub fn not(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+    pub fn not(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
         use Query::*;
 
         match self {
@@ -133,7 +144,7 @@ impl Query {
         }
     }
 
-    pub fn or_not(self, filters: &[(impl ToString, impl ToValue)]) -> Query {
+    pub fn or_not(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
         use Query::*;
 
         match self {
@@ -142,7 +153,7 @@ impl Query {
         }
     }
 
-    pub fn find_by(mut self, column: impl ToString, value: Value) -> Query {
+    pub fn find_by(mut self, column: impl ToString, value: Value) -> Self {
         use Query::*;
 
         if let Select(select::Select {
@@ -156,19 +167,19 @@ impl Query {
         self.filter(&[(column.to_string(), value)])
     }
 
-    pub fn limit(self, limit: usize) -> Query {
+    pub fn limit(self, limit: usize) -> Self {
         self.take_many(limit)
     }
 
-    pub fn offset(self, offset: usize) -> Query {
-        if let Query::Select(mut select) = self {
+    pub fn offset(self, offset: usize) -> Self {
+        if let Query::Select(select) = self {
             Query::Select(select.offset(offset))
         } else {
             self
         }
     }
 
-    pub fn order(self, order: impl ToOrderBy) -> Query {
+    pub fn order(self, order: impl ToOrderBy) -> Self {
         if let Query::Select(mut select) = self {
             select.order_by = select.order_by + order.to_order_by();
             Query::Select(select)
@@ -177,7 +188,10 @@ impl Query {
         }
     }
 
-    async fn execute_internal(self, client: &tokio_postgres::Client) -> Result<Vec<Row>, Error> {
+    async fn execute_internal(
+        &self,
+        client: &tokio_postgres::Client,
+    ) -> Result<Vec<tokio_postgres::row::Row>, Error> {
         let query = self.to_sql();
 
         let rows = match self {
@@ -194,63 +208,143 @@ impl Query {
                 }
             }
 
-            Query::Raw(query) => client.query(&query, &[]).await?,
+            Query::Raw(query) => client.query(query, &[]).await?,
 
             _ => vec![],
         };
 
-        Ok(rows.into_iter().map(|row| Row::new(row)).collect())
+        Ok(rows)
+
+        // Ok(rows.into_iter().map(|row| Row::new(row)).collect())
+    }
+
+    fn get_pool() -> Result<Pool, Error> {
+        POOL.get().cloned().ok_or(Error::PoolNotConfigured)
+    }
+
+    pub async fn fetch(self, conn: &tokio_postgres::Client) -> Result<T, Error> {
+        match self.execute(conn).await?.pop() {
+            Some(row) => Ok(row),
+            None => Err(Error::RecordNotFound),
+        }
+    }
+
+    pub async fn fetch_all(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
+        self.execute(conn).await
+    }
+
+    pub async fn explain(self, conn: &tokio_postgres::Client) -> Result<Explain, Error> {
+        let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
+        match query.execute_internal(conn).await?.pop() {
+            Some(explain) => Ok(Explain::from_row(&explain)),
+            None => Err(Error::RecordNotFound),
+        }
     }
 
     /// Execute a query and return an optional result.
-    pub async fn execute(self, pool: &Pool) -> Result<Vec<Row>, Error> {
-        let conn = pool.get().await?;
-        self.execute_internal(&conn).await
+    pub async fn execute(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
+        Ok(self
+            .execute_internal(conn)
+            .await?
+            .into_iter()
+            .map(|row| T::from_row(&row))
+            .collect())
     }
 }
 
-pub trait Model {
+// pub struct QuerySet<'a> {
+//     query: Query,
+//     client: &'a tokio_postgres::Client,
+//     running: Option<Pin<Box<dyn Future<Output = Result<Vec<tokio_postgres::Row>, Error>>>>>,
+// }
+
+// impl<'a> QuerySet<'a> {
+//     pub fn new(query: Query, client: &'a tokio_postgres::Client) -> Self {
+//         Self {
+//             query,
+//             client,
+//             running: None,
+//         }
+//     }
+// }
+
+// impl QuerySet<'_> {
+//     pub fn to_sql(&self) -> String {
+//         self.query.to_sql()
+//     }
+// }
+
+// use std::future::Future;
+// use std::pin::Pin;
+// use std::task::Context;
+
+// impl Future for QuerySet<'_> {
+//     type Output = Result<Vec<tokio_postgres::Row>, Error>;
+
+//     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
+//         if self.running.is_none() {
+//             self.running = Some(std::pin::pin!(Box::new(self.query.execute_internal(self.client))));
+//         }
+//         let pinned = self.running.unwrap();
+//         // let mut pinned = std::pin::pin!(future);
+//         println!("polling");
+//         Future::poll(pinned.as_mut(), cx)
+//     }
+// }
+
+pub trait Model: FromRow + Sized {
     fn table_name() -> String;
+
+    fn configure_pool(pool: Pool) -> Result<(), Error> {
+        match POOL.set(pool) {
+            Ok(()) => Ok(()),
+            Err(_pool) => Err(Error::Unknown("pool already configured".into())),
+        }
+    }
 
     fn primary_key() -> String {
         "id".to_string()
     }
 
-    fn take_one() -> Query {
+    fn take_one() -> Query<Self> {
         Query::select(Self::table_name()).take_one()
     }
 
-    fn take_many(n: usize) -> Query {
+    // fn take_one_set(client: &tokio_postgres::Client) -> QuerySet {
+    //     QuerySet::new(Self::take_one(), client)
+    // }
+
+    fn take_many(n: usize) -> Query<Self> {
         Query::select(Self::table_name()).take_many(n)
     }
 
-    fn first_one() -> Query {
+    fn first_one() -> Query<Self> {
         Query::select(Self::table_name()).first_one()
     }
 
-    fn first_many(n: usize) -> Query {
+    fn first_many(n: usize) -> Query<Self> {
         Query::select(Self::table_name()).first_many(n)
     }
 
-    fn all() -> Query {
+    fn all() -> Query<Self> {
         Query::select(Self::table_name())
     }
 
-    fn filter(filters: &[(impl ToString, impl ToValue)]) -> Query {
+    fn filter(filters: &[(impl ToString, impl ToValue)]) -> Query<Self> {
         Query::select(Self::table_name()).filter(filters)
     }
 
-    fn find_by(column: impl ToString, value: impl ToValue) -> Query {
+    fn find_by(column: impl ToString, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
             .take_one()
     }
 
-    fn find_by_sql(query: impl ToString) -> Query {
+    fn find_by_sql(query: impl ToString) -> Query<Self> {
         Query::Raw(query.to_string())
     }
 
-    fn order(order: impl ToOrderBy) -> Query {
+    fn order(order: impl ToOrderBy) -> Query<Self> {
         Self::all().order(order)
     }
 }
@@ -266,6 +360,20 @@ mod test {
         id: i64,
         email: String,
         password: String,
+    }
+
+    impl FromRow for User {
+        fn from_row(row: &Row) -> Self {
+            let id: i64 = row.get("id");
+            let email: String = row.get("email");
+            let password: String = row.get("password");
+
+            User {
+                id,
+                email,
+                password,
+            }
+        }
     }
 
     impl TryFrom<Row> for User {
@@ -297,15 +405,20 @@ mod test {
         assert_eq!(query, r#"SELECT * FROM "users" LIMIT 1"#);
     }
 
+    // #[tokio::test]
+    // async fn test_take_one_set() -> Result<(), Error> {
+    //     let pool = Pool::new_local();
+    //     let conn = pool.get().await?;
+    //     let query = User::take_one_set(&conn);
+
+    //     let sql = query.to_sql();
+    //     let user = query.await?;
+
+    //     Ok(())
+    // }
+
     #[test]
     fn test_take_many() {
-        struct User;
-        impl Model for User {
-            fn table_name() -> String {
-                "users".into()
-            }
-        }
-
         let query = User::take_many(25).to_sql();
 
         assert_eq!(query, r#"SELECT * FROM "users" LIMIT 25"#);
@@ -364,61 +477,71 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_execute() {
-        let (client, connection) =
-            tokio_postgres::connect("host=localhost user=lev password=lev", NoTls)
-                .await
-                .expect("connect");
+    async fn test_fetch() -> Result<(), Error> {
+        let pool = Pool::new_local();
+        let transaction = pool.begin().await?;
 
-        tokio::task::spawn(async move {
-            let _ = connection.await;
-        });
-
-        client.query("BEGIN", &[]).await.expect("transaction");
-        client
+        transaction
             .query(
                 "CREATE TABLE users (id BIGINT, email VARCHAR, password VARCHAR);",
                 &[],
             )
-            .await
-            .expect("table");
-        client
+            .await?;
+        transaction
             .query(
-                "INSERT INTO users VALUES (1, 'test@test.com', 'not_encrypted')",
+                "INSERT INTO users VALUES (1, 'test@test.com', 'not_encrypted');",
                 &[],
             )
-            .await
-            .expect("insert");
+            .await?;
 
-        let rows = User::order(("email", "ASC NULLS LAST"))
+        let user = User::order(("email", "ASC"))
             .first_one()
-            .execute_internal(&client)
-            .await;
+            .fetch(&transaction)
+            .await?;
 
-        assert_eq!(rows.expect("result").len(), 1);
+        assert_eq!(user.email, "test@test.com");
 
-        client.query("ROLLBACK", &[]).await.expect("rollback");
+        let users = User::all().fetch_all(&transaction).await?;
+
+        assert_eq!(users.len(), 1);
+
+        Ok(())
     }
 
-    #[test]
-    fn test_or() {
-        let query = User::all()
-            .filter(&[("email", "test@test.com")])
-            .filter(&[("password", "not_encrypted")])
-            .or(&[("email", "another@test.com")]);
+    #[tokio::test]
+    async fn test_explain() -> Result<(), Error> {
+        let pool = Pool::new_local();
+        let transaction = pool.begin().await?;
 
-        assert_eq!(
-            query.to_sql(),
-            r#"SELECT * FROM "users" WHERE ("users"."email" = $1 AND "users"."password" = $2) OR ("users"."email" = $3)"#
-        );
+        transaction
+            .execute("CREATE TABLE users (id BIGINT);", &[])
+            .await?;
 
-        let query = User::all()
-            .not(&[("email", "test@test.com")])
-            .or_not(&[("email", "another@test.com")]);
+        let explain = User::all().explain(&transaction).await?;
+        assert!(explain.to_string().starts_with("Seq Scan on users"));
 
-        assert_eq!(
-            query.to_sql(),
-            r#"SELECT * FROM "users" WHERE ("users"."email" <> $1) OR ("users"."email" <> $2)"#
-        );
+        Ok(())
     }
+
+    // #[test]
+    // fn test_or() {
+    //     let query = User::all()
+    //         .filter(&[("email", "test@test.com")])
+    //         .filter(&[("password", "not_encrypted")])
+    //         .or(User::all().filter(&[("email", "another@test.com")]));
+
+    //     assert_eq!(
+    //         query.to_sql(),
+    //         r#"SELECT * FROM "users" WHERE ("users"."email" = $1 AND "users"."password" = $2) OR ("users"."email" = $3)"#
+    //     );
+
+    //     let query = User::all()
+    //         .not(&[("email", "test@test.com")])
+    //         .or_not(&[("email", "another@test.com")]);
+
+    //     assert_eq!(
+    //         query.to_sql(),
+    //         r#"SELECT * FROM "users" WHERE ("users"."email" <> $1) OR ("users"."email" <> $2)"#
+    //     );
+    // }
 }

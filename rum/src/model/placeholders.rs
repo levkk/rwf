@@ -22,4 +22,8 @@ impl Placeholders {
             .map(|v| v as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect()
     }
+
+    pub fn id(&self) -> i32 {
+        self.values().len() as i32 + 1
+    }
 }

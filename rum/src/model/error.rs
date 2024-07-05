@@ -18,6 +18,12 @@ pub enum Error {
 
     #[error("pool timeout")]
     PoolTimeout,
+
+    #[error("pool not configured")]
+    PoolNotConfigured,
+
+    #[error("record not found")]
+    RecordNotFound,
 }
 
 impl Error {

@@ -170,6 +170,14 @@ impl Filter {
         }
     }
 
+    // pub fn rewrite_placeholders(mut self, starting_id: i32) -> Self {
+    //     use Comparison::*;
+
+    //     let clauses = self.clauses.into_iter().map(|clause| match clause {
+
+    //     })
+    // }
+
     fn join(&self, op: JoinOp, filter: Filter) -> Self {
         if self.is_empty() {
             filter
