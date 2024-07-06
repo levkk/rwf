@@ -25,10 +25,10 @@ impl ToSql for Comparison {
         use Comparison::*;
 
         match self {
-            Equal((a, b)) => format!(r#"{} = {}"#, a.to_sql(), b.to_sql()),
-            In((column, value)) => format!(r#"{} = ANY({})"#, column.to_sql(), value.to_sql()),
-            NotIn((column, value)) => format!(r#"{} <> ANY({})"#, column.to_sql(), value.to_sql()),
-            NotEqual((column, value)) => format!(r#"{} <> {}"#, column.to_sql(), value.to_sql()),
+            Equal((a, b)) => format!("{} = {}", a.to_sql(), b.to_sql()),
+            In((column, value)) => format!("{} = ANY({})", column.to_sql(), value.to_sql()),
+            NotIn((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
+            NotEqual((column, value)) => format!("{} <> {}", column.to_sql(), value.to_sql()),
             Filter(filter) => format!("({})", filter.to_sql()),
         }
     }
@@ -161,7 +161,12 @@ impl Filter {
 
     /// Append all predicates of the filter into the current filter.
     pub fn concat(&self, filter: Filter) -> Self {
+        // Concatenating filters with different operations, e.g. AND and OR
+        // will create incorrect queries.
+        //
+        // Use [`Self::join`] instead.
         assert_eq!(self.op, filter.op);
+
         let mut clauses = self.clauses.clone();
         clauses.extend(filter.clauses);
         Filter {
@@ -196,7 +201,7 @@ impl ToSql for Filter {
             .iter()
             .map(|s| format!("{}", s.to_sql()))
             .collect::<Vec<_>>()
-            .join(&format!(" {} ", &self.op.to_sql()))
+            .join(&format!(" {} ", self.op.to_sql()))
     }
 }
 

@@ -1,5 +1,20 @@
 use super::value::Value;
 
+/// Escape a user-provided value to prevent
+/// SQL injection attacks.
+///
+/// The implementation is dependent on the value, but the
+/// most common one, a [`String`] (and it's reference cousin [`&str`]), are implemented.
+///
+/// # Example
+///
+/// ```
+/// use rum::model::Escape;
+///
+/// let email = "guest@test.com';DROP TABLE users;";
+/// assert_eq!(email.escape(), "guest@test.com'';DROP TABLE users;");
+/// ```
+///
 pub trait Escape {
     fn escape(&self) -> String;
 }

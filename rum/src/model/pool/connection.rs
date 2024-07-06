@@ -30,6 +30,11 @@ pub struct Connection {
 
 impl Connection {
     /// Create a new connection to the database.
+    ///
+    /// # Arguments
+    ///
+    /// * `database_url` - Postgres-style connection URL.
+    ///
     pub async fn new(database_url: &str) -> Result<Self, Error> {
         let (client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
         let bad = AtomicBool::new(false);

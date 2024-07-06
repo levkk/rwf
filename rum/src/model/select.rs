@@ -1,7 +1,8 @@
 use crate::model::{
+    column::IntoColumn,
     filter::{Filter, JoinOp},
-    Column, Columns, Escape, FromRow, Limit, OrderBy, Placeholders, ToSql, ToValue, Value,
-    WhereClause,
+    Column, Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue,
+    Value, WhereClause,
 };
 
 use std::marker::PhantomData;
@@ -16,10 +17,12 @@ pub struct Select<T: FromRow + ?Sized> {
     pub limit: Limit,
     pub placeholders: Placeholders,
     pub where_clause: WhereClause,
+    pub joins: Joins,
     _phantom: PhantomData<T>,
 }
 
 impl<T: FromRow> Select<T> {
+    /// Create new SELECT query against the table with the given primary key.
     pub fn new(table_name: &str, primary_key: &str) -> Self {
         Self {
             table_name: table_name.to_string(),
@@ -29,32 +32,35 @@ impl<T: FromRow> Select<T> {
             limit: Limit::default(),
             placeholders: Placeholders::default(),
             where_clause: WhereClause::default(),
+            joins: Joins::default(),
             _phantom: PhantomData,
         }
     }
 
+    /// Add a LIMIT to the query.
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = Limit::new(limit);
         self
     }
 
+    /// Add an OFFSET.
     pub fn offset(mut self, offset: usize) -> Self {
         self.limit = self.limit.offset(offset);
         self
     }
 
+    /// Add an ORDER BY clause.
     pub fn order_by(mut self, order_by: OrderBy) -> Self {
         self.order_by = order_by;
         self
     }
 
-    pub fn filter(mut self, filters: impl ToFilterable, join_op: JoinOp, not: bool) -> Self {
+    fn filter(mut self, filters: impl ToFilterable, join_op: JoinOp, not: bool) -> Self {
         let mut filter = Filter::default();
-        let table_name = self.table_name.clone();
         let filters = filters.to_filterable();
 
         for (column, value) in filters.deref() {
-            let column = Column::new(&table_name, &column.to_string().as_str());
+            let column = Column::new(&self.table_name, &column.to_string().as_str());
             let value = value.to_value();
 
             let value = match value {
@@ -82,10 +88,11 @@ impl<T: FromRow> Select<T> {
     }
 
     pub fn or(mut self, query: Self) -> Self {
-        let other_filter = query.where_clause.filter();
-        let other_placeholders = query.placeholders;
-        self.where_clause.or(query.where_clause.filter());
-        self
+        todo!()
+        // let other_filter = query.where_clause.filter();
+        // let other_placeholders = query.placeholders;
+        // self.where_clause.or(query.where_clause.filter());
+        // self
     }
 
     pub fn filter_and(mut self, filters: impl ToFilterable) -> Self {
@@ -107,14 +114,21 @@ impl<T: FromRow> Select<T> {
         self = self.filter(filters, JoinOp::Or, true);
         self
     }
+
+    pub fn join(mut self, join: Join) -> Self {
+        self.joins = self.joins.add(join);
+        self.columns = self.columns.table_name(&self.table_name);
+        self
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {
     fn to_sql(&self) -> String {
         format!(
-            r#"SELECT {} FROM "{}"{}{}{}"#,
+            r#"SELECT {} FROM "{}"{}{}{}{}"#,
             self.columns.to_sql(),
             self.table_name.escape(),
+            self.joins.to_sql(),
             self.where_clause.to_sql(),
             self.order_by.to_sql(),
             self.limit.to_sql()

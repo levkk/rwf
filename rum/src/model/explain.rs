@@ -1,8 +1,14 @@
-use super::FromRow;
+use super::{FromRow, Model};
 
 #[derive(Debug, Clone)]
 pub struct Explain {
     plan: String,
+}
+
+impl Model for Explain {
+    fn table_name() -> String {
+        "pg_catalog".into()
+    }
 }
 
 impl std::fmt::Display for Explain {

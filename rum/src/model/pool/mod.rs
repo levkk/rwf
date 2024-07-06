@@ -77,10 +77,18 @@ struct PoolInner {
     expected: usize,
 }
 
+/// Connection pool configuration options.
 #[derive(Debug, Clone)]
 pub struct PoolConfig {
-    pool_size: usize,
-    checkout_timeout: Duration,
+    /// Maximum number of open PostgreSQL connections in the pool.
+    pub pool_size: usize,
+
+    /// Maximum time to wait for a connection to be created or returned into the pool
+    /// by another caller.
+    pub checkout_timeout: Duration,
+
+    /// Maximum time a connection remains open and available while not in use.
+    pub idle_timeout: Duration,
 }
 
 impl PoolConfig {
@@ -88,6 +96,7 @@ impl PoolConfig {
         Self {
             pool_size: 1,
             checkout_timeout: Duration::from_secs(1),
+            idle_timeout: Duration::from_secs(3600),
         }
     }
 }
@@ -97,6 +106,7 @@ impl Default for PoolConfig {
         Self {
             pool_size: 10,
             checkout_timeout: Duration::from_secs(5),
+            idle_timeout: Duration::from_secs(3600),
         }
     }
 }
@@ -116,7 +126,7 @@ impl Pool {
     /// # Arguments
     ///
     /// * `database_url` - Postgres-style connection URL.
-    /// * `pool_size` - Maximum number of connections.
+    /// * `pool_config` - Pool configuration options.
     ///
     pub fn new(database_url: &str, config: PoolConfig) -> Self {
         Self {
@@ -154,12 +164,21 @@ impl Pool {
         }
     }
 
+    /// See [`Pool::transaction`]
     pub async fn begin(&self) -> Result<Transaction, Error> {
         let mut connection = self.get().await?;
-        connection.execute("BEGIN", &[]).await?;
-        Ok(Transaction::new(connection))
+        Ok(Transaction::new(connection).await?)
     }
 
+    /// Start a new transaction.
+    ///
+    /// The transaction should be manually committed with [`Transaction::commit`]
+    /// otherwise it will be automatically rolled back.
+    pub async fn transaction(&self) -> Result<Transaction, Error> {
+        self.begin().await
+    }
+
+    // Get a connection from the pool or create a new one if allowed.
     async fn get_internal(&self) -> Result<ConnectionGuard, Error> {
         loop {
             let mut inner = self.inner.lock();
@@ -175,10 +194,14 @@ impl Pool {
             }
 
             if self.config.pool_size > inner.expected {
-                let connection = Connection::new(&self.database_url).await?;
                 inner.expected += 1;
-
-                return Ok(ConnectionGuard::new(connection, self.clone()));
+                match Connection::new(&self.database_url).await {
+                    Ok(connection) => return Ok(ConnectionGuard::new(connection, self.clone())),
+                    Err(err) => {
+                        inner.expected -= 1;
+                        return Err(err);
+                    }
+                }
             } else {
                 self.checkin_notify.notified().await;
             }
