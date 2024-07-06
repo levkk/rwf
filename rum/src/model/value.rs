@@ -42,6 +42,12 @@ impl ToValue for i64 {
     }
 }
 
+impl ToValue for f64 {
+    fn to_value(&self) -> Value {
+        Value::Float(*self)
+    }
+}
+
 impl ToValue for Value {
     fn to_value(&self) -> Value {
         self.clone()

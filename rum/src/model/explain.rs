@@ -18,7 +18,7 @@ impl std::fmt::Display for Explain {
 }
 
 impl FromRow for Explain {
-    fn from_row(row: &tokio_postgres::row::Row) -> Self {
+    fn from_row(row: tokio_postgres::row::Row) -> Self {
         let plan = row.get(0);
         Self { plan }
     }

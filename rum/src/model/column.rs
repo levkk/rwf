@@ -7,6 +7,12 @@ pub struct Column {
     column_name: String,
 }
 
+impl std::fmt::Display for Column {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_sql())
+    }
+}
+
 impl ToSql for Column {
     fn to_sql(&self) -> String {
         if self.table_name.is_empty() {
@@ -83,12 +89,24 @@ impl ToSql for Columns {
     }
 }
 
-pub trait IntoColumn {
-    fn into_column(&self) -> Column;
+pub trait ToColumn {
+    fn to_column(&self) -> Column;
 }
 
-impl IntoColumn for String {
-    fn into_column(&self) -> Column {
+impl ToColumn for String {
+    fn to_column(&self) -> Column {
         Column::name(self)
+    }
+}
+
+impl ToColumn for &str {
+    fn to_column(&self) -> Column {
+        Column::name(self)
+    }
+}
+
+impl ToColumn for Column {
+    fn to_column(&self) -> Column {
+        self.clone()
     }
 }

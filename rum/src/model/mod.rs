@@ -14,7 +14,7 @@ pub mod row;
 pub mod select;
 pub mod value;
 
-pub use column::{Column, Columns};
+pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
 pub use escape::Escape;
 pub use explain::Explain;
@@ -25,7 +25,7 @@ pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
-pub use select::{Select, ToFilterable};
+pub use select::Select;
 pub use value::{ToValue, Value, Values};
 
 static POOL: OnceCell<Pool> = OnceCell::new();
@@ -52,7 +52,7 @@ static POOL: OnceCell<Pool> = OnceCell::new();
 /// }
 ///
 /// impl FromRow for User {
-///     fn from_row(row: &tokio_postgres::Row) -> Self {
+///     fn from_row(row: tokio_postgres::Row) -> Self {
 ///         let id: i64 = row.get("id");
 ///         let email: String = row.get("email");
 ///
@@ -64,7 +64,7 @@ static POOL: OnceCell<Pool> = OnceCell::new();
 /// }   
 /// ```
 pub trait FromRow: Clone {
-    fn from_row(row: &tokio_postgres::Row) -> Self
+    fn from_row(row: tokio_postgres::Row) -> Self
     where
         Self: Sized;
 }
@@ -133,7 +133,10 @@ impl<T: Model> Query<T> {
     /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\"");
     /// ```
     pub fn select(table_name: impl ToString) -> Self {
-        Query::Select(Select::new(table_name.to_string().as_str(), "id"))
+        Query::Select(Select::new(
+            table_name.to_string().as_str(),
+            &T::primary_key(),
+        ))
     }
 
     /// Create a query that selects one row from the relation.
@@ -202,11 +205,11 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn filter(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
+    pub fn filter(self, column: impl ToColumn, value: impl ToValue) -> Self {
         use Query::*;
 
         match self {
-            Select(select) => Select(select.filter_and(filters)),
+            Select(select) => Select(select.filter_and(column, value)),
             _ => self,
         }
     }
@@ -219,25 +222,25 @@ impl<T: Model> Query<T> {
         todo!()
     }
 
-    pub fn not(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
+    pub fn not(self, column: impl ToColumn, value: impl ToValue) -> Self {
         use Query::*;
 
         match self {
-            Select(select) => Select(select.filter_not(filters)),
+            Select(select) => Select(select.filter_not(column, value)),
             _ => self,
         }
     }
 
-    pub fn or_not(self, filters: &[(impl ToString, impl ToValue)]) -> Self {
+    pub fn or_not(self, column: impl ToColumn, value: impl ToValue) -> Self {
         use Query::*;
 
         match self {
-            Select(select) => Select(select.filter_or_not(filters)),
+            Select(select) => Select(select.filter_or_not(column, value)),
             _ => self,
         }
     }
 
-    pub fn find_by(mut self, column: impl ToString, value: Value) -> Self {
+    pub fn find_by(mut self, column: impl ToColumn, value: Value) -> Self {
         use Query::*;
 
         if let Select(select::Select {
@@ -248,7 +251,7 @@ impl<T: Model> Query<T> {
             where_clause.clear();
         }
 
-        self.filter(&[(column.to_string(), value)])
+        self.filter(column, value).take_one()
     }
 
     pub fn limit(self, limit: usize) -> Self {
@@ -330,7 +333,7 @@ impl<T: Model> Query<T> {
     pub async fn explain(self, conn: &tokio_postgres::Client) -> Result<Explain, Error> {
         let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
         match query.execute_internal(conn).await?.pop() {
-            Some(explain) => Ok(Explain::from_row(&explain)),
+            Some(explain) => Ok(Explain::from_row(explain)),
             None => Err(Error::RecordNotFound),
         }
     }
@@ -341,7 +344,7 @@ impl<T: Model> Query<T> {
             .execute_internal(conn)
             .await?
             .into_iter()
-            .map(|row| T::from_row(&row))
+            .map(|row| T::from_row(row))
             .collect())
     }
 }
@@ -391,11 +394,11 @@ pub trait Model: FromRow {
         Query::select(Self::table_name())
     }
 
-    fn filter(filters: &[(impl ToString, impl ToValue)]) -> Query<Self> {
-        Query::select(Self::table_name()).filter(filters)
+    fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
+        Query::select(Self::table_name()).filter(column, value)
     }
 
-    fn find_by(column: impl ToString, value: impl ToValue) -> Query<Self> {
+    fn find_by(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
             .take_one()
@@ -452,7 +455,7 @@ mod test {
     }
 
     impl FromRow for User {
-        fn from_row(row: &Row) -> Self {
+        fn from_row(row: Row) -> Self {
             let id: i64 = row.get("id");
             let email: String = row.get("email");
             let password: String = row.get("password");
@@ -466,7 +469,7 @@ mod test {
     }
 
     impl FromRow for Order {
-        fn from_row(row: &Row) -> Self {
+        fn from_row(row: Row) -> Self {
             let id: i64 = row.get("id");
             let user_id: i64 = row.get("user_id");
             let amount: f64 = row.get("amount");
@@ -491,6 +494,25 @@ mod test {
         assert_eq!(
             query.to_sql(),
             r#"SELECT "orders".* FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id""#
+        );
+
+        // Order that have a user with id = 5.
+        let query = Order::all()
+            .join::<User>()
+            .find_by(User::column("id"), 5_i64.to_value());
+
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT "orders".* FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id" WHERE "users"."id" = $1 LIMIT 1"#
+        );
+
+        let query = User::all()
+            .join::<Order>()
+            .filter("id", 5)
+            .filter(Order::column("amount"), 42.0);
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" WHERE "users"."id" = $1 AND "orders"."amount" = $2"#
         );
     }
 
@@ -537,13 +559,10 @@ mod test {
 
     #[test]
     fn test_filter() {
-        let query = User::all()
-            .filter(&vec![
-                ("email", "test@test.com"),
-                ("password", "not_encrypted"),
-            ])
-            .filter(&[("id", 5)])
-            .filter(&[("id", [1_i64, 2, 3].as_slice())]);
+        let query = User::filter("email", "test@test.com")
+            .filter("password", "not_encrypted")
+            .filter("id", 5)
+            .filter("id", [1_i64, 2, 3].as_slice());
 
         assert_eq!(
             query.to_sql(),
