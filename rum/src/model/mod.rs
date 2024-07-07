@@ -282,29 +282,7 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn join_nested<F: Association<T>>(self, query: Query<F>) -> Self {
-        match self {
-            Query::Select(select) => match query {
-                Query::Select(other) => Query::Select(
-                    select
-                        .join(F::construct_join())
-                        .add_joins(other.get_joins()),
-                ),
-                _ => Query::Select(select),
-            },
-
-            _ => self,
-        }
-    }
-
-    pub fn join_nested_2<F: Model, G: Association<F>>(self) -> Self {
-        match self {
-            Query::Select(select) => Query::Select(select.join(G::construct_join())),
-            _ => self,
-        }
-    }
-
-    pub fn join_nested_3<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
+    pub fn join_nested<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_joins(joined.into())),
             _ => self,
@@ -619,23 +597,7 @@ mod test {
 
         let query = User::all()
             .join::<Order>()
-            .join_nested(
-                Order::all()
-                    .join::<OrderItem>()
-                    .join_nested(OrderItem::all().join::<Product>()),
-            )
-            .filter(Product::column("name"), "test_product");
-
-        let query = User::all()
-            .join::<Order>()
-            .join_nested_2::<Order, OrderItem>()
-            .join_nested_2::<OrderItem, Product>()
-            .filter(Product::column("name"), "test_product");
-        println!("{:?}", Order::join::<OrderItem>().join::<Product>());
-        let query = User::all()
-            .join::<Order>()
-            .join_nested_3(Order::join::<OrderItem>().join::<Product>())
-            // .join_nested_3(OrderItem::join::<Product>())
+            .join_nested(Order::join::<OrderItem>().join::<Product>())
             .filter(Product::column("name"), "test_product");
 
         println!("{}", query.to_sql());
