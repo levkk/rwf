@@ -1,9 +1,31 @@
-use super::{Column, Escape, Model, ToSql};
+use super::{Column, Escape, Model, Query, ToSql};
+use std::marker::PhantomData;
 
+#[derive(PartialEq)]
 pub enum AssociationType {
     BelongsTo,
     HasMany,
     HasOne,
+}
+
+#[derive(PartialEq)]
+pub struct BelongsTo<S: Model, T: Model> {
+    owner: PhantomData<S>,
+    target: PhantomData<T>,
+}
+
+impl<S: Model, T: Model> BelongsTo<S, T> {
+    pub fn join() -> Join {
+        let table_name = S::table_name();
+        let table_column = Column::new(T::table_name(), T::primary_key());
+        let foreign_column = Column::new(S::table_name(), T::foreign_key());
+        Join {
+            kind: JoinKind::Inner,
+            table_name,
+            table_column,
+            foreign_column,
+        }
+    }
 }
 
 pub trait Association<T: Model>: Model {
@@ -11,7 +33,15 @@ pub trait Association<T: Model>: Model {
         AssociationType::BelongsTo
     }
 
-    fn join() -> Join {
+    fn belongs_to() -> bool {
+        Self::association_type() == AssociationType::BelongsTo
+    }
+
+    fn has_many() -> bool {
+        Self::association_type() == AssociationType::HasMany
+    }
+
+    fn construct_join() -> Join {
         use AssociationType::*;
 
         match Self::association_type() {
@@ -98,6 +128,10 @@ impl Joins {
         self.joins.push(join);
         self
     }
+
+    pub fn joins(&self) -> &[Join] {
+        &self.joins
+    }
 }
 
 impl ToSql for Joins {
@@ -114,5 +148,38 @@ impl ToSql for Joins {
                     .join(" ")
             )
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Joined<S: Model, T: Model> {
+    a: PhantomData<S>,
+    b: PhantomData<T>,
+    joins: Joins,
+}
+
+impl<S: Model, T: Model> Joined<S, T> {
+    pub fn new(join: Join) -> Self {
+        Self {
+            a: PhantomData,
+            b: PhantomData,
+            joins: Joins::new().add(join),
+        }
+    }
+
+    pub fn join<U: Association<T>>(mut self) -> Joined<S, U> {
+        let joins = self.joins.clone();
+        let joins = joins.add(U::construct_join());
+        Joined {
+            a: PhantomData,
+            b: PhantomData,
+            joins,
+        }
+    }
+}
+
+impl<S: Model, T: Model> Into<Joins> for Joined<S, T> {
+    fn into(self) -> Joins {
+        self.joins
     }
 }

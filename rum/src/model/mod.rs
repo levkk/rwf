@@ -19,7 +19,7 @@ pub use error::Error;
 pub use escape::Escape;
 pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
-pub use join::{Association, Join, Joins};
+pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
@@ -277,7 +277,36 @@ impl<T: Model> Query<T> {
 
     pub fn join<F: Association<T>>(self) -> Self {
         match self {
-            Query::Select(select) => Query::Select(select.join(F::join())),
+            Query::Select(select) => Query::Select(select.join(F::construct_join())),
+            _ => self,
+        }
+    }
+
+    pub fn join_nested<F: Association<T>>(self, query: Query<F>) -> Self {
+        match self {
+            Query::Select(select) => match query {
+                Query::Select(other) => Query::Select(
+                    select
+                        .join(F::construct_join())
+                        .add_joins(other.get_joins()),
+                ),
+                _ => Query::Select(select),
+            },
+
+            _ => self,
+        }
+    }
+
+    pub fn join_nested_2<F: Model, G: Association<F>>(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.join(G::construct_join())),
+            _ => self,
+        }
+    }
+
+    pub fn join_nested_3<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_joins(joined.into())),
             _ => self,
         }
     }
@@ -363,6 +392,10 @@ pub trait Model: FromRow {
         )
     }
 
+    fn relationships() -> Vec<Join> {
+        vec![]
+    }
+
     fn configure_pool(pool: Pool) -> Result<(), Error> {
         match POOL.set(pool) {
             Ok(()) => Ok(()),
@@ -411,6 +444,10 @@ pub trait Model: FromRow {
     fn order(order: impl ToOrderBy) -> Query<Self> {
         Self::all().order(order)
     }
+
+    fn join<F: Association<Self>>() -> Joined<Self, F> {
+        Joined::new(F::construct_join())
+    }
 }
 
 #[cfg(test)]
@@ -446,9 +483,49 @@ mod test {
         }
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct OrderItem {
+        id: i64,
+        order_id: i64,
+        product_id: i64,
+    }
+
+    impl Model for OrderItem {
+        fn table_name() -> String {
+            "order_items".into()
+        }
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct Product {
+        id: i64,
+        name: String,
+    }
+
+    impl Model for Product {
+        fn table_name() -> String {
+            "products".into()
+        }
+    }
+
     impl Association<User> for Order {}
 
     impl Association<Order> for User {
+        fn association_type() -> AssociationType {
+            AssociationType::HasMany
+        }
+    }
+
+    impl Association<Order> for OrderItem {}
+
+    impl Association<OrderItem> for Order {
+        fn association_type() -> AssociationType {
+            AssociationType::HasMany
+        }
+    }
+
+    impl Association<Product> for OrderItem {}
+    impl Association<OrderItem> for Product {
         fn association_type() -> AssociationType {
             AssociationType::HasMany
         }
@@ -482,9 +559,33 @@ mod test {
         }
     }
 
+    impl FromRow for OrderItem {
+        fn from_row(row: Row) -> Self {
+            let id: i64 = row.get("id");
+            let order_id: i64 = row.get("order_id");
+            let product_id: i64 = row.get("product_id");
+
+            OrderItem {
+                id,
+                order_id,
+                product_id,
+            }
+        }
+    }
+
+    impl FromRow for Product {
+        fn from_row(row: Row) -> Self {
+            let id: i64 = row.get("id");
+            let name: String = row.get("name");
+
+            Product { id, name }
+        }
+    }
+
     #[test]
     fn test_join() {
         let query = User::all().join::<Order>().first_one();
+
         assert_eq!(
             query.to_sql(),
             r#"SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" ORDER BY "users"."id" ASC LIMIT 1"#
@@ -510,10 +611,34 @@ mod test {
             .join::<Order>()
             .filter("id", 5)
             .filter(Order::column("amount"), 42.0);
+
         assert_eq!(
             query.to_sql(),
             r#"SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" WHERE "users"."id" = $1 AND "orders"."amount" = $2"#
         );
+
+        let query = User::all()
+            .join::<Order>()
+            .join_nested(
+                Order::all()
+                    .join::<OrderItem>()
+                    .join_nested(OrderItem::all().join::<Product>()),
+            )
+            .filter(Product::column("name"), "test_product");
+
+        let query = User::all()
+            .join::<Order>()
+            .join_nested_2::<Order, OrderItem>()
+            .join_nested_2::<OrderItem, Product>()
+            .filter(Product::column("name"), "test_product");
+        println!("{:?}", Order::join::<OrderItem>().join::<Product>());
+        let query = User::all()
+            .join::<Order>()
+            .join_nested_3(Order::join::<OrderItem>().join::<Product>())
+            // .join_nested_3(OrderItem::join::<Product>())
+            .filter(Product::column("name"), "test_product");
+
+        println!("{}", query.to_sql());
     }
 
     #[test]

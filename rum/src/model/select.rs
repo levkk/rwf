@@ -131,6 +131,18 @@ impl<T: FromRow> Select<T> {
         self.columns = self.columns.table_name(&self.table_name);
         self
     }
+
+    pub fn get_joins(&self) -> Joins {
+        self.joins.clone()
+    }
+
+    pub fn add_joins(mut self, joins: Joins) -> Self {
+        for join in joins.joins() {
+            self.joins = self.joins.add(join.clone());
+        }
+
+        self
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {
