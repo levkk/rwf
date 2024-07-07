@@ -7,6 +7,7 @@ pub mod explain;
 pub mod filter;
 pub mod join;
 pub mod limit;
+pub mod macros;
 pub mod order_by;
 pub mod placeholders;
 pub mod pool;
@@ -21,12 +22,15 @@ pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
 pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
+pub use macros::belongs_to;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::Select;
 pub use value::{ToValue, Value, Values};
+
+use std::future::Future;
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
@@ -275,6 +279,24 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Join this relation with another relation directly related to it, either
+    /// through a foreign key.
+    ///
+    /// Joined relation must implement [`Association`] for current relation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::model::{Association, Model};
+    ///
+    /// #[derive(Clone, Default)]
+    /// struct User {}
+    ///
+    /// #[derive(Clone, Default)]
+    /// struct Order {}
+    ///
+    /// impl Association<Order> for User {}
+    /// ```
     pub fn join<F: Association<T>>(self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.join(F::construct_join())),
@@ -357,7 +379,13 @@ impl<T: Model> Query<T> {
 }
 
 pub trait Model: FromRow {
-    fn table_name() -> String;
+    fn table_name() -> String {
+        let name = std::any::type_name::<Self>()
+            .split("::")
+            .last()
+            .expect("a struct to have a type name");
+        pluralizer::pluralize(name.to_lowercase().as_str(), 2, false)
+    }
 
     fn column(name: &str) -> Column {
         Column::new(Self::table_name(), name)
@@ -384,6 +412,10 @@ pub trait Model: FromRow {
     fn primary_key() -> String {
         "id".to_string()
     }
+
+    // fn id(&self) -> i64 {
+    //     0
+    // }
 
     fn take_one() -> Query<Self> {
         Query::select(Self::table_name()).take_one()
@@ -425,6 +457,10 @@ pub trait Model: FromRow {
 
     fn join<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_join())
+    }
+
+    fn related<F: Association<Self>>(fks: &[i64]) -> Query<F> {
+        F::all().filter(Self::foreign_key(), fks)
     }
 }
 
@@ -600,6 +636,12 @@ mod test {
             .join_nested(Order::join::<OrderItem>().join::<Product>())
             .filter(Product::column("name"), "test_product");
 
+        println!("{}", query.to_sql());
+    }
+
+    #[test]
+    fn test_related() {
+        let query = User::related::<Order>([1, 2].as_slice());
         println!("{}", query.to_sql());
     }
 
