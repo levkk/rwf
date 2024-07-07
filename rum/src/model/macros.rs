@@ -27,7 +27,7 @@ mod test {
     #[derive(Clone, Default)]
     struct User {}
 
-    #[derive(Clone, Default)]
+    #[derive(Clone, Default, rum_macros::Model)]
     struct Order {}
 
     impl Model for User {}

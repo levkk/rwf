@@ -1,33 +1,31 @@
-use super::{Column, Escape, Model, Query, ToSql};
+use super::{Column, Escape, Model, ToSql};
 use std::marker::PhantomData;
 
+/// Type of relationship between models.
 #[derive(PartialEq)]
 pub enum AssociationType {
+    /// Many-to-one relationship.
     BelongsTo,
+    /// One-to-many relationship.
     HasMany,
+    /// One-to-one relationship.
     HasOne,
 }
 
-#[derive(PartialEq)]
-pub struct BelongsTo<S: Model, T: Model> {
-    owner: PhantomData<S>,
-    target: PhantomData<T>,
-}
-
-impl<S: Model, T: Model> BelongsTo<S, T> {
-    pub fn join() -> Join {
-        let table_name = S::table_name();
-        let table_column = Column::new(T::table_name(), T::primary_key());
-        let foreign_column = Column::new(S::table_name(), T::foreign_key());
-        Join {
-            kind: JoinKind::Inner,
-            table_name,
-            table_column,
-            foreign_column,
-        }
-    }
-}
-
+/// Declare a relationship between model `T` and `Self`.
+///
+/// # Example
+///
+/// Declare a many-to-one relationship between `Order` and `User`:
+///
+/// ```
+/// #[derive(Clone, Default)]
+/// struct User {}
+///
+/// #[derive(Clone, Default)]
+/// struct Order {}
+///
+/// ```
 pub trait Association<T: Model>: Model {
     fn association_type() -> AssociationType {
         AssociationType::BelongsTo
@@ -167,7 +165,7 @@ impl<S: Model, T: Model> Joined<S, T> {
         }
     }
 
-    pub fn join<U: Association<T>>(mut self) -> Joined<S, U> {
+    pub fn join<U: Association<T>>(self) -> Joined<S, U> {
         let joins = self.joins.clone();
         let joins = joins.add(U::construct_join());
         Joined {

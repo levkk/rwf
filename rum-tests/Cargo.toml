@@ -1,0 +1,11 @@
+[package]
+name = "rum-tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rum = { path = "../rum" }
+rum-macros = { path = "../rum-macros" }
+tokio = { version = "1", features = ["full"] }

@@ -16,3 +16,4 @@ once_cell = "*"
 tracing = "*"
 tracing-subscriber = "*"
 pluralizer = "0.4.0"
+rum-macros = { path = "../rum-macros" }

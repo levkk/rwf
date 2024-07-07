@@ -1,12 +1,11 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Column, Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue,
+    Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue,
     Value, WhereClause,
 };
 
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 #[derive(Debug, Default)]
 pub struct Select<T: FromRow + ?Sized> {
@@ -98,7 +97,7 @@ impl<T: FromRow> Select<T> {
         self
     }
 
-    pub fn or(mut self, query: Self) -> Self {
+    pub fn or(self, _query: Self) -> Self {
         todo!()
         // let other_filter = query.where_clause.filter();
         // let other_placeholders = query.placeholders;

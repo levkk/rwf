@@ -30,8 +30,6 @@ pub use row::Row;
 pub use select::Select;
 pub use value::{ToValue, Value, Values};
 
-use std::future::Future;
-
 static POOL: OnceCell<Pool> = OnceCell::new();
 
 /// Convert a PostgreSQL row to a Rust struct.
@@ -218,7 +216,7 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn or(self, other: Query<T>) -> Self {
+    pub fn or(self, _other: Query<T>) -> Self {
         // TODO:
         //
         // 1. merge the filters of both queries
@@ -337,10 +335,6 @@ impl<T: Model> Query<T> {
         };
 
         Ok(rows)
-    }
-
-    fn get_pool() -> Result<Pool, Error> {
-        POOL.get().cloned().ok_or(Error::PoolNotConfigured)
     }
 
     /// Execute the query and fetch the first row from the database.

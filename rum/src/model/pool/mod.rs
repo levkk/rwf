@@ -166,7 +166,7 @@ impl Pool {
 
     /// See [`Pool::transaction`]
     pub async fn begin(&self) -> Result<Transaction, Error> {
-        let mut connection = self.get().await?;
+        let connection = self.get().await?;
         Ok(Transaction::new(connection).await?)
     }
 
