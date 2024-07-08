@@ -9,3 +9,5 @@ edition = "2021"
 rum = { path = "../rum" }
 rum-macros = { path = "../rum-macros" }
 tokio = { version = "1", features = ["full"] }
+tracing-subscriber = "*"
+console-subscriber = "*"

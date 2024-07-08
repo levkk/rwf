@@ -5,11 +5,7 @@ pub struct Explain {
     plan: String,
 }
 
-impl Model for Explain {
-    fn table_name() -> String {
-        "pg_catalog".into()
-    }
-}
+impl Model for Explain {}
 
 impl std::fmt::Display for Explain {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

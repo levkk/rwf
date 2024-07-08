@@ -1,8 +1,8 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue,
-    Value, WhereClause,
+    Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue, Value,
+    WhereClause,
 };
 
 use std::marker::PhantomData;

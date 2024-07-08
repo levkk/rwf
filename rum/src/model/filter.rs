@@ -18,6 +18,8 @@ enum Comparison {
     NotEqual((Column, Value)),
     /// (x = 1 AND y = 2)
     Filter(Filter),
+    /// x > 1
+    GreaterThan((Column, Value)),
 }
 
 impl ToSql for Comparison {
@@ -30,6 +32,7 @@ impl ToSql for Comparison {
             NotIn((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
             NotEqual((column, value)) => format!("{} <> {}", column.to_sql(), value.to_sql()),
             Filter(filter) => format!("({})", filter.to_sql()),
+            GreaterThan((column, value)) => format!("{} > {}", column.to_sql(), value.to_sql()),
         }
     }
 }
@@ -48,6 +51,11 @@ impl WhereClause {
     /// Add a single predicate to the WHERE clause, using the AND operator.
     pub fn add(&mut self, column: Column, value: impl ToValue) {
         self.filter.add(column, value);
+    }
+
+    /// Add a > predicate.
+    pub fn gt(&mut self, column: Column, value: impl ToValue) {
+        self.filter.gt(column, value);
     }
 
     /// Append all predicates of the filter into the current WHERE clause, e.g.
@@ -157,6 +165,11 @@ impl Filter {
                 self.clauses.push(Comparison::NotEqual((column, value)));
             }
         }
+    }
+
+    pub fn gt(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::GreaterThan((column, value.to_value())));
     }
 
     /// Append all predicates of the filter into the current filter.

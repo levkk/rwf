@@ -4,7 +4,7 @@ use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 
 use std::ops::Range;
 
-use super::{Error, Escape, ToSql};
+use super::{Column, Error, Escape, ToSql};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -17,6 +17,7 @@ pub enum Value {
     Record(Box<Value>),
     Placeholder(i32),
     Range((Box<Value>, Box<Value>)),
+    Column(Column),
 }
 
 impl Value {
@@ -63,6 +64,12 @@ impl ToValue for &[&str] {
 impl ToValue for &[i64] {
     fn to_value(&self) -> Value {
         Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+impl ToValue for Column {
+    fn to_value(&self) -> Value {
+        Value::Column(self.clone())
     }
 }
 
@@ -149,6 +156,7 @@ impl ToSql for Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Column(column) => column.to_sql(),
             _ => todo!(),
         }
     }

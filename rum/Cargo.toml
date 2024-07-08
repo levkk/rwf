@@ -17,3 +17,4 @@ tracing = "*"
 tracing-subscriber = "*"
 pluralizer = "0.4.0"
 rum-macros = { path = "../rum-macros" }
+colored = "2"

@@ -1,4 +1,7 @@
+use colored::Colorize;
 use once_cell::sync::OnceCell;
+use std::time::Instant;
+use tracing::info;
 
 pub mod column;
 pub mod error;
@@ -216,6 +219,14 @@ impl<T: Model> Query<T> {
         }
     }
 
+    // pub fn filter_gt(self, column: impl ToColumn, value: impl ToValue) -> Self {
+    //     use Query::*;
+    //     match self {
+    //         Select(select) => Select(select.filter_gt(column, value)),
+    //         _ => self,
+    //     }
+    // }
+
     pub fn or(self, _other: Query<T>) -> Self {
         // TODO:
         //
@@ -363,12 +374,24 @@ impl<T: Model> Query<T> {
 
     /// Execute a query and return an optional result.
     pub async fn execute(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
-        Ok(self
+        let start = Instant::now();
+        let result = self
             .execute_internal(conn)
             .await?
             .into_iter()
             .map(|row| T::from_row(row))
-            .collect())
+            .collect();
+        let time = start.elapsed();
+
+        info!(
+            "{} {} ({:.2} ms) {}",
+            "ORM".purple(),
+            std::any::type_name::<T>().green(),
+            time.as_secs_f64() * 1000.0,
+            self.to_sql()
+        );
+
+        Ok(result)
     }
 }
 
@@ -378,7 +401,7 @@ pub trait Model: FromRow {
             .split("::")
             .last()
             .expect("a struct to have a type name");
-        pluralizer::pluralize(name.to_lowercase().as_str(), 2, false)
+        pluralizer::pluralize(crate::snake_case(name).as_str(), 2, false)
     }
 
     fn column(name: &str) -> Column {
