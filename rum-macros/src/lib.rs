@@ -1,38 +1,15 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, DeriveInput, Data, DataStruct, Fields, Meta};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Meta};
 
 use quote::quote;
 
-#[proc_macro_derive(Model, attributes(belongs_to))]
+#[proc_macro_derive(Model, attributes(belongs_to, has_many))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    // let attrs = input.attrs;
-    // let ident = input.ident.clone();
 
-    // println!("{:#?}", attrs);
-
-    // let belongs_to = attrs.iter().filter(|attr| {
-    //     if let Some(path_segment) = attr.meta.path().segments.first() {
-    //         path_segment.ident == "belongs_to"
-    //     } else {
-    //         false
-    //     }
-    // })
-    // .map(|attr| {
-    //     match &attr.meta {
-    //         Meta::List(meta) => {
-    //             meta.tokens.clone().iter().map(|token| {
-    //                 quote! {
-    //                     impl rum::model::Association<#token> for #ident {}
-    //                 }
-    //             })
-    //         }
-
-    //         _ => panic!("incorrect"),
-    //     }
-    // });
+    let attrs = handle_model_attrs(&input, &input.attrs);
 
     match input.data {
         Data::Struct(ref data) => {
@@ -44,9 +21,9 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 }
             });
 
-            quote!  {
+            quote! {
                 #[automatically_derived]
-                impl rum::model::FromRow  for #ident {
+                impl rum::model::FromRow for #ident {
                     fn from_row(row: rum::tokio_postgres::Row) -> Self {
                         Self {
                             #(#from_row_fields)*
@@ -56,10 +33,75 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
                 #[automatically_derived]
                 impl rum::model::Model for #ident {}
-            }.into()
+
+                #attrs
+            }
+            .into()
         }
 
         _ => panic!("macro can only be used on structs"),
+    }
+}
+
+fn handle_model_attrs(input: &DeriveInput, attributes: &[Attribute]) -> proc_macro2::TokenStream {
+    let ident = match &input.data {
+        Data::Struct(_data) => input.ident.clone(),
+
+        _ => panic!("macro can only be used on structs"),
+    };
+
+    let rels = attributes
+        .iter()
+        .filter(|attr| {
+            ["belongs_to", "has_many"].contains(
+                &attr
+                    .meta
+                    .path()
+                    .segments
+                    .first()
+                    .expect("segment")
+                    .ident
+                    .to_string()
+                    .as_str(),
+            )
+        })
+        .map(|attr| match &attr.meta {
+            Meta::List(list) => {
+                let path = list.path.segments.first().expect("segment");
+
+                let association = if path.ident == "belongs_to" {
+                    quote! {
+                        rum::model::AssociationType::BelongsTo
+                    }
+                } else if path.ident == "has_many" {
+                    quote! {
+                        rum::model::AssociationType::HasMany
+                    }
+                } else {
+                    panic!("unsupported association: {}", path.ident);
+                };
+
+                let associations = list.tokens.clone().into_iter().map(|token| {
+                    quote! {
+                        #[automatically_derived]
+                        impl rum::model::Association<#token> for #ident {
+                            fn association_type() -> rum::model::AssociationType {
+                                #association
+                            }
+                        }
+                    }
+                });
+
+                quote! {
+                    #(#associations)*
+                }
+            }
+
+            _ => panic!("macro can only be used on structs"),
+        });
+
+    quote! {
+        #(#rels)*
     }
 }
 
@@ -78,7 +120,7 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
                 }
             });
 
-            quote!{
+            quote! {
                 #[automatically_derived]
                 impl rum::model::FromRow for #ident {
                     fn from_row(row: rum::tokio_postgres::Row) -> Self {
@@ -87,7 +129,8 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
                         }
                     }
                 }
-            }.into()
+            }
+            .into()
         }
 
         _ => panic!("macro can only be used on structs"),

@@ -29,6 +29,16 @@ impl Transaction {
 
         Ok(())
     }
+
+    /// Rollback the transaction.
+    ///
+    /// The connection is automatically returned into the pool.
+    pub async fn rollback(mut self) -> Result<(), Error> {
+        self.rollback = false;
+        self.connection.query("ROLLBACK", &[]).await?;
+
+        Ok(())
+    }
 }
 
 impl Drop for Transaction {

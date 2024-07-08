@@ -242,7 +242,7 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn find_by(mut self, column: impl ToColumn, value: Value) -> Self {
+    pub fn find_by(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         use Query::*;
 
         if let Select(select::Select {
