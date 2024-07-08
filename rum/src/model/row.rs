@@ -12,11 +12,15 @@ pub struct Row {
 
 impl Model for Row {
     fn table_name() -> String {
-        "".into()
+        unimplemented!()
     }
 
     fn primary_key() -> String {
-        "1".into() // First row
+        unimplemented!()
+    }
+
+    fn foreign_key() -> String {
+        unimplemented!()
     }
 }
 

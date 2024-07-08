@@ -12,3 +12,4 @@ proc-macro = true
 syn = "2"
 quote = "1"
 proc-macro2 = "1"
+pluralizer = "*"

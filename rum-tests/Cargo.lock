@@ -1045,6 +1045,7 @@ dependencies = [
 name = "rum-macros"
 version = "0.1.0"
 dependencies = [
+ "pluralizer",
  "proc-macro2",
  "quote",
  "syn",

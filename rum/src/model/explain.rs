@@ -5,7 +5,15 @@ pub struct Explain {
     plan: String,
 }
 
-impl Model for Explain {}
+impl Model for Explain {
+    fn table_name() -> String {
+        unimplemented!()
+    }
+
+    fn foreign_key() -> String {
+        unimplemented!()
+    }
+}
 
 impl std::fmt::Display for Explain {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

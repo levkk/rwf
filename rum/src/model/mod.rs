@@ -401,24 +401,13 @@ impl<T: Model> Query<T> {
 }
 
 pub trait Model: FromRow {
-    fn table_name() -> String {
-        let name = std::any::type_name::<Self>()
-            .split("::")
-            .last()
-            .expect("a struct to have a type name");
-        pluralizer::pluralize(crate::snake_case(name).as_str(), 2, false)
-    }
+    fn table_name() -> String;
 
     fn column(name: &str) -> Column {
         Column::new(Self::table_name(), name)
     }
 
-    fn foreign_key() -> String {
-        format!(
-            "{}_id",
-            pluralizer::pluralize(&Self::table_name(), 1, false)
-        )
-    }
+    fn foreign_key() -> String;
 
     fn relationships() -> Vec<Join> {
         vec![]
@@ -434,10 +423,6 @@ pub trait Model: FromRow {
     fn primary_key() -> String {
         "id".to_string()
     }
-
-    // fn id(&self) -> i64 {
-    //     0
-    // }
 
     fn take_one() -> Query<Self> {
         Query::select(Self::table_name()).take_one()

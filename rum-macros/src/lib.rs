@@ -21,6 +21,11 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 }
             });
 
+            let singular = snake_case(&ident.to_string());
+            let foreign_key = format!("{}_id", singular);
+
+            let table_name = pluralizer::pluralize(singular.as_str(), 2, false);
+
             quote! {
                 #[automatically_derived]
                 impl rum::model::FromRow for #ident {
@@ -32,7 +37,15 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl rum::model::Model for #ident {}
+                impl rum::model::Model for #ident {
+                    fn table_name() -> String {
+                        #table_name.to_string()
+                    }
+
+                    fn foreign_key() -> String {
+                        #foreign_key.to_string()
+                    }
+                }
 
                 #attrs
             }
@@ -135,4 +148,19 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
 
         _ => panic!("macro can only be used on structs"),
     }
+}
+
+fn snake_case(string: &str) -> String {
+    let mut result = "".to_string();
+
+    for (i, c) in string.chars().enumerate() {
+        if c.is_ascii_uppercase() && i != 0 {
+            result.push('_');
+            result.push(c.to_ascii_lowercase());
+        } else {
+            result.push(c.to_ascii_lowercase());
+        }
+    }
+
+    result
 }
