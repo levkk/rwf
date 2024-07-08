@@ -384,9 +384,14 @@ impl<T: Model> Query<T> {
         let time = start.elapsed();
 
         info!(
-            "{} {} ({:.2} ms) {}",
+            "{} {} ({:.3} ms) {}",
             "ORM".purple(),
-            std::any::type_name::<T>().green(),
+            std::any::type_name::<T>()
+                .split("::")
+                .skip(1)
+                .collect::<Vec<_>>()
+                .join("::")
+                .green(),
             time.as_secs_f64() * 1000.0,
             self.to_sql()
         );
