@@ -17,6 +17,7 @@ pub mod pool;
 pub mod row;
 pub mod select;
 pub mod value;
+pub mod update;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
@@ -32,6 +33,7 @@ pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::Select;
 pub use value::{ToValue, Value, Values};
+pub use update::Update;
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
@@ -106,7 +108,7 @@ pub trait ToSql {
 #[derive(Debug)]
 pub enum Query<T: FromRow + ?Sized> {
     Select(Select<T>),
-    Update,
+    Update(Update<T>),
     Raw(String),
 }
 
@@ -117,7 +119,7 @@ impl<T: FromRow> ToSql for Query<T> {
         match self {
             Select(select) => select.to_sql(),
             Raw(query) => query.clone(),
-            Update => todo!(),
+            Update(update) => update.to_sql(),
         }
     }
 }
@@ -342,6 +344,11 @@ impl<T: Model> Query<T> {
 
             Query::Raw(query) => client.query(query, &[]).await?,
 
+            Query::Update(update) => {
+                let values = update.placeholders.values();
+                client.query(&query, &values).await?
+            }
+
             _ => vec![],
         };
 
@@ -407,6 +414,27 @@ pub trait Model: FromRow {
         Column::new(Self::table_name(), name)
     }
 
+    fn column_names() -> Vec<String> {
+        vec![]
+    }
+
+    fn id(&self) -> i64 {
+        let model_name = std::any::type_name::<Self>();
+        panic!("
+            {} doesn't have the id() method implemented.
+            Did you use the rum_macros::Model derive macro,
+            and if so, does your model have an id: i64 field?
+        ", model_name);
+    }
+
+    fn values(&self) -> Vec<Value> {
+        let model_name = std::any::type_name::<Self>();
+        panic!("
+            {} doesn't have the values() method implemented.
+            Did you use the run_macros::Model derive macro?
+        ", model_name);
+    }
+
     fn foreign_key() -> String;
 
     fn relationships() -> Vec<Join> {
@@ -468,6 +496,10 @@ pub trait Model: FromRow {
 
     fn related<F: Association<Self>>(fks: &[i64]) -> Query<F> {
         F::all().filter(Self::foreign_key(), fks)
+    }
+
+    fn save(self) -> Query<Self> {
+        Query::Update(Update::new(self))
     }
 }
 

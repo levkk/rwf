@@ -20,6 +20,37 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                     #ident: row.get(stringify!(#ident)),
                 }
             });
+            let has_id = data.fields.iter().any(|field| field.ident.clone().unwrap() == "id");
+
+            let id = if has_id {
+                quote! {
+                    fn id(&self) -> i64 {
+                        self.id
+                    }
+                }
+            } else {
+                quote!{}
+            };
+
+            let column_names = data.fields.iter().map(|field| {
+                let ident = field.ident.clone();
+
+                quote! {
+                    String::from(stringify!(#ident)),
+                }
+            });
+
+            let values = data.fields
+                .iter()
+                .filter(|field| field.ident.clone().unwrap() != "id")
+                .map(|field| {
+                let ident = field.ident.clone();
+
+                quote! {
+                    self.#ident.to_value(),
+                }
+
+            });
 
             let singular = snake_case(&ident.to_string());
             let foreign_key = format!("{}_id", singular);
@@ -45,6 +76,21 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                     fn foreign_key() -> String {
                         #foreign_key.to_string()
                     }
+
+                    fn column_names() -> Vec<String> {
+                        vec![
+                            #(#column_names)*
+                        ]
+                    }
+
+                    fn values(&self) -> Vec<rum::model::Value> {
+                        use rum::model::ToValue;
+                        vec![
+                            #(#values)*
+                        ]
+                    }
+
+                    #id
                 }
 
                 #attrs

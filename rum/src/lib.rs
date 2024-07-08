@@ -1,6 +1,7 @@
 pub mod model;
 pub use tokio_postgres;
 
+#[allow(dead_code)]
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 

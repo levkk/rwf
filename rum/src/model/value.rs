@@ -31,6 +31,12 @@ pub trait ToValue {
     fn to_value(&self) -> Value;
 }
 
+impl ToValue for String {
+    fn to_value(&self) -> Value {
+        Value::String(self.clone())
+    }
+}
+
 impl ToValue for &str {
     fn to_value(&self) -> Value {
         Value::String(self.to_string())

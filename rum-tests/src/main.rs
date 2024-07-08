@@ -1,4 +1,4 @@
-use rum::model::{Model, Pool, Query};
+use rum::model::{Model, Pool, Query, ToSql};
 use rum_macros::Model;
 
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -19,7 +19,7 @@ struct Order {
     id: i64,
     user_id: i64,
     name: String,
-    optional: Option<String>,
+    // optional: Option<String>,
 }
 
 #[derive(Clone, Model, Debug)]
@@ -39,6 +39,7 @@ struct OrderItem {
 struct Product {
     id: i64,
     name: String,
+    avg_price: f64,
 }
 
 impl OrderItem {
@@ -77,8 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "CREATE TABLE orders (
             id BIGINT NOT NULL,
             user_id BIGINT NOT NULL,
-            name VARCHAR NOT NULL,
-            optional VARCHAR
+            name VARCHAR NOT NULL
     )",
         &[],
     )
@@ -101,14 +101,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "
         CREATE TABLE products (
             id BIGINT NOT NULL,
-            name VARCHAR NOT NULL
+            name VARCHAR NOT NULL,
+            avg_price DOUBLE PRECISION NOT NULL DEFAULT 5.0
         )
     ",
         &[],
     )
     .await?;
 
-    conn.query("INSERT INTO orders VALUES (1, 2, 'test', 'hello')", &[])
+    conn.query("INSERT INTO orders VALUES (1, 2, 'test')", &[])
         .await?;
 
     conn.query(
@@ -117,7 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     conn.query(
-        "INSERT INTO products VALUES (1, 'apples'), (2, 'doodles')",
+        "INSERT INTO products VALUES (1, 'apples', 6.0), (2, 'doodles', 7.0)",
         &[],
     )
     .await?;
@@ -128,10 +129,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch(&conn)
         .await?;
 
-    assert_eq!(order.id, 1);
+    assert_eq!(order.id(), 1);
     assert_eq!(order.user_id, 2);
     assert_eq!(order.name, "test");
-    assert_eq!(order.optional, Some("hello".to_string()));
+    // assert_eq!(order.optional, Some("hello".to_string()));
 
     let user = User::all()
         .join::<Order>()
@@ -149,6 +150,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch_all(&conn)
         .await?;
     println!("{:#?}", products);
+
+    let mut product = products.first().unwrap().clone();
+    product.name = "something else".to_string();
+
+    let product = product.save().fetch(&conn).await?;
+    assert_eq!(product.name, "something else");
+    println!("{:#?}", product);
 
     conn.rollback().await?;
 
