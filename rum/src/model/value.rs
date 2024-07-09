@@ -18,6 +18,7 @@ pub enum Value {
     Placeholder(i32),
     Range((Box<Value>, Box<Value>)),
     Column(Column),
+    Optional(Box<Option<Value>>),
 }
 
 impl Value {
@@ -34,6 +35,18 @@ pub trait ToValue {
 impl ToValue for String {
     fn to_value(&self) -> Value {
         Value::String(self.clone())
+    }
+}
+
+impl ToValue for Option<String> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
+impl ToValue for Option<&str> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.map(|v| v.to_value())))
     }
 }
 
@@ -94,6 +107,7 @@ impl tokio_postgres::types::ToSql for Value {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
+        use std::ops::Deref;
         match self {
             Value::String(string) => string.to_sql(ty, out),
             Value::Integer(integer) => integer.to_sql(ty, out),
@@ -101,6 +115,13 @@ impl tokio_postgres::types::ToSql for Value {
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),
+            Value::Optional(value) => {
+                if let Some(value) = value.deref() {
+                    tokio_postgres::types::ToSql::to_sql(&value, ty, out)
+                } else {
+                    return Ok(IsNull::Yes);
+                }
+            }
             value => return Err(Error::OrmSerializationError(value.clone()).boxed()),
         }
     }

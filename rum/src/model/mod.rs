@@ -16,8 +16,8 @@ pub mod placeholders;
 pub mod pool;
 pub mod row;
 pub mod select;
-pub mod value;
 pub mod update;
+pub mod value;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
@@ -32,8 +32,8 @@ pub use placeholders::Placeholders;
 pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::Select;
-pub use value::{ToValue, Value, Values};
 pub use update::Update;
+pub use value::{ToValue, Value, Values};
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
@@ -420,19 +420,25 @@ pub trait Model: FromRow {
 
     fn id(&self) -> i64 {
         let model_name = std::any::type_name::<Self>();
-        panic!("
+        panic!(
+            "
             {} doesn't have the id() method implemented.
             Did you use the rum_macros::Model derive macro,
             and if so, does your model have an id: i64 field?
-        ", model_name);
+        ",
+            model_name
+        );
     }
 
     fn values(&self) -> Vec<Value> {
         let model_name = std::any::type_name::<Self>();
-        panic!("
+        panic!(
+            "
             {} doesn't have the values() method implemented.
             Did you use the run_macros::Model derive macro?
-        ", model_name);
+        ",
+            model_name
+        );
     }
 
     fn foreign_key() -> String;

@@ -19,7 +19,7 @@ struct Order {
     id: i64,
     user_id: i64,
     name: String,
-    // optional: Option<String>,
+    optional: Option<String>,
 }
 
 #[derive(Clone, Model, Debug)]
@@ -78,7 +78,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "CREATE TABLE orders (
             id BIGINT NOT NULL,
             user_id BIGINT NOT NULL,
-            name VARCHAR NOT NULL
+            name VARCHAR NOT NULL,
+            optional VARCHAR
     )",
         &[],
     )
@@ -109,7 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    conn.query("INSERT INTO orders VALUES (1, 2, 'test')", &[])
+    conn.query("INSERT INTO orders VALUES (1, 2, 'test', 'optional')", &[])
         .await?;
 
     conn.query(
@@ -123,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    let order = Order::all()
+    let mut order = Order::all()
         .join::<User>()
         .find_by(User::column("id"), 2)
         .fetch(&conn)
@@ -132,7 +133,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(order.id(), 1);
     assert_eq!(order.user_id, 2);
     assert_eq!(order.name, "test");
-    // assert_eq!(order.optional, Some("hello".to_string()));
+    assert_eq!(order.optional, Some("optional".to_string()));
+
+    order.name = "test 2".into();
+    let order = order.save().fetch(&conn).await?;
+    assert_eq!(order.name, "test 2");
 
     let user = User::all()
         .join::<Order>()
