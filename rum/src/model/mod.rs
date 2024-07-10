@@ -10,6 +10,7 @@ pub mod explain;
 pub mod filter;
 pub mod join;
 pub mod limit;
+pub mod lock;
 pub mod macros;
 pub mod order_by;
 pub mod placeholders;
@@ -26,6 +27,7 @@ pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
 pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
+pub use lock::Lock;
 pub use macros::belongs_to;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
@@ -33,7 +35,7 @@ pub use pool::{IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
-pub use value::{ToValue, Value, Values};
+pub use value::{ToValue, Value};
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
@@ -84,9 +86,11 @@ pub trait FromRow: Clone {
 /// all SQL is valid and user input is escaped to avoid SQL injection
 /// attacks.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust
+/// #### Custom query
+///
+/// ```
 /// use rum::model::{ToSql, Escape};
 ///
 /// struct SelectUser {
@@ -98,15 +102,37 @@ pub trait FromRow: Clone {
 ///         format!("SELECT * FROM users WHERE email = '{}'", self.email.escape())
 ///     }
 /// }
+///
+/// let query = SelectUser { email: "test@test.com".into() }.to_sql();
+/// assert_eq!(query, r"SELECT * FROM users WHERE email = 'test@test.com'");
 /// ```
 ///
+/// #### Equality check
+///
+/// ```
+/// use rum::model::{ToSql, Escape};
+///
+/// struct Equals {
+///     column: String,
+///     value: i64,
+/// }
+///
+/// impl ToSql for Equals {
+///     fn to_sql(&self) -> String {
+///         format!("{} = {}", self.column.escape(), self.value)
+///     }
+/// }
+///
+/// let equals = Equals { column: "id".into(), value: 5 };
+/// assert_eq!(equals.to_sql(), "id = 5");
+/// ```
 pub trait ToSql {
     /// Convert `self` into a valid SQL entity.
     fn to_sql(&self) -> String;
 }
 
 #[derive(Debug)]
-pub enum Query<T: FromRow + ?Sized> {
+pub enum Query<T: FromRow + ?Sized = Row> {
     Select(Select<T>),
     Update(Update<T>),
     Raw(String),
@@ -134,9 +160,9 @@ impl<T: Model> Query<T> {
     /// # Example
     ///
     /// ```
-    /// use rum::model::{Query, ToSql};
+    /// use rum::model::{Query, ToSql, Row};
     ///
-    /// let query = Query::select("users");
+    /// let query = Query::<Row>::select("users");
     /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\"");
     /// ```
     pub fn select(table_name: impl ToString) -> Self {
@@ -151,9 +177,9 @@ impl<T: Model> Query<T> {
     /// # Example
     ///
     /// ```
-    /// use rum::model::{Query, ToSql};
+    /// use rum::model::{Query, ToSql, Row};
     ///
-    /// let query = Query::select("users").take_one();
+    /// let query = Query::<Row>::select("users").take_one();
     /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\" LIMIT 1");
     /// ```
     pub fn take_one(self) -> Self {
@@ -170,10 +196,10 @@ impl<T: Model> Query<T> {
     /// # Example
     ///
     /// ```
-    /// use rum::model::{Query, ToSql, Explain};
+    /// use rum::model::{Query, ToSql, Row};
     ///
-    /// let query = Query::select("users").take_many(25).explain();
-    /// assert_eq!(query.to_sql(), "EXPLAIN SELECT * FROM \"users\" LIMIT 25");
+    /// let query = Query::<Row>::select("users").take_many(25);
+    /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\" LIMIT 25");
     /// ```
     pub fn take_many(self, n: usize) -> Self {
         use Query::*;
@@ -221,20 +247,32 @@ impl<T: Model> Query<T> {
         }
     }
 
-    // pub fn filter_gt(self, column: impl ToColumn, value: impl ToValue) -> Self {
-    //     use Query::*;
-    //     match self {
-    //         Select(select) => Select(select.filter_gt(column, value)),
-    //         _ => self,
-    //     }
-    // }
+    pub fn filter_gt(self, column: impl ToColumn, value: impl ToValue) -> Self {
+        use Query::*;
+        match self {
+            Select(select) => Select(select.filter_gt(column, value)),
+            _ => self,
+        }
+    }
 
-    pub fn or(self, _other: Query<T>) -> Self {
-        // TODO:
-        //
-        // 1. merge the filters of both queries
-        // 2. rewrite placeholders of the `other` query to start at id + 1
-        todo!()
+    pub fn or(self, f: fn(Self) -> Self) -> Self {
+        use Query::*;
+        match self {
+            Select(mut select) => {
+                let or = select.or();
+                let query = f(Select(or));
+                match query {
+                    Select(or) => {
+                        select.where_clause.or(or.where_clause.filter());
+                        select.placeholders = or.placeholders;
+                        Select(select)
+                    }
+
+                    _ => Select(select),
+                }
+            }
+            _ => self,
+        }
     }
 
     pub fn not(self, column: impl ToColumn, value: impl ToValue) -> Self {
@@ -298,12 +336,12 @@ impl<T: Model> Query<T> {
     /// # Example
     ///
     /// ```
-    /// use rum::model::{Association, Model};
+    /// use rum::{model::{Association, Model}, macros::Model};
     ///
-    /// #[derive(Clone, Default)]
+    /// #[derive(Clone, Default, Model)]
     /// struct User {}
     ///
-    /// #[derive(Clone, Default)]
+    /// #[derive(Clone, Default, Model)]
     /// struct Order {}
     ///
     /// impl Association<Order> for User {}
@@ -322,6 +360,13 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn lock(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.lock()),
+            _ => self,
+        }
+    }
+
     async fn execute_internal(
         &self,
         client: &tokio_postgres::Client,
@@ -330,7 +375,8 @@ impl<T: Model> Query<T> {
 
         let rows = match self {
             Query::Select(select) => {
-                let values = select.placeholders.values();
+                let placeholdres = select.placeholders();
+                let values = placeholdres.values();
                 match client.query(&query, &values).await {
                     Ok(rows) => rows,
                     Err(err) => {
@@ -392,13 +438,17 @@ impl<T: Model> Query<T> {
 
         info!(
             "{} {} ({:.3} ms) {}",
-            "ORM".purple(),
             std::any::type_name::<T>()
                 .split("::")
                 .skip(1)
                 .collect::<Vec<_>>()
                 .join("::")
                 .green(),
+            match self {
+                Query::Select(_) => "load".purple(),
+                Query::Update(_) => "save".purple(),
+                Query::Raw(_) => "raw".purple(),
+            },
             time.as_secs_f64() * 1000.0,
             self.to_sql()
         );
@@ -406,6 +456,8 @@ impl<T: Model> Query<T> {
         Ok(result)
     }
 }
+
+pub type Scope<T> = Query<T>;
 
 pub trait Model: FromRow {
     fn table_name() -> String;
@@ -478,6 +530,10 @@ pub trait Model: FromRow {
         Query::select(Self::table_name())
     }
 
+    // fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Query> {
+    //     Self:all().filter(column, value)
+    // }
+
     fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name()).filter(column, value)
     }
@@ -507,6 +563,10 @@ pub trait Model: FromRow {
     fn save(self) -> Query<Self> {
         Query::Update(Update::new(self))
     }
+
+    fn lock() -> Query<Self> {
+        Self::all().lock()
+    }
 }
 
 #[cfg(test)]
@@ -527,6 +587,10 @@ mod test {
         fn table_name() -> String {
             "users".into()
         }
+
+        fn foreign_key() -> String {
+            "user_id".into()
+        }
     }
 
     #[derive(Debug, Clone, Default)]
@@ -539,6 +603,10 @@ mod test {
     impl Model for Order {
         fn table_name() -> String {
             "orders".into()
+        }
+
+        fn foreign_key() -> String {
+            "order_id".into()
         }
     }
 
@@ -553,6 +621,10 @@ mod test {
         fn table_name() -> String {
             "order_items".into()
         }
+
+        fn foreign_key() -> String {
+            "order_item_id".into()
+        }
     }
 
     #[derive(Debug, Clone, Default)]
@@ -564,6 +636,10 @@ mod test {
     impl Model for Product {
         fn table_name() -> String {
             "products".into()
+        }
+
+        fn foreign_key() -> String {
+            "product_id".into()
         }
     }
 

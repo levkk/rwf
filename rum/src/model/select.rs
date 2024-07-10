@@ -1,11 +1,24 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Columns, Escape, FromRow, Join, Joins, Limit, OrderBy, Placeholders, ToSql, ToValue, Value,
-    WhereClause,
+    Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, ToSql, ToValue,
+    Value, WhereClause,
 };
 
-use std::marker::PhantomData;
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    marker::PhantomData,
+};
+
+#[derive(PartialEq, Debug)]
+enum Op {
+    Equals,
+    NotEquals,
+    LesserThan,
+    GreaterThan,
+    GreaterEqualThan,
+    LesserEqualThan,
+}
 
 #[derive(Debug, Default)]
 pub struct Select<T: FromRow + ?Sized> {
@@ -14,9 +27,10 @@ pub struct Select<T: FromRow + ?Sized> {
     pub columns: Columns,
     pub order_by: OrderBy,
     pub limit: Limit,
-    pub placeholders: Placeholders,
+    pub placeholders: RefCell<Placeholders>,
     pub where_clause: WhereClause,
     pub joins: Joins,
+    lock: Lock,
     _phantom: PhantomData<T>,
 }
 
@@ -29,9 +43,10 @@ impl<T: FromRow> Select<T> {
             columns: Columns::default(),
             order_by: OrderBy::default(),
             limit: Limit::default(),
-            placeholders: Placeholders::default(),
+            placeholders: RefCell::new(Placeholders::default()),
             where_clause: WhereClause::default(),
             joins: Joins::default(),
+            lock: Lock::default(),
             _phantom: PhantomData,
         }
     }
@@ -54,12 +69,17 @@ impl<T: FromRow> Select<T> {
         self
     }
 
+    pub fn lock(mut self) -> Self {
+        self.lock = Lock::new();
+        self
+    }
+
     fn filter(
         mut self,
         column: impl ToColumn,
         value: impl ToValue,
         join_op: JoinOp,
-        not: bool,
+        op: Op,
     ) -> Self {
         let mut filter = Filter::default();
 
@@ -76,17 +96,20 @@ impl<T: FromRow> Select<T> {
 
         let value = match value {
             Value::List(_) => {
-                let placeholder = self.placeholders.add(&value);
+                let placeholder = self.placeholders.borrow_mut().add(&value);
                 Value::Record(Box::new(placeholder))
             }
 
-            value => self.placeholders.add(&value),
+            value => self.placeholders.borrow_mut().add(&value),
         };
 
-        if not {
-            filter.add_not(column, value);
-        } else {
-            filter.add(column, value);
+        match op {
+            Op::Equals => filter.add(column, value),
+            Op::NotEquals => filter.add_not(column, value),
+            Op::LesserThan => filter.lt(column, value),
+            Op::GreaterThan => filter.gt(column, value),
+            Op::GreaterEqualThan => filter.gte(column, value),
+            Op::LesserEqualThan => filter.lte(column, value),
         }
 
         match join_op {
@@ -97,31 +120,49 @@ impl<T: FromRow> Select<T> {
         self
     }
 
-    pub fn or(self, _query: Self) -> Self {
-        todo!()
-        // let other_filter = query.where_clause.filter();
-        // let other_placeholders = query.placeholders;
-        // self.where_clause.or(query.where_clause.filter());
-        // self
-    }
+    // pub fn or(self, f: fn(Self) -> Self) -> Self {
+    //     let mut select = Self::new(&self.table_name, &self.primary_key);
+    //     select.placeholders = self.placeholders.clone();
+    //     f(select)
+    // }
 
     pub fn filter_and(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::And, false);
+        self = self.filter(column, value, JoinOp::And, Op::Equals);
         self
     }
 
     pub fn filter_or(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::Or, false);
+        self = self.filter(column, value, JoinOp::Or, Op::Equals);
         self
     }
 
     pub fn filter_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::And, true);
+        self = self.filter(column, value, JoinOp::And, Op::NotEquals);
         self
     }
 
     pub fn filter_or_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::Or, true);
+        self = self.filter(column, value, JoinOp::Or, Op::NotEquals);
+        self
+    }
+
+    pub fn filter_lt(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::LesserThan);
+        self
+    }
+
+    pub fn filter_gt(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::GreaterThan);
+        self
+    }
+
+    pub fn filter_gte(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::GreaterEqualThan);
+        self
+    }
+
+    pub fn filter_lte(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::LesserEqualThan);
         self
     }
 
@@ -142,18 +183,29 @@ impl<T: FromRow> Select<T> {
 
         self
     }
+
+    pub fn placeholders(&self) -> Ref<Placeholders> {
+        self.placeholders.borrow()
+    }
+
+    pub fn or(&self) -> Self {
+        let mut select = Select::new(&self.table_name, &self.primary_key);
+        select.placeholders = self.placeholders.clone();
+        select
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {
     fn to_sql(&self) -> String {
         format!(
-            r#"SELECT {} FROM "{}"{}{}{}{}"#,
+            r#"SELECT {} FROM "{}"{}{}{}{}{}"#,
             self.columns.to_sql(),
             self.table_name.escape(),
             self.joins.to_sql(),
             self.where_clause.to_sql(),
             self.order_by.to_sql(),
-            self.limit.to_sql()
+            self.limit.to_sql(),
+            self.lock.to_sql(),
         )
     }
 }

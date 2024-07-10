@@ -33,13 +33,6 @@ impl<T: Model> Update<T> {
             marker: PhantomData,
         }
     }
-
-    pub async fn save(self, client: &tokio_postgres::Client) -> Result<T, Error> {
-        // Query::Update(self)
-        // 	.fetch(&client)
-        // 	.await?
-        todo!()
-    }
 }
 
 impl<T: FromRow> ToSql for Update<T> {

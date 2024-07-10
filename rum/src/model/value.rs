@@ -6,28 +6,50 @@ use std::ops::Range;
 
 use super::{Column, Error, Escape, ToSql};
 
+/// A value that can be converted to and from the database.
+///
+/// This includes primitive types like [`String`] and [`i64`],
+/// and expands all the way to placeholders in prepared statements, e.g. `$1`,
+/// and table columns.
 #[derive(Debug, Clone)]
 pub enum Value {
+    /// Regular string, e.g. `'hello'`.
     String(String),
+    /// Integer, e.g. `123`.
     Integer(i64),
+    /// Floating point number, e.g. `3.14`.
     Float(f64),
+    /// Timestamp with time zone speficiation.
     TimestampT(OffsetDateTime),
+    /// Timestamp without time zone.
     Timestamp(PrimitiveDateTime),
+    /// List (Postgres array) of values, e.g. `{1, 2, 3}`.
     List(Vec<Value>),
+    /// Tuple (also known as "record") of values, e.g. `(1, 2, 3)`.
     Record(Box<Value>),
+    /// Placeholder in a prepared statemnt, e.g. `$1`.
     Placeholder(i32),
+    /// Range of values, e.g. `BETWEEN 5 AND 25`.
     Range((Box<Value>, Box<Value>)),
+    /// Table column, e.g. `"users"."id"`.
     Column(Column),
+    /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
 }
 
 impl Value {
     /// Create a new value.
+    ///
+    /// The input needs to implement [`ToValue`] trait. Implementations for standard and common
+    /// Rust types are provided.
     pub fn new(value: impl ToValue) -> Self {
         value.to_value()
     }
 }
 
+/// Convert anything to a [`Value`].
+///
+/// Implementation for many common types are provided, e.g. [`String`], [`i64`], [`OffsetDateTime`], and more.
 pub trait ToValue {
     fn to_value(&self) -> Value;
 }
@@ -134,37 +156,6 @@ impl tokio_postgres::types::ToSql for Value {
     to_sql_checked!();
 }
 
-#[derive(Debug)]
-pub struct Values {
-    values: Vec<Value>,
-}
-
-impl ToSql for Values {
-    fn to_sql(&self) -> String {
-        self.values
-            .iter()
-            .map(|value| value.to_sql())
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
-impl Values {
-    pub fn new(values: &[Value]) -> Values {
-        Values {
-            values: values.to_vec(),
-        }
-    }
-}
-
-impl From<&[Value]> for Values {
-    fn from(values: &[Value]) -> Self {
-        Values {
-            values: values.to_vec(),
-        }
-    }
-}
-
 impl ToSql for Value {
     fn to_sql(&self) -> String {
         use Value::*;
@@ -207,6 +198,7 @@ mod test {
 
     #[test]
     fn test_range_i64() {
-        let _value = Value::new(1_i64..25);
+        let value = Value::new(1_i64..25);
+        assert_eq!(value.to_sql(), "BETWEEN 1 AND 25");
     }
 }

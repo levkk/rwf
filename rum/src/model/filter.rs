@@ -1,4 +1,4 @@
-use super::{Column, ToSql, ToValue, Value};
+use super::{Column, Placeholders, ToSql, ToValue, Value};
 
 /// The WHERE clause of a SQL query.
 #[derive(Debug, Default)]
@@ -20,6 +20,12 @@ enum Comparison {
     Filter(Filter),
     /// x > 1
     GreaterThan((Column, Value)),
+    /// x < 1
+    LesserThan((Column, Value)),
+    /// x >= 1
+    GreaterEqualThan((Column, Value)),
+    /// x <= 1
+    LesserEqualThan((Column, Value)),
 }
 
 impl ToSql for Comparison {
@@ -33,6 +39,13 @@ impl ToSql for Comparison {
             NotEqual((column, value)) => format!("{} <> {}", column.to_sql(), value.to_sql()),
             Filter(filter) => format!("({})", filter.to_sql()),
             GreaterThan((column, value)) => format!("{} > {}", column.to_sql(), value.to_sql()),
+            LesserThan((column, value)) => format!("{} < {}", column.to_sql(), value.to_sql()),
+            GreaterEqualThan((column, value)) => {
+                format!("{} >= {}", column.to_sql(), value.to_sql())
+            }
+            LesserEqualThan((column, value)) => {
+                format!("{} <= {}", column.to_sql(), value.to_sql())
+            }
         }
     }
 }
@@ -172,6 +185,21 @@ impl Filter {
             .push(Comparison::GreaterThan((column, value.to_value())));
     }
 
+    pub fn gte(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::GreaterEqualThan((column, value.to_value())));
+    }
+
+    pub fn lt(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::LesserThan((column, value.to_value())));
+    }
+
+    pub fn lte(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::LesserEqualThan((column, value.to_value())));
+    }
+
     /// Append all predicates of the filter into the current filter.
     pub fn concat(&self, filter: Filter) -> Self {
         // Concatenating filters with different operations, e.g. AND and OR
@@ -188,13 +216,11 @@ impl Filter {
         }
     }
 
-    // pub fn rewrite_placeholders(mut self, starting_id: i32) -> Self {
-    //     use Comparison::*;
+    pub fn replace_values(mut self, placeholders: &Placeholders) {
+        let clauses = self.clauses.into_iter().map(|clause| {});
 
-    //     let clauses = self.clauses.into_iter().map(|clause| match clause {
-
-    //     })
-    // }
+        todo!()
+    }
 
     fn join(&self, op: JoinOp, filter: Filter) -> Self {
         if self.is_empty() {

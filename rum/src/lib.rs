@@ -1,4 +1,5 @@
 pub mod model;
+pub use rum_macros as macros;
 pub use tokio_postgres;
 
 #[allow(dead_code)]
