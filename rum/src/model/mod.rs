@@ -1,11 +1,12 @@
 use colored::Colorize;
 use once_cell::sync::OnceCell;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tracing::info;
 
 pub mod column;
 pub mod error;
 pub mod escape;
+pub mod exists;
 pub mod explain;
 pub mod filter;
 pub mod join;
@@ -23,6 +24,7 @@ pub mod value;
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
 pub use escape::Escape;
+pub use exists::Exists;
 pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
 pub use join::{Association, AssociationType, Join, Joined, Joins};
@@ -425,6 +427,23 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub async fn exists(self, conn: &tokio_postgres::Client) -> Result<bool, Error> {
+        let query = match self {
+            Query::Select(select) => Query::Select(select.exists()),
+            _ => self,
+        };
+        let start = Instant::now();
+
+        let result = match query.execute_internal(conn).await?.pop() {
+            None => Ok(false),
+            Some(exists) => Ok(Exists::from_row(exists).count > 0),
+        };
+
+        query.log(start.elapsed());
+
+        result
+    }
+
     /// Execute a query and return an optional result.
     pub async fn execute(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
         let start = Instant::now();
@@ -436,6 +455,12 @@ impl<T: Model> Query<T> {
             .collect();
         let time = start.elapsed();
 
+        self.log(time);
+
+        Ok(result)
+    }
+
+    fn log(&self, duration: Duration) {
         info!(
             "{} {} ({:.3} ms) {}",
             std::any::type_name::<T>()
@@ -449,11 +474,9 @@ impl<T: Model> Query<T> {
                 Query::Update(_) => "save".purple(),
                 Query::Raw(_) => "raw".purple(),
             },
-            time.as_secs_f64() * 1000.0,
+            duration.as_secs_f64() * 1000.0,
             self.to_sql()
         );
-
-        Ok(result)
     }
 }
 
@@ -530,10 +553,6 @@ pub trait Model: FromRow {
         Query::select(Self::table_name())
     }
 
-    // fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Query> {
-    //     Self:all().filter(column, value)
-    // }
-
     fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name()).filter(column, value)
     }
@@ -541,6 +560,12 @@ pub trait Model: FromRow {
     fn find_by(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
+            .take_one()
+    }
+
+    fn find(value: impl ToValue) -> Query<Self> {
+        Query::select(Self::table_name())
+            .find_by(Self::primary_key(), value.to_value())
             .take_one()
     }
 
@@ -556,8 +581,9 @@ pub trait Model: FromRow {
         Joined::new(F::construct_join())
     }
 
-    fn related<F: Association<Self>>(fks: &[i64]) -> Query<F> {
-        F::all().filter(Self::foreign_key(), fks)
+    fn related<F: Association<Self>>(models: &[impl Model]) -> Query<F> {
+        let fks = models.iter().map(|fk| fk.id()).collect::<Vec<_>>();
+        F::all().filter(Self::foreign_key(), fks.as_slice())
     }
 
     fn save(self) -> Query<Self> {

@@ -11,7 +11,7 @@ use super::{Column, Error, Escape, ToSql};
 /// This includes primitive types like [`String`] and [`i64`],
 /// and expands all the way to placeholders in prepared statements, e.g. `$1`,
 /// and table columns.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Regular string, e.g. `'hello'`.
     String(String),

@@ -1,7 +1,7 @@
 use super::{Escape, ToSql};
 
 /// PostgreSQL table column.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Column {
     table_name: String,
     column_name: String,
@@ -62,6 +62,7 @@ impl Column {
 pub struct Columns {
     columns: Vec<Column>,
     table_name: Option<String>,
+    exists: bool,
 }
 
 impl Columns {
@@ -69,11 +70,18 @@ impl Columns {
         self.table_name = Some(table_name.to_string());
         self
     }
+
+    pub fn exists(mut self) -> Self {
+        self.exists = true;
+        self
+    }
 }
 
 impl ToSql for Columns {
     fn to_sql(&self) -> String {
-        if self.columns.is_empty() {
+        if self.exists {
+            "COUNT(*) AS count".into()
+        } else if self.columns.is_empty() {
             if let Some(ref table_name) = self.table_name {
                 format!(r#""{}".*"#, table_name)
             } else {

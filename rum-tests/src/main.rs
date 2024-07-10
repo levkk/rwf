@@ -1,9 +1,9 @@
-use rum::model::{Model, Pool, Query, ToSql};
+use rum::model::{Error, Model, Pool, Query, Scope, ToSql};
 use rum_macros::Model;
 
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
-#[derive(Clone, Model)]
+#[derive(Clone, Model, Debug, PartialEq)]
 #[has_many(Order)]
 #[allow(dead_code)]
 struct User {
@@ -43,8 +43,8 @@ struct Product {
 }
 
 impl OrderItem {
-    fn expensive() -> Query<Self> {
-        Self::all().filter("amount", 5.0)
+    fn expensive() -> Scope<Self> {
+        Self::all().filter_gt("amount", 5.0)
     }
 }
 
@@ -162,6 +162,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let product = product.save().fetch(&conn).await?;
     assert_eq!(product.name, "something else");
     println!("{:#?}", product);
+
+    let order_items = OrderItem::expensive()
+        .join::<Order>()
+        .filter(Order::column("user_id"), 2)
+        .fetch_all(&conn)
+        .await?;
+
+    println!("{:?}", order_items);
+
+    let user = User::lock()
+        .filter("id", 6)
+        .or(|query| query.filter("id", 2).filter("name", "test"))
+        .first_one()
+        .fetch(&conn)
+        .await?;
+
+    println!("{:?}", user);
+
+    let user = User::find([1, 2].as_slice()).fetch_all(&conn).await?;
+    assert_eq!(user.clone().pop().unwrap().id, 2);
+
+    assert!(User::find(3).fetch(&conn).await.is_err());
+
+    println!("{:?}", user);
+
+    let exists = User::all()
+        .filter("id", 2)
+        .filter("name", "test")
+        .exists(&conn)
+        .await?;
+
+    assert_eq!(exists, true);
 
     conn.rollback().await?;
 

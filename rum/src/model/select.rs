@@ -74,6 +74,11 @@ impl<T: FromRow> Select<T> {
         self
     }
 
+    pub fn exists(mut self) -> Self {
+        self.columns = self.columns.exists();
+        self
+    }
+
     fn filter(
         mut self,
         column: impl ToColumn,
