@@ -1,4 +1,7 @@
+pub mod controller;
 pub mod model;
+pub mod view;
+
 pub use rum_macros as macros;
 pub use tokio_postgres;
 

@@ -428,6 +428,10 @@ impl<T: Model> Query<T> {
     }
 
     pub async fn exists(self, conn: &tokio_postgres::Client) -> Result<bool, Error> {
+        Ok(self.count(conn).await? > 0)
+    }
+
+    pub async fn count(self, conn: &tokio_postgres::Client) -> Result<i64, Error> {
         let query = match self {
             Query::Select(select) => Query::Select(select.exists()),
             _ => self,
@@ -435,8 +439,8 @@ impl<T: Model> Query<T> {
         let start = Instant::now();
 
         let result = match query.execute_internal(conn).await?.pop() {
-            None => Ok(false),
-            Some(exists) => Ok(Exists::from_row(exists).count > 0),
+            None => Ok(0),
+            Some(exists) => Ok(Exists::from_row(exists).count),
         };
 
         query.log(start.elapsed());
@@ -472,7 +476,7 @@ impl<T: Model> Query<T> {
             match self {
                 Query::Select(_) => "load".purple(),
                 Query::Update(_) => "save".purple(),
-                Query::Raw(_) => "raw".purple(),
+                Query::Raw(_) => "query".purple(),
             },
             duration.as_secs_f64() * 1000.0,
             self.to_sql()
@@ -788,8 +792,8 @@ mod test {
 
     #[test]
     fn test_related() {
-        let query = User::related::<Order>([1, 2].as_slice());
-        println!("{}", query.to_sql());
+        // let query = User::related::<Order>([1, 2].as_slice());
+        // println!("{}", query.to_sql());
     }
 
     #[test]

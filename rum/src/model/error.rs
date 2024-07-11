@@ -24,6 +24,9 @@ pub enum Error {
 
     #[error("record not found")]
     RecordNotFound,
+
+    #[error("unknown token in template: {0}")]
+    UnknownToken(String),
 }
 
 impl Error {

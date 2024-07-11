@@ -190,10 +190,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exists = User::all()
         .filter("id", 2)
         .filter("name", "test")
+        .order("count")
         .exists(&conn)
         .await?;
 
     assert_eq!(exists, true);
+
+    let count = User::all()
+        .filter("id", 2)
+        .count(&conn)
+        .await?;
+
+    assert_eq!(count, 1);
+
+    let raw = User::find_by_sql("SELECT * FROM users LIMIT 1")
+        .fetch(&conn)
+        .await?;
+    assert_eq!(raw.id, 2);
 
     conn.rollback().await?;
 
