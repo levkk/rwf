@@ -1,109 +1,195 @@
 use crate::model::Error;
 
-pub static START: &str = "<%";
-pub static END: &str = "%>";
-pub static CONTROL: &[char] = &['<', '%'];
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+    Text(String),
+    Variable(String),
     String(String),
+    StringStart,
+    StringEnd,
     If,
     ElseIf,
     Else,
+    EndIf,
+    Integer(i64),
+    Float(f64),
     BlockStart,
-    BlockEnd,
     BlockStartPrint,
+    BlockEnd,
+    BlockStartBracket,
+    BlockEndBracket,
+    BlockSign,
+    Print,
+    Space,
+    Character(char),
+    Comparison(Comparison),
+    Dot,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum Comparison {
+    Equals,
+    NotEquals,
+    LessThan,
+    LessEqualThan,
+    GreaterThan,
+    GreaterEqualThan,
 }
 
 pub struct Tokenizer<'a> {
     source: &'a str,
+    tokens: Vec<Token>,
+    buffer: String,
+    code_block: bool,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(source: &'a str) -> Self {
-        Self { source }
+        Self {
+            source,
+            tokens: vec![],
+            buffer: String::new(),
+            code_block: false,
+        }
     }
 
-    pub fn tokens(&mut self) -> Result<Vec<Token>, Error> {
-        let mut buffer = String::new();
-        let mut control = String::new();
-        let mut tokens = vec![];
-        let mut control_started = false;
+    pub fn tokens(mut self) -> Result<Vec<Token>, Error> {
+        let mut iter = self.source.chars();
 
-        let save_buffer = |buffer: &mut String, tokens: &mut Vec<Token>| {
-            if !buffer.is_empty() {
-                tokens.push(Token::String(std::mem::take(buffer)));
-            }
-        };
-
-        for c in self.source.chars() {
+        while let Some(c) = iter.next() {
             match c {
-                '<' | '%' | '=' => {
-                    control.push(c);
-                }
+                '<' => {
+                    let n = iter.next();
 
-                c => match control.len() {
-                    1 => (),
-                    2 => match control.as_str() {
-                        "%>" => {
-                            tokens.push(Token::BlockEnd);
-                            control.clear();
-                            control_started = false;
-                        }
-                        token => {
-                            if control_started {
-                                return Err(Error::UnknownToken(token.to_string()));
-                            } else {
-                                buffer.extend(token.chars());
-                                control.clear();
+                    match n {
+                        Some('%') => {
+                            let m = iter.next();
+
+                            match m {
+                                Some('=') => {
+                                    self.drain_buffer();
+                                    self.tokens.push(Token::BlockStartPrint);
+                                    self.code_block = true;
+                                }
+
+                                Some(c) => {
+                                    self.drain_buffer();
+                                    self.tokens.push(Token::BlockStart);
+
+                                    match c {
+                                        ' ' => self.tokens.push(Token::Space),
+                                        c => self.buffer.push(c),
+                                    }
+
+                                    self.code_block = true;
+                                }
+
+                                None => {
+                                    self.drain_buffer();
+                                    self.tokens.push(Token::BlockStart);
+                                }
                             }
                         }
-                    },
-                    3 => match control.as_str() {
-                        "<%=" => {
-                            control_started = true;
-                            tokens.push(Token::BlockStartPrint);
-                            control.clear();
+
+                        Some(c) => {
+                            self.buffer.push('<');
+                            self.buffer.push(c);
                         }
 
-                        "<% " => {
-                            control_started = true;
-                            tokens.push(Token::BlockStart);
-                            control.clear();
-                        }
-
-                        token => {
-                            buffer.extend(token.chars());
-                            control.clear();
-                        }
-                    },
-
-                    _ => {
-                        buffer.push(c);
+                        None => (),
                     }
-                },
-            };
+                }
+
+                '.' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(Token::Dot);
+                    } else {
+                        self.buffer.push('.');
+                    }
+                }
+
+                '%' => {
+                    let n = iter.next();
+
+                    match n {
+                        Some('>') => {
+                            self.drain_buffer();
+                            self.tokens.push(Token::BlockEnd);
+                            self.code_block = false;
+                        }
+
+                        Some(c) => {
+                            self.buffer.push('%');
+                            self.buffer.push(c);
+                        }
+
+                        None => (),
+                    }
+                }
+
+                '"' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        let mut string = String::new();
+
+                        while let Some(c) = iter.next() {
+                            match c {
+                                '"' => {
+                                    self.tokens.push(Token::String(string));
+                                    break;
+                                }
+
+                                _ => string.push(c),
+                            }
+                        }
+                    } else {
+                        self.buffer.push('"');
+                    }
+                }
+
+                ' ' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(Token::Space);
+                    } else {
+                        self.buffer.push(' ');
+                    }
+                }
+
+                c => self.buffer.push(c),
+            }
         }
 
-        // save_buffer(&mut buffer, &mut tokens);
+        self.drain_buffer();
 
-        //     if buffer == START {
-        //         if !buffer.is_empty() {
-        //             tokens.push(Token::String(std::mem::take(&mut buffer)));
-        //         }
-        //         tokens.push(Token::BlockStart);
-        //         buffer.clear();
-        //     } else if buffer == END {
-        //         tokens.push(Token::BlockEnd);
-        //         buffer.clear()
-        //     }
-        // }
+        Ok(self.tokens)
+    }
 
-        // if !buffer.is_empty() {
-        //     tokens.push(Token::String(buffer));
-        // }
-
-        Ok(tokens)
+    fn drain_buffer(&mut self) {
+        if !self.buffer.is_empty() {
+            let s = std::mem::take(&mut self.buffer);
+            if self.code_block {
+                match s.as_str() {
+                    "if" => self.tokens.push(Token::If),
+                    "else" => self.tokens.push(Token::Else),
+                    "else if" => self.tokens.push(Token::ElseIf),
+                    "end" => self.tokens.push(Token::EndIf),
+                    "==" => self.tokens.push(Token::Comparison(Comparison::Equals)),
+                    st => {
+                        if let Ok(integer) = st.parse::<i64>() {
+                            self.tokens.push(Token::Integer(integer));
+                        } else if let Ok(float) = st.parse::<f64>() {
+                            self.tokens.push(Token::Float(float));
+                        } else {
+                            self.tokens.push(Token::Variable(s));
+                        }
+                    }
+                }
+            } else {
+                self.tokens.push(Token::Text(s));
+            }
+        }
     }
 }
 
@@ -113,19 +199,39 @@ mod test {
 
     #[test]
     fn test_tokenize_basic() -> Result<(), Error> {
-        let template = r#"
-            <html>
-                <head>
-                    <title><%= title %></title>
-                </head>
-                <body>
-                    <h1>Hello world</h1>
-                </body>
-            </html>
-        "#;
-
+        let template = r#"<title><%= title %></title><body><% if variable == 1 %></body><% if variable == "string" %>"#;
         let tokens = Tokenizer::new(&template).tokens()?;
-        println!("{:?}", tokens);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Text("<title>".into()),
+                Token::BlockStartPrint,
+                Token::Space,
+                Token::Variable("title".into()),
+                Token::Space,
+                Token::BlockEnd,
+                Token::Text("</title><body>".into()),
+                Token::BlockStart,
+                Token::Space,
+                Token::If,
+                Token::Space,
+                Token::Variable("variable".into()),
+                Token::Space,
+                Token::Comparison(Comparison::Equals),
+                Token::Space,
+                Token::Integer(1),
+                Token::Space,
+                Token::BlockEnd,
+                Token::Text("</body>".into()),
+                Token::BlockStart,
+                Token::If,
+                Token::Variable("variable".into()),
+                Token::Space,
+                Token::Comparison(Comparison::Equals),
+                Token::Space,
+                Token::String("string".into()),
+            ]
+        );
 
         Ok(())
     }

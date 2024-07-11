@@ -27,6 +27,9 @@ pub enum Error {
 
     #[error("unknown token in template: {0}")]
     UnknownToken(String),
+
+    #[error("template syntax error: {0}")]
+    SyntaxError(String),
 }
 
 impl Error {
