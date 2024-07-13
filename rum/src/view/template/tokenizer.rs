@@ -1,5 +1,33 @@
 use crate::model::Error;
 
+#[derive(Debug, Clone)]
+pub struct TokenWithLine {
+    pub token: Token,
+    pub line: usize,
+}
+
+impl std::ops::Deref for TokenWithLine {
+    type Target = Token;
+
+    fn deref(&self) -> &Self::Target {
+        &self.token
+    }
+}
+
+impl TokenWithLine {
+    pub fn new(token: Token, line: usize) -> Self {
+        Self { token, line }
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn token(self) -> Token {
+        self.token
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Text(String),
@@ -24,6 +52,9 @@ pub enum Token {
     Character(char),
     Comparison(Comparison),
     Dot,
+    And,
+    Or,
+    Not,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -34,13 +65,17 @@ pub enum Comparison {
     LessEqualThan,
     GreaterThan,
     GreaterEqualThan,
+    Not,
+    True,
+    False,
 }
 
 pub struct Tokenizer<'a> {
     source: &'a str,
-    tokens: Vec<Token>,
+    tokens: Vec<TokenWithLine>,
     buffer: String,
     code_block: bool,
+    line: usize,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -50,14 +85,16 @@ impl<'a> Tokenizer<'a> {
             tokens: vec![],
             buffer: String::new(),
             code_block: false,
+            line: 1,
         }
     }
 
-    pub fn tokens(mut self) -> Result<Vec<Token>, Error> {
+    pub fn tokens(mut self) -> Result<Vec<TokenWithLine>, Error> {
         let mut iter = self.source.chars();
 
         while let Some(c) = iter.next() {
             match c {
+                '\n' => self.line += 1,
                 '<' => {
                     let n = iter.next();
 
@@ -68,16 +105,16 @@ impl<'a> Tokenizer<'a> {
                             match m {
                                 Some('=') => {
                                     self.drain_buffer();
-                                    self.tokens.push(Token::BlockStartPrint);
+                                    self.tokens.push(self.add_token(Token::BlockStartPrint));
                                     self.code_block = true;
                                 }
 
                                 Some(c) => {
                                     self.drain_buffer();
-                                    self.tokens.push(Token::BlockStart);
+                                    self.tokens.push(self.add_token(Token::BlockStart));
 
                                     match c {
-                                        ' ' => self.tokens.push(Token::Space),
+                                        ' ' => self.tokens.push(self.add_token(Token::Space)),
                                         c => self.buffer.push(c),
                                     }
 
@@ -86,7 +123,7 @@ impl<'a> Tokenizer<'a> {
 
                                 None => {
                                     self.drain_buffer();
-                                    self.tokens.push(Token::BlockStart);
+                                    self.tokens.push(self.add_token(Token::BlockStart));
                                 }
                             }
                         }
@@ -103,9 +140,18 @@ impl<'a> Tokenizer<'a> {
                 '.' => {
                     if self.code_block {
                         self.drain_buffer();
-                        self.tokens.push(Token::Dot);
+                        self.tokens.push(self.add_token(Token::Dot));
                     } else {
                         self.buffer.push('.');
+                    }
+                }
+
+                '!' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::Not));
+                    } else {
+                        self.buffer.push('!');
                     }
                 }
 
@@ -115,7 +161,7 @@ impl<'a> Tokenizer<'a> {
                     match n {
                         Some('>') => {
                             self.drain_buffer();
-                            self.tokens.push(Token::BlockEnd);
+                            self.tokens.push(self.add_token(Token::BlockEnd));
                             self.code_block = false;
                         }
 
@@ -136,7 +182,7 @@ impl<'a> Tokenizer<'a> {
                         while let Some(c) = iter.next() {
                             match c {
                                 '"' => {
-                                    self.tokens.push(Token::String(string));
+                                    self.tokens.push(self.add_token(Token::String(string)));
                                     break;
                                 }
 
@@ -151,7 +197,7 @@ impl<'a> Tokenizer<'a> {
                 ' ' => {
                     if self.code_block {
                         self.drain_buffer();
-                        self.tokens.push(Token::Space);
+                        self.tokens.push(self.add_token(Token::Space));
                     } else {
                         self.buffer.push(' ');
                     }
@@ -171,25 +217,33 @@ impl<'a> Tokenizer<'a> {
             let s = std::mem::take(&mut self.buffer);
             if self.code_block {
                 match s.as_str() {
-                    "if" => self.tokens.push(Token::If),
-                    "else" => self.tokens.push(Token::Else),
-                    "else if" => self.tokens.push(Token::ElseIf),
-                    "end" => self.tokens.push(Token::EndIf),
-                    "==" => self.tokens.push(Token::Comparison(Comparison::Equals)),
+                    "if" => self.tokens.push(self.add_token(Token::If)),
+                    "else" => self.tokens.push(self.add_token(Token::Else)),
+                    "elsif" => self.tokens.push(self.add_token(Token::ElseIf)),
+                    "end" => self.tokens.push(self.add_token(Token::EndIf)),
+                    "&&" => self.tokens.push(self.add_token(Token::And)),
+                    "||" => self.tokens.push(self.add_token(Token::Or)),
+                    "==" => self
+                        .tokens
+                        .push(self.add_token(Token::Comparison(Comparison::Equals))),
                     st => {
                         if let Ok(integer) = st.parse::<i64>() {
-                            self.tokens.push(Token::Integer(integer));
+                            self.tokens.push(self.add_token(Token::Integer(integer)));
                         } else if let Ok(float) = st.parse::<f64>() {
-                            self.tokens.push(Token::Float(float));
+                            self.tokens.push(self.add_token(Token::Float(float)));
                         } else {
-                            self.tokens.push(Token::Variable(s));
+                            self.tokens.push(self.add_token(Token::Variable(s)));
                         }
                     }
                 }
             } else {
-                self.tokens.push(Token::Text(s));
+                self.tokens.push(self.add_token(Token::Text(s)));
             }
         }
+    }
+
+    fn add_token(&self, token: Token) -> TokenWithLine {
+        TokenWithLine::new(token, self.line)
     }
 }
 
@@ -202,7 +256,10 @@ mod test {
         let template = r#"<title><%= title %></title><body><% if variable == 1 %></body><% if variable == "string" %>"#;
         let tokens = Tokenizer::new(&template).tokens()?;
         assert_eq!(
-            tokens,
+            tokens
+                .into_iter()
+                .map(|token| token.token().clone())
+                .collect::<Vec<_>>(),
             vec![
                 Token::Text("<title>".into()),
                 Token::BlockStartPrint,
