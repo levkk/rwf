@@ -1,0 +1,14 @@
+program ::= [statement]
+statement ::= print expression
+    | if expression then statement end
+    | if expression then statement else statement end
+    | if expression then statement elsif expression statement else statement end
+    | for variable in list do expression end
+expression ::=
+    expression binary_op expression
+    | unary_op expression
+    | term op term
+    | term op expression
+    | term
+term ::= constant | variable | function
+constant ::= integer | float | string | hash[string,constant] | list[constant]

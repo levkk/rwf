@@ -55,6 +55,9 @@ pub enum Token {
     And,
     Or,
     Not,
+    For,
+    In,
+    Do,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -197,7 +200,7 @@ impl<'a> Tokenizer<'a> {
                 ' ' => {
                     if self.code_block {
                         self.drain_buffer();
-                        self.tokens.push(self.add_token(Token::Space));
+                        // self.tokens.push(self.add_token(Token::Space));
                     } else {
                         self.buffer.push(' ');
                     }
@@ -221,6 +224,9 @@ impl<'a> Tokenizer<'a> {
                     "else" => self.tokens.push(self.add_token(Token::Else)),
                     "elsif" => self.tokens.push(self.add_token(Token::ElseIf)),
                     "end" => self.tokens.push(self.add_token(Token::EndIf)),
+                    "for" => self.tokens.push(self.add_token(Token::For)),
+                    "in" => self.tokens.push(self.add_token(Token::In)),
+                    "do" => self.tokens.push(self.add_token(Token::Do)),
                     "&&" => self.tokens.push(self.add_token(Token::And)),
                     "||" => self.tokens.push(self.add_token(Token::Or)),
                     "==" => self

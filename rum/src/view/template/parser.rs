@@ -22,6 +22,7 @@ pub enum Operation {
 pub enum Expression {
     If(If),
     Print(String),
+    // Body(Vec<Expression>),
 }
 
 #[derive(Debug)]
@@ -54,7 +55,6 @@ pub enum Value {
 pub struct Parser {
     tokens: Vec<TokenWithLine>,
     code_block: bool,
-    buffer: Vec<Expression>,
 }
 
 macro_rules! next_token {
@@ -94,22 +94,22 @@ impl Parser {
         Self {
             tokens: tokens.to_vec(),
             code_block: false,
-            buffer: vec![],
         }
     }
 
     pub fn eval(mut self) -> Result<Vec<Expression>, Error> {
         let mut iter = self.tokens.into_iter();
+        let mut body = vec![];
 
         while let Some(token) = iter.next() {
             match token.token() {
                 Token::Text(string) => {
-                    self.buffer.push(Expression::Print(string));
+                    body.push(Expression::Print(string));
                 }
 
                 Token::If => {
                     let expression = Self::parse_if(&mut iter)?;
-                    self.buffer.push(expression);
+                    body.push(expression);
                 }
 
                 Token::BlockStart => (),
@@ -121,7 +121,7 @@ impl Parser {
             }
         }
 
-        Ok(self.buffer)
+        Ok(body)
     }
 
     fn parse_if(iter: &mut impl Iterator<Item = TokenWithLine>) -> Result<Expression, Error> {
@@ -182,7 +182,9 @@ impl Parser {
                         Self::parse_body(iter)?
                     }
                     Token::EndIf => vec![],
-                    _ => syntax_error!("expected else if, else, end if"),
+                    token => {
+                        syntax_error!(format!("expected else if, else, end if, got: {:?}", token))
+                    }
                 };
 
                 Ok(Expression::If(If {
@@ -206,7 +208,9 @@ impl Parser {
 
             match next.token() {
                 Token::Text(text) => body.push(Expression::Print(text)),
-                Token::BlockStart => break,
+                Token::BlockStart => (),
+                Token::If | Token::ElseIf => body.push(Self::parse_if(iter)?),
+                Token::Else | Token::EndIf => break,
                 token => syntax_error!(format!("expected print or another block, got {:?}", token)),
             }
         }
