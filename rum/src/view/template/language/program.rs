@@ -32,7 +32,7 @@ impl Program {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::{Tokenize, Tokenizer};
+    use crate::view::template::{Lexer, Tokenize};
 
     #[test]
     fn test_basic_program() -> Result<(), Error> {

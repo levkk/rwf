@@ -1,4 +1,4 @@
-use super::super::tokenizer::{Comparison, Token, Value};
+use super::super::lexer::{Token, Value};
 use super::super::Error;
 
 #[derive(Clone, Copy, PartialEq, Debug)]

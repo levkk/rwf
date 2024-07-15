@@ -1,6 +1,6 @@
 use super::{
     super::{
-        tokenizer::{Token, Value},
+        lexer::{Token, Value},
         Context,
     },
     // Constant,
@@ -51,13 +51,13 @@ impl From<Token> for Option<Term> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::Tokenizer;
+    use crate::view::template::Lexer;
     use std::collections::HashMap;
 
     #[test]
     fn test_terms() -> Result<(), Error> {
         let t1 = "<% 1 %>";
-        let tokens = Tokenizer::new(&t1).tokens()?;
+        let tokens = Lexer::new(&t1).tokens()?;
         let integer = Term::from_token(tokens[1].token());
         assert_eq!(
             integer.expect("integer").evaluate(&Context::default())?,
@@ -65,7 +65,7 @@ mod test {
         );
 
         let t2 = r#"<% "string" %>"#;
-        let tokens = Tokenizer::new(&t2).tokens()?;
+        let tokens = Lexer::new(&t2).tokens()?;
         let string = Term::from_token(tokens[1].token());
         assert_eq!(
             string.expect("string").evaluate(&Context::default())?,
@@ -73,7 +73,7 @@ mod test {
         );
 
         let t3 = "<% 1.54 %>";
-        let tokens = Tokenizer::new(&t3).tokens()?;
+        let tokens = Lexer::new(&t3).tokens()?;
         let float = Term::from_token(tokens[1].token());
         assert_eq!(
             float.expect("float").evaluate(&Context::default())?,
@@ -81,7 +81,7 @@ mod test {
         );
 
         let t4 = "<% variable %>";
-        let tokens = Tokenizer::new(&t4).tokens()?;
+        let tokens = Lexer::new(&t4).tokens()?;
         let variable = Term::from_token(tokens[1].token());
         let value = variable
             .expect("variable")

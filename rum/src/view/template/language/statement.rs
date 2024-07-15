@@ -58,6 +58,7 @@ impl Statement {
                         result.push_str(&statement.evaluate(&context)?);
                     }
                 }
+
                 Ok(result)
             }
             Statement::Print(expression) => Ok(expression.evaluate(context)?.to_string()),
@@ -143,7 +144,7 @@ impl Statement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::tokenizer::{Tokenize, Value};
+    use crate::view::template::lexer::{Tokenize, Value};
 
     #[test]
     fn test_statements_basic() -> Result<(), Error> {

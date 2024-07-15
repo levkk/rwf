@@ -2,8 +2,8 @@ pub mod context;
 pub mod error;
 pub mod language;
 // pub mod parser;
-pub mod tokenizer;
+pub mod lexer;
 
 pub use context::Context;
 pub use error::Error;
-pub use tokenizer::{Token, TokenWithContext, Tokenize, Tokenizer, Value};
+pub use lexer::{Lexer, Token, TokenWithContext, Tokenize, Value};

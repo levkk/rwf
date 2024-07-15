@@ -1,5 +1,5 @@
 use super::{
-    super::tokenizer::{Comparison, Token, TokenWithContext, Value},
+    super::lexer::{Token, TokenWithContext, Value},
     super::Context,
     super::Error,
     Op, Term,
