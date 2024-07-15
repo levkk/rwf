@@ -5,4 +5,4 @@ pub mod language;
 pub mod tokenizer;
 
 pub use error::Error;
-pub use tokenizer::{Token, TokenWithLine, Tokenizer};
+pub use tokenizer::{Token, TokenWithLine, Tokenize, Tokenizer};
