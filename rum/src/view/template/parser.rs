@@ -1,4 +1,4 @@
-use super::tokenizer::{Comparison, Token, TokenWithLine};
+use super::tokenizer::{Comparison, Token, TokenWithContext};
 use crate::model::Error;
 use std::iter::Iterator;
 use std::ops::Deref;
@@ -53,7 +53,7 @@ pub enum Value {
 
 #[derive(Debug)]
 pub struct Parser {
-    tokens: Vec<TokenWithLine>,
+    tokens: Vec<TokenWithContext>,
 }
 
 macro_rules! next_token {
@@ -69,7 +69,7 @@ macro_rules! consume_spaces {
     ($iter:expr) => {
         loop {
             match $iter.next() {
-                Some(TokenWithLine {
+                Some(TokenWithContext {
                     token: Token::Space,
                     ..
                 }) => continue,
@@ -89,7 +89,7 @@ macro_rules! syntax_error {
 }
 
 impl Parser {
-    pub fn new(tokens: &[TokenWithLine]) -> Self {
+    pub fn new(tokens: &[TokenWithContext]) -> Self {
         Self {
             tokens: tokens.to_vec(),
         }
@@ -122,7 +122,7 @@ impl Parser {
         Ok(body)
     }
 
-    fn parse_if(iter: &mut impl Iterator<Item = TokenWithLine>) -> Result<Expression, Error> {
+    fn parse_if(iter: &mut impl Iterator<Item = TokenWithContext>) -> Result<Expression, Error> {
         let next = consume_spaces!(iter);
 
         match next.token() {
@@ -197,7 +197,7 @@ impl Parser {
     }
 
     fn parse_body(
-        iter: &mut impl Iterator<Item = TokenWithLine>,
+        iter: &mut impl Iterator<Item = TokenWithContext>,
     ) -> Result<Vec<Expression>, Error> {
         let mut body = vec![];
 

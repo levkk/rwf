@@ -1,5 +1,5 @@
 use super::{
-    super::{Context, Error, Token, TokenWithLine},
+    super::{Context, Error, Token, TokenWithContext},
     Constant, Expression, Term,
 };
 use std::iter::{Iterator, Peekable};
@@ -63,7 +63,7 @@ impl Statement {
     }
 
     pub fn parse(
-        iter: &mut Peekable<impl Iterator<Item = TokenWithLine>>,
+        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Statement, Error> {
         loop {
             let next = iter.next().ok_or(Error::Eof)?;

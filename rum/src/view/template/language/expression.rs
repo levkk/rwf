@@ -1,5 +1,5 @@
 use super::{
-    super::tokenizer::{Comparison, Token, TokenWithLine, Value},
+    super::tokenizer::{Comparison, Token, TokenWithContext, Value},
     super::Context,
     super::Error,
     Constant, Op, Term,
@@ -50,7 +50,9 @@ impl Expression {
         }
     }
 
-    pub fn parse(iter: &mut Peekable<impl Iterator<Item = TokenWithLine>>) -> Result<Self, Error> {
+    pub fn parse(
+        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
+    ) -> Result<Self, Error> {
         loop {
             let next = iter.next().ok_or(Error::Eof)?;
 

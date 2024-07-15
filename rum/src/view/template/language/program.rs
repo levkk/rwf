@@ -1,4 +1,4 @@
-use super::super::{Context, Error, TokenWithLine};
+use super::super::{Context, Error, TokenWithContext};
 use super::Statement;
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ impl Program {
         Ok(result)
     }
 
-    pub fn parse(tokens: Vec<TokenWithLine>) -> Result<Self, Error> {
+    pub fn parse(tokens: Vec<TokenWithContext>) -> Result<Self, Error> {
         let mut iter = tokens.into_iter().peekable();
         let mut statements = vec![];
 

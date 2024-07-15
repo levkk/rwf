@@ -6,4 +6,4 @@ pub mod tokenizer;
 
 pub use context::Context;
 pub use error::Error;
-pub use tokenizer::{Token, TokenWithLine, Tokenize, Tokenizer, Value};
+pub use tokenizer::{Token, TokenWithContext, Tokenize, Tokenizer, Value};

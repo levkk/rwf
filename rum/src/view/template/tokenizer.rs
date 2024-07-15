@@ -1,12 +1,12 @@
 use crate::view::template::Error;
 
 #[derive(Debug, Clone)]
-pub struct TokenWithLine {
+pub struct TokenWithContext {
     pub token: Token,
     pub line: usize,
 }
 
-impl std::ops::Deref for TokenWithLine {
+impl std::ops::Deref for TokenWithContext {
     type Target = Token;
 
     fn deref(&self) -> &Self::Target {
@@ -14,7 +14,7 @@ impl std::ops::Deref for TokenWithLine {
     }
 }
 
-impl TokenWithLine {
+impl TokenWithContext {
     pub fn new(token: Token, line: usize) -> Self {
         Self { token, line }
     }
@@ -105,7 +105,7 @@ pub enum Comparison {
 
 pub struct Tokenizer<'a> {
     source: &'a str,
-    tokens: Vec<TokenWithLine>,
+    tokens: Vec<TokenWithContext>,
     buffer: String,
     code_block: bool,
     number: bool,
@@ -124,7 +124,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    pub fn tokens(mut self) -> Result<Vec<TokenWithLine>, Error> {
+    pub fn tokens(mut self) -> Result<Vec<TokenWithContext>, Error> {
         let mut iter = self.source.chars();
 
         while let Some(c) = iter.next() {
@@ -361,23 +361,23 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn add_token(&self, token: Token) -> TokenWithLine {
-        TokenWithLine::new(token, self.line)
+    fn add_token(&self, token: Token) -> TokenWithContext {
+        TokenWithContext::new(token, self.line)
     }
 }
 
 pub trait Tokenize {
-    fn tokenize(&self) -> Result<Vec<TokenWithLine>, Error>;
+    fn tokenize(&self) -> Result<Vec<TokenWithContext>, Error>;
 }
 
 impl Tokenize for &str {
-    fn tokenize(&self) -> Result<Vec<TokenWithLine>, Error> {
+    fn tokenize(&self) -> Result<Vec<TokenWithContext>, Error> {
         Tokenizer::new(self).tokens()
     }
 }
 
 impl Tokenize for String {
-    fn tokenize(&self) -> Result<Vec<TokenWithLine>, Error> {
+    fn tokenize(&self) -> Result<Vec<TokenWithContext>, Error> {
         Tokenizer::new(self).tokens()
     }
 }

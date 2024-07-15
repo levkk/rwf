@@ -1,10 +1,10 @@
-use super::TokenWithLine;
+use super::TokenWithContext;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("syntax error")]
-    Syntax(TokenWithLine),
+    Syntax(TokenWithContext),
 
     #[error("eof")]
     Eof,
