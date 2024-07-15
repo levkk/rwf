@@ -31,7 +31,7 @@ pub enum Statement {
 
     For {
         variable: Term,
-        list: Value,
+        list: Expression,
         body: Vec<Statement>,
     },
 
@@ -62,6 +62,37 @@ impl Statement {
                 Ok(result)
             }
             Statement::Print(expression) => Ok(expression.evaluate(context)?.to_string()),
+            Statement::For {
+                variable,
+                list,
+                body,
+            } => {
+                let mut result = String::new();
+                let list = list.evaluate(context)?;
+                let mut for_context = context.clone();
+                match list {
+                    Value::List(values) => {
+                        for value in values {
+                            match variable {
+                                // Convert the variable to a value from the list.
+                                Term::Variable(name) => {
+                                    for_context.set(&name, &value);
+                                }
+                                Term::Constant(_) => (), // Looks like just a loop with no variables
+                                _ => todo!(),            // Function call is interesting
+                            };
+
+                            for statement in body {
+                                result.push_str(&statement.evaluate(&for_context)?);
+                            }
+                        }
+                    }
+
+                    _ => return Err(Error::Syntax(TokenWithContext::new(Token::End, 0, 0))),
+                }
+
+                Ok(result)
+            }
             statement => todo!("evaluating {:?}", statement),
         }
     }
@@ -80,6 +111,7 @@ impl Statement {
                 Token::BlockStart => (),
                 Token::BlockStartPrint => {
                     let expression = Expression::parse(iter)?;
+                    block_end!(iter);
                     return Ok(Statement::Print(expression));
                 }
                 Token::Else => {
@@ -134,7 +166,45 @@ impl Statement {
                         else_if,
                     });
                 }
-                Token::For => todo!(),
+
+                Token::For => {
+                    let variable = Expression::parse(iter)?;
+                    let term = match variable {
+                        Expression::Term { term } => term,
+                        _ => return Err(Error::Syntax(next)),
+                    };
+
+                    let in_ = iter.next().ok_or(Error::Eof)?;
+
+                    match in_.token() {
+                        Token::In => (),
+                        _ => return Err(Error::Syntax(next)),
+                    }
+
+                    let list = Expression::parse(iter)?;
+
+                    block_end!(iter);
+
+                    let mut body = vec![];
+
+                    loop {
+                        let statement = Statement::parse(iter)?;
+
+                        match statement {
+                            Statement::End => {
+                                block_end!(iter);
+                                break;
+                            }
+                            statement => body.push(statement),
+                        }
+                    }
+
+                    return Ok(Statement::For {
+                        variable: term,
+                        list,
+                        body,
+                    });
+                }
                 _ => return Err(Error::Syntax(next)),
             }
         }
@@ -183,6 +253,23 @@ mod test {
         let ast = Statement::parse(&mut t1.tokenize()?.into_iter().peekable())?;
         let result = ast.evaluate(&context)?;
         assert_eq!(result, "7");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_for_loop() -> Result<(), Error> {
+        let t1 = r#"<% for a in [1, "hello", 3.45, variable] %><li><%= a %></li><% end %>"#
+            .tokenize()?;
+        let mut context = Context::default();
+        context.set("variable", &Value::String("variable value".into()));
+        let ast = Statement::parse(&mut t1.into_iter().peekable())?;
+        let result = ast.evaluate(&context)?;
+
+        assert_eq!(
+            result,
+            "<li>1</li><li>hello</li><li>3.45</li><li>variable value</li>"
+        );
 
         Ok(())
     }

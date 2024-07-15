@@ -9,7 +9,7 @@ use std::iter::{Iterator, Peekable};
 
 /// An expression, like `5 == 6` or `logged_in == false`,
 /// which when evaluated produces a single value, e.g. `true`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     // Standard `5 + 6`-style expression.
     // It's recusive, so you can have something like `(5 + 6) / (1 - 5)`.
@@ -29,6 +29,15 @@ pub enum Expression {
     // the variable is set to in the context.
     Term {
         term: Term,
+    },
+
+    // A list of expressions, e.g.
+    // `[1, 2, variable, "hello world"]`
+    //
+    // The list is dynamically evaluated at runtime, so it can contain variables
+    // and constants, as long as the variable is in scope.
+    List {
+        terms: Vec<Expression>,
     },
 }
 
@@ -56,6 +65,13 @@ impl Expression {
                 let right = right.evaluate(context)?;
                 op.evaluate_binary(&left, &right)
             }
+            Expression::List { terms } => {
+                let mut list = vec![];
+                for term in terms {
+                    list.push(term.evaluate(context)?);
+                }
+                Ok(Value::List(list))
+            }
             _ => todo!(),
         }
     }
@@ -77,10 +93,11 @@ impl Expression {
                 Token::BlockStart | Token::BlockEnd => (),
                 Token::Variable(name) => {
                     let left = Self::variable(name);
-                    let next = iter.next().ok_or(Error::Eof)?;
+                    let next = iter.peek().ok_or(Error::Eof)?;
 
                     match Op::from_token(next.token()) {
                         Some(op) => {
+                            let _ = iter.next().ok_or(Error::Eof)?;
                             let right = Expression::parse(iter)?;
                             return Ok(Expression::Binary {
                                 left: Box::new(left),
@@ -94,9 +111,10 @@ impl Expression {
                 }
                 Token::Value(value) => {
                     let left = Self::constant(value);
-                    let next = iter.next().ok_or(Error::Eof)?;
+                    let next = iter.peek().ok_or(Error::Eof)?;
                     match Op::from_token(next.token()) {
                         Some(op) => {
+                            let _ = iter.next().ok_or(Error::Eof)?;
                             let right = Expression::parse(iter)?;
                             return Ok(Expression::Binary {
                                 left: Box::new(left),
@@ -107,6 +125,23 @@ impl Expression {
 
                         None => return Ok(left),
                     }
+                }
+
+                Token::SquareBracketStart => {
+                    let mut terms = vec![];
+
+                    loop {
+                        let next = iter.next().ok_or(Error::Eof)?;
+                        match next.token() {
+                            Token::SquareBracketEnd => break,
+                            Token::Comma => continue,
+                            Token::Value(value) => terms.push(Expression::constant(value)),
+                            Token::Variable(variable) => terms.push(Expression::variable(variable)),
+                            _ => return Err(Error::Syntax(next)),
+                        }
+                    }
+
+                    return Ok(Expression::List { terms });
                 }
                 _ => return Err(Error::Syntax(next)),
             }
@@ -130,6 +165,15 @@ mod test {
         let expr = Expression::parse(&mut t2.into_iter().peekable())?;
         let value = expr.evaluate(&Context::default())?;
         assert_eq!(value, Value::Boolean(true));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_list() -> Result<(), Error> {
+        let t1 = r#"<% [1, 2, "hello", 3.13, variable] %>"#.tokenize()?;
+        let ast = Expression::parse(&mut t1.into_iter().peekable())?;
+        println!("{:?}", ast);
 
         Ok(())
     }

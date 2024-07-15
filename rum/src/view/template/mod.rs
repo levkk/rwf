@@ -1,7 +1,6 @@
 pub mod context;
 pub mod error;
 pub mod language;
-// pub mod parser;
 pub mod lexer;
 
 pub use context::Context;

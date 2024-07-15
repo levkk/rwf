@@ -42,4 +42,7 @@ pub enum Token {
     GreaterEqualThan,
     LessThan,
     LessEqualThan,
+    SquareBracketStart,
+    SquareBracketEnd,
+    Comma,
 }

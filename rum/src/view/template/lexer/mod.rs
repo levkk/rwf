@@ -309,6 +309,33 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
+                '[' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::SquareBracketStart));
+                    } else {
+                        self.buffer.push(c);
+                    }
+                }
+
+                ',' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::Comma));
+                    } else {
+                        self.buffer.push(c);
+                    }
+                }
+
+                ']' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::SquareBracketEnd));
+                    } else {
+                        self.buffer.push(c);
+                    }
+                }
+
                 c => self.buffer.push(c),
             }
         }

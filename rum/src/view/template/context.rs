@@ -1,7 +1,7 @@
 use crate::view::template::Value;
 use std::collections::HashMap;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Context {
     values: HashMap<String, Value>,
 }
