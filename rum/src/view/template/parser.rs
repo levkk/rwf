@@ -54,7 +54,6 @@ pub enum Value {
 #[derive(Debug)]
 pub struct Parser {
     tokens: Vec<TokenWithLine>,
-    code_block: bool,
 }
 
 macro_rules! next_token {
@@ -93,7 +92,6 @@ impl Parser {
     pub fn new(tokens: &[TokenWithLine]) -> Self {
         Self {
             tokens: tokens.to_vec(),
-            code_block: false,
         }
     }
 
@@ -114,7 +112,7 @@ impl Parser {
 
                 Token::BlockStart => (),
                 Token::Space => (),
-                Token::EndIf => (),
+                Token::End => (),
                 Token::BlockEnd => (),
 
                 token => syntax_error!(format!("unexpected token {:?}", token)),
@@ -181,7 +179,7 @@ impl Parser {
 
                         Self::parse_body(iter)?
                     }
-                    Token::EndIf => vec![],
+                    Token::End => vec![],
                     token => {
                         syntax_error!(format!("expected else if, else, end if, got: {:?}", token))
                     }

@@ -11,8 +11,25 @@ pub enum Op {
     Mult,
     Div,
     Mod,
-    Eq,
-    Neq,
+    Equals,
+    NotEquals,
+    GreaterThan,
+    GreaterEqualThan,
+    LessThan,
+    LessEqualThan,
+}
+
+impl Op {
+    pub fn from_token(token: Token) -> Option<Self> {
+        Option::<Self>::from(token)
+    }
+
+    pub fn binary(&self) -> bool {
+        match self {
+            Op::Not => false,
+            _ => true,
+        }
+    }
 }
 
 impl From<Token> for Option<Op> {
@@ -21,7 +38,12 @@ impl From<Token> for Option<Op> {
             Token::Not => Op::Not,
             Token::And => Op::And,
             Token::Or => Op::Or,
-            Token::Comparison(Comparison::Equals) => Op::Eq,
+            Token::Equals => Op::Equals,
+            Token::NotEquals => Op::NotEquals,
+            Token::GreaterThan => Op::GreaterThan,
+            Token::GreaterEqualThan => Op::GreaterEqualThan,
+            Token::LessThan => Op::LessThan,
+            Token::LessEqualThan => Op::LessEqualThan,
             _ => return None,
         })
     }
