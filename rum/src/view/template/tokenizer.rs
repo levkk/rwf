@@ -4,6 +4,7 @@ use crate::view::template::Error;
 pub struct TokenWithContext {
     pub token: Token,
     pub line: usize,
+    pub column: usize,
 }
 
 impl std::ops::Deref for TokenWithContext {
@@ -15,12 +16,20 @@ impl std::ops::Deref for TokenWithContext {
 }
 
 impl TokenWithContext {
-    pub fn new(token: Token, line: usize) -> Self {
-        Self { token, line }
+    pub fn new(token: Token, line: usize, column: usize) -> Self {
+        Self {
+            token,
+            line,
+            column,
+        }
     }
 
     pub fn line(&self) -> usize {
         self.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.column
     }
 
     pub fn token(&self) -> Token {
@@ -110,6 +119,7 @@ pub struct Tokenizer<'a> {
     code_block: bool,
     number: bool,
     line: usize,
+    column: usize,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -121,6 +131,7 @@ impl<'a> Tokenizer<'a> {
             code_block: false,
             number: false,
             line: 1,
+            column: 1,
         }
     }
 
@@ -128,8 +139,12 @@ impl<'a> Tokenizer<'a> {
         let mut iter = self.source.chars();
 
         while let Some(c) = iter.next() {
+            self.column += 1;
             match c {
-                '\n' => self.line += 1,
+                '\n' => {
+                    self.line += 1;
+                    self.column = 1;
+                }
                 '<' => {
                     let n = iter.next();
 
@@ -362,7 +377,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn add_token(&self, token: Token) -> TokenWithContext {
-        TokenWithContext::new(token, self.line)
+        TokenWithContext::new(token, self.line, self.column)
     }
 }
 
