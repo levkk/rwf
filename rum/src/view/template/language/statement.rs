@@ -60,6 +60,7 @@ impl Statement {
                 }
                 Ok(result)
             }
+            Statement::Print(expression) => Ok(expression.evaluate(context)?.to_string()),
             statement => todo!("evaluating {:?}", statement),
         }
     }
@@ -76,6 +77,10 @@ impl Statement {
                 }
                 Token::Text(string) => return Ok(Statement::PrintText(string)),
                 Token::BlockStart => (),
+                Token::BlockStartPrint => {
+                    let expression = Expression::parse(iter)?;
+                    return Ok(Statement::Print(expression));
+                }
                 Token::Else => {
                     block_end!(iter);
                     return Ok(Statement::Else);
@@ -164,6 +169,19 @@ mod test {
         context.set("variable", &Value::Integer(7));
         let result = ast.evaluate(&context)?;
         assert_eq!(result, "neither");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_print_expression() -> Result<(), Error> {
+        let t1 = "<%= variable %>";
+        let mut context = Context::default();
+        context.set("variable", &Value::Integer(7));
+
+        let ast = Statement::parse(&mut t1.tokenize()?.into_iter().peekable())?;
+        let result = ast.evaluate(&context)?;
+        assert_eq!(result, "7");
 
         Ok(())
     }

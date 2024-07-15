@@ -92,9 +92,6 @@ impl Expression {
                         None => return Ok(left),
                     }
                 }
-                Token::Equals => {
-                    let right = Expression::parse(iter)?;
-                }
                 _ => return Err(Error::Syntax(next)),
             }
         }
