@@ -1,5 +1,6 @@
 use super::Value;
 
+/// A template language token, e.g. `if` or `for`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // e.g. `<html><body></body></html>`

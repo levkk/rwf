@@ -1,3 +1,4 @@
+/// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone, PartialOrd)]
 pub enum Value {
     Integer(i64),
@@ -31,6 +32,11 @@ impl std::fmt::Display for Value {
 }
 
 impl Value {
+    /// If the value, when evaluated in the context of a `if` statement expression
+    /// would result in the `if` statement being executed.
+    ///
+    /// e.g. `<% if 5 %>five is true<% end %>`
+    /// would output "five is true" since `5` is truthy.
     pub fn truthy(&self) -> bool {
         match self {
             Value::Boolean(b) => *b,
