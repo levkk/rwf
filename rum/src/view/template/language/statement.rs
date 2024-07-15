@@ -58,7 +58,7 @@ impl Statement {
                 }
                 Ok(result)
             }
-            _ => todo!(),
+            statement => todo!("evaluating {:?}", statement),
         }
     }
 
@@ -92,24 +92,20 @@ impl Statement {
                                     else_body,
                                 })
                             }
-                            Statement::Else => {
-                                if_body.push(statement);
+                            Statement::Else => loop {
+                                let statement = Statement::parse(iter)?;
 
-                                loop {
-                                    let statement = Statement::parse(iter)?;
-
-                                    match statement {
-                                        Statement::End => {
-                                            return Ok(Statement::If {
-                                                expression,
-                                                if_body,
-                                                else_body,
-                                            })
-                                        }
-                                        statement => else_body.push(statement),
+                                match statement {
+                                    Statement::End => {
+                                        return Ok(Statement::If {
+                                            expression,
+                                            if_body,
+                                            else_body,
+                                        })
                                     }
+                                    statement => else_body.push(statement),
                                 }
-                            }
+                            },
                             statement => if_body.push(statement),
                         }
                     }
@@ -130,32 +126,19 @@ impl Statement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::tokenizer::Tokenize;
+    use crate::view::template::tokenizer::{Tokenize, Value};
 
     #[test]
     fn test_statements_basic() -> Result<(), Error> {
-        let t1 = r#"<% if 1 == 2 %>
-            hello world
-            <% if variable == 5 %>
-                indeed
-            <% else %>
-                wrong
-            <% end %>
-        <% end %>
-            "#
-        .tokenize()?;
+        let t1 = r#"<% if variable == 5 %>right<% else %>wrong<% end %>"#.tokenize()?;
 
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
-        println!("{:?}", ast);
+        let mut context = Context::default();
+        context.set("variable", &Value::Integer(5));
+
+        let value = ast.evaluate(&context)?;
+        assert!(value == "right");
 
         Ok(())
     }
 }
-
-// <% if 1 %>
-//   html
-//   value
-//   <% if 2 %>
-//     value
-//   <% endif %>
-// <% endif %>
