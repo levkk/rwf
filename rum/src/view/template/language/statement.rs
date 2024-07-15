@@ -23,6 +23,7 @@ pub enum Statement {
         expression: Expression,
         if_body: Vec<Statement>,
         else_body: Vec<Statement>,
+        else_if: bool,
     },
 
     Else,
@@ -45,6 +46,7 @@ impl Statement {
                 expression,
                 if_body,
                 else_body,
+                ..
             } => {
                 let mut result = String::new();
                 if expression.evaluate(&context)?.truthy() {
@@ -79,6 +81,7 @@ impl Statement {
                     return Ok(Statement::Else);
                 }
                 Token::If | Token::ElseIf => {
+                    let else_if = next.token() == Token::ElseIf;
                     let (mut if_body, mut else_body) = (vec![], vec![]);
                     let expression = Expression::parse(iter)?;
 
@@ -90,8 +93,15 @@ impl Statement {
                                     expression,
                                     if_body,
                                     else_body,
+                                    else_if,
                                 })
                             }
+
+                            Statement::If { else_if: true, .. } => {
+                                else_body.push(statement);
+                                break;
+                            }
+
                             Statement::Else => loop {
                                 let statement = Statement::parse(iter)?;
 
@@ -101,6 +111,7 @@ impl Statement {
                                             expression,
                                             if_body,
                                             else_body,
+                                            else_if,
                                         })
                                     }
                                     statement => else_body.push(statement),
@@ -114,6 +125,7 @@ impl Statement {
                         expression,
                         if_body,
                         else_body,
+                        else_if,
                     });
                 }
                 Token::For => todo!(),
@@ -138,6 +150,20 @@ mod test {
 
         let value = ast.evaluate(&context)?;
         assert!(value == "right");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_statements_if_else() -> Result<(), Error> {
+        let t1 =
+            "<% if variable == 5  %>right<% elsif variable == 6 %>wrong<% else %>neither<% end %>"
+                .tokenize()?;
+        let ast = Statement::parse(&mut t1.into_iter().peekable())?;
+        let mut context = Context::default();
+        context.set("variable", &Value::Integer(7));
+        let result = ast.evaluate(&context)?;
+        assert_eq!(result, "neither");
 
         Ok(())
     }
