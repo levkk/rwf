@@ -28,11 +28,21 @@ impl TokenWithLine {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, PartialOrd)]
 pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
+    Boolean(bool),
+}
+
+impl Value {
+    pub fn truthy(&self) -> bool {
+        match self {
+            Value::Boolean(b) => *b,
+            _ => true,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -172,8 +182,24 @@ impl<'a> Tokenizer<'a> {
 
                 '!' => {
                     if self.code_block {
-                        self.drain_buffer();
-                        self.tokens.push(self.add_token(Token::Not));
+                        let next = iter.next();
+                        match next {
+                            Some('=') => {
+                                self.drain_buffer();
+                                self.tokens.push(self.add_token(Token::NotEquals));
+                            }
+
+                            Some(' ') => {
+                                self.tokens.push(self.add_token(Token::Space));
+                            }
+
+                            Some(c) => {
+                                self.tokens.push(self.add_token(Token::Not));
+                                self.buffer.push(c);
+                            }
+
+                            None => return Err(Error::Eof),
+                        }
                     } else {
                         self.buffer.push('!');
                     }

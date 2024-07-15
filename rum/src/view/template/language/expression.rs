@@ -1,5 +1,6 @@
 use super::{
     super::tokenizer::{Comparison, Token, TokenWithLine, Value},
+    super::Context,
     super::Error,
     Constant, Op, Term,
 };
@@ -37,8 +38,16 @@ impl Expression {
         }
     }
 
-    pub fn evaluate(&self) -> Result<Value, Error> {
-        todo!()
+    pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
+        match self {
+            Expression::Term { term } => term.evaluate(context),
+            Expression::Binary { left, op, right } => {
+                let left = left.evaluate(context)?;
+                let right = right.evaluate(context)?;
+                op.evaluate(&left, &right)
+            }
+            _ => todo!(),
+        }
     }
 
     pub fn parse(iter: &mut Peekable<impl Iterator<Item = TokenWithLine>>) -> Result<Self, Error> {
@@ -92,14 +101,20 @@ impl Expression {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::tokenizer::Tokenize;
+    use super::super::super::{Context, Tokenize};
     use super::*;
 
     #[test]
     fn test_if_const() -> Result<(), Error> {
         let t1 = r#"<% 1 == 2 %>"#.tokenize()?;
         let expr = Expression::parse(&mut t1.into_iter().peekable())?;
-        println!("{:?}", expr);
+        let value = expr.evaluate(&Context::default())?;
+        assert_eq!(value, Value::Boolean(false));
+
+        let t2 = "<% 1 == 1 %>".tokenize()?;
+        let expr = Expression::parse(&mut t2.into_iter().peekable())?;
+        let value = expr.evaluate(&Context::default())?;
+        assert_eq!(value, Value::Boolean(true));
 
         Ok(())
     }

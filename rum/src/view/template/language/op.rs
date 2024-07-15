@@ -1,5 +1,5 @@
-use super::super::tokenizer::{Comparison, Token};
-use crate::model::error::Error;
+use super::super::tokenizer::{Comparison, Token, Value};
+use super::super::Error;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Op {
@@ -28,6 +28,18 @@ impl Op {
         match self {
             Op::Not => false,
             _ => true,
+        }
+    }
+
+    pub fn evaluate(&self, left: &Value, right: &Value) -> Result<Value, Error> {
+        match self {
+            Op::Equals => Ok(Value::Boolean(left == right)),
+            Op::NotEquals => Ok(Value::Boolean(left != right)),
+            Op::LessThan => Ok(Value::Boolean(left < right)),
+            Op::LessEqualThan => Ok(Value::Boolean(left <= right)),
+            Op::GreaterThan => Ok(Value::Boolean(left > right)),
+            Op::GreaterEqualThan => Ok(Value::Boolean(left >= right)),
+            _ => todo!(),
         }
     }
 }

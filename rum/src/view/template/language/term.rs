@@ -1,5 +1,8 @@
 use super::{
-    super::tokenizer::{Token, Value},
+    super::{
+        tokenizer::{Token, Value},
+        Context,
+    },
     Constant,
 };
 use crate::view::template::error::Error;
@@ -22,6 +25,16 @@ impl Term {
 
     pub fn variable(name: String) -> Self {
         Term::Variable(name)
+    }
+
+    pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
+        match self {
+            Term::Constant(value) => Ok(value.clone()),
+            Term::Variable(name) => context
+                .get(&name)
+                .ok_or(Error::UndefinedVariable(name.clone())),
+            _ => todo!(),
+        }
     }
 }
 

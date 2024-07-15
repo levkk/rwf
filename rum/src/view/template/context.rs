@@ -1,8 +1,11 @@
+use crate::view::template::Value;
 use std::collections::HashMap;
 
-#[derive(Debug)]
-pub enum Context {
-    Hash(HashMap<String, Context>),
-    ValueString(String),
-    ValueInteger(i64),
+#[derive(Debug, Default)]
+pub struct Context {}
+
+impl Context {
+    pub fn get(&self, key: &str) -> Option<Value> {
+        todo!("get {}", key)
+    }
 }

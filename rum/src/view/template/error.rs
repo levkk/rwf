@@ -8,4 +8,7 @@ pub enum Error {
 
     #[error("eof")]
     Eof,
+
+    #[error("undefined variable: {0}")]
+    UndefinedVariable(String),
 }
