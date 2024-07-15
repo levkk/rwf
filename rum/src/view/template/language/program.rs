@@ -1,7 +1,7 @@
 use super::super::{Context, Error, TokenWithContext};
 use super::Statement;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     statements: Vec<Statement>,
 }
@@ -42,6 +42,22 @@ mod test {
         let program = Program::parse(program)?;
         let output = program.evaluate(&Context::default())?;
         assert_eq!("<html><body>not so much</body></html>", output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_print() -> Result<(), Error> {
+        let program = r#"
+            <html>
+                <head>
+                    <title><%= 5 %></title>
+                </head>
+            </html>
+        "#
+        .tokenize()?;
+        let ast = Program::parse(program)?;
+        println!("{:?}", ast);
+
         Ok(())
     }
 }

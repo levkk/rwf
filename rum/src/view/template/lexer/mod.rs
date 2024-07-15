@@ -2,7 +2,7 @@ pub mod token;
 pub mod value;
 
 pub use token::Token;
-pub use value::Value;
+pub use value::{ToValue, Value};
 
 use super::Error;
 
@@ -11,6 +11,16 @@ pub struct TokenWithContext {
     token: Token,
     line: usize,
     column: usize,
+}
+
+impl std::fmt::Display for TokenWithContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?} (line: {}, column: {})",
+            self.token, self.line, self.column
+        )
+    }
 }
 
 impl TokenWithContext {

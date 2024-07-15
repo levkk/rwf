@@ -1,4 +1,4 @@
-use crate::view::template::Value;
+use crate::view::template::{Error, ToValue, Value};
 use std::collections::HashMap;
 
 #[derive(Debug, Default, Clone)]
@@ -15,8 +15,8 @@ impl Context {
         self.values.get(key).cloned()
     }
 
-    pub fn set(&mut self, key: &str, value: &Value) -> &mut Self {
-        self.values.insert(key.to_string(), value.clone());
-        self
+    pub fn set(&mut self, key: &str, value: impl ToValue) -> Result<&mut Self, Error> {
+        self.values.insert(key.to_string(), value.to_value()?);
+        Ok(self)
     }
 }

@@ -1,3 +1,5 @@
+use super::Error;
+
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone, PartialOrd)]
 pub enum Value {
@@ -43,5 +45,92 @@ impl Value {
             Value::Null => false,
             _ => true,
         }
+    }
+}
+
+pub trait ToValue: Clone {
+    fn to_value(&self) -> Result<Value, Error>;
+}
+
+impl ToValue for String {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(Value::String(self.clone()))
+    }
+}
+
+impl ToValue for &str {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(Value::String(self.to_string()))
+    }
+}
+
+macro_rules! impl_integer {
+    ($ty:ty) => {
+        impl ToValue for $ty {
+            fn to_value(&self) -> Result<Value, Error> {
+                Ok(Value::Integer(*self as i64))
+            }
+        }
+    };
+}
+
+impl_integer!(i64);
+impl_integer!(i32);
+impl_integer!(i16);
+impl_integer!(i8);
+impl_integer!(u64); // Could very much overflow
+impl_integer!(u32);
+impl_integer!(u16);
+impl_integer!(u8);
+
+impl ToValue for f64 {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(Value::Float(*self))
+    }
+}
+
+impl ToValue for f32 {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(Value::Float(*self as f64))
+    }
+}
+
+impl ToValue for bool {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(Value::Boolean(*self))
+    }
+}
+
+macro_rules! impl_list {
+    ($ty:ty) => {
+        impl ToValue for Vec<$ty> {
+            fn to_value(&self) -> Result<Value, Error> {
+                let mut values = vec![];
+                for v in self.iter() {
+                    values.push(v.to_value()?);
+                }
+                Ok(Value::List(values))
+            }
+        }
+
+        impl ToValue for &[$ty] {
+            fn to_value(&self) -> Result<Value, Error> {
+                let mut values = vec![];
+                for v in self.iter() {
+                    values.push(v.to_value()?);
+                }
+                Ok(Value::List(values))
+            }
+        }
+    };
+}
+
+impl_list!(f64);
+impl_list!(i64);
+impl_list!(&str);
+
+impl ToValue for Value {
+    fn to_value(&self) -> Result<Value, Error> {
+        Ok(self.clone())
     }
 }

@@ -4,18 +4,25 @@ use super::{
 };
 use std::iter::{Iterator, Peekable};
 
-macro_rules! block_end {
-    ($iter:expr) => {
-        while let Some(token) = $iter.next() {
-            match token.token() {
-                Token::BlockEnd => break,
-                _ => return Err(Error::Syntax(token)),
-            }
+macro_rules! expect {
+    ($got:expr, $expected:expr) => {
+        if $got.token() != $expected {
+            println!("{}:{}", file!(), line!());
+            return Err(Error::WrongToken($got, $expected));
         }
     };
 }
 
-#[derive(Debug)]
+macro_rules! block_end {
+    ($iter:expr) => {
+        while let Some(token) = $iter.next() {
+            expect!(token, Token::BlockEnd);
+            break;
+        }
+    };
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     // e.g. `<%= variable %>`
     Print(Expression),
@@ -80,7 +87,7 @@ impl Statement {
                             match variable {
                                 // Convert the variable to a value from the list.
                                 Term::Variable(name) => {
-                                    for_context.set(&name, &value);
+                                    for_context.set(&name, value)?;
                                 }
                                 Term::Constant(_) => (), // Looks like just a loop with no variables
                                 _ => todo!(),            // Function call is interesting
@@ -179,14 +186,10 @@ impl Statement {
                     };
 
                     let in_ = iter.next().ok_or(Error::Eof)?;
+                    expect!(in_, Token::In);
 
-                    match in_.token() {
-                        Token::In => (),
-                        _ => return Err(Error::Syntax(next)),
-                    }
-
+                    let p = iter.peek().unwrap();
                     let list = Expression::parse(iter)?;
-
                     block_end!(iter);
 
                     let mut body = vec![];
@@ -196,7 +199,6 @@ impl Statement {
 
                         match statement {
                             Statement::End => {
-                                block_end!(iter);
                                 break;
                             }
                             statement => body.push(statement),
@@ -226,7 +228,7 @@ mod test {
 
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
         let mut context = Context::default();
-        context.set("variable", &Value::Integer(5));
+        context.set("variable", Value::Integer(5));
 
         let value = ast.evaluate(&context)?;
         assert!(value == "right");
@@ -241,7 +243,7 @@ mod test {
                 .tokenize()?;
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
         let mut context = Context::default();
-        context.set("variable", &Value::Integer(7));
+        context.set("variable", Value::Integer(7));
         let result = ast.evaluate(&context)?;
         assert_eq!(result, "neither");
 
@@ -252,7 +254,7 @@ mod test {
     fn test_print_expression() -> Result<(), Error> {
         let t1 = "<%= variable %>";
         let mut context = Context::default();
-        context.set("variable", &Value::Integer(7));
+        context.set("variable", Value::Integer(7));
 
         let ast = Statement::parse(&mut t1.tokenize()?.into_iter().peekable())?;
         let result = ast.evaluate(&context)?;
@@ -266,7 +268,7 @@ mod test {
         let t1 = r#"<% for a in [1, "hello", 3.45, variable] %><li><%= a %></li><% end %>"#
             .tokenize()?;
         let mut context = Context::default();
-        context.set("variable", &Value::String("variable value".into()));
+        context.set("variable", Value::String("variable value".into()));
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
         let result = ast.evaluate(&context)?;
 

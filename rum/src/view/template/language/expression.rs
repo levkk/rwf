@@ -90,7 +90,6 @@ impl Expression {
             match next.token() {
                 // Helps with testing, but these tokens shouldn't be passed
                 // to the expression parser.
-                Token::BlockStart | Token::BlockEnd => (),
                 Token::Variable(name) => {
                     let left = Self::variable(name);
                     let next = iter.peek().ok_or(Error::Eof)?;
@@ -138,13 +137,13 @@ impl Expression {
                             Token::Comma => continue,
                             Token::Value(value) => terms.push(Expression::constant(value)),
                             Token::Variable(variable) => terms.push(Expression::variable(variable)),
-                            _ => return Err(Error::Syntax(next)),
+                            _ => return Err(Error::ExpressionSyntax(next)),
                         }
                     }
 
                     return Ok(Expression::List { terms });
                 }
-                _ => return Err(Error::Syntax(next)),
+                _ => return Err(Error::ExpressionSyntax(next.clone())),
             }
         }
     }
@@ -173,8 +172,11 @@ mod test {
     #[test]
     fn test_list() -> Result<(), Error> {
         let t1 = r#"<% [1, 2, "hello", 3.13, variable] %>"#.tokenize()?;
-        let ast = Expression::parse(&mut t1.into_iter().peekable())?;
-        println!("{:?}", ast);
+        let mut iter = t1[1..].to_vec().into_iter().peekable();
+        let ast = Expression::parse(&mut iter)?;
+
+        assert_eq!(iter.next().unwrap().token(), Token::BlockEnd);
+        assert!(iter.next().is_none());
 
         Ok(())
     }

@@ -1,6 +1,8 @@
 use rum::model::{Error, Model, Pool, Query, Scope, ToSql};
+use rum::view::template::{Context, Template};
 use rum_macros::Model;
 
+use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Clone, Model, Debug, PartialEq)]
@@ -53,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fmt()
         .with_env_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
+                .with_default_directive(LevelFilter::DEBUG.into())
                 .from_env_lossy(),
         )
         .finish()
@@ -196,10 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(exists, true);
 
-    let count = User::all()
-        .filter("id", 2)
-        .count(&conn)
-        .await?;
+    let count = User::all().filter("id", 2).count(&conn).await?;
 
     assert_eq!(count, 1);
 
@@ -209,6 +208,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(raw.id, 2);
 
     conn.rollback().await?;
+
+    let template = Template::new("templates/test.html").await?;
+    let mut context = Context::default();
+    context.set("title", "hello")?;
+    context.set("description", "world")?;
+    context.set("vars", vec!["hello", "world"])?;
+    let start = Instant::now();
+    let result = template.render(&context)?;
+    println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
     Ok(())
 }
