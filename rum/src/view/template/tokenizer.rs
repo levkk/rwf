@@ -34,6 +34,7 @@ pub enum Value {
     Float(f64),
     String(String),
     Boolean(bool),
+    List(Vec<Value>),
 }
 
 impl Value {

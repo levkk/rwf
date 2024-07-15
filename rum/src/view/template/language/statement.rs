@@ -1,5 +1,5 @@
 use super::{
-    super::{Error, Token, TokenWithLine},
+    super::{Context, Error, Token, TokenWithLine},
     Constant, Expression, Term,
 };
 use std::iter::{Iterator, Peekable};
@@ -38,6 +38,30 @@ pub enum Statement {
 }
 
 impl Statement {
+    pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
+        match self {
+            Statement::PrintText(text) => Ok(text.clone()),
+            Statement::If {
+                expression,
+                if_body,
+                else_body,
+            } => {
+                let mut result = String::new();
+                if expression.evaluate(&context)?.truthy() {
+                    for statement in if_body {
+                        result.push_str(&statement.evaluate(&context)?);
+                    }
+                } else {
+                    for statement in else_body {
+                        result.push_str(&statement.evaluate(&context)?);
+                    }
+                }
+                Ok(result)
+            }
+            _ => todo!(),
+        }
+    }
+
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithLine>>,
     ) -> Result<Statement, Error> {
