@@ -1,9 +1,6 @@
-use super::{
-    super::{
-        lexer::{Token, Value},
-        Context,
-    },
-    Expression,
+use super::super::{
+    lexer::{Token, Value},
+    Context,
 };
 use crate::view::template::error::Error;
 
@@ -11,7 +8,6 @@ use crate::view::template::error::Error;
 pub enum Term {
     Constant(Value),
     Variable(String),
-    List(Vec<Value>),
     Function(fn() -> String),
 }
 
@@ -31,7 +27,6 @@ impl Term {
     pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         match self {
             Term::Constant(value) => Ok(value.clone()),
-            Term::List(values) => Ok(Value::List(values.clone())),
             Term::Variable(name) => context
                 .get(&name)
                 .ok_or(Error::UndefinedVariable(name.clone())),

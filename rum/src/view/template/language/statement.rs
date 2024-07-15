@@ -17,8 +17,11 @@ macro_rules! block_end {
 
 #[derive(Debug)]
 pub enum Statement {
+    // e.g. `<%= variable %>`
     Print(Expression),
+    // e.g. `<html><body></body></html>`
     PrintText(String),
+    // e.g. `<% if variable == 5 %>right<% else %>wrong<% end %>`
     If {
         expression: Expression,
         if_body: Vec<Statement>,
@@ -26,16 +29,17 @@ pub enum Statement {
         else_if: bool,
     },
 
+    // `<% else %>`
     Else,
+    // `<% end %>
     End,
 
+    // `<% for var in [1, 2, 3] %> <%= var %> <% end %>`
     For {
         variable: Term,
         list: Expression,
         body: Vec<Statement>,
     },
-
-    Empty,
 }
 
 impl Statement {
