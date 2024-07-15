@@ -44,12 +44,14 @@ pub enum Value {
     String(String),
     Boolean(bool),
     List(Vec<Value>),
+    Null,
 }
 
 impl Value {
     pub fn truthy(&self) -> bool {
         match self {
             Value::Boolean(b) => *b,
+            Value::Null => false,
             _ => true,
         }
     }

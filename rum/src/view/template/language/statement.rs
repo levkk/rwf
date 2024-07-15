@@ -1,6 +1,6 @@
 use super::{
-    super::{Context, Error, Token, TokenWithContext},
-    Constant, Expression, Term,
+    super::{Context, Error, Token, TokenWithContext, Value},
+    Expression, Term,
 };
 use std::iter::{Iterator, Peekable};
 
@@ -30,7 +30,7 @@ pub enum Statement {
 
     For {
         variable: Term,
-        list: Constant,
+        list: Value,
         body: Vec<Statement>,
     },
 

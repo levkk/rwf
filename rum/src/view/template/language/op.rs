@@ -31,7 +31,7 @@ impl Op {
         }
     }
 
-    pub fn evaluate(&self, left: &Value, right: &Value) -> Result<Value, Error> {
+    pub fn evaluate_binary(&self, left: &Value, right: &Value) -> Result<Value, Error> {
         match self {
             Op::Equals => Ok(Value::Boolean(left == right)),
             Op::NotEquals => Ok(Value::Boolean(left != right)),
@@ -39,6 +39,8 @@ impl Op {
             Op::LessEqualThan => Ok(Value::Boolean(left <= right)),
             Op::GreaterThan => Ok(Value::Boolean(left > right)),
             Op::GreaterEqualThan => Ok(Value::Boolean(left >= right)),
+            Op::And => Ok(Value::Boolean(left.truthy() && right.truthy())),
+            Op::Or => Ok(Value::Boolean(left.truthy() || right.truthy())),
             _ => todo!(),
         }
     }

@@ -2,7 +2,7 @@ use super::{
     super::tokenizer::{Comparison, Token, TokenWithContext, Value},
     super::Context,
     super::Error,
-    Constant, Op, Term,
+    Op, Term,
 };
 
 use std::iter::{Iterator, Peekable};
@@ -44,7 +44,7 @@ impl Expression {
             Expression::Binary { left, op, right } => {
                 let left = left.evaluate(context)?;
                 let right = right.evaluate(context)?;
-                op.evaluate(&left, &right)
+                op.evaluate_binary(&left, &right)
             }
             _ => todo!(),
         }
