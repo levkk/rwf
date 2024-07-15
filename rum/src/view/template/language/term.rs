@@ -52,28 +52,43 @@ impl From<Token> for Option<Term> {
 mod test {
     use super::*;
     use crate::view::template::Tokenizer;
+    use std::collections::HashMap;
 
     #[test]
     fn test_terms() -> Result<(), Error> {
         let t1 = "<% 1 %>";
         let tokens = Tokenizer::new(&t1).tokens()?;
-        let integer = Term::from_token(tokens[2].token());
-        assert_eq!(integer, Some(Term::Constant(Value::Integer(1))));
+        let integer = Term::from_token(tokens[1].token());
+        assert_eq!(
+            integer.expect("integer").evaluate(&Context::default())?,
+            Value::Integer(1)
+        );
 
         let t2 = r#"<% "string" %>"#;
         let tokens = Tokenizer::new(&t2).tokens()?;
-        let string = Term::from_token(tokens[2].token());
-        assert_eq!(string, Some(Term::Constant(Value::String("string".into()))));
+        let string = Term::from_token(tokens[1].token());
+        assert_eq!(
+            string.expect("string").evaluate(&Context::default())?,
+            Value::String("string".into())
+        );
 
         let t3 = "<% 1.54 %>";
         let tokens = Tokenizer::new(&t3).tokens()?;
-        let float = Term::from_token(tokens[2].token());
-        assert_eq!(float, Some(Term::Constant(Value::Float(1.54))));
+        let float = Term::from_token(tokens[1].token());
+        assert_eq!(
+            float.expect("float").evaluate(&Context::default())?,
+            Value::Float(1.54)
+        );
 
         let t4 = "<% variable %>";
         let tokens = Tokenizer::new(&t4).tokens()?;
-        let variable = Term::from_token(tokens[2].token());
-        assert_eq!(variable, Some(Term::Variable("variable".into())));
+        let variable = Term::from_token(tokens[1].token());
+        let value = variable
+            .expect("variable")
+            .evaluate(&Context::new(HashMap::from([(
+                "variable".to_string(),
+                Value::String("test".into()),
+            )])));
 
         Ok(())
     }

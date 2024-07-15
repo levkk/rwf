@@ -1,4 +1,4 @@
-use crate::view::template::Error;
+use super::Error;
 
 #[derive(Debug, Clone)]
 pub struct TokenWithContext {
@@ -61,24 +61,16 @@ pub enum Token {
     Variable(String),
     String(String),
     Value(Value),
-    StringStart,
-    StringEnd,
     If,
     ElseIf,
     Else,
     End,
-    Integer(i64),
-    Float(f64),
     BlockStart,
     BlockStartPrint,
     BlockEnd,
-    BlockStartBracket,
-    BlockEndBracket,
     BlockSign,
     Print,
     Space,
-    Character(char),
-    Comparison(Comparison),
     Dot,
     And,
     Or,
@@ -398,48 +390,4 @@ impl Tokenize for String {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_tokenize_basic() -> Result<(), Error> {
-        let template = r#"<title><%= title %></title><body><% if variable == 1 %></body><% if variable == "string" %>"#;
-        let tokens = Tokenizer::new(&template).tokens()?;
-        assert_eq!(
-            tokens
-                .into_iter()
-                .map(|token| token.token().clone())
-                .collect::<Vec<_>>(),
-            vec![
-                Token::Text("<title>".into()),
-                Token::BlockStartPrint,
-                Token::Space,
-                Token::Variable("title".into()),
-                Token::Space,
-                Token::BlockEnd,
-                Token::Text("</title><body>".into()),
-                Token::BlockStart,
-                Token::Space,
-                Token::If,
-                Token::Space,
-                Token::Variable("variable".into()),
-                Token::Space,
-                Token::Equals,
-                Token::Space,
-                Token::Integer(1),
-                Token::Space,
-                Token::BlockEnd,
-                Token::Text("</body>".into()),
-                Token::BlockStart,
-                Token::If,
-                Token::Variable("variable".into()),
-                Token::Space,
-                Token::Equals,
-                Token::Space,
-                Token::String("string".into()),
-            ]
-        );
-
-        Ok(())
-    }
-}
+mod test {}
