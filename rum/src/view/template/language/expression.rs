@@ -109,6 +109,7 @@ impl Expression {
                         None => return Ok(left),
                     }
                 }
+
                 Token::Value(value) => {
                     let left = Self::constant(value);
                     let next = iter.peek().ok_or(Error::Eof)?;
