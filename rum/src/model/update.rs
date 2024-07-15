@@ -37,7 +37,7 @@ impl<T: Model> Update<T> {
 
 impl<T: FromRow> ToSql for Update<T> {
     fn to_sql(&self) -> String {
-        let where_id = format!("id = ${}", self.placeholders.id() - 1);
+        let where_id = format!("{} = ${}", self.primary_key, self.placeholders.id() - 1);
         let sets = self
             .columns
             .iter()

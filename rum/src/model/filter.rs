@@ -1,4 +1,4 @@
-use super::{Column, Placeholders, ToSql, ToValue, Value};
+use super::{Column, ToSql, ToValue, Value};
 
 /// The WHERE clause of a SQL query.
 #[derive(Debug, Default)]
@@ -214,12 +214,6 @@ impl Filter {
             clauses,
             op: self.op,
         }
-    }
-
-    pub fn replace_values(self, placeholders: &Placeholders) {
-        let clauses = self.clauses.into_iter().map(|clause| {});
-
-        todo!()
     }
 
     fn join(&self, op: JoinOp, filter: Filter) -> Self {

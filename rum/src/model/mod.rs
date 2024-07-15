@@ -396,8 +396,6 @@ impl<T: Model> Query<T> {
                 let values = update.placeholders.values();
                 client.query(&query, &values).await?
             }
-
-            _ => vec![],
         };
 
         Ok(rows)
