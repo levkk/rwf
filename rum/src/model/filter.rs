@@ -216,7 +216,7 @@ impl Filter {
         }
     }
 
-    pub fn replace_values(mut self, placeholders: &Placeholders) {
+    pub fn replace_values(self, placeholders: &Placeholders) {
         let clauses = self.clauses.into_iter().map(|clause| {});
 
         todo!()

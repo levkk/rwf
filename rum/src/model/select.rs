@@ -6,7 +6,7 @@ use crate::model::{
 };
 
 use std::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell},
     marker::PhantomData,
 };
 

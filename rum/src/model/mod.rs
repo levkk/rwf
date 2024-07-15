@@ -604,7 +604,6 @@ mod test {
     use super::join::AssociationType;
     use super::*;
     use tokio_postgres::row::Row;
-    use tokio_postgres::NoTls;
 
     #[derive(Debug, Clone, Default)]
     struct User {

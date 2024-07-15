@@ -1,5 +1,4 @@
-use super::{Error, FromRow, Model, ToValue, Value};
-use tokio_postgres::types::FromSql;
+use super::{FromRow, Model};
 
 use std::sync::Arc;
 
