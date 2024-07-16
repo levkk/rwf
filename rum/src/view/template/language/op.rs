@@ -1,6 +1,8 @@
 use super::super::lexer::{Token, Value};
 use super::super::Error;
 
+use std::cmp::Ordering;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Op {
     Not,
@@ -17,6 +19,14 @@ pub enum Op {
     GreaterEqualThan,
     LessThan,
     LessEqualThan,
+}
+
+impl PartialOrd for Op {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let self_prec = self.precendence();
+        let other_prec = other.precendence();
+        self_prec.partial_cmp(&other_prec)
+    }
 }
 
 impl Op {
@@ -44,6 +54,19 @@ impl Op {
             _ => todo!(),
         }
     }
+
+    // Source: <https://en.cppreference.com/w/c/language/operator_precedence>
+    pub fn precendence(&self) -> u8 {
+        match self {
+            Op::Not => 1,
+            Op::And => 11,
+            Op::Or => 12,
+            Op::Add | Op::Sub => 4,
+            Op::Mult | Op::Div | Op::Mod => 3,
+            Op::Equals | Op::NotEquals => 7,
+            _ => todo!(),
+        }
+    }
 }
 
 impl From<Token> for Option<Op> {
@@ -58,6 +81,10 @@ impl From<Token> for Option<Op> {
             Token::GreaterEqualThan => Op::GreaterEqualThan,
             Token::LessThan => Op::LessThan,
             Token::LessEqualThan => Op::LessEqualThan,
+            Token::Plus => Op::Add,
+            Token::Minus => Op::Sub,
+            Token::Mult => Op::Mult,
+            Token::Div => Op::Div,
             _ => return None,
         })
     }

@@ -20,7 +20,10 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                     #ident: row.get(stringify!(#ident)),
                 }
             });
-            let has_id = data.fields.iter().any(|field| field.ident.clone().unwrap() == "id");
+            let has_id = data
+                .fields
+                .iter()
+                .any(|field| field.ident.clone().unwrap() == "id");
 
             let id = if has_id {
                 quote! {
@@ -29,7 +32,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                     }
                 }
             } else {
-                quote!{}
+                quote! {}
             };
 
             let column_names = data.fields.iter().map(|field| {
@@ -40,17 +43,17 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 }
             });
 
-            let values = data.fields
+            let values = data
+                .fields
                 .iter()
                 .filter(|field| field.ident.clone().unwrap() != "id")
                 .map(|field| {
-                let ident = field.ident.clone();
+                    let ident = field.ident.clone();
 
-                quote! {
-                    self.#ident.to_value(),
-                }
-
-            });
+                    quote! {
+                        self.#ident.to_value(),
+                    }
+                });
 
             let singular = snake_case(&ident.to_string());
             let foreign_key = format!("{}_id", singular);

@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "rum",
+    "rum-cli",
+    "rum-macros",
+]

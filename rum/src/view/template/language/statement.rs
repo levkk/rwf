@@ -7,7 +7,7 @@ use std::iter::{Iterator, Peekable};
 macro_rules! expect {
     ($got:expr, $expected:expr) => {
         if $got.token() != $expected {
-            println!("{}:{}", file!(), line!());
+            // println!("{}:{}", file!(), line!());
             return Err(Error::WrongToken($got, $expected));
         }
     };
@@ -188,7 +188,6 @@ impl Statement {
                     let in_ = iter.next().ok_or(Error::Eof)?;
                     expect!(in_, Token::In);
 
-                    let p = iter.peek().unwrap();
                     let list = Expression::parse(iter)?;
                     block_end!(iter);
 

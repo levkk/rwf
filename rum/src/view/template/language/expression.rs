@@ -84,67 +84,107 @@ impl Expression {
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Self, Error> {
-        loop {
-            let next = iter.next().ok_or(Error::Eof)?;
+        let next = iter.next().ok_or(Error::Eof)?;
 
-            match next.token() {
-                // Helps with testing, but these tokens shouldn't be passed
-                // to the expression parser.
-                Token::Variable(name) => {
-                    let left = Self::variable(name);
-                    let next = iter.peek().ok_or(Error::Eof)?;
+        match next.token() {
+            // Helps with testing, but these tokens shouldn't be passed
+            // to the expression parser.
+            Token::Variable(name) => {
+                let left = Self::variable(name);
+                let next = iter.peek().ok_or(Error::Eof)?;
 
-                    match Op::from_token(next.token()) {
-                        Some(op) => {
-                            let _ = iter.next().ok_or(Error::Eof)?;
-                            let right = Expression::parse(iter)?;
-                            return Ok(Expression::Binary {
-                                left: Box::new(left),
-                                op,
-                                right: Box::new(right),
-                            });
-                        }
+                match Op::from_token(next.token()) {
+                    Some(op) => {
+                        let _ = iter.next().ok_or(Error::Eof)?;
+                        let right = Expression::parse(iter)?;
 
-                        None => return Ok(left),
-                    }
-                }
+                        let next = iter.peek().ok_or(Error::Eof)?;
 
-                Token::Value(value) => {
-                    let left = Self::constant(value);
-                    let next = iter.peek().ok_or(Error::Eof)?;
-                    match Op::from_token(next.token()) {
-                        Some(op) => {
-                            let _ = iter.next().ok_or(Error::Eof)?;
-                            let right = Expression::parse(iter)?;
-                            return Ok(Expression::Binary {
-                                left: Box::new(left),
-                                op,
-                                right: Box::new(right),
-                            });
-                        }
-
-                        None => return Ok(left),
-                    }
-                }
-
-                Token::SquareBracketStart => {
-                    let mut terms = vec![];
-
-                    loop {
-                        let next = iter.next().ok_or(Error::Eof)?;
                         match next.token() {
-                            Token::SquareBracketEnd => break,
-                            Token::Comma => continue,
-                            Token::Value(value) => terms.push(Expression::constant(value)),
-                            Token::Variable(variable) => terms.push(Expression::variable(variable)),
-                            _ => return Err(Error::ExpressionSyntax(next)),
-                        }
+                            Token::BlockEnd => {
+                                return Ok(Expression::Binary {
+                                    left: Box::new(left),
+                                    op,
+                                    right: Box::new(right),
+                                })
+                            }
+                            token => match Op::from_token(token) {
+                                Some(second_op) => {
+                                    let right2 = Expression::parse(iter)?;
+
+                                    if second_op < op {
+                                        let expr = Expression::Binary {
+                                            left: Box::new(right),
+                                            right: Box::new(right2),
+                                            op: second_op,
+                                        };
+
+                                        return Ok(Expression::Binary {
+                                            left: Box::new(left),
+                                            right: Box::new(expr),
+                                            op,
+                                        });
+                                    } else {
+                                        let left = Expression::Binary {
+                                            left: Box::new(left),
+                                            right: Box::new(right),
+                                            op,
+                                        };
+
+                                        return Ok(Expression::Binary {
+                                            left: Box::new(left),
+                                            right: Box::new(right2),
+                                            op: second_op,
+                                        });
+                                    }
+                                }
+
+                                None => {
+                                    return Err(Error::ExpressionSyntax(next.clone()));
+                                }
+                            },
+                        };
                     }
 
-                    return Ok(Expression::List { terms });
+                    None => return Ok(left),
                 }
-                _ => return Err(Error::ExpressionSyntax(next.clone())),
             }
+
+            Token::Value(value) => {
+                let left = Self::constant(value);
+                let next = iter.peek().ok_or(Error::Eof)?;
+                match Op::from_token(next.token()) {
+                    Some(op) => {
+                        let _ = iter.next().ok_or(Error::Eof)?;
+                        let right = Expression::parse(iter)?;
+                        return Ok(Expression::Binary {
+                            left: Box::new(left),
+                            op,
+                            right: Box::new(right),
+                        });
+                    }
+
+                    None => return Ok(left),
+                }
+            }
+
+            Token::SquareBracketStart => {
+                let mut terms = vec![];
+
+                loop {
+                    let next = iter.next().ok_or(Error::Eof)?;
+                    match next.token() {
+                        Token::SquareBracketEnd => break,
+                        Token::Comma => continue,
+                        Token::Value(value) => terms.push(Expression::constant(value)),
+                        Token::Variable(variable) => terms.push(Expression::variable(variable)),
+                        _ => return Err(Error::ExpressionSyntax(next)),
+                    }
+                }
+
+                return Ok(Expression::List { terms });
+            }
+            _ => return Err(Error::ExpressionSyntax(next.clone())),
         }
     }
 }
@@ -180,4 +220,15 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_op_precendence() -> Result<(), Error> {
+        let t1 = r#"<% one + two * three %>"#.tokenize()?;
+        let mut iter = t1[1..].to_vec().into_iter().peekable();
+        let ast = Expression::parse(&mut iter)?;
+        println!("{:#?}", ast);
+        Ok(())
+    }
 }
+
+// 1 + 5 * 4 + 5
