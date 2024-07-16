@@ -99,6 +99,7 @@ impl Expression {
                     operand: Box::new(term),
                 }
             }
+
             Token::Minus => {
                 let term = Self::term(iter)?;
                 Expression::Unary {
@@ -106,52 +107,12 @@ impl Expression {
                     operand: Box::new(term),
                 }
             }
+
             Token::Plus => {
                 let term = Self::term(iter)?;
                 Expression::Unary {
                     op: Op::Add,
                     operand: Box::new(term),
-                }
-            }
-            Token::Variable(name) => {
-                let variable = Self::variable(name);
-                let accessor = iter.peek().map(|t| t.token());
-
-                match accessor {
-                    Some(Token::Dot) => {
-                        let _ = iter.next().ok_or(Error::Eof)?;
-                        let name = iter.next().ok_or(Error::Eof)?;
-                        match name.token() {
-                            Token::Variable(key) => Expression::Access {
-                                term: Box::new(variable),
-                                key,
-                            },
-                            _ => return Err(Error::ExpressionSyntax(name.clone())),
-                        }
-                    }
-
-                    Some(_) | None => variable,
-                }
-            }
-
-            Token::Value(value) => {
-                let constant = Self::constant(value);
-
-                let accessor = iter.peek().map(|t| t.token());
-                match accessor {
-                    Some(Token::Dot) => {
-                        let _ = iter.next().ok_or(Error::Eof)?;
-                        let name = iter.next().ok_or(Error::Eof)?;
-                        match name.token() {
-                            Token::Variable(key) => Expression::Access {
-                                term: Box::new(constant),
-                                key,
-                            },
-                            _ => return Err(Error::ExpressionSyntax(name.clone())),
-                        }
-                    }
-
-                    Some(_) | None => constant,
                 }
             }
 
@@ -208,7 +169,31 @@ impl Expression {
                 Self::parse(&mut expr.into_iter().peekable())?
             }
 
-            _ => return Err(Error::ExpressionSyntax(next.clone())),
+            token => {
+                let expr = match token {
+                    Token::Variable(name) => Self::variable(name),
+                    Token::Value(value) => Self::constant(value),
+                    _ => return Err(Error::ExpressionSyntax(next.clone())),
+                };
+
+                let accessor = iter.peek().map(|t| t.token());
+
+                match accessor {
+                    Some(Token::Dot) => {
+                        let _ = iter.next().ok_or(Error::Eof)?;
+                        let name = iter.next().ok_or(Error::Eof)?;
+                        match name.token() {
+                            Token::Variable(key) => Expression::Access {
+                                term: Box::new(expr),
+                                key,
+                            },
+                            _ => return Err(Error::ExpressionSyntax(name.clone())),
+                        }
+                    }
+
+                    Some(_) | None => expr,
+                }
+            }
         };
 
         Ok(term)
