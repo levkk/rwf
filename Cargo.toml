@@ -4,4 +4,5 @@ members = [
     "rum",
     "rum-cli",
     "rum-macros",
+    "rum-tests",
 ]

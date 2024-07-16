@@ -62,7 +62,7 @@ impl std::fmt::Display for Value {
 }
 
 impl Value {
-    /// If the value, when evaluated in the context of a `if` statement expression
+    /// If the value, when evaluated in the context of a `if` statement
     /// would result in the `if` statement being executed.
     ///
     /// e.g. `<% if 5 %>five is true<% end %>`
@@ -70,8 +70,12 @@ impl Value {
     pub fn truthy(&self) -> bool {
         match self {
             Value::Boolean(b) => *b,
+            Value::Integer(i) => *i != 0,
+            Value::Float(f) => *f != 0.0,
+            Value::String(s) => !s.is_empty(),
             Value::Null => false,
-            _ => true,
+            Value::List(list) => !list.is_empty(),
+            Value::Hash(hash) => !hash.is_empty(),
         }
     }
 

@@ -164,6 +164,10 @@ impl<'a> Lexer<'a> {
                                     if c.is_numeric() {
                                         self.buffer.push('.');
                                         self.buffer.push(c);
+                                    } else if c == ' ' {
+                                        self.buffer.push('.');
+                                        self.drain_buffer();
+                                        self.tokens.push(self.add_token(Token::Space));
                                     } else {
                                         self.drain_buffer();
                                         self.tokens.push(self.add_token(Token::Dot));
@@ -172,8 +176,8 @@ impl<'a> Lexer<'a> {
                                 }
 
                                 None => {
+                                    self.buffer.push('.');
                                     self.drain_buffer();
-                                    self.tokens.push(self.add_token(Token::Dot));
                                 }
                             }
                         } else {

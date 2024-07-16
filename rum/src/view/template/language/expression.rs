@@ -136,7 +136,6 @@ impl Expression {
 
             Token::Value(value) => {
                 let constant = Self::constant(value);
-                println!("constant: {:?}", constant);
 
                 let accessor = iter.peek().map(|t| t.token());
                 match accessor {
@@ -379,8 +378,8 @@ mod test {
     #[test]
     fn test_call() -> Result<(), Error> {
         assert_eq!(
-            "<% 54.to_string %>".evaluate_default()?,
-            Value::String("54".into())
+            "<% 54.5.to_string %>".evaluate_default()?,
+            Value::String("54.5".into())
         );
         assert_eq!(
             r#"<% "one".upcase %>"#.evaluate_default()?,
