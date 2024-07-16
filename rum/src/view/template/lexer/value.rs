@@ -1,14 +1,32 @@
 use super::Error;
 
+use std::cmp::Ordering;
+use std::collections::HashMap;
+
 /// A constant value, e.g. `5` or `"hello world"`.
-#[derive(Debug, PartialEq, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
     Boolean(bool),
     List(Vec<Value>),
+    Hash(HashMap<String, Value>),
     Null,
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Value::Integer(i1), Value::Integer(i2)) => i1.partial_cmp(i2),
+            (Value::Integer(i1), Value::Float(f2)) => (*i1 as f64).partial_cmp(f2),
+            (Value::Float(f1), Value::Integer(i2)) => f1.partial_cmp(&(*i2 as f64)),
+            (Value::Float(f1), Value::Float(f2)) => f1.partial_cmp(f2),
+            (Value::String(s1), Value::String(s2)) => s1.partial_cmp(s2),
+            (Value::Boolean(b1), Value::Boolean(b2)) => b1.partial_cmp(b2),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for Value {
@@ -27,6 +45,16 @@ impl std::fmt::Display for Value {
                     }
                 }
                 write!(f, "]")
+            }
+            Value::Hash(h) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in h.iter().enumerate() {
+                    write!(f, "{}: {}", k, v)?;
+                    if i < h.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "}}")
             }
             Value::Null => write!(f, "null"),
         }
@@ -54,6 +82,20 @@ impl Value {
             (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 + *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 + f2),
             (Value::String(s1), Value::String(s2)) => Value::String(format!("{}{}", s1, s2)),
+            (Value::String(s1), Value::Integer(i2)) => Value::String(format!("{}{}", s1, i2)),
+            (Value::Integer(i1), Value::String(s2)) => Value::String(format!("{}{}", i1, s2)),
+            (Value::String(s1), Value::Float(f2)) => Value::String(format!("{}{}", s1, f2)),
+            (Value::Float(f1), Value::String(s2)) => Value::String(format!("{}{}", f1, s2)),
+            (Value::List(list), other) => {
+                let mut list = list.clone();
+                list.push(other.clone());
+                Value::List(list)
+            }
+            (value, Value::List(list)) => {
+                let mut list = vec![value.clone()];
+                list.extend(list.clone());
+                Value::List(list)
+            }
             _ => Value::Null,
         }
     }
@@ -65,6 +107,11 @@ impl Value {
             (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 - *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 - f2),
             (Value::String(s1), Value::String(s2)) => Value::String(s1.replace(s2, "").to_string()),
+            (Value::List(list), other) => {
+                let mut list = list.clone();
+                list.retain(|v| v != other);
+                Value::List(list)
+            }
             _ => Value::Null,
         }
     }

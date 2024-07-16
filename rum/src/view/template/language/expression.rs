@@ -39,6 +39,12 @@ pub enum Expression {
     List {
         terms: Vec<Expression>,
     },
+
+    // Access a hash value, e.g. `hash.key`.
+    Access {
+        term: Box<Expression>,
+        key: String,
+    },
 }
 
 impl Expression {
@@ -76,6 +82,16 @@ impl Expression {
                 }
                 Ok(Value::List(list))
             }
+            Expression::Access { term, key } => {
+                let value = term.evaluate(context)?;
+                match value {
+                    Value::Hash(hash) => hash
+                        .get(key)
+                        .cloned()
+                        .ok_or(Error::UndefinedVariable(key.clone())),
+                    _ => Err(Error::UndefinedVariable("not a hash".into())),
+                }
+            }
         }
     }
 
@@ -103,7 +119,26 @@ impl Expression {
                     operand: Box::new(term),
                 }
             }
-            Token::Variable(name) => Self::variable(name),
+            Token::Variable(name) => {
+                let variable = Self::variable(name);
+                let accessor = iter.peek().map(|t| t.token());
+
+                match accessor {
+                    Some(Token::Dot) => {
+                        let _ = iter.next().ok_or(Error::Eof)?;
+                        let name = iter.next().ok_or(Error::Eof)?;
+                        match name.token() {
+                            Token::Variable(key) => Expression::Access {
+                                term: Box::new(variable),
+                                key,
+                            },
+                            _ => return Err(Error::ExpressionSyntax(name.clone())),
+                        }
+                    }
+
+                    Some(_) | None => variable,
+                }
+            }
             Token::Value(value) => Self::constant(value),
             Token::SquareBracketStart => {
                 let mut terms = vec![];
@@ -268,6 +303,7 @@ impl Evaluate for String {
 mod test {
     use super::super::super::{Context, Tokenize};
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn test_if_const() -> Result<(), Error> {
@@ -293,6 +329,20 @@ mod test {
                 Value::String("world".into()),
             ])
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_hash() -> Result<(), Error> {
+        let mut context = Context::default();
+        context.set(
+            "hash",
+            Value::Hash(HashMap::from([("key".to_string(), Value::Integer(5))])),
+        )?;
+
+        let t1 = "<% (hash.key * 2.5) - 2.5 %>".evaluate(&context)?;
+        assert_eq!(t1, Value::Float(10.0));
 
         Ok(())
     }
