@@ -6,7 +6,10 @@ statement ::= print expression
     | for variable in list do [statement] end
 expression ::=
     "(" expression binary_op expression ")"
-    | "(" unary_op expression ")"
-    | "( term ")"
+    | unary_op expression
+    | term
+    | term.function
 term ::= constant | variable | function | [expression]
 constant ::= integer | float | string | [constant]
+binary_op ::= "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
+unary_op ::= "-" | "!" | "+"
