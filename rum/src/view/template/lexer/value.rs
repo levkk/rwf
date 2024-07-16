@@ -137,6 +137,35 @@ impl Value {
             _ => Value::Null,
         }
     }
+
+    pub fn call(&self, method_name: &str) -> Self {
+        println!("{:?}, method_name: {}", self, method_name);
+        match self {
+            Value::Integer(value) => match method_name {
+                "abs" => Value::Integer((*value).abs()),
+                "to_string" => Value::String(value.to_string()),
+                _ => Value::Null,
+            },
+
+            Value::Float(value) => match method_name {
+                "abs" => Value::Float(value.abs()),
+                "ceil" => Value::Float(value.ceil()),
+                "floor" => Value::Float(value.floor()),
+                "round" => Value::Float(value.round()),
+                "to_string" => Value::String(value.to_string()),
+                _ => Value::Null,
+            },
+
+            Value::String(value) => match method_name {
+                "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
+                "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
+                "trim" => Value::String(value.trim().to_string()),
+                _ => Value::Null,
+            },
+
+            _ => Value::Null,
+        }
+    }
 }
 
 pub trait ToValue: Clone {

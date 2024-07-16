@@ -156,9 +156,30 @@ impl<'a> Lexer<'a> {
                 '.' => {
                     // If we're parsing a number, keep the dot for the floating point
                     // notation. Otherwise, it's an accessor for a method call or object attribute.
-                    if self.code_block && !self.number {
-                        self.drain_buffer();
-                        self.tokens.push(self.add_token(Token::Dot));
+                    if self.code_block {
+                        if self.number {
+                            let next = iter.next();
+                            match next {
+                                Some(c) => {
+                                    if c.is_numeric() {
+                                        self.buffer.push('.');
+                                        self.buffer.push(c);
+                                    } else {
+                                        self.drain_buffer();
+                                        self.tokens.push(self.add_token(Token::Dot));
+                                        self.buffer.push(c);
+                                    }
+                                }
+
+                                None => {
+                                    self.drain_buffer();
+                                    self.tokens.push(self.add_token(Token::Dot));
+                                }
+                            }
+                        } else {
+                            self.drain_buffer();
+                            self.tokens.push(self.add_token(Token::Dot));
+                        }
                     } else {
                         // Or it's just a dot part of the template.
                         self.buffer.push('.');

@@ -89,7 +89,7 @@ impl Expression {
                         .get(key)
                         .cloned()
                         .ok_or(Error::UndefinedVariable(key.clone())),
-                    _ => Err(Error::UndefinedVariable("not a hash".into())),
+                    value => Ok(value.call(key)),
                 }
             }
         }
@@ -139,7 +139,29 @@ impl Expression {
                     Some(_) | None => variable,
                 }
             }
-            Token::Value(value) => Self::constant(value),
+
+            Token::Value(value) => {
+                let constant = Self::constant(value);
+                println!("constant: {:?}", constant);
+
+                let accessor = iter.peek().map(|t| t.token());
+                match accessor {
+                    Some(Token::Dot) => {
+                        let _ = iter.next().ok_or(Error::Eof)?;
+                        let name = iter.next().ok_or(Error::Eof)?;
+                        match name.token() {
+                            Token::Variable(key) => Expression::Access {
+                                term: Box::new(constant),
+                                key,
+                            },
+                            _ => return Err(Error::ExpressionSyntax(name.clone())),
+                        }
+                    }
+
+                    Some(_) | None => constant,
+                }
+            }
+
             Token::SquareBracketStart => {
                 let mut terms = vec![];
 
@@ -343,6 +365,28 @@ mod test {
 
         let t1 = "<% (hash.key * 2.5) - 2.5 %>".evaluate(&context)?;
         assert_eq!(t1, Value::Float(10.0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_call() -> Result<(), Error> {
+        assert_eq!(
+            "<% 54.to_string %>".evaluate_default()?,
+            Value::String("54".into())
+        );
+        assert_eq!(
+            r#"<% "one".upcase %>"#.evaluate_default()?,
+            Value::String("ONE".into())
+        );
+
+        let mut context = Context::default();
+        context.set("variable", "hello")?;
+
+        assert_eq!(
+            "<% variable.upcase * 2 %>".evaluate(&context)?,
+            Value::String("HELLOHELLO".into())
+        );
 
         Ok(())
     }
