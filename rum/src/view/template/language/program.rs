@@ -1,4 +1,4 @@
-use super::super::{Context, Error, TokenWithContext};
+use super::super::{Context, Error, TokenWithContext, Tokenize};
 use super::Statement;
 
 #[derive(Debug, Clone)]
@@ -26,6 +26,11 @@ impl Program {
         }
 
         Ok(Program { statements })
+    }
+
+    pub fn from_str(source: &str) -> Result<Self, Error> {
+        let tokens = source.tokenize()?;
+        Program::parse(tokens)
     }
 }
 

@@ -4,13 +4,19 @@
         <title><%= title %></title>
     </head>
     <body>
-        <h1><%= title %></h1>
-        <p><%= description %></p>
+        <h1><%= title.upcase %></h1>
+        <p><%= description.to_uppercase %></p>
 
         <ul>
-        <% for var in vars %>
+        <% for var in vars.enumerate %>
         <li><%= var %></li>
         <% end %>
         </ul>
+
+        <% if title.downcase == "hello" && 1 == 2 %>
+        <h1><%= title %></h1>
+        <% else %>
+        <h1>Not hello</h1>
+        <% end %>
     </body>
 </html>

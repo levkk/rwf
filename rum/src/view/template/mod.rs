@@ -25,10 +25,8 @@ impl Template {
             Err(_) => return Err(Error::TemplateDoesNotExist(path.as_ref().to_owned())),
         };
 
-        let tokens = text.tokenize()?;
-
         Ok(Template {
-            program: Program::parse(tokens)?,
+            program: Program::from_str(&text)?,
             path: path.as_ref().to_owned(),
         })
     }
