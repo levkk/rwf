@@ -182,7 +182,16 @@ impl Value {
                     None => Value::Null,
                 },
 
-                Err(_) => Value::Null,
+                Err(_) => match method_name {
+                    "enumerate" => Value::List(
+                        list.iter()
+                            .enumerate()
+                            .map(|(i, v)| Value::List(vec![Value::Integer(i as i64), v.clone()]))
+                            .collect(),
+                    ),
+
+                    _ => Value::Null,
+                },
             },
 
             Value::Hash(hash) => match method_name {

@@ -1,5 +1,5 @@
 use super::{
-    super::{Context, Error, Token, TokenWithContext, Value},
+    super::{Context, Error, Token, TokenWithContext, Tokenize, Value},
     Expression, Term,
 };
 use std::iter::{Iterator, Peekable};
@@ -50,6 +50,11 @@ pub enum Statement {
 }
 
 impl Statement {
+    pub fn from_str(string: &str) -> Result<Self, Error> {
+        let tokens = string.tokenize()?;
+        Statement::parse(&mut tokens.into_iter().peekable())
+    }
+
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
             Statement::PrintText(text) => Ok(text.clone()),
@@ -297,6 +302,18 @@ mod test {
             result,
             "<li>1</li><li>hello</li><li>3.45</li><li>variable value</li>"
         );
+
+        let result = Statement::from_str(
+            "
+<% for v in [1, 2, 3].enumerate %>
+<p><%= v.0 + 1 %>. <%= v.1 %></p>
+<% end %>
+        "
+            .trim(),
+        )?
+        .evaluate(&Context::default())?;
+
+        assert_eq!(result, "<p>1. 1</p><p>2. 2</p><p>3. 3</p>");
 
         Ok(())
     }
