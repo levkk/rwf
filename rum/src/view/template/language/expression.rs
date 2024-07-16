@@ -295,7 +295,6 @@ impl Evaluate for &str {
     fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         let tokens = self.tokenize()?[1..].to_vec(); // Skip code block start.
         let expr = Expression::parse(&mut tokens.into_iter().peekable())?;
-        println!("ast: {:#?}", expr);
         expr.evaluate(context)
     }
 }

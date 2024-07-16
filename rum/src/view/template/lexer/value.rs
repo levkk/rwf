@@ -96,9 +96,9 @@ impl Value {
                 Value::List(list)
             }
             (value, Value::List(list)) => {
-                let mut list = vec![value.clone()];
-                list.extend(list.clone());
-                Value::List(list)
+                let mut new = vec![value.clone()];
+                new.extend(list.clone());
+                Value::List(new)
             }
             _ => Value::Null,
         }
@@ -139,7 +139,7 @@ impl Value {
             (Value::String(s1), Value::Integer(i1)) => Value::String(s1.repeat(*i1 as usize)),
             (Value::Integer(i1), Value::String(s1)) => Value::String(s1.repeat(*i1 as usize)),
             (Value::List(list), Value::Integer(i1)) => {
-                let mut list = list.clone();
+                let list = list.clone();
                 let mut new_list = vec![];
                 for _ in 0..*i1 {
                     new_list.extend(list.clone());
@@ -182,9 +182,7 @@ impl Value {
                     None => Value::Null,
                 },
 
-                Err(_) => {
-                    todo!()
-                }
+                Err(_) => Value::Null,
             },
 
             Value::Hash(hash) => match method_name {
