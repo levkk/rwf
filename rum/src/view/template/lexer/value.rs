@@ -176,6 +176,17 @@ impl Value {
                 _ => Value::Null,
             },
 
+            Value::List(list) => match method_name.parse::<i64>() {
+                Ok(index) => match list.get(index as usize) {
+                    Some(value) => value.clone(),
+                    None => Value::Null,
+                },
+
+                Err(_) => {
+                    todo!()
+                }
+            },
+
             Value::Hash(hash) => match method_name {
                 "keys" => Value::List(hash.keys().map(|k| Value::String(k.clone())).collect()),
                 "values" => Value::List(hash.values().cloned().collect()),

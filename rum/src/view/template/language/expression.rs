@@ -116,23 +116,6 @@ impl Expression {
                 }
             }
 
-            Token::SquareBracketStart => {
-                let mut terms = vec![];
-
-                loop {
-                    let next = iter.next().ok_or(Error::Eof)?;
-                    match next.token() {
-                        Token::SquareBracketEnd => break,
-                        Token::Comma => continue,
-                        Token::Value(value) => terms.push(Expression::constant(value)),
-                        Token::Variable(variable) => terms.push(Expression::variable(variable)),
-                        _ => return Err(Error::ExpressionSyntax(next)),
-                    }
-                }
-
-                return Ok(Expression::List { terms });
-            }
-
             Token::RoundBracketStart => {
                 let mut count = 1;
                 let mut expr = vec![];
@@ -173,7 +156,26 @@ impl Expression {
                 let expr = match token {
                     Token::Variable(name) => Self::variable(name),
                     Token::Value(value) => Self::constant(value),
-                    _ => return Err(Error::ExpressionSyntax(next.clone())),
+                    Token::SquareBracketStart => {
+                        let mut terms = vec![];
+
+                        loop {
+                            let next = iter.next().ok_or(Error::Eof)?;
+                            match next.token() {
+                                Token::SquareBracketEnd => break,
+                                Token::Comma => continue,
+                                Token::Value(value) => terms.push(Expression::constant(value)),
+                                Token::Variable(variable) => {
+                                    terms.push(Expression::variable(variable))
+                                }
+                                _ => return Err(Error::ExpressionSyntax(next)),
+                            }
+                        }
+
+                        Expression::List { terms }
+                    }
+
+                    _ => return Err(Error::ExpressionSyntax(next)),
                 };
 
                 let accessor = iter.peek().map(|t| t.token());
@@ -186,6 +188,10 @@ impl Expression {
                             Token::Variable(key) => Expression::Access {
                                 term: Box::new(expr),
                                 key,
+                            },
+                            Token::Value(Value::Integer(n)) => Expression::Access {
+                                term: Box::new(expr),
+                                key: n.to_string(),
                             },
                             _ => return Err(Error::ExpressionSyntax(name.clone())),
                         }
@@ -289,6 +295,7 @@ impl Evaluate for &str {
     fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         let tokens = self.tokenize()?[1..].to_vec(); // Skip code block start.
         let expr = Expression::parse(&mut tokens.into_iter().peekable())?;
+        println!("ast: {:#?}", expr);
         expr.evaluate(context)
     }
 }
@@ -342,6 +349,8 @@ mod test {
                 Value::Integer(3),
             ])
         );
+
+        assert_eq!("<% [1, 2, 3].0 %>".evaluate_default()?, Value::Integer(1));
 
         Ok(())
     }

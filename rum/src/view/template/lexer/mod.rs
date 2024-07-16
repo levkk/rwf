@@ -431,6 +431,7 @@ impl<'a> Lexer<'a> {
                         .tokens
                         .push(self.add_token(Token::Value(Value::Boolean(false)))),
                     st => {
+                        self.number = false;
                         if let Ok(integer) = st.parse::<i64>() {
                             self.tokens
                                 .push(self.add_token(Token::Value(Value::Integer(integer))));
