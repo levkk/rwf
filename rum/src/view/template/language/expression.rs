@@ -323,6 +323,7 @@ mod test {
     fn test_list() -> Result<(), Error> {
         let mut context = Context::default();
         context.set("variable", "world")?;
+        context.set("list", vec![1, 2, 3])?;
 
         let t1 = r#"<% [1, 2, "hello", 3.13, variable] %>"#.evaluate(&context)?;
         assert_eq!(
@@ -350,6 +351,8 @@ mod test {
         );
 
         assert_eq!("<% [1, 2, 3].0 %>".evaluate_default()?, Value::Integer(1));
+
+        assert_eq!(r#"<% list.0 %>"#.evaluate(&context)?, Value::Integer(1));
 
         Ok(())
     }
