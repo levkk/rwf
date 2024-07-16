@@ -1,5 +1,5 @@
 use super::{
-    super::lexer::{Token, TokenWithContext, Value},
+    super::lexer::{Token, TokenWithContext, Tokenize, Value},
     super::Context,
     super::Error,
     Op, Term,
@@ -65,6 +65,10 @@ impl Expression {
                 let right = right.evaluate(context)?;
                 op.evaluate_binary(&left, &right)
             }
+            Expression::Unary { op, operand } => {
+                let operand = operand.evaluate(context)?;
+                op.evaluate_unary(&operand)
+            }
             Expression::List { terms } => {
                 let mut list = vec![];
                 for term in terms {
@@ -72,102 +76,35 @@ impl Expression {
                 }
                 Ok(Value::List(list))
             }
-            _ => todo!(),
         }
     }
 
-    /// Recusively parse the expression.
-    ///
-    /// Consumes language tokens automatically.
-    ///
-    /// TODO: handle paranthesis and multi-term expressions, e.g. `5 + 6 && 7 || true`.
-    pub fn parse(
-        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
-    ) -> Result<Self, Error> {
+    fn term(iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>) -> Result<Self, Error> {
         let next = iter.next().ok_or(Error::Eof)?;
-
-        match next.token() {
-            // Helps with testing, but these tokens shouldn't be passed
-            // to the expression parser.
-            Token::Variable(name) => {
-                let left = Self::variable(name);
-                let next = iter.peek().ok_or(Error::Eof)?;
-
-                match Op::from_token(next.token()) {
-                    Some(op) => {
-                        let _ = iter.next().ok_or(Error::Eof)?;
-                        let right = Expression::parse(iter)?;
-
-                        let next = iter.peek().ok_or(Error::Eof)?;
-
-                        match next.token() {
-                            Token::BlockEnd => {
-                                return Ok(Expression::Binary {
-                                    left: Box::new(left),
-                                    op,
-                                    right: Box::new(right),
-                                })
-                            }
-                            token => match Op::from_token(token) {
-                                Some(second_op) => {
-                                    let right2 = Expression::parse(iter)?;
-
-                                    if second_op < op {
-                                        let expr = Expression::Binary {
-                                            left: Box::new(right),
-                                            right: Box::new(right2),
-                                            op: second_op,
-                                        };
-
-                                        return Ok(Expression::Binary {
-                                            left: Box::new(left),
-                                            right: Box::new(expr),
-                                            op,
-                                        });
-                                    } else {
-                                        let left = Expression::Binary {
-                                            left: Box::new(left),
-                                            right: Box::new(right),
-                                            op,
-                                        };
-
-                                        return Ok(Expression::Binary {
-                                            left: Box::new(left),
-                                            right: Box::new(right2),
-                                            op: second_op,
-                                        });
-                                    }
-                                }
-
-                                None => {
-                                    return Err(Error::ExpressionSyntax(next.clone()));
-                                }
-                            },
-                        };
-                    }
-
-                    None => return Ok(left),
+        let term = match next.token() {
+            Token::Not => {
+                let term = Self::term(iter)?;
+                Expression::Unary {
+                    op: Op::Not,
+                    operand: Box::new(term),
                 }
             }
-
-            Token::Value(value) => {
-                let left = Self::constant(value);
-                let next = iter.peek().ok_or(Error::Eof)?;
-                match Op::from_token(next.token()) {
-                    Some(op) => {
-                        let _ = iter.next().ok_or(Error::Eof)?;
-                        let right = Expression::parse(iter)?;
-                        return Ok(Expression::Binary {
-                            left: Box::new(left),
-                            op,
-                            right: Box::new(right),
-                        });
-                    }
-
-                    None => return Ok(left),
+            Token::Minus => {
+                let term = Self::term(iter)?;
+                Expression::Unary {
+                    op: Op::Sub,
+                    operand: Box::new(term),
                 }
             }
-
+            Token::Plus => {
+                let term = Self::term(iter)?;
+                Expression::Unary {
+                    op: Op::Add,
+                    operand: Box::new(term),
+                }
+            }
+            Token::Variable(name) => Self::variable(name),
+            Token::Value(value) => Self::constant(value),
             Token::SquareBracketStart => {
                 let mut terms = vec![];
 
@@ -184,8 +121,146 @@ impl Expression {
 
                 return Ok(Expression::List { terms });
             }
+
+            Token::RoundBracketStart => {
+                let mut count = 1;
+                let mut expr = vec![];
+
+                // Count the brackets. The term is finished when the number of opening brackets
+                // match the number of closing brackets.
+                while count > 0 {
+                    let next = iter.peek().ok_or(Error::Eof)?;
+
+                    match next.token() {
+                        Token::RoundBracketStart => {
+                            count += 1;
+                            expr.push(iter.next().ok_or(Error::Eof)?);
+                        }
+                        Token::RoundBracketEnd => {
+                            count -= 1;
+
+                            // If it's not the closing bracket, push it in for recursive parsing later.
+                            if count > 0 {
+                                expr.push(iter.next().ok_or(Error::Eof)?);
+                            } else {
+                                // Drop the closing bracket, the expression is over.
+                                let _ = iter.next().ok_or(Error::Eof)?;
+                            }
+                        }
+                        Token::BlockEnd => return Err(Error::ExpressionSyntax(next.clone())),
+
+                        _ => {
+                            expr.push(iter.next().ok_or(Error::Eof)?);
+                        }
+                    }
+                }
+
+                Self::parse(&mut expr.into_iter().peekable())?
+            }
+
             _ => return Err(Error::ExpressionSyntax(next.clone())),
+        };
+
+        Ok(term)
+    }
+
+    /// Recusively parse the expression.
+    ///
+    /// Consumes language tokens automatically.
+    pub fn parse(
+        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
+    ) -> Result<Self, Error> {
+        // Get the left term, if one exists.
+        // TODO: support unary operations.
+        let left = Self::term(iter)?;
+
+        // Check if we have another operator.
+        let next = iter.peek().ok_or(Error::Eof)?;
+        match Op::from_token(next.token()) {
+            Some(op) => {
+                // We have another operator. Consume the token.
+                let _ = iter.next().ok_or(Error::Eof)?;
+
+                // Get the right term. This is a binary op.
+                let right = Self::term(iter)?;
+
+                // Check if there's another operator.
+                let next = iter.peek();
+
+                match next.map(|t| t.token()) {
+                    // Expression is over.
+                    Some(Token::BlockEnd) | None => Ok(Expression::Binary {
+                        left: Box::new(left),
+                        op,
+                        right: Box::new(right),
+                    }),
+
+                    // We have an operator.
+                    Some(token) => match Op::from_token(token) {
+                        Some(second_op) => {
+                            // Consume the token.
+                            let _ = iter.next().ok_or(Error::Eof)?;
+
+                            // Get the right term.
+                            let right2 = Expression::parse(iter)?;
+
+                            // Check operator precendence.
+                            if second_op < op {
+                                let expr = Expression::Binary {
+                                    left: Box::new(right),
+                                    right: Box::new(right2),
+                                    op: second_op,
+                                };
+
+                                Ok(Expression::Binary {
+                                    left: Box::new(left),
+                                    right: Box::new(expr),
+                                    op,
+                                })
+                            } else {
+                                let left = Expression::Binary {
+                                    left: Box::new(left),
+                                    right: Box::new(right),
+                                    op,
+                                };
+
+                                Ok(Expression::Binary {
+                                    left: Box::new(left),
+                                    right: Box::new(right2),
+                                    op: second_op,
+                                })
+                            }
+                        }
+
+                        // Not an op, so syntax error.
+                        None => Err(Error::ExpressionSyntax(next.unwrap().clone())),
+                    },
+                }
+            }
+
+            None => return Ok(left),
         }
+    }
+}
+
+pub trait Evaluate {
+    fn evaluate(&self, context: &Context) -> Result<Value, Error>;
+    fn evaluate_default(&self) -> Result<Value, Error> {
+        self.evaluate(&Context::default())
+    }
+}
+
+impl Evaluate for &str {
+    fn evaluate(&self, context: &Context) -> Result<Value, Error> {
+        let tokens = self.tokenize()?[1..].to_vec(); // Skip code block start.
+        let expr = Expression::parse(&mut tokens.into_iter().peekable())?;
+        expr.evaluate(context)
+    }
+}
+
+impl Evaluate for String {
+    fn evaluate(&self, context: &Context) -> Result<Value, Error> {
+        self.as_str().evaluate(context)
     }
 }
 
@@ -197,12 +272,14 @@ mod test {
     #[test]
     fn test_if_const() -> Result<(), Error> {
         let t1 = r#"<% 1 == 2 %>"#.tokenize()?;
-        let expr = Expression::parse(&mut t1.into_iter().peekable())?;
+        let mut iter = t1[1..].to_vec().into_iter().peekable();
+        let expr = Expression::parse(&mut iter)?;
         let value = expr.evaluate(&Context::default())?;
         assert_eq!(value, Value::Boolean(false));
 
         let t2 = "<% 1 && 1 %>".tokenize()?;
-        let expr = Expression::parse(&mut t2.into_iter().peekable())?;
+        let mut iter = t2[1..].to_vec().into_iter().peekable();
+        let expr = Expression::parse(&mut iter)?;
         let value = expr.evaluate(&Context::default())?;
         assert_eq!(value, Value::Boolean(true));
 
@@ -223,12 +300,29 @@ mod test {
 
     #[test]
     fn test_op_precendence() -> Result<(), Error> {
-        let t1 = r#"<% one + two * three %>"#.tokenize()?;
+        let t1 = r#"<% 2 * 2 + 3 * 5 %>"#.tokenize()?;
         let mut iter = t1[1..].to_vec().into_iter().peekable();
         let ast = Expression::parse(&mut iter)?;
-        println!("{:#?}", ast);
+        let context = Context::default();
+        let result = ast.evaluate(&context)?;
+        assert_eq!(result, Value::Integer(19));
+        Ok(())
+    }
+
+    #[test]
+    fn test_unary() -> Result<(), Error> {
+        assert_eq!(
+            "<% !false == true && true %>".evaluate_default()?,
+            Value::Boolean(true)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parenthesis() -> Result<(), Error> {
+        let t1 = "<% ((1 + 2) + (-1 - -1)) * 5 + (25 - 5) %>";
+        assert_eq!(t1.evaluate_default()?, Value::Integer(35));
+
         Ok(())
     }
 }
-
-// 1 + 5 * 4 + 5

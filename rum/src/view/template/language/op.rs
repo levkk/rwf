@@ -41,6 +41,19 @@ impl Op {
         }
     }
 
+    pub fn evaluate_unary(&self, value: &Value) -> Result<Value, Error> {
+        match self {
+            Op::Not => Ok(Value::Boolean(!value.truthy())),
+            Op::Sub => Ok(match value {
+                Value::Integer(integer) => Value::Integer(-integer),
+                Value::Float(float) => Value::Float(-float),
+                _ => Value::Null,
+            }),
+            Op::Add => Ok(value.clone()),
+            _ => Ok(Value::Null),
+        }
+    }
+
     pub fn evaluate_binary(&self, left: &Value, right: &Value) -> Result<Value, Error> {
         match self {
             Op::Equals => Ok(Value::Boolean(left == right)),
@@ -51,6 +64,10 @@ impl Op {
             Op::GreaterEqualThan => Ok(Value::Boolean(left >= right)),
             Op::And => Ok(Value::Boolean(left.truthy() && right.truthy())),
             Op::Or => Ok(Value::Boolean(left.truthy() || right.truthy())),
+            Op::Add => Ok(left.add(right)),
+            Op::Sub => Ok(left.sub(right)),
+            Op::Mult => Ok(left.mul(right)),
+            Op::Div => Ok(left.div(right)),
             _ => todo!(),
         }
     }

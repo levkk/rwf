@@ -119,7 +119,7 @@ impl Statement {
                     return Ok(Statement::End);
                 }
                 Token::Text(string) => return Ok(Statement::PrintText(string)),
-                Token::BlockStart => (),
+                Token::BlockStart | Token::BlockEnd => (),
                 Token::BlockStartPrint => {
                     let expression = Expression::parse(iter)?;
                     block_end!(iter);
@@ -227,7 +227,7 @@ mod test {
 
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
         let mut context = Context::default();
-        context.set("variable", Value::Integer(5));
+        context.set("variable", Value::Integer(5))?;
 
         let value = ast.evaluate(&context)?;
         assert!(value == "right");
@@ -237,14 +237,19 @@ mod test {
 
     #[test]
     fn test_statements_if_else() -> Result<(), Error> {
-        let t1 =
-            "<% if variable == 5  %>right<% elsif variable == 6 %>wrong<% else %>neither<% end %>"
-                .tokenize()?;
-        let ast = Statement::parse(&mut t1.into_iter().peekable())?;
+        let t1 = "<% if variable == 5 %>
+                right
+            <% elsif variable == 6 %>
+                wrong
+            <% else %>
+                neither
+            <% end %>"
+            .tokenize()?;
+        let ast = Statement::parse(&mut t1.into_iter().peekable()).unwrap();
         let mut context = Context::default();
-        context.set("variable", Value::Integer(7));
+        context.set("variable", Value::Integer(7))?;
         let result = ast.evaluate(&context)?;
-        assert_eq!(result, "neither");
+        assert_eq!(result.trim(), "neither");
 
         Ok(())
     }
@@ -253,7 +258,7 @@ mod test {
     fn test_print_expression() -> Result<(), Error> {
         let t1 = "<%= variable %>";
         let mut context = Context::default();
-        context.set("variable", Value::Integer(7));
+        context.set("variable", Value::Integer(7))?;
 
         let ast = Statement::parse(&mut t1.tokenize()?.into_iter().peekable())?;
         let result = ast.evaluate(&context)?;
@@ -267,7 +272,7 @@ mod test {
         let t1 = r#"<% for a in [1, "hello", 3.45, variable] %><li><%= a %></li><% end %>"#
             .tokenize()?;
         let mut context = Context::default();
-        context.set("variable", Value::String("variable value".into()));
+        context.set("variable", Value::String("variable value".into()))?;
         let ast = Statement::parse(&mut t1.into_iter().peekable())?;
         let result = ast.evaluate(&context)?;
 

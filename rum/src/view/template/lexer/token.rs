@@ -45,4 +45,6 @@ pub enum Token {
     SquareBracketStart,
     SquareBracketEnd,
     Comma,
+    RoundBracketStart,
+    RoundBracketEnd,
 }

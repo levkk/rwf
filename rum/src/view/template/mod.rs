@@ -10,7 +10,7 @@ pub use lexer::{Lexer, ToValue, Token, TokenWithContext, Tokenize, Value};
 use language::Program;
 
 use std::path::{Path, PathBuf};
-use tokio::{fs::read_to_string, io::AsyncReadExt};
+use tokio::fs::read_to_string;
 
 #[derive(Clone, Debug)]
 pub struct Template {

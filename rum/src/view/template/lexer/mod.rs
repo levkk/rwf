@@ -346,6 +346,24 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
+                '(' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::RoundBracketStart));
+                    } else {
+                        self.buffer.push(c);
+                    }
+                }
+
+                ')' => {
+                    if self.code_block {
+                        self.drain_buffer();
+                        self.tokens.push(self.add_token(Token::RoundBracketEnd));
+                    } else {
+                        self.buffer.push(c);
+                    }
+                }
+
                 c => self.buffer.push(c),
             }
         }
@@ -381,6 +399,12 @@ impl<'a> Lexer<'a> {
                     ">=" => self.tokens.push(self.add_token(Token::GreaterEqualThan)),
                     "<" => self.tokens.push(self.add_token(Token::LessThan)),
                     "<=" => self.tokens.push(self.add_token(Token::LessEqualThan)),
+                    "true" => self
+                        .tokens
+                        .push(self.add_token(Token::Value(Value::Boolean(true)))),
+                    "false" => self
+                        .tokens
+                        .push(self.add_token(Token::Value(Value::Boolean(false)))),
                     st => {
                         if let Ok(integer) = st.parse::<i64>() {
                             self.tokens
