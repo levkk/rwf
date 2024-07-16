@@ -149,6 +149,23 @@ impl Statement {
                             Statement::If { else_if: true, .. } => {
                                 else_body.push(statement);
                                 break;
+                                // if
+                                // elsif
+                                // elsif
+                                // else
+                                // end
+                                //
+                                // translates into this:
+                                //
+                                // if
+                                // else
+                                //   if
+                                //   else
+                                //     if
+                                //     else
+                                //     end
+                                //   end
+                                // end
                             }
 
                             Statement::Else => loop {

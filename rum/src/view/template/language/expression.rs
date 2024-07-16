@@ -271,41 +271,45 @@ mod test {
 
     #[test]
     fn test_if_const() -> Result<(), Error> {
-        let t1 = r#"<% 1 == 2 %>"#.tokenize()?;
-        let mut iter = t1[1..].to_vec().into_iter().peekable();
-        let expr = Expression::parse(&mut iter)?;
-        let value = expr.evaluate(&Context::default())?;
-        assert_eq!(value, Value::Boolean(false));
-
-        let t2 = "<% 1 && 1 %>".tokenize()?;
-        let mut iter = t2[1..].to_vec().into_iter().peekable();
-        let expr = Expression::parse(&mut iter)?;
-        let value = expr.evaluate(&Context::default())?;
-        assert_eq!(value, Value::Boolean(true));
+        assert_eq!(r#"<% 1 == 2 %>"#.evaluate_default()?, Value::Boolean(false));
+        assert_eq!(r#"<% 1 == 1 %>"#.evaluate_default()?, Value::Boolean(true));
 
         Ok(())
     }
 
     #[test]
     fn test_list() -> Result<(), Error> {
-        let t1 = r#"<% [1, 2, "hello", 3.13, variable] %>"#.tokenize()?;
-        let mut iter = t1[1..].to_vec().into_iter().peekable();
-        let ast = Expression::parse(&mut iter)?;
+        let mut context = Context::default();
+        context.set("variable", "world")?;
 
-        assert_eq!(iter.next().unwrap().token(), Token::BlockEnd);
-        assert!(iter.next().is_none());
+        let t1 = r#"<% [1, 2, "hello", 3.13, variable] %>"#.evaluate(&context)?;
+        assert_eq!(
+            t1,
+            Value::List(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::String("hello".into()),
+                Value::Float(3.13),
+                Value::String("world".into()),
+            ])
+        );
 
         Ok(())
     }
 
     #[test]
-    fn test_op_precendence() -> Result<(), Error> {
-        let t1 = r#"<% 2 * 2 + 3 * 5 %>"#.tokenize()?;
-        let mut iter = t1[1..].to_vec().into_iter().peekable();
-        let ast = Expression::parse(&mut iter)?;
-        let context = Context::default();
-        let result = ast.evaluate(&context)?;
-        assert_eq!(result, Value::Integer(19));
+    fn test_math() -> Result<(), Error> {
+        assert_eq!("<% 2 * 0.5 %>".evaluate_default()?, Value::Float(1.0));
+        assert_eq!(
+            "<% 2 * 2 + 3 * 5 %>".evaluate_default()?,
+            Value::Integer(19)
+        );
+        assert_eq!("<% 1.5 * 3 + 25 %>".evaluate_default()?, Value::Float(29.5));
+        assert_eq!(
+            "<% (1 + 5) * 0.25 %>".evaluate_default()?,
+            Value::Float(1.5)
+        );
+
         Ok(())
     }
 
@@ -322,6 +326,17 @@ mod test {
     fn test_parenthesis() -> Result<(), Error> {
         let t1 = "<% ((1 + 2) + (-1 - -1)) * 5 + (25 - 5) %>";
         assert_eq!(t1.evaluate_default()?, Value::Integer(35));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_syntactic_sugar() -> Result<(), Error> {
+        let t1 = r#"<% "copy" * 3 + 1 * "copy" %>"#.evaluate_default()?;
+        assert_eq!(t1, Value::String("copycopycopycopy".into()));
+
+        let t2 = r#"<% "where is the love" - "where is the " %>"#.evaluate_default()?;
+        assert_eq!(t2, Value::String("love".into()));
 
         Ok(())
     }

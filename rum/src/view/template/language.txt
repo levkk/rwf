@@ -5,8 +5,8 @@ statement ::= print expression
     | if expression then [statement] elsif expression [statement] [..elseif] else [statement] end
     | for variable in list do [statement] end
 expression ::=
-    expression binary_op expression
-    | unary_op expression
-    | term
+    "(" expression binary_op expression ")"
+    | "(" unary_op expression ")"
+    | "( term ")"
 term ::= constant | variable | function | [expression]
-constant ::= integer | float | string | hash[string,constant] | [constant]
+constant ::= integer | float | string | [constant]

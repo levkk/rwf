@@ -50,6 +50,8 @@ impl Value {
     pub fn add(&self, other: &Self) -> Self {
         match (self, other) {
             (Value::Integer(i1), Value::Integer(i2)) => Value::Integer(i1 + i2),
+            (Value::Integer(i1), Value::Float(f2)) => Value::Float(*i1 as f64 + f2),
+            (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 + *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 + f2),
             (Value::String(s1), Value::String(s2)) => Value::String(format!("{}{}", s1, s2)),
             _ => Value::Null,
@@ -59,7 +61,10 @@ impl Value {
     pub fn sub(&self, other: &Self) -> Self {
         match (self, other) {
             (Value::Integer(i1), Value::Integer(i2)) => Value::Integer(i1 - i2),
+            (Value::Integer(i1), Value::Float(f2)) => Value::Float(*i1 as f64 - f2),
+            (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 - *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 - f2),
+            (Value::String(s1), Value::String(s2)) => Value::String(s1.replace(s2, "").to_string()),
             _ => Value::Null,
         }
     }
@@ -67,6 +72,8 @@ impl Value {
     pub fn div(&self, other: &Self) -> Self {
         match (self, other) {
             (Value::Integer(i1), Value::Integer(i2)) => Value::Integer(i1 / i2),
+            (Value::Integer(i1), Value::Float(f2)) => Value::Float(*i1 as f64 / f2),
+            (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 / *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 / f2),
             _ => Value::Null,
         }
@@ -75,7 +82,11 @@ impl Value {
     pub fn mul(&self, other: &Self) -> Self {
         match (self, other) {
             (Value::Integer(i1), Value::Integer(i2)) => Value::Integer(i1 * i2),
+            (Value::Integer(i1), Value::Float(f2)) => Value::Float(*i1 as f64 * f2),
+            (Value::Float(f1), Value::Integer(i2)) => Value::Float(f1 * *i2 as f64),
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 * f2),
+            (Value::String(s1), Value::Integer(i1)) => Value::String(s1.repeat(*i1 as usize)),
+            (Value::Integer(i1), Value::String(s1)) => Value::String(s1.repeat(*i1 as usize)),
             _ => Value::Null,
         }
     }
