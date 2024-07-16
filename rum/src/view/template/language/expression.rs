@@ -84,13 +84,7 @@ impl Expression {
             }
             Expression::Access { term, key } => {
                 let value = term.evaluate(context)?;
-                match value {
-                    Value::Hash(hash) => hash
-                        .get(key)
-                        .cloned()
-                        .ok_or(Error::UndefinedVariable(key.clone())),
-                    value => Ok(value.call(key)),
-                }
+                Ok(value.call(key))
             }
         }
     }
@@ -349,6 +343,19 @@ mod test {
                 Value::String("hello".into()),
                 Value::Float(3.13),
                 Value::String("world".into()),
+            ])
+        );
+
+        let t2 = "<% [1, 2, 3] * 2 %>".evaluate_default()?;
+        assert_eq!(
+            t2,
+            Value::List(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
             ])
         );
 

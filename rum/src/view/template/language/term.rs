@@ -31,7 +31,6 @@ impl Term {
                 .get(&name)
                 .ok_or(Error::UndefinedVariable(name.clone())),
             Term::Function(f) => Ok(f()),
-            _ => todo!(),
         }
     }
 }

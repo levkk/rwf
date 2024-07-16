@@ -134,16 +134,24 @@ impl Value {
             (Value::Float(f1), Value::Float(f2)) => Value::Float(f1 * f2),
             (Value::String(s1), Value::Integer(i1)) => Value::String(s1.repeat(*i1 as usize)),
             (Value::Integer(i1), Value::String(s1)) => Value::String(s1.repeat(*i1 as usize)),
+            (Value::List(list), Value::Integer(i1)) => {
+                let mut list = list.clone();
+                let mut new_list = vec![];
+                for _ in 0..*i1 {
+                    new_list.extend(list.clone());
+                }
+                Value::List(new_list)
+            }
             _ => Value::Null,
         }
     }
 
     pub fn call(&self, method_name: &str) -> Self {
-        println!("{:?}, method_name: {}", self, method_name);
         match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
-                "to_string" => Value::String(value.to_string()),
+                "to_string" | "to_s" => Value::String(value.to_string()),
+                "to_f" | "to_float" => Value::Float(*value as f64),
                 _ => Value::Null,
             },
 
@@ -153,6 +161,7 @@ impl Value {
                 "floor" => Value::Float(value.floor()),
                 "round" => Value::Float(value.round()),
                 "to_string" => Value::String(value.to_string()),
+                "to_i" | "to_integer" => Value::Integer(*value as i64),
                 _ => Value::Null,
             },
 
@@ -161,6 +170,15 @@ impl Value {
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
                 _ => Value::Null,
+            },
+
+            Value::Hash(hash) => match method_name {
+                "keys" => Value::List(hash.keys().map(|k| Value::String(k.clone())).collect()),
+                "values" => Value::List(hash.values().cloned().collect()),
+                key => match hash.get(key) {
+                    Some(value) => value.clone(),
+                    None => Value::Null,
+                },
             },
 
             _ => Value::Null,
