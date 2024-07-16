@@ -319,6 +319,13 @@ mod test {
             "<% !false == true && true %>".evaluate_default()?,
             Value::Boolean(true)
         );
+
+        let mut context = Context::default();
+        context.set("variable", 5)?;
+        assert_eq!(
+            "<% -variable * 1.5 %>".evaluate(&context)?,
+            Value::Float(-7.5)
+        );
         Ok(())
     }
 
