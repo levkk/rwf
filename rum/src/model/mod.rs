@@ -484,7 +484,7 @@ impl<T: Model> Query<T> {
                 Query::Select(_) => "load".purple(),
                 Query::Update(_) => "save".purple(),
                 Query::Raw(_) => "query".purple(),
-                Query::Insert(_) => "insert".purple(),
+                Query::Insert(_) => "save".purple(),
             },
             duration.as_secs_f64() * 1000.0,
             self.to_sql()

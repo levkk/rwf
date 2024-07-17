@@ -10,6 +10,9 @@ pub enum Error {
 
     #[error("job database error: {0}")]
     DatabaseError(crate::model::error::Error),
+
+    #[error("job retry")]
+    Retry,
 }
 
 impl From<serde_json::Error> for Error {

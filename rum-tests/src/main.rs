@@ -103,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     conn.query(
         "
         CREATE TABLE products (
-            id BIGINT NOT NULL,
+            id BIGSERIAL NOT NULL,
             name VARCHAR NOT NULL,
             avg_price DOUBLE PRECISION NOT NULL DEFAULT 5.0
         )
@@ -206,6 +206,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch(&conn)
         .await?;
     assert_eq!(raw.id(), Some(2));
+
+    let product = Product {
+        id: None,
+        avg_price: 56.0,
+        name: "test 2".to_string(),
+    };
+
+    product.save().fetch(&conn).await?;
 
     conn.rollback().await?;
 

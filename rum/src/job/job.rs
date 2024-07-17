@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio_postgres::{types::Json, Client};
 
-pub trait Job: Serialize {
-    fn execute(&self) -> Result<(), Error>;
+pub trait Job<'a>: Serialize + Deserialize<'a> {
+    fn execute(&self) -> impl Future<Output = Result<(), Error>>;
 
     fn execute_async(&self, conn: &Client) -> impl Future<Output = Result<(), Error>> {
         async move {
@@ -15,6 +15,7 @@ pub trait Job: Serialize {
 
             let model = JobModel {
                 id: None,
+                name: std::any::type_name::<Self>().to_string(),
                 payload,
                 created_at: OffsetDateTime::now_utc(),
                 executed_at: None,
@@ -28,9 +29,14 @@ pub trait Job: Serialize {
     }
 }
 
+pub struct JobContainer {
+    execute: Box<dyn Fn() -> Result<Box<dyn Future<Output = ()>>, Error>>,
+}
+
 #[derive(Clone, Debug)]
 struct JobModel {
     id: Option<i64>,
+    name: String,
     payload: serde_json::Value,
     created_at: OffsetDateTime,
     executed_at: Option<OffsetDateTime>,
@@ -41,6 +47,7 @@ impl FromRow for JobModel {
     fn from_row(row: tokio_postgres::Row) -> Self {
         Self {
             id: row.get("id"),
+            name: row.get("name"),
             payload: row.get("payload"),
             created_at: row.get("created_at"),
             executed_at: row.get("executed_at"),

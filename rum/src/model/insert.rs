@@ -22,8 +22,6 @@ impl<T: Model> Insert<T> {
             placeholders.add(&value);
         }
 
-        placeholders.add(&model.id().to_value());
-
         Self {
             table_name: T::table_name(),
             primary_key: T::primary_key(),
