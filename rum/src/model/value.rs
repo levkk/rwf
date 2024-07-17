@@ -33,6 +33,8 @@ pub enum Value {
     Range((Box<Value>, Box<Value>)),
     /// Table column, e.g. `"users"."id"`.
     Column(Column),
+
+    Json(serde_json::Value),
     /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
 }
@@ -84,6 +86,12 @@ impl ToValue for i64 {
     }
 }
 
+impl ToValue for Option<i64> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
 impl ToValue for f64 {
     fn to_value(&self) -> Value {
         Value::Float(*self)
@@ -123,6 +131,24 @@ impl ToValue for Range<i64> {
     }
 }
 
+impl ToValue for serde_json::Value {
+    fn to_value(&self) -> Value {
+        Value::Json(self.clone())
+    }
+}
+
+impl ToValue for OffsetDateTime {
+    fn to_value(&self) -> Value {
+        Value::TimestampT(*self)
+    }
+}
+
+impl ToValue for Option<OffsetDateTime> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
 impl tokio_postgres::types::ToSql for Value {
     fn to_sql(
         &self,
@@ -137,6 +163,7 @@ impl tokio_postgres::types::ToSql for Value {
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),
+            Value::Json(json) => json.to_sql(ty, out),
             Value::Optional(value) => {
                 if let Some(value) = value.deref() {
                     tokio_postgres::types::ToSql::to_sql(&value, ty, out)
@@ -173,6 +200,10 @@ impl ToSql for Value {
                     .map(|value| value.to_sql())
                     .collect::<Vec<_>>()
                     .join(", ")
+            ),
+            Value::Json(value) => format!(
+                "'{}'::jsonb",
+                serde_json::to_string(value).unwrap_or("".into()).escape()
             ),
             Column(column) => column.to_sql(),
             _ => todo!(),

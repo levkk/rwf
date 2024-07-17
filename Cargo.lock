@@ -866,6 +866,8 @@ dependencies = [
  "bytes",
  "fallible-iterator",
  "postgres-protocol",
+ "serde",
+ "serde_json",
  "time",
 ]
 
@@ -1032,7 +1034,10 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pluralizer",
+ "postgres-types",
  "rum-macros",
+ "serde",
+ "serde_json",
  "thiserror",
  "time",
  "tokio",

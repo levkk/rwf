@@ -9,6 +9,7 @@ pub mod escape;
 pub mod exists;
 pub mod explain;
 pub mod filter;
+pub mod insert;
 pub mod join;
 pub mod limit;
 pub mod lock;
@@ -27,6 +28,7 @@ pub use escape::Escape;
 pub use exists::Exists;
 pub use explain::Explain;
 pub use filter::{Filter, WhereClause};
+pub use insert::Insert;
 pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
 pub use lock::Lock;
@@ -137,6 +139,7 @@ pub trait ToSql {
 pub enum Query<T: FromRow + ?Sized = Row> {
     Select(Select<T>),
     Update(Update<T>),
+    Insert(Insert<T>),
     Raw(String),
 }
 
@@ -148,6 +151,7 @@ impl<T: FromRow> ToSql for Query<T> {
             Select(select) => select.to_sql(),
             Raw(query) => query.clone(),
             Update(update) => update.to_sql(),
+            Insert(insert) => insert.to_sql(),
         }
     }
 }
@@ -396,6 +400,11 @@ impl<T: Model> Query<T> {
                 let values = update.placeholders.values();
                 client.query(&query, &values).await?
             }
+
+            Query::Insert(insert) => {
+                let values = insert.placeholders.values();
+                client.query(&query, &values).await?
+            }
         };
 
         Ok(rows)
@@ -475,6 +484,7 @@ impl<T: Model> Query<T> {
                 Query::Select(_) => "load".purple(),
                 Query::Update(_) => "save".purple(),
                 Query::Raw(_) => "query".purple(),
+                Query::Insert(_) => "insert".purple(),
             },
             duration.as_secs_f64() * 1000.0,
             self.to_sql()
@@ -495,7 +505,7 @@ pub trait Model: FromRow {
         vec![]
     }
 
-    fn id(&self) -> i64 {
+    fn id(&self) -> Option<i64> {
         let model_name = std::any::type_name::<Self>();
         panic!(
             "
@@ -584,12 +594,20 @@ pub trait Model: FromRow {
     }
 
     fn related<F: Association<Self>>(models: &[impl Model]) -> Query<F> {
-        let fks = models.iter().map(|fk| fk.id()).collect::<Vec<_>>();
+        let fks = models
+            .iter()
+            .filter(|model| model.id().is_some())
+            .map(|fk| fk.id().unwrap())
+            .collect::<Vec<_>>();
         F::all().filter(Self::foreign_key(), fks.as_slice())
     }
 
     fn save(self) -> Query<Self> {
         Query::Update(Update::new(self))
+    }
+
+    fn create(self) -> Query<Self> {
+        todo!()
     }
 
     fn lock() -> Query<Self> {

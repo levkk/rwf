@@ -1,16 +1,16 @@
-use super::{Escape, FromRow, Model, Placeholders, ToSql, ToValue};
+use super::{Column, Escape, FromRow, Model, Placeholders, ToSql, ToValue};
 use std::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct Update<T> {
+pub struct Insert<T> {
     table_name: String,
     primary_key: String,
-    pub placeholders: Placeholders,
     columns: Vec<String>,
+    pub placeholders: Placeholders,
     marker: PhantomData<T>,
 }
 
-impl<T: Model> Update<T> {
+impl<T: Model> Insert<T> {
     pub fn new(model: T) -> Self {
         let columns = T::column_names()
             .into_iter()
@@ -34,22 +34,24 @@ impl<T: Model> Update<T> {
     }
 }
 
-impl<T: FromRow> ToSql for Update<T> {
+impl<T: FromRow> ToSql for Insert<T> {
     fn to_sql(&self) -> String {
-        let where_id = format!("{} = ${}", self.primary_key, self.placeholders.id() - 1);
-        let sets = self
+        let columns = self
+            .columns
+            .iter()
+            .map(|c| format!(r#""{}""#, c))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let placeholders = self
             .columns
             .iter()
             .enumerate()
-            .map(|(idx, column)| format!(r#""{}" = ${}"#, column.escape(), idx + 1))
+            .map(|(i, _)| format!("${}", i + 1))
             .collect::<Vec<_>>()
             .join(", ");
-
         format!(
-            r#"UPDATE "{}" SET {} WHERE {} RETURNING *"#,
-            self.table_name.escape(),
-            sets,
-            where_id
+            r#"INSERT INTO "{}" ({}) VALUES ({}) RETURNING *"#,
+            self.table_name, columns, placeholders
         )
     }
 }

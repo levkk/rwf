@@ -27,7 +27,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
             let id = if has_id {
                 quote! {
-                    fn id(&self) -> i64 {
+                    fn id(&self) -> Option<i64> {
                         self.id
                     }
                 }
@@ -35,13 +35,17 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 quote! {}
             };
 
-            let column_names = data.fields.iter().map(|field| {
-                let ident = field.ident.clone();
+            let column_names = data
+                .fields
+                .iter()
+                .filter(|field| field.ident.clone().unwrap() != "id")
+                .map(|field| {
+                    let ident = field.ident.clone();
 
-                quote! {
-                    String::from(stringify!(#ident)),
-                }
-            });
+                    quote! {
+                        String::from(stringify!(#ident)),
+                    }
+                });
 
             let values = data
                 .fields
