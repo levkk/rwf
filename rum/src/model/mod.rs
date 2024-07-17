@@ -603,7 +603,10 @@ pub trait Model: FromRow {
     }
 
     fn save(self) -> Query<Self> {
-        Query::Update(Update::new(self))
+        match self.id() {
+            Some(_) => Query::Update(Update::new(self)),
+            None => Query::Insert(Insert::new(self)),
+        }
     }
 
     fn create(self) -> Query<Self> {
