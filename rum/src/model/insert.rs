@@ -39,7 +39,7 @@ impl<T: FromRow> ToSql for Insert<T> {
         let columns = self
             .columns
             .iter()
-            .map(|c| format!(r#""{}""#, c))
+            .map(|c| format!(r#""{}""#, c.escape()))
             .collect::<Vec<_>>()
             .join(", ");
         let placeholders = self
@@ -51,7 +51,9 @@ impl<T: FromRow> ToSql for Insert<T> {
             .join(", ");
         format!(
             r#"INSERT INTO "{}" ({}) VALUES ({}) RETURNING *"#,
-            self.table_name, columns, placeholders
+            self.table_name.escape(),
+            columns,
+            placeholders
         )
     }
 }
