@@ -37,6 +37,8 @@ pub enum Value {
     Json(serde_json::Value),
     /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
+
+    Null,
 }
 
 impl Value {
@@ -46,6 +48,14 @@ impl Value {
     /// Rust types are provided.
     pub fn new(value: impl ToValue) -> Self {
         value.to_value()
+    }
+
+    pub fn is_null(&self) -> bool {
+        match self {
+            Value::Optional(value) => value.is_none(),
+            Value::Null => true,
+            _ => false,
+        }
     }
 }
 
@@ -203,8 +213,14 @@ impl ToSql for Value {
             ),
             Value::Json(value) => format!(
                 "'{}'::jsonb",
-                serde_json::to_string(value).unwrap_or("".into()).escape()
+                serde_json::to_string(value)
+                    .unwrap_or("".into())
+                    .replace("'", ""),
             ),
+            Value::Optional(value) => match value.as_ref() {
+                Some(value) => value.to_sql(),
+                None => "NULL".to_string(),
+            },
             Column(column) => column.to_sql(),
             _ => todo!(),
         }

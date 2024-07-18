@@ -74,6 +74,11 @@ impl<T: FromRow> Select<T> {
         self
     }
 
+    pub fn skip_locked(mut self) -> Self {
+        self.lock = self.lock.skip_locked();
+        self
+    }
+
     pub fn exists(mut self) -> Self {
         self.columns = self.columns.exists();
         self
@@ -99,13 +104,18 @@ impl<T: FromRow> Select<T> {
 
         let value = value.to_value();
 
-        let value = match value {
-            Value::List(_) => {
-                let placeholder = self.placeholders.borrow_mut().add(&value);
-                Value::Record(Box::new(placeholder))
-            }
+        // Null is handled by the filter.
+        let value = if !value.is_null() {
+            match value {
+                Value::List(_) => {
+                    let placeholder = self.placeholders.borrow_mut().add(&value);
+                    Value::Record(Box::new(placeholder))
+                }
 
-            value => self.placeholders.borrow_mut().add(&value),
+                value => self.placeholders.borrow_mut().add(&value),
+            }
+        } else {
+            value
         };
 
         match op {

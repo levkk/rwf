@@ -33,7 +33,13 @@ impl ToSql for Comparison {
         use Comparison::*;
 
         match self {
-            Equal((a, b)) => format!("{} = {}", a.to_sql(), b.to_sql()),
+            Equal((a, b)) => {
+                if b.is_null() {
+                    format!("{} IS NULL", a.to_sql())
+                } else {
+                    format!("{} = {}", a.to_sql(), b.to_sql())
+                }
+            }
             In((column, value)) => format!("{} = ANY({})", column.to_sql(), value.to_sql()),
             NotIn((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
             NotEqual((column, value)) => format!("{} <> {}", column.to_sql(), value.to_sql()),

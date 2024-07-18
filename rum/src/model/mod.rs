@@ -373,6 +373,13 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn skip_locked(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.skip_locked()),
+            _ => self,
+        }
+    }
+
     async fn execute_internal(
         &self,
         client: &tokio_postgres::Client,

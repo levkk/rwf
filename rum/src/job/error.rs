@@ -26,3 +26,9 @@ impl From<crate::model::error::Error> for Error {
         Error::DatabaseError(err)
     }
 }
+
+impl From<tokio_postgres::Error> for Error {
+    fn from(err: tokio_postgres::Error) -> Error {
+        Error::DatabaseError(err.into())
+    }
+}
