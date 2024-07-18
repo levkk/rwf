@@ -502,16 +502,33 @@ impl<T: Model> Query<T> {
 pub type Scope<T> = Query<T>;
 
 pub trait Model: FromRow {
+    /// Name of the Postgres table.
+    ///
+    /// Typically this is automatically inferred based on the name of the struct,
+    /// if you're using the derive macro. If not, you can specify any table name you want.
     fn table_name() -> String;
 
+    /// When joining tables, use this function to create a fully-qualified column name, e.g.
+    /// instead "id", you'll get "users"."id".
     fn column(name: &str) -> Column {
         Column::new(Self::table_name(), name)
     }
 
+    /// List of columns in the table.
+    ///
+    /// If you're using the derive macro, you don't need to specify these,
+    /// they will be inferred from the struct attributes.
     fn column_names() -> Vec<String> {
         vec![]
     }
 
+    /// The value of the primary key (id).
+    ///
+    /// All models require an ID field. This makes things a lot easier for
+    /// not only day-to-day operations but also joins.
+    ///
+    /// This method is implemented if the derive macro is used.
+    /// Otherwise, it should return the value of the `id` struct attribute.
     fn id(&self) -> Option<i64> {
         let model_name = std::any::type_name::<Self>();
         panic!(
@@ -524,6 +541,9 @@ pub trait Model: FromRow {
         );
     }
 
+    /// Values is a list of all column values as mapped to the struct attributes.
+    ///
+    /// Should be in the same order as the [`Self::column_names`].
     fn values(&self) -> Vec<Value> {
         let model_name = std::any::type_name::<Self>();
         panic!(
@@ -535,11 +555,11 @@ pub trait Model: FromRow {
         );
     }
 
+    /// If this table is related to another table, this is the name of the foreign key.
+    ///
+    /// For example, if the primary key of this table is "id" and the name of the table is "users",
+    /// then the foreign key is "user_id".
     fn foreign_key() -> String;
-
-    fn relationships() -> Vec<Join> {
-        vec![]
-    }
 
     fn configure_pool(pool: Pool) -> Result<(), Error> {
         match POOL.set(pool) {
@@ -548,46 +568,56 @@ pub trait Model: FromRow {
         }
     }
 
+    /// Name of the primary key column. Expected to be "id".
     fn primary_key() -> String {
         "id".to_string()
     }
 
+    /// `LIMIT 1`
     fn take_one() -> Query<Self> {
         Query::select(Self::table_name()).take_one()
     }
 
+    /// `LIMIT n`
     fn take_many(n: usize) -> Query<Self> {
         Query::select(Self::table_name()).take_many(n)
     }
 
+    /// `ORDER BY id ASC LIMIT 1`
     fn first_one() -> Query<Self> {
         Query::select(Self::table_name()).first_one()
     }
 
+    /// `ORDER BY id ASC LIMIT n`
     fn first_many(n: usize) -> Query<Self> {
         Query::select(Self::table_name()).first_many(n)
     }
 
+    /// Get all rows. Good starting point for all queries.
     fn all() -> Query<Self> {
         Query::select(Self::table_name())
     }
 
+    /// `WHERE column = value`
     fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name()).filter(column, value)
     }
 
+    /// `WHERE column = value LIMIT 1`
     fn find_by(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
             .take_one()
     }
 
+    /// `WHERE id = value`
     fn find(value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(Self::primary_key(), value.to_value())
             .take_one()
     }
 
+    /// Whatever you want.
     fn find_by_sql(query: impl ToString) -> Query<Self> {
         Query::Raw(query.to_string())
     }
