@@ -186,30 +186,32 @@ impl Expression {
     }
 
     fn accessor(
-        expr: Self,
+        mut expr: Self,
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Self, Error> {
-        let accessor = iter.peek().map(|t| t.token());
+        loop {
+            let accessor = iter.peek().map(|t| t.token());
 
-        Ok(match accessor {
-            Some(Token::Dot) => {
-                let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
-                let name = iter.next().ok_or(Error::Eof("accessor name"))?;
-                match name.token() {
-                    Token::Variable(key) => Expression::Access {
-                        term: Box::new(expr),
-                        key,
-                    },
-                    Token::Value(Value::Integer(n)) => Expression::Access {
-                        term: Box::new(expr),
-                        key: n.to_string(),
-                    },
-                    _ => return Err(Error::ExpressionSyntax(name.clone())),
+            expr = match accessor {
+                Some(Token::Dot) => {
+                    let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
+                    let name = iter.next().ok_or(Error::Eof("accessor name"))?;
+                    match name.token() {
+                        Token::Variable(key) => Expression::Access {
+                            term: Box::new(expr),
+                            key,
+                        },
+                        Token::Value(Value::Integer(n)) => Expression::Access {
+                            term: Box::new(expr),
+                            key: n.to_string(),
+                        },
+                        _ => return Err(Error::ExpressionSyntax(name.clone())),
+                    }
                 }
-            }
 
-            Some(_) | None => expr,
-        })
+                Some(_) | None => return Ok(expr),
+            };
+        }
     }
 
     /// Recusively parse the expression.
@@ -395,6 +397,10 @@ mod test {
         assert_eq!(
             r#"<% ("one" + "two" + "three" ).upcase %>"#.evaluate_default()?,
             Value::String("ONETWOTHREE".into())
+        );
+        assert_eq!(
+            r#"<% " one".upcase.trim %>"#.evaluate_default()?,
+            Value::String("ONE".into())
         );
 
         let mut context = Context::default();
