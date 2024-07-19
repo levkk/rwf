@@ -117,7 +117,7 @@ impl Statement {
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Statement, Error> {
         loop {
-            let next = iter.next().ok_or(Error::Eof)?;
+            let next = iter.next().ok_or(Error::Eof("statement parse"))?;
             match next.token() {
                 Token::End => {
                     block_end!(iter);
@@ -207,7 +207,7 @@ impl Statement {
                         _ => return Err(Error::Syntax(next)),
                     };
 
-                    let in_ = iter.next().ok_or(Error::Eof)?;
+                    let in_ = iter.next().ok_or(Error::Eof("statement for"))?;
                     expect!(in_, Token::In);
 
                     let list = Expression::parse(iter)?;

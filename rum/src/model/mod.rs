@@ -35,7 +35,7 @@ pub use lock::Lock;
 pub use macros::belongs_to;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::{IntoWrapper, Pool, Wrapper};
+pub use pool::{get_pool, IntoWrapper, Pool, Wrapper};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
@@ -76,7 +76,7 @@ static POOL: OnceCell<Pool> = OnceCell::new();
 ///     }
 /// }   
 /// ```
-pub trait FromRow: Clone {
+pub trait FromRow: Clone + Send {
     fn from_row(row: tokio_postgres::Row) -> Self
     where
         Self: Sized;
@@ -261,6 +261,14 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn filter_gte(self, column: impl ToColumn, value: impl ToValue) -> Self {
+        use Query::*;
+        match self {
+            Select(select) => Select(select.filter_gte(column, value)),
+            _ => self,
+        }
+    }
+
     pub fn or(self, f: fn(Self) -> Self) -> Self {
         use Query::*;
         match self {
@@ -388,7 +396,7 @@ impl<T: Model> Query<T> {
 
         let rows = match self {
             Query::Select(select) => {
-                let placeholdres = select.placeholders();
+                let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
                 match client.query(&query, &values).await {
                     Ok(rows) => rows,

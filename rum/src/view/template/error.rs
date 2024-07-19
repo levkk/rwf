@@ -14,8 +14,8 @@ pub enum Error {
     #[error("expected {0}, got {0}")]
     WrongToken(TokenWithContext, Token),
 
-    #[error("eof")]
-    Eof,
+    #[error("eof: {0}")]
+    Eof(&'static str),
 
     #[error("undefined variable: {0}")]
     UndefinedVariable(String),

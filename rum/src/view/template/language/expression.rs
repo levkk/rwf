@@ -90,7 +90,7 @@ impl Expression {
     }
 
     fn term(iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>) -> Result<Self, Error> {
-        let next = iter.next().ok_or(Error::Eof)?;
+        let next = iter.next().ok_or(Error::Eof("term next"))?;
         let term = match next.token() {
             Token::Not => {
                 let term = Self::term(iter)?;
@@ -123,33 +123,33 @@ impl Expression {
                 // Count the brackets. The term is finished when the number of opening brackets
                 // match the number of closing brackets.
                 while count > 0 {
-                    let next = iter.peek().ok_or(Error::Eof)?;
+                    let next = iter.peek().ok_or(Error::Eof("round bracket start"))?;
 
                     match next.token() {
                         Token::RoundBracketStart => {
                             count += 1;
-                            expr.push(iter.next().ok_or(Error::Eof)?);
+                            expr.push(iter.next().ok_or(Error::Eof("round bracket start 1"))?);
                         }
                         Token::RoundBracketEnd => {
                             count -= 1;
 
                             // If it's not the closing bracket, push it in for recursive parsing later.
                             if count > 0 {
-                                expr.push(iter.next().ok_or(Error::Eof)?);
+                                expr.push(iter.next().ok_or(Error::Eof("round bracket end"))?);
                             } else {
                                 // Drop the closing bracket, the expression is over.
-                                let _ = iter.next().ok_or(Error::Eof)?;
+                                let _ = iter.next().ok_or(Error::Eof("round bracket end 1"))?;
                             }
                         }
                         Token::BlockEnd => return Err(Error::ExpressionSyntax(next.clone())),
 
                         _ => {
-                            expr.push(iter.next().ok_or(Error::Eof)?);
+                            expr.push(iter.next().ok_or(Error::Eof("round bracket push"))?);
                         }
                     }
                 }
 
-                Self::parse(&mut expr.into_iter().peekable())?
+                Self::accessor(Self::parse(&mut expr.into_iter().peekable())?, iter)?
             }
 
             token => {
@@ -160,7 +160,7 @@ impl Expression {
                         let mut terms = vec![];
 
                         loop {
-                            let next = iter.next().ok_or(Error::Eof)?;
+                            let next = iter.next().ok_or(Error::Eof("term token"))?;
                             match next.token() {
                                 Token::SquareBracketEnd => break,
                                 Token::Comma => continue,
@@ -178,31 +178,38 @@ impl Expression {
                     _ => return Err(Error::ExpressionSyntax(next)),
                 };
 
-                let accessor = iter.peek().map(|t| t.token());
-
-                match accessor {
-                    Some(Token::Dot) => {
-                        let _ = iter.next().ok_or(Error::Eof)?;
-                        let name = iter.next().ok_or(Error::Eof)?;
-                        match name.token() {
-                            Token::Variable(key) => Expression::Access {
-                                term: Box::new(expr),
-                                key,
-                            },
-                            Token::Value(Value::Integer(n)) => Expression::Access {
-                                term: Box::new(expr),
-                                key: n.to_string(),
-                            },
-                            _ => return Err(Error::ExpressionSyntax(name.clone())),
-                        }
-                    }
-
-                    Some(_) | None => expr,
-                }
+                Self::accessor(expr, iter)?
             }
         };
 
         Ok(term)
+    }
+
+    fn accessor(
+        expr: Self,
+        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
+    ) -> Result<Self, Error> {
+        let accessor = iter.peek().map(|t| t.token());
+
+        Ok(match accessor {
+            Some(Token::Dot) => {
+                let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
+                let name = iter.next().ok_or(Error::Eof("accessor name"))?;
+                match name.token() {
+                    Token::Variable(key) => Expression::Access {
+                        term: Box::new(expr),
+                        key,
+                    },
+                    Token::Value(Value::Integer(n)) => Expression::Access {
+                        term: Box::new(expr),
+                        key: n.to_string(),
+                    },
+                    _ => return Err(Error::ExpressionSyntax(name.clone())),
+                }
+            }
+
+            Some(_) | None => expr,
+        })
     }
 
     /// Recusively parse the expression.
@@ -216,11 +223,15 @@ impl Expression {
         let left = Self::term(iter)?;
 
         // Check if we have another operator.
-        let next = iter.peek().ok_or(Error::Eof)?;
+        let next = match iter.peek() {
+            Some(next) => next,
+            None => return Ok(left),
+        };
+
         match Op::from_token(next.token()) {
             Some(op) => {
                 // We have another operator. Consume the token.
-                let _ = iter.next().ok_or(Error::Eof)?;
+                let _ = iter.next().ok_or(Error::Eof("parse token"))?;
 
                 // Get the right term. This is a binary op.
                 let right = Self::term(iter)?;
@@ -240,7 +251,7 @@ impl Expression {
                     Some(token) => match Op::from_token(token) {
                         Some(second_op) => {
                             // Consume the token.
-                            let _ = iter.next().ok_or(Error::Eof)?;
+                            let _ = iter.next().ok_or(Error::Eof("parse second op"))?;
 
                             // Get the right term.
                             let right2 = Expression::parse(iter)?;
@@ -380,6 +391,10 @@ mod test {
         assert_eq!(
             r#"<% "one".upcase %>"#.evaluate_default()?,
             Value::String("ONE".into())
+        );
+        assert_eq!(
+            r#"<% ("one" + "two" + "three").upcase %>"#.evaluate_default()?,
+            Value::String("ONETWOTHREE".into())
         );
 
         let mut context = Context::default();

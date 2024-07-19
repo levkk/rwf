@@ -7,9 +7,11 @@ use tokio_postgres::Client;
 use parking_lot::Mutex;
 
 use std::collections::VecDeque;
+use std::future::Future;
+use std::ops::Deref;
 use std::sync::Arc;
 
-use std::ops::Deref;
+use once_cell::sync::{Lazy, OnceCell};
 
 pub mod connection;
 pub mod into_client;
@@ -18,6 +20,12 @@ use super::Error;
 pub use connection::Connection;
 pub use into_client::{IntoWrapper, Wrapper};
 pub use transaction::Transaction;
+
+static POOL: OnceCell<Pool> = OnceCell::new();
+
+pub fn get_pool() -> Pool {
+    POOL.get_or_init(|| Pool::new_local()).clone()
+}
 
 /// Smart pointer that automatically checks in the connection
 /// back into the pool when the connection is dropped.
@@ -178,27 +186,54 @@ impl Pool {
         self.begin().await
     }
 
+    pub async fn with_transaction<Fut, R>(
+        &self,
+        f: impl FnOnce(Transaction) -> Fut,
+    ) -> Result<R, Error>
+    where
+        Fut: Future<Output = Result<R, Error>>,
+    {
+        let mut transaction = self.begin().await?;
+        let result = f(transaction).await?;
+        Ok(result)
+    }
+
     // Get a connection from the pool or create a new one if allowed.
     async fn get_internal(&self) -> Result<ConnectionGuard, Error> {
         loop {
-            let mut inner = self.inner.lock();
+            {
+                let mut inner = self.inner.lock();
 
-            while !inner.connections.is_empty() {
-                let candidate = inner.connections.pop_back();
+                while !inner.connections.is_empty() {
+                    let candidate = inner.connections.pop_back();
 
-                if let Some(candidate) = candidate {
-                    if !candidate.bad() {
-                        return Ok(ConnectionGuard::new(candidate, self.clone()));
+                    if let Some(candidate) = candidate {
+                        if !candidate.bad() {
+                            return Ok(ConnectionGuard::new(candidate, self.clone()));
+                        }
                     }
                 }
             }
 
-            if self.config.pool_size > inner.expected {
-                inner.expected += 1;
+            let need_more = {
+                let mut inner = self.inner.lock();
+                let need_more = self.config.pool_size > inner.expected;
+
+                if need_more {
+                    inner.expected += 1;
+                }
+
+                need_more
+            };
+
+            if need_more {
                 match Connection::new(&self.database_url).await {
                     Ok(connection) => return Ok(ConnectionGuard::new(connection, self.clone())),
                     Err(err) => {
-                        inner.expected -= 1;
+                        {
+                            let mut inner = self.inner.lock();
+                            inner.expected -= 1;
+                        }
                         return Err(err);
                     }
                 }

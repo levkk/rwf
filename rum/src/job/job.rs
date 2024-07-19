@@ -1,10 +1,12 @@
-use super::Error;
-use crate::model::{FromRow, Model, ToValue, Value};
+use super::{Error, Worker};
+use crate::model::{get_pool, FromRow, Model, ToValue, Value};
 use std::future::Future;
 
 use serde::{de::DeserializeOwned, Serialize};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use tokio_postgres::{types::Json, Client};
+
+static MAX_RETRIES: i64 = 25;
 
 pub trait Job: Serialize + DeserializeOwned + Send + 'static {
     fn execute(&self) -> impl Future<Output = Result<(), Error>> + Send;
@@ -15,41 +17,58 @@ pub trait Job: Serialize + DeserializeOwned + Send + 'static {
 
     fn execute_async(&self, conn: &Client) -> impl Future<Output = Result<(), Error>> {
         async move {
-            let payload = serde_json::to_value(&self)?;
-
-            let model = JobModel {
-                id: None,
-                name: std::any::type_name::<Self>().to_string(),
-                payload,
-                created_at: OffsetDateTime::now_utc(),
-                executed_at: None,
-                completed_at: None,
-                error: None,
-            };
-
-            let model = model.save().fetch(conn).await?;
-
-            conn.execute(&format!(r#"NOTIFY "jobs", '{}'"#, model.id().unwrap()), &[])
-                .await?;
+            JobModel::create(
+                &Self::async_job_name(),
+                serde_json::to_value(self).expect("job serialization error"),
+                None,
+                conn,
+            )
+            .await?;
 
             Ok(())
         }
     }
 
     fn execute_internal(id: i64, payload: serde_json::Value) {
-        let job: Self = serde_json::from_value(payload).expect("deserialization");
+        let job: Self = match serde_json::from_value(payload) {
+            Ok(job) => job,
+            Err(_) => return,
+        };
 
         tokio::spawn(async move {
             match job.execute().await {
                 Ok(()) => {
-                    println!("todo, save job state");
+                    let pool = get_pool();
+                    let conn = pool.get().await?;
+                    let mut job = JobModel::find(id).fetch(&conn).await?;
+
+                    job.completed_at = Some(OffsetDateTime::now_utc());
+                    job.save().execute(&conn).await?;
                 }
 
                 Err(err) => {
-                    println!("todo save error state");
+                    let pool = get_pool();
+                    let conn = pool.begin().await?;
+
+                    let mut job = JobModel::find(id).lock().fetch(&conn).await?;
+
+                    job.retries -= 1;
+                    job.error = Some(err.to_string());
+                    job.start_after = OffsetDateTime::now_utc()
+                        + Duration::seconds(2_i32.pow((MAX_RETRIES - job.retries) as u32) as i64); // Exponential back-off
+
+                    job.save().execute(&conn).await?;
+
+                    conn.commit().await?;
                 }
             }
+
+            Ok::<(), Error>(())
         });
+    }
+
+    fn register(worker: &mut Worker) {
+        worker.add(Self::async_job_name().as_str(), Self::execute_internal);
     }
 }
 
@@ -61,6 +80,8 @@ pub struct JobModel {
     pub created_at: OffsetDateTime,
     pub executed_at: Option<OffsetDateTime>,
     pub completed_at: Option<OffsetDateTime>,
+    pub start_after: OffsetDateTime,
+    pub retries: i64,
     pub error: Option<String>,
 }
 
@@ -71,6 +92,32 @@ impl JobModel {
 
     pub fn payload(&self) -> serde_json::Value {
         self.payload.clone()
+    }
+
+    async fn create(
+        name: &str,
+        payload: serde_json::Value,
+        delay: Option<Duration>,
+        conn: &tokio_postgres::Client,
+    ) -> Result<Self, Error> {
+        let model = JobModel {
+            id: None,
+            name: std::any::type_name::<Self>().to_string(),
+            payload,
+            created_at: OffsetDateTime::now_utc(),
+            executed_at: None,
+            completed_at: None,
+            start_after: OffsetDateTime::now_utc() + delay.unwrap_or(Duration::seconds(0)),
+            retries: MAX_RETRIES,
+            error: None,
+        };
+
+        let model = model.save().fetch(conn).await?;
+
+        conn.execute(&format!(r#"NOTIFY "jobs", '{}'"#, model.id().unwrap()), &[])
+            .await?;
+
+        Ok(model)
     }
 }
 
@@ -83,6 +130,8 @@ impl FromRow for JobModel {
             created_at: row.get("created_at"),
             executed_at: row.get("executed_at"),
             completed_at: row.get("completed_at"),
+            start_after: row.get("start_after"),
+            retries: row.get("retries"),
             error: row.get("error"),
         }
     }
@@ -108,6 +157,8 @@ impl Model for JobModel {
             self.created_at.to_value(),
             self.executed_at.to_value(),
             self.completed_at.to_value(),
+            self.start_after.to_value(),
+            self.retries.to_value(),
             self.error.to_value(),
         ]
     }
@@ -123,6 +174,8 @@ impl Model for JobModel {
             "created_at",
             "executed_at",
             "completed_at",
+            "start_after",
+            "retries",
             "error",
         ]
         .into_iter()
@@ -136,7 +189,10 @@ mod test {
     use super::super::Worker;
     use super::*;
     use crate::{logging, model::Pool};
+    use once_cell::sync::OnceCell;
     use serde::Deserialize;
+
+    static JOB_RAN: OnceCell<bool> = OnceCell::new();
 
     #[derive(Serialize, Deserialize, Debug)]
     struct MyJob {
@@ -146,7 +202,7 @@ mod test {
 
     impl Job for MyJob {
         fn execute(&self) -> impl Future<Output = Result<(), Error>> {
-            println!("executing job: {:?}", self);
+            JOB_RAN.set(true).expect("job ran");
             async move { Ok(()) }
         }
     }
@@ -155,18 +211,31 @@ mod test {
     async fn test_impl_job() {
         logging::configure();
         let mut worker = Worker::default();
+        MyJob::register(&mut worker);
+
         let pool = Pool::new_local();
+
+        pool.with_transaction(|conn| async move {
+            conn.execute("SELECT 1", &[]).await?;
+            conn.commit().await?;
+            Ok(())
+        })
+        .await
+        .expect("with transaction");
+
         let conn = pool.begin().await.expect("transaction");
 
         conn.execute(
             "
-            CREATE TABLE jobs (
+            CREATE TABLE IF NOT EXISTS jobs (
                 id BIGSERIAL PRIMARY KEY,
                 name VARCHAR NOT NULL,
                 payload JSONB NOT NULL DEFAULT '{}'::jsonb,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 executed_at TIMESTAMPTZ,
                 completed_at TIMESTAMPTZ,
+                start_after TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                retries BIGINT NOT NULL DEFAULT 25,
                 error VARCHAR
             );
         ",
@@ -183,7 +252,8 @@ mod test {
         .await
         .expect("execute job");
 
-        worker.add(MyJob::async_job_name().as_str(), MyJob::execute_internal);
+        // conn.commit().await?;
+
         worker.run_once(&conn).await.expect("run once");
 
         let jobs = JobModel::all()
@@ -193,5 +263,7 @@ mod test {
         assert_eq!(jobs.len(), 1);
 
         println!("{:?}", jobs);
+
+        assert!(JOB_RAN.get().unwrap());
     }
 }

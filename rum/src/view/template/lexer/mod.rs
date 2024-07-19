@@ -210,7 +210,7 @@ impl<'a> Lexer<'a> {
                                 self.tokens.push(self.add_token(Token::Not));
                             }
 
-                            None => return Err(Error::Eof),
+                            None => return Err(Error::Eof("lexer !")),
                         }
                     } else {
                         // Just a !, e.g `<h1>oh hello there!</h1>`

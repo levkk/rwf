@@ -5,10 +5,7 @@ use crate::model::{
     Value, WhereClause,
 };
 
-use std::{
-    cell::{Ref, RefCell},
-    marker::PhantomData,
-};
+use std::marker::PhantomData;
 
 #[derive(PartialEq, Debug)]
 enum Op {
@@ -27,7 +24,7 @@ pub struct Select<T: FromRow + ?Sized> {
     pub columns: Columns,
     pub order_by: OrderBy,
     pub limit: Limit,
-    pub placeholders: RefCell<Placeholders>,
+    pub placeholders: Placeholders,
     pub where_clause: WhereClause,
     pub joins: Joins,
     lock: Lock,
@@ -43,7 +40,7 @@ impl<T: FromRow> Select<T> {
             columns: Columns::default(),
             order_by: OrderBy::default(),
             limit: Limit::default(),
-            placeholders: RefCell::new(Placeholders::default()),
+            placeholders: Placeholders::default(),
             where_clause: WhereClause::default(),
             joins: Joins::default(),
             lock: Lock::default(),
@@ -108,11 +105,11 @@ impl<T: FromRow> Select<T> {
         let value = if !value.is_null() {
             match value {
                 Value::List(_) => {
-                    let placeholder = self.placeholders.borrow_mut().add(&value);
+                    let placeholder = self.placeholders.add(&value);
                     Value::Record(Box::new(placeholder))
                 }
 
-                value => self.placeholders.borrow_mut().add(&value),
+                value => self.placeholders.add(&value),
             }
         } else {
             value
@@ -134,12 +131,6 @@ impl<T: FromRow> Select<T> {
 
         self
     }
-
-    // pub fn or(self, f: fn(Self) -> Self) -> Self {
-    //     let mut select = Self::new(&self.table_name, &self.primary_key);
-    //     select.placeholders = self.placeholders.clone();
-    //     f(select)
-    // }
 
     pub fn filter_and(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::Equals);
@@ -199,8 +190,8 @@ impl<T: FromRow> Select<T> {
         self
     }
 
-    pub fn placeholders(&self) -> Ref<Placeholders> {
-        self.placeholders.borrow()
+    pub fn placeholders(&self) -> &Placeholders {
+        &self.placeholders
     }
 
     pub fn or(&self) -> Self {
