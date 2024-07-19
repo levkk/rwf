@@ -20,6 +20,9 @@ pub enum Error {
     #[error("undefined variable: {0}")]
     UndefinedVariable(String),
 
+    #[error("unknown method: {0}")]
+    UnknownMethod(String),
+
     #[error("template does not exist: {0}")]
     TemplateDoesNotExist(PathBuf),
 }

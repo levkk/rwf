@@ -84,7 +84,7 @@ impl Expression {
             }
             Expression::Access { term, key } => {
                 let value = term.evaluate(context)?;
-                Ok(value.call(key))
+                Ok(value.call(key)?)
             }
         }
     }
@@ -393,7 +393,7 @@ mod test {
             Value::String("ONE".into())
         );
         assert_eq!(
-            r#"<% ("one" + "two" + "three").upcase %>"#.evaluate_default()?,
+            r#"<% ("one" + "two" + "three" ).upcase %>"#.evaluate_default()?,
             Value::String("ONETWOTHREE".into())
         );
 
@@ -401,7 +401,7 @@ mod test {
         context.set("variable", "hello")?;
 
         assert_eq!(
-            "<% variable.upcase * 2 %>".evaluate(&context)?,
+            "<% (((variable.upcase * 2) * 1).downcase).upcase %>".evaluate(&context)?,
             Value::String("HELLOHELLO".into())
         );
 

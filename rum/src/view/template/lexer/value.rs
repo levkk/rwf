@@ -146,17 +146,20 @@ impl Value {
                 }
                 Value::List(new_list)
             }
-            _ => Value::Null,
+            (a, b) => {
+                println!("Cannot multiply {:?} and {:?}", a, b);
+                Value::Null
+            }
         }
     }
 
-    pub fn call(&self, method_name: &str) -> Self {
-        match self {
+    pub fn call(&self, method_name: &str) -> Result<Self, Error> {
+        Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_f" | "to_float" => Value::Float(*value as f64),
-                _ => Value::Null,
+                method_name => return Err(Error::UnknownMethod(method_name.into())),
             },
 
             Value::Float(value) => match method_name {
@@ -166,14 +169,14 @@ impl Value {
                 "round" => Value::Float(value.round()),
                 "to_string" => Value::String(value.to_string()),
                 "to_i" | "to_integer" => Value::Integer(*value as i64),
-                _ => Value::Null,
+                _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 
             Value::String(value) => match method_name {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
-                _ => Value::Null,
+                _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 
             Value::List(list) => match method_name.parse::<i64>() {
@@ -190,7 +193,7 @@ impl Value {
                             .collect(),
                     ),
 
-                    _ => Value::Null,
+                    _ => return Err(Error::UnknownMethod(method_name.into())),
                 },
             },
 
@@ -203,8 +206,8 @@ impl Value {
                 },
             },
 
-            _ => Value::Null,
-        }
+            _ => return Err(Error::UnknownMethod(method_name.into())),
+        })
     }
 }
 
