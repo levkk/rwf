@@ -167,7 +167,7 @@ impl Value {
                 "ceil" => Value::Float(value.ceil()),
                 "floor" => Value::Float(value.floor()),
                 "round" => Value::Float(value.round()),
-                "to_string" => Value::String(value.to_string()),
+                "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_i" | "to_integer" => Value::Integer(*value as i64),
                 _ => return Err(Error::UnknownMethod(method_name.into())),
             },

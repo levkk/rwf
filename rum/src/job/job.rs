@@ -29,6 +29,24 @@ pub trait Job: Serialize + DeserializeOwned + Send + 'static {
         }
     }
 
+    fn execute_delay(
+        &self,
+        conn: &Client,
+        delay: Duration,
+    ) -> impl Future<Output = Result<(), Error>> {
+        async move {
+            JobModel::create(
+                &Self::async_job_name(),
+                serde_json::to_value(self).expect("job serialization error"),
+                Some(delay),
+                &conn,
+            )
+            .await?;
+
+            Ok(())
+        }
+    }
+
     fn execute_internal(id: i64, payload: serde_json::Value) {
         let job: Self = match serde_json::from_value(payload) {
             Ok(job) => job,
@@ -210,14 +228,13 @@ mod test {
     #[tokio::test]
     async fn test_impl_job() {
         logging::configure();
-        let mut worker = Worker::default();
-        MyJob::register(&mut worker);
+        let mut worker = Worker::new(&[MyJob::register]);
 
         let pool = Pool::new_local();
 
-        pool.with_transaction(|conn| async move {
-            conn.execute("SELECT 1", &[]).await?;
-            conn.commit().await?;
+        pool.with_transaction(|transaction| async move {
+            transaction.execute("SELECT 1", &[]).await?;
+            transaction.commit().await?;
             Ok(())
         })
         .await

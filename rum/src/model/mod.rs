@@ -35,13 +35,11 @@ pub use lock::Lock;
 pub use macros::belongs_to;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::{get_pool, IntoWrapper, Pool, Wrapper};
+pub use pool::{get_pool, Pool};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
 pub use value::{ToValue, Value};
-
-static POOL: OnceCell<Pool> = OnceCell::new();
 
 /// Convert a PostgreSQL row to a Rust struct.
 ///
@@ -135,6 +133,7 @@ pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
+/// The ORM query builder. All queries are constructed using this enum.
 #[derive(Debug)]
 pub enum Query<T: FromRow + ?Sized = Row> {
     Select(Select<T>),
@@ -568,13 +567,6 @@ pub trait Model: FromRow {
     /// For example, if the primary key of this table is "id" and the name of the table is "users",
     /// then the foreign key is "user_id".
     fn foreign_key() -> String;
-
-    fn configure_pool(pool: Pool) -> Result<(), Error> {
-        match POOL.set(pool) {
-            Ok(()) => Ok(()),
-            Err(_pool) => Err(Error::Unknown("pool already configured".into())),
-        }
-    }
 
     /// Name of the primary key column. Expected to be "id".
     fn primary_key() -> String {

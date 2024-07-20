@@ -14,6 +14,16 @@ pub struct Worker {
 }
 
 impl Worker {
+    pub fn new(jobs: &[fn(&mut Self)]) -> Self {
+        let mut worker = Worker::default();
+
+        for f in jobs {
+            f(&mut worker);
+        }
+
+        worker
+    }
+
     pub fn add(&mut self, name: &str, f: fn(i64, serde_json::Value)) {
         self.jobs.insert(name.to_string(), f);
     }

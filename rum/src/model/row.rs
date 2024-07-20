@@ -9,11 +9,11 @@ pub struct Row {
 
 impl Model for Row {
     fn table_name() -> String {
-        "_".into()
+        unimplemented!()
     }
 
     fn primary_key() -> String {
-        "1".into()
+        unimplemented!()
     }
 
     fn foreign_key() -> String {

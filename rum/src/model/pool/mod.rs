@@ -14,11 +14,11 @@ use std::sync::Arc;
 use once_cell::sync::{Lazy, OnceCell};
 
 pub mod connection;
-pub mod into_client;
 pub mod transaction;
+
 use super::Error;
+
 pub use connection::Connection;
-pub use into_client::{IntoWrapper, Wrapper};
 pub use transaction::Transaction;
 
 static POOL: OnceCell<Pool> = OnceCell::new();
@@ -195,7 +195,19 @@ impl Pool {
     {
         let mut transaction = self.begin().await?;
         let result = f(transaction).await?;
+        // transaction.commit().await?;
         Ok(result)
+    }
+
+    pub async fn with_connection<Fut, R>(
+        &self,
+        f: impl FnOnce(ConnectionGuard) -> Fut,
+    ) -> Result<R, Error>
+    where
+        Fut: Future<Output = Result<R, Error>>,
+    {
+        let connection = self.get().await?;
+        f(connection).await
     }
 
     // Get a connection from the pool or create a new one if allowed.
