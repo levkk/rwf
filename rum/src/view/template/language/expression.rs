@@ -40,10 +40,10 @@ pub enum Expression {
         terms: Vec<Expression>,
     },
 
-    // Access a hash value, e.g. `hash.key`.
-    Access {
+    // Call a function on a value/expression.
+    Function {
         term: Box<Expression>,
-        key: String,
+        name: String,
     },
 }
 
@@ -82,9 +82,9 @@ impl Expression {
                 }
                 Ok(Value::List(list))
             }
-            Expression::Access { term, key } => {
+            Expression::Function { term, name } => {
                 let value = term.evaluate(context)?;
-                Ok(value.call(key)?)
+                Ok(value.call(name)?)
             }
         }
     }
@@ -197,13 +197,13 @@ impl Expression {
                     let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
                     let name = iter.next().ok_or(Error::Eof("accessor name"))?;
                     match name.token() {
-                        Token::Variable(key) => Expression::Access {
+                        Token::Variable(name) => Expression::Function {
                             term: Box::new(expr),
-                            key,
+                            name,
                         },
-                        Token::Value(Value::Integer(n)) => Expression::Access {
+                        Token::Value(Value::Integer(n)) => Expression::Function {
                             term: Box::new(expr),
-                            key: n.to_string(),
+                            name: n.to_string(),
                         },
                         _ => return Err(Error::ExpressionSyntax(name.clone())),
                     }

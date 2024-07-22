@@ -1,3 +1,9 @@
+//! The basic building block of our template language: the value.
+//! All values like floats, integers, strings, structs, lists, hashes, etc.
+//! are represented using the value.
+//!
+//! This allows operations across data types, like multiplying lists by integers,
+//! or accessing hash keys.
 use super::Error;
 
 use std::cmp::Ordering;
@@ -161,6 +167,13 @@ impl Value {
                 "abs" => Value::Integer((*value).abs()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_f" | "to_float" => Value::Float(*value as f64),
+                "times" => {
+                    let mut list = vec![];
+                    for i in 0..*value {
+                        list.push(Value::Integer(i));
+                    }
+                    Value::List(list)
+                }
                 method_name => return Err(Error::UnknownMethod(method_name.into())),
             },
 
