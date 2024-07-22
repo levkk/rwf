@@ -4,7 +4,7 @@ use std::future::Future;
 
 use serde::{de::DeserializeOwned, Serialize};
 use time::{Duration, OffsetDateTime};
-use tokio_postgres::{types::Json, Client};
+use tokio_postgres::Client;
 
 static MAX_RETRIES: i64 = 25;
 
@@ -113,7 +113,7 @@ impl JobModel {
     }
 
     async fn create(
-        name: &str,
+        _name: &str,
         payload: serde_json::Value,
         delay: Option<Duration>,
         conn: &tokio_postgres::Client,
@@ -228,7 +228,7 @@ mod test {
     #[tokio::test]
     async fn test_impl_job() {
         logging::configure();
-        let mut worker = Worker::new(&[MyJob::register]);
+        let worker = Worker::new(&[MyJob::register]);
 
         let pool = Pool::new_local();
 

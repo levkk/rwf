@@ -1,5 +1,5 @@
 use colored::Colorize;
-use once_cell::sync::OnceCell;
+
 use std::time::{Duration, Instant};
 use tracing::info;
 

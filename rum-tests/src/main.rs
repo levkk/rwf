@@ -1,4 +1,4 @@
-use rum::model::{Error, Model, Pool, Query, Scope, ToSql};
+use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum_macros::Model;
 

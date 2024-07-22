@@ -11,7 +11,7 @@ use std::future::Future;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 
 pub mod connection;
 pub mod transaction;
@@ -193,7 +193,7 @@ impl Pool {
     where
         Fut: Future<Output = Result<R, Error>>,
     {
-        let mut transaction = self.begin().await?;
+        let transaction = self.begin().await?;
         let result = f(transaction).await?;
         // transaction.commit().await?;
         Ok(result)

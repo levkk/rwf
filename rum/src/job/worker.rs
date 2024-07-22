@@ -1,7 +1,6 @@
-use super::{Error, Job, JobModel};
+use super::{Error, JobModel};
 use crate::model::{Model, Pool, Value};
 use std::collections::HashMap;
-use std::future::Future;
 
 use colored::Colorize;
 use time::OffsetDateTime;
@@ -51,7 +50,7 @@ impl Worker {
     }
 
     pub async fn run_once(&self, conn: &tokio_postgres::Client) -> Result<(), Error> {
-        let mut job = JobModel::filter("executed_at", Value::Null)
+        let job = JobModel::filter("executed_at", Value::Null)
             .filter("completed_at", Value::Null)
             .filter_gte("start_after", OffsetDateTime::now_utc())
             .filter_gt("retries", 0)
@@ -66,7 +65,7 @@ impl Worker {
     }
 
     pub async fn run_notified(&self, conn: &tokio_postgres::Client, id: i64) -> Result<(), Error> {
-        let mut job = JobModel::find(id).fetch(&conn).await?;
+        let job = JobModel::find(id).fetch(&conn).await?;
 
         self.run_job(job, conn).await
     }
@@ -78,7 +77,7 @@ impl Worker {
         let worker = self.clone();
         tokio::spawn(async move {
             loop {
-                let transaction = match pool.begin().await {
+                let _transaction = match pool.begin().await {
                     Ok(transaction) => {
                         match worker.run_once(&transaction).await {
                             Ok(()) => (),

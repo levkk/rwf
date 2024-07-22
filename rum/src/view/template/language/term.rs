@@ -80,7 +80,7 @@ mod test {
         let t4 = "<% variable %>";
         let tokens = Lexer::new(&t4).tokens()?;
         let variable = Term::from_token(tokens[1].token());
-        let value = variable
+        let _value = variable
             .expect("variable")
             .evaluate(&Context::new(HashMap::from([(
                 "variable".to_string(),

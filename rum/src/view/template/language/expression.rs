@@ -320,7 +320,7 @@ impl Evaluate for String {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::{Context, Tokenize};
+    use super::super::super::Context;
     use super::*;
     use std::collections::HashMap;
 
