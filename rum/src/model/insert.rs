@@ -4,7 +4,6 @@ use std::marker::PhantomData;
 #[derive(Debug)]
 pub struct Insert<T> {
     table_name: String,
-    primary_key: String,
     columns: Vec<String>,
     pub placeholders: Placeholders,
     marker: PhantomData<T>,
@@ -24,7 +23,6 @@ impl<T: Model> Insert<T> {
 
         Self {
             table_name: T::table_name(),
-            primary_key: T::primary_key(),
             placeholders,
             columns,
             marker: PhantomData,
