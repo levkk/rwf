@@ -82,7 +82,7 @@ mod test {
         let variable = Term::from_token(tokens[1].token());
         let _value = variable
             .expect("variable")
-            .evaluate(&Context::new(HashMap::from([(
+            .evaluate(&Context::from(HashMap::from([(
                 "variable".to_string(),
                 Value::String("test".into()),
             )])));

@@ -44,6 +44,7 @@ pub enum Expression {
     Function {
         term: Box<Expression>,
         name: String,
+        args: Vec<Expression>,
     },
 }
 
@@ -82,9 +83,14 @@ impl Expression {
                 }
                 Ok(Value::List(list))
             }
-            Expression::Function { term, name } => {
+            Expression::Function { term, name, args } => {
                 let value = term.evaluate(context)?;
-                Ok(value.call(name)?)
+                let args = args
+                    .iter()
+                    .map(|arg| arg.evaluate(context))
+                    .collect::<Result<Vec<Value>, Error>>()?;
+
+                Ok(value.call(name, &args)?)
             }
         }
     }
@@ -197,13 +203,51 @@ impl Expression {
                     let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
                     let name = iter.next().ok_or(Error::Eof("accessor name"))?;
                     match name.token() {
-                        Token::Variable(name) => Expression::Function {
-                            term: Box::new(expr),
-                            name,
-                        },
+                        Token::Variable(name) => {
+                            let arg = iter.peek().map(|t| t.token());
+                            let args = match arg {
+                                Some(Token::RoundBracketStart) => {
+                                    let mut buffer = vec![];
+                                    let mut args = vec![];
+                                    let _ = iter.next().ok_or(Error::Eof("function args start"));
+
+                                    loop {
+                                        let next = match iter.next() {
+                                            Some(next) => next,
+                                            None => break,
+                                        };
+
+                                        match next.token() {
+                                            Token::RoundBracketEnd | Token::Comma => {
+                                                args.push(Self::parse(
+                                                    &mut std::mem::take(&mut buffer)
+                                                        .into_iter()
+                                                        .peekable(),
+                                                )?);
+                                            }
+                                            token => {
+                                                buffer.push(next);
+                                            }
+                                        }
+                                    }
+
+                                    args
+                                }
+
+                                _ => {
+                                    vec![]
+                                }
+                            };
+                            Expression::Function {
+                                term: Box::new(expr),
+                                name,
+                                args,
+                            }
+                        }
                         Token::Value(Value::Integer(n)) => Expression::Function {
                             term: Box::new(expr),
                             name: n.to_string(),
+                            args: vec![],
                         },
                         _ => return Err(Error::ExpressionSyntax(name.clone())),
                     }
@@ -461,6 +505,28 @@ mod test {
 
         let t2 = r#"<% "where is the love" - "where is the " %>"#.evaluate_default()?;
         assert_eq!(t2, Value::String("love".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_list_flatten() -> Result<(), Error> {
+        let mut context = Context::default();
+        context["test"] = Value::List(vec![
+            Value::List(vec![Value::Integer(1), Value::Integer(2)]),
+            Value::List(vec![Value::Integer(3), Value::Integer(4)]),
+        ]);
+
+        let t1 = "<% test.flatten %>".evaluate(&context)?;
+        assert_eq!(
+            t1,
+            Value::List(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
+                Value::Integer(4)
+            ])
+        );
 
         Ok(())
     }

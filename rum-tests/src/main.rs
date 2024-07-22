@@ -5,6 +5,10 @@ use rum_macros::Model;
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
+mod components;
+mod controllers;
+mod models;
+
 #[derive(Clone, Model, Debug, PartialEq)]
 #[has_many(Order)]
 #[allow(dead_code)]

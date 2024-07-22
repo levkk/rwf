@@ -8,11 +8,24 @@ pub use request::Request;
 pub use response::Response;
 
 use crate::model::{get_connection, Model, Query};
+use crate::view::Template;
 
 use std::future::Future;
 
 pub trait Controller<T: Model> {
-    fn model() -> Query<T>;
+    fn model() -> Query<T> {
+        T::all()
+    }
+
+    fn controller_name() -> String {
+        let struct_name = std::any::type_name::<Self>();
+        struct_name
+            .split("::")
+            .skip(1)
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
     fn index(request: Request) -> impl Future<Output = Result<Response, Error>> {
         async {
             let conn = get_connection().await?;

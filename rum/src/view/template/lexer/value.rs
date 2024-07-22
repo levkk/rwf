@@ -161,7 +161,7 @@ impl Value {
         }
     }
 
-    pub fn call(&self, method_name: &str) -> Result<Self, Error> {
+    pub fn call(&self, method_name: &str, args: &[Value]) -> Result<Self, Error> {
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
@@ -208,6 +208,19 @@ impl Value {
                             .collect(),
                     ),
 
+                    // TODO: doesn't work
+                    "flatten" => {
+                        let mut new_list = vec![];
+                        for value in list.clone().into_iter() {
+                            match value {
+                                Value::List(_) => new_list.extend(value.flatten().to_vec()),
+                                _ => new_list.push(value.clone()),
+                            }
+                        }
+
+                        Value::List(new_list)
+                    }
+
                     _ => return Err(Error::UnknownMethod(method_name.into())),
                 },
             },
@@ -223,6 +236,28 @@ impl Value {
 
             _ => return Err(Error::UnknownMethod(method_name.into())),
         })
+    }
+
+    pub fn flatten(self) -> Value {
+        match self {
+            Value::List(list) => {
+                let mut new_list = vec![];
+                for value in list {
+                    new_list.push(value.flatten());
+                }
+
+                Value::List(new_list)
+            }
+
+            value => Value::List(vec![value]),
+        }
+    }
+
+    pub fn to_vec(self) -> Vec<Value> {
+        match self {
+            Value::List(list) => list,
+            value => vec![value],
+        }
     }
 }
 
@@ -319,6 +354,35 @@ impl_list!(&str);
 impl ToValue for Value {
     fn to_value(&self) -> Result<Value, Error> {
         Ok(self.clone())
+    }
+}
+
+impl TryInto<serde_json::Value> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<serde_json::Value, Self::Error> {
+        use serde_json::value::Number;
+        match self {
+            Value::Integer(i) => Ok(serde_json::Value::Number(i.into())),
+            Value::Float(f) => Ok(serde_json::Value::Number(Number::from_f64(f).unwrap())),
+            Value::String(s) => Ok(serde_json::Value::String(s)),
+            Value::Boolean(b) => Ok(serde_json::Value::Bool(b)),
+            Value::List(l) => {
+                let mut list = vec![];
+                for v in l {
+                    list.push(v.try_into()?);
+                }
+                Ok(serde_json::Value::Array(list))
+            }
+            Value::Hash(h) => {
+                let mut hash = serde_json::Map::new();
+                for (k, v) in h {
+                    hash.insert(k, v.try_into()?);
+                }
+                Ok(serde_json::Value::Object(hash))
+            }
+            Value::Null => Ok(serde_json::Value::Null),
+        }
     }
 }
 

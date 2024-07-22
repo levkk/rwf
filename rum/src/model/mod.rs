@@ -653,6 +653,20 @@ pub trait Model: FromRow {
     fn lock() -> Query<Self> {
         Self::all().lock()
     }
+
+    fn to_json(&self) -> Result<serde_json::Value, Error> {
+        let columns = Self::column_names();
+        let values = self.values();
+
+        let mut map = serde_json::Map::new();
+        for (column, value) in columns.iter().zip(values.iter()) {
+            map.insert(column.clone(), value.clone().try_into()?);
+        }
+
+        map.insert("id".into(), self.id().into());
+
+        Ok(serde_json::Value::Object(map))
+    }
 }
 
 #[cfg(test)]

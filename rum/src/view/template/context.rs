@@ -8,8 +8,8 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(values: HashMap<String, Value>) -> Self {
-        Self { values }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn get(&self, key: &str) -> Option<Value> {
@@ -19,6 +19,12 @@ impl Context {
     pub fn set(&mut self, key: &str, value: impl ToValue) -> Result<&mut Self, Error> {
         self.values.insert(key.to_string(), value.to_value()?);
         Ok(self)
+    }
+}
+
+impl From<HashMap<String, Value>> for Context {
+    fn from(values: HashMap<String, Value>) -> Context {
+        Context { values }
     }
 }
 

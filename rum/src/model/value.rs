@@ -239,6 +239,21 @@ impl From<i64> for Value {
     }
 }
 
+impl TryFrom<Value> for serde_json::Value {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        use serde_json::value::Number;
+        match value {
+            Value::Integer(i) => Ok(serde_json::Value::Number(i.into())),
+            Value::String(s) => Ok(serde_json::Value::String(s)),
+            Value::Float(f) => Ok(serde_json::Value::Number(Number::from_f64(f).unwrap())),
+            Value::Json(json) => Ok(json),
+            _ => todo!("model::Value to serde_json::Value"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
