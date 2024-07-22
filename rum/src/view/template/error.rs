@@ -25,4 +25,7 @@ pub enum Error {
 
     #[error("template does not exist: {0}")]
     TemplateDoesNotExist(PathBuf),
+
+    #[error("serialization error")]
+    SerializationError,
 }

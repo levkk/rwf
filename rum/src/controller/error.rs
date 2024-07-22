@@ -10,6 +10,9 @@ pub enum Error {
 
     #[error("json error: {0}")]
     Json(serde_json::Error),
+
+    #[error("orm error: {0}")]
+    OrmError(crate::model::Error),
 }
 
 impl From<http::Error> for Error {
@@ -21,5 +24,11 @@ impl From<http::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(error: serde_json::Error) -> Self {
         Self::Json(error)
+    }
+}
+
+impl From<crate::model::Error> for Error {
+    fn from(error: crate::model::Error) -> Self {
+        Self::OrmError(error)
     }
 }

@@ -27,6 +27,10 @@ pub fn get_pool() -> Pool {
     POOL.get_or_init(|| Pool::new_local()).clone()
 }
 
+pub async fn get_connection() -> Result<ConnectionGuard, Error> {
+    get_pool().get().await
+}
+
 /// Smart pointer that automatically checks in the connection
 /// back into the pool when the connection is dropped.
 pub struct ConnectionGuard {

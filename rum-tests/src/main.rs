@@ -213,7 +213,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         name: "test 2".to_string(),
     };
 
-    product.save().fetch(&conn).await?;
+    let product = product.save().fetch(&conn).await?;
 
     conn.rollback().await?;
 
@@ -222,6 +222,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.set("title", "hello")?;
     context.set("description", "world")?;
     context.set("vars", vec!["hello", "world"])?;
+    context.set("product", product.clone())?;
+    context.set("products", vec![product])?;
     let start = Instant::now();
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());

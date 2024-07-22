@@ -7,6 +7,14 @@
         <h1><%= title.upcase %></h1>
         <p><%= description.to_uppercase %></p>
 
+        <code><%= product.name %></code>
+
+        <ul>
+        <% for product in products %>
+        <li><%= product.name %></li>
+        <% end %>
+        </ul>
+
         <ul>
         <% for var in vars.enumerate %>
         <li><%= var %></li>

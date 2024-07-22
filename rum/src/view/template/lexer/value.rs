@@ -3,6 +3,8 @@ use super::Error;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+use crate::model::Model;
+
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -246,6 +248,15 @@ impl_integer!(u32);
 impl_integer!(u16);
 impl_integer!(u8);
 
+impl ToValue for Option<i64> {
+    fn to_value(&self) -> Result<Value, Error> {
+        match self {
+            Some(i) => i.to_value(),
+            None => Ok(Value::Null),
+        }
+    }
+}
+
 impl ToValue for f64 {
     fn to_value(&self) -> Result<Value, Error> {
         Ok(Value::Float(*self))
@@ -295,5 +306,46 @@ impl_list!(&str);
 impl ToValue for Value {
     fn to_value(&self) -> Result<Value, Error> {
         Ok(self.clone())
+    }
+}
+
+impl ToValue for crate::model::Value {
+    fn to_value(&self) -> Result<Value, Error> {
+        use crate::model::Value as ModelValue;
+        match self {
+            ModelValue::Integer(i) => i.to_value(),
+            ModelValue::Float(f) => f.to_value(),
+            ModelValue::String(s) => s.to_value(),
+            _ => todo!("model value to template value"),
+        }
+    }
+}
+
+impl<T: Model> ToValue for T {
+    fn to_value(&self) -> Result<Value, Error> {
+        let columns = T::column_names();
+        let values = self.values();
+
+        if columns.len() != values.len() {
+            return Err(Error::SerializationError);
+        }
+
+        let mut hash = HashMap::from([("id".to_string(), self.id().to_value()?)]);
+
+        for (key, value) in columns.iter().zip(values.iter()) {
+            hash.insert(key.clone(), value.to_value()?);
+        }
+
+        Ok(Value::Hash(hash))
+    }
+}
+
+impl<T: Model> ToValue for Vec<T> {
+    fn to_value(&self) -> Result<Value, Error> {
+        let mut list = vec![];
+        for v in self.iter() {
+            list.push(v.to_value()?);
+        }
+        Ok(Value::List(list))
     }
 }

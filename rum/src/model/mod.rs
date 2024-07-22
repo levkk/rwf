@@ -35,7 +35,7 @@ pub use lock::Lock;
 pub use macros::belongs_to;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::{get_pool, Pool};
+pub use pool::{get_connection, get_pool, Pool};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
