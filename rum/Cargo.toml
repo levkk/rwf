@@ -23,3 +23,6 @@ serde = "*"
 serde_json = "*"
 hyper = "1"
 http = "1"
+http-body-util = "*"
+hyper-util = { version = "*", features = ["full"] }
+futures = "0.3"

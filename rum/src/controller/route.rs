@@ -1,8 +1,16 @@
-use super::{Error, Request, Response};
+use super::{Controller, Error, Request, Response};
+use crate::model::Model;
 use std::collections::HashMap;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::pin::Pin;
 
 // use hyper::Request;
+use futures::future::BoxFuture;
 use http::Method;
+use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Query {
@@ -40,16 +48,28 @@ impl<'a> Query {
     }
 }
 
-#[derive(Debug)]
-pub struct Route {
-    path: String,
+pub struct Route<F>
+where
+    F: Future<Output = Result<Response, Error>>,
+{
+    handler: fn(Request) -> F,
     method: Method,
-    handler: fn(Request) -> Result<Response, Error>,
+    path: String,
 }
 
-impl Route {
-    pub fn matches(&self, request: &hyper::Request<hyper::body::Incoming>) -> bool {
-        let path = request.uri().path();
-        self.method == request.method() && self.path == path
+impl<F> Route<F>
+where
+    F: Future<Output = Result<Response, Error>>,
+{
+    pub fn get(path: impl ToString, handler: fn(Request) -> F) -> Self {
+        Route {
+            handler,
+            method: Method::GET,
+            path: path.to_string(),
+        }
+    }
+
+    pub async fn handle(&self, request: Request) -> Result<Response, Error> {
+        (self.handler)(request).await
     }
 }

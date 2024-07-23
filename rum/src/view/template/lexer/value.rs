@@ -21,6 +21,7 @@ pub enum Value {
     List(Vec<Value>),
     Hash(HashMap<String, Value>),
     Null,
+    Interpreter,
 }
 
 impl PartialOrd for Value {
@@ -65,6 +66,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Null => write!(f, "null"),
+            Value::Interpreter => write!(f, "global"),
         }
     }
 }
@@ -84,6 +86,7 @@ impl Value {
             Value::Null => false,
             Value::List(list) => !list.is_empty(),
             Value::Hash(hash) => !hash.is_empty(),
+            Value::Interpreter => true,
         }
     }
 
@@ -382,6 +385,7 @@ impl TryInto<serde_json::Value> for Value {
                 Ok(serde_json::Value::Object(hash))
             }
             Value::Null => Ok(serde_json::Value::Null),
+            Value::Interpreter => Ok(serde_json::Value::Null),
         }
     }
 }

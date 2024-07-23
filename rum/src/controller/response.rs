@@ -1,4 +1,7 @@
+use http_body_util::Full;
+use hyper::body::Bytes;
 use hyper::StatusCode;
+
 use serde::Serialize;
 use std::collections::HashMap;
 use time::Duration;
@@ -68,5 +71,18 @@ impl TryFrom<Response> for hyper::Response<Vec<u8>> {
         }
 
         Ok(builder.body(response.body)?)
+    }
+}
+
+impl TryFrom<Response> for hyper::Response<Full<Bytes>> {
+    type Error = Error;
+
+    fn try_from(response: Response) -> Result<hyper::Response<Full<Bytes>>, Self::Error> {
+        let mut builder = hyper::Response::builder().status(response.status);
+        for (key, value) in response.headers {
+            builder = builder.header(key, value);
+        }
+
+        Ok(builder.body(response.body.into())?)
     }
 }

@@ -1,6 +1,10 @@
+use rum::controller::Route;
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum_macros::Model;
+
+use std::future::Future;
+use tokio::task::JoinHandle;
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -232,5 +236,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
+    // rum::server::launch(&vec![
+    //     Route::get("/", handler),
+    // ]).await;
+
     Ok(())
+}
+
+fn handler(
+    request: rum::controller::Request,
+) -> tokio::task::JoinHandle<Result<rum::controller::Response, rum::controller::Error>> {
+    tokio::spawn(async move {
+        rum::controller::Response::json(serde_json::json!({
+            "id": 5,
+        }))
+    })
+}
+
+fn accept_async<F>(future: F) -> JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    tokio::spawn(future)
 }

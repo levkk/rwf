@@ -11,3 +11,4 @@ rum-macros = { path = "../rum-macros" }
 tokio = { version = "1", features = ["full"] }
 tracing-subscriber = "*"
 console-subscriber = "*"
+serde_json = "1"

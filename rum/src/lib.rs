@@ -2,6 +2,7 @@ pub mod controller;
 pub mod job;
 pub mod logging;
 pub mod model;
+pub mod server;
 pub mod view;
 
 pub use rum_macros as macros;

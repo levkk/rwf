@@ -6,29 +6,14 @@ pub enum Error {
     MalformedQuery,
 
     #[error("http error: {0}")]
-    Http(http::Error),
+    Http(#[from] http::Error),
+
+    #[error("hyper error: {0}")]
+    Hyper(#[from] hyper::Error),
 
     #[error("json error: {0}")]
-    Json(serde_json::Error),
+    Json(#[from] serde_json::Error),
 
     #[error("orm error: {0}")]
-    OrmError(crate::model::Error),
-}
-
-impl From<http::Error> for Error {
-    fn from(error: http::Error) -> Self {
-        Self::Http(error)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Json(error)
-    }
-}
-
-impl From<crate::model::Error> for Error {
-    fn from(error: crate::model::Error) -> Self {
-        Self::OrmError(error)
-    }
+    OrmError(#[from] crate::model::Error),
 }
