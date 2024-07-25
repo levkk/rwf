@@ -1,4 +1,5 @@
 pub mod controller;
+pub mod http;
 pub mod job;
 pub mod logging;
 pub mod model;

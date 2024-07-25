@@ -236,6 +236,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
+    rum::http::server::server().await?;
+
     // rum::server::launch(&vec![
     //     Route::get("/", handler),
     // ]).await;
