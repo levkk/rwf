@@ -1,4 +1,4 @@
-use rum::controller::Route;
+use rum::{controller::Route, http::{Response, Request}};
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum_macros::Model;
@@ -236,7 +236,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
-    rum::http::server::server().await?;
+    rum::http::server::server(vec![
+        Route::get("/", handler),
+    ]).await?;
 
     // rum::server::launch(&vec![
     //     Route::get("/", handler),
@@ -245,14 +247,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn handler(
-    request: rum::controller::Request,
-) -> tokio::task::JoinHandle<Result<rum::controller::Response, rum::controller::Error>> {
-    tokio::spawn(async move {
-        rum::controller::Response::json(serde_json::json!({
-            "id": 5,
-        }))
-    })
+async fn handler(
+    request: Request,
+) -> Result<Response, rum::controller::Error> {
+    Ok(rum::http::Response::json(serde_json::json!({
+        "hello": "world"
+    }))?)
 }
 
 fn accept_async<F>(future: F) -> JoinHandle<F::Output>

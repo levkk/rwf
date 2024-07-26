@@ -1,12 +1,10 @@
-use super::{Controller, Error, Request, Response};
+use super::{Controller, Error, super::http::{Response, Request}};
 use crate::model::Model;
 use std::collections::HashMap;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
-// use hyper::Request;
-use futures::future::BoxFuture;
 use http::Method;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
@@ -48,6 +46,7 @@ impl<'a> Query {
     }
 }
 
+#[derive(Clone)]
 pub struct Route<F>
 where
     F: Future<Output = Result<Response, Error>>,
