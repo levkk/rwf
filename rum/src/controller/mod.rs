@@ -14,6 +14,4 @@ use crate::view::Template;
 use std::future::Future;
 use tokio::task::JoinHandle;
 
-pub trait Controller<T: Model + Sync> {
-   
-}
+pub trait Controller<T: Model + Sync> {}

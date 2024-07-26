@@ -1,7 +1,7 @@
+use serde::Serialize;
 use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
-use serde::Serialize;
 
 use super::Error;
 
@@ -28,9 +28,9 @@ impl Response {
     }
 
     pub fn json(body: impl Serialize) -> Result<Self, Error> {
-		let body = serde_json::to_vec(&body)?;
-		Ok(Self::new(200, body).header("Content-Type", "application/json"))
-	}
+        let body = serde_json::to_vec(&body)?;
+        Ok(Self::new(200, body).header("Content-Type", "application/json"))
+    }
 
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {
         self.headers.insert(name.to_string(), value.to_string());

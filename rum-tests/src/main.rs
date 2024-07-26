@@ -1,6 +1,9 @@
-use rum::{controller::Route, http::{Response, Request}};
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
+use rum::{
+    controller::Route,
+    http::{Request, Response},
+};
 use rum_macros::Model;
 
 use std::future::Future;
@@ -236,9 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
-    rum::http::server::server(vec![
-        Route::get("/", handler),
-    ]).await?;
+    rum::http::server::server(vec![Route::get("/", handler)]).await?;
 
     // rum::server::launch(&vec![
     //     Route::get("/", handler),
@@ -247,9 +248,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handler(
-    request: Request,
-) -> Result<Response, rum::controller::Error> {
+async fn handler(request: Request) -> Result<Response, rum::controller::Error> {
     Ok(rum::http::Response::json(serde_json::json!({
         "hello": "world"
     }))?)

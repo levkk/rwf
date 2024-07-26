@@ -15,6 +15,4 @@ pub struct Response {
     status: StatusCode,
 }
 
-impl Response {
-    
-}
+impl Response {}

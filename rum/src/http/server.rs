@@ -1,11 +1,11 @@
-use super::{Error, Request, Response, super::controller::Route};
+use super::{super::controller::Route, Error, Request, Response};
+use std::future::Future;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::net::{TcpListener, TcpStream};
-use std::future::Future;
 
 pub async fn server<F>(routes: Vec<Route<F>>) -> Result<(), Error>
 where
-    F: Future<Output = Result<Response, crate::controller::Error>>
+    F: Future<Output = Result<Response, crate::controller::Error>>,
 {
     let mut listener = TcpListener::bind("0.0.0.0:8000").await?;
 

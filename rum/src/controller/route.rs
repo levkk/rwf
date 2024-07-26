@@ -1,4 +1,7 @@
-use super::{Controller, Error, super::http::{Response, Request}};
+use super::{
+    super::http::{Request, Response},
+    Controller, Error,
+};
 use crate::model::Model;
 use std::collections::HashMap;
 use std::future::Future;
