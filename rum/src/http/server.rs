@@ -12,7 +12,7 @@ where
     loop {
         let (mut stream, _) = listener.accept().await?;
 
-        let routes = routes.clone();
+        // let routes = routes.clone();
         tokio::spawn(async move {
             let request = Request::read(&mut stream).await?;
             Response::not_found("not found").send(&mut stream).await?;
