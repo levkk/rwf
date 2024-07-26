@@ -1,17 +1,16 @@
 use super::{
-    super::http::{Request, Response},
-    Controller, Error,
+    super::http::{Request, Response}, Error,
 };
 use crate::model::Model;
 use std::collections::HashMap;
 use std::future::Future;
-use std::marker::PhantomData;
-use std::pin::Pin;
+
+
 
 use http::Method;
-use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
-use std::sync::Arc;
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct Query {

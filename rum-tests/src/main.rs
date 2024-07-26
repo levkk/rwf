@@ -248,7 +248,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handler(request: Request) -> Result<Response, rum::controller::Error> {
+async fn handler(_request: Request) -> Result<Response, rum::controller::Error> {
     Ok(rum::http::Response::json(serde_json::json!({
         "hello": "world"
     }))?)

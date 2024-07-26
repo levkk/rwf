@@ -164,7 +164,7 @@ impl Value {
         }
     }
 
-    pub fn call(&self, method_name: &str, args: &[Value]) -> Result<Self, Error> {
+    pub fn call(&self, method_name: &str, _args: &[Value]) -> Result<Self, Error> {
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),

@@ -38,7 +38,7 @@ impl Index<&str> for Context {
 
 impl IndexMut<&str> for Context {
     fn index_mut(&mut self, key: &str) -> &mut Self::Output {
-        if let Some(value) = self.values.get(key) {
+        if let Some(_value) = self.values.get(key) {
             self.values.get_mut(key).unwrap()
         } else {
             self.values.insert(key.to_string(), Value::Null);

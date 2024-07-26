@@ -8,10 +8,10 @@ pub use request::Request;
 pub use response::Response;
 pub use route::Route;
 
-use crate::model::{get_connection, Model, Query};
-use crate::view::Template;
+use crate::model::{Model};
 
-use std::future::Future;
-use tokio::task::JoinHandle;
+
+
+
 
 pub trait Controller<T: Model + Sync> {}

@@ -105,9 +105,9 @@ impl Head {
         loop {
             let b = stream.read_u8().await?;
 
-            if (b == '\r' as u8) {
+            if b == '\r' as u8 {
                 cr = true;
-            } else if (b == '\n' as u8) {
+            } else if b == '\n' as u8 {
                 lf = true;
             } else {
                 buf.push(b);
@@ -128,7 +128,7 @@ mod test {
 
     #[tokio::test]
     async fn test_read_line() {
-        let mut line = b"Content-Type: application/json\r\n";
+        let line = b"Content-Type: application/json\r\n";
         let result = Head::read_line(&line[..]).await.expect("read_line");
         assert_eq!(result, "Content-Type: application/json");
     }

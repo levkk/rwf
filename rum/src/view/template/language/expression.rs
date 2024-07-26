@@ -225,7 +225,7 @@ impl Expression {
                                                         .peekable(),
                                                 )?);
                                             }
-                                            token => {
+                                            _token => {
                                                 buffer.push(next);
                                             }
                                         }
