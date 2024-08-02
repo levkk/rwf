@@ -26,3 +26,5 @@ http = "1"
 http-body-util = "*"
 hyper-util = { version = "*", features = ["full"] }
 futures = "0.3"
+async-trait = "*"
+dyn-clone="*"

@@ -3,33 +3,57 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::Error;
+use super::{Error, Headers, Request};
 
 #[derive(Debug, Clone)]
 pub struct Response {
     code: u16,
-    headers: HashMap<String, String>,
+    headers: Headers,
     body: Vec<u8>,
 }
 
 impl Response {
-    pub fn new(code: u16, body: Vec<u8>) -> Self {
-        let mut headers = HashMap::new();
-        headers.insert("Content-Length".to_string(), body.len().to_string());
+    pub fn new() -> Self {
         Self {
-            code,
-            headers,
-            body,
+            code: 200,
+            headers: Headers::from(HashMap::from([
+                ("content-type".to_string(), "text/plain".to_string()),
+                ("server".to_string(), "rum".to_string()),
+            ])),
+            body: Vec::new(),
         }
     }
 
-    pub fn not_found(body: &str) -> Self {
-        Self::new(404, body.as_bytes().to_vec()).header("Content-Type", "text/html")
+    fn body(mut self, body: Vec<u8>) -> Self {
+        self.body = body;
+        self.headers
+            .insert("content-length".to_string(), self.body.len().to_string());
+        self
     }
 
-    pub fn json(body: impl Serialize) -> Result<Self, Error> {
+    pub fn code(mut self, code: u16) -> Self {
+        self.code = code;
+        self
+    }
+
+    pub fn get_code(&self) -> u16 {
+        self.code
+    }
+
+    pub fn json(mut self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(Self::new(200, body).header("Content-Type", "application/json"))
+        Ok(self.header("content-type", "application/json").body(body))
+    }
+
+    pub fn html(mut self, body: impl ToString) -> Self {
+        self.header("content-type", "text/html")
+            .body(body.to_string().as_bytes().to_vec())
+    }
+
+    pub fn text(mut self, body: impl ToString) -> Result<Self, Error> {
+        Ok(self
+            .header("content-type", "text/plain")
+            .body(body.to_string().as_bytes().to_vec()))
     }
 
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {
@@ -38,15 +62,33 @@ impl Response {
     }
 
     pub async fn send(&self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
-        let mut response = format!("HTTP/1.1 {}\r\n", self.code);
-        for (key, value) in &self.headers {
-            response.push_str(&format!("{}: {}\r\n", key, value));
-        }
-        response.push_str("\r\n");
-        response.push_str(&String::from_utf8_lossy(&self.body));
+        let mut response = format!("HTTP/1.1 {}\r\n", self.code).as_bytes().to_vec();
+        response.extend_from_slice(&self.headers.as_bytes());
+        response.extend_from_slice(b"\r\n");
+        response.extend_from_slice(&self.body);
 
-        println!("{:?}", response);
+        stream.write_all(&response).await
+    }
+}
 
-        stream.write_all(response.as_bytes()).await
+pub trait ToResponse {
+    fn to_response(self) -> Result<Response, Error>;
+}
+
+impl ToResponse for String {
+    fn to_response(self) -> Result<Response, Error> {
+        Response::new().text(self)
+    }
+}
+
+impl ToResponse for Response {
+    fn to_response(self) -> Result<Response, Error> {
+        Ok(self)
+    }
+}
+
+impl ToResponse for &str {
+    fn to_response(self) -> Result<Response, Error> {
+        Response::new().text(self)
     }
 }

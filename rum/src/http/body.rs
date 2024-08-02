@@ -9,6 +9,7 @@ pub enum ContentType {
     File(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct Body {
     content: Vec<u8>,
     content_type: ContentType,

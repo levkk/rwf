@@ -1,8 +1,9 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    controller::Route,
+    http::Route,
     http::{Request, Response},
+    Server,
 };
 use rum_macros::Model;
 
@@ -239,7 +240,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
-    rum::http::server::server(vec![Route::get("/", handler)]).await?;
+    Server::new()
+        .launch()
+        .await?;
 
     // rum::server::launch(&vec![
     //     Route::get("/", handler),
@@ -248,9 +251,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handler(_request: Request) -> Result<Response, rum::controller::Error> {
-    Ok(rum::http::Response::json(serde_json::json!({
+async fn handler(_request: Request) -> Result<Response, rum::http::Error> {
+    Ok(rum::http::Response::new().json(serde_json::json!({
         "hello": "world"
+    }))?)
+}
+
+async fn handler2(request: Request) -> Result<Response, rum::http::Error> {
+    Ok(rum::http::Response::new().json(serde_json::json!({
+        "hello": "world2"
     }))?)
 }
 

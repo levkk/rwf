@@ -3,6 +3,7 @@ pub mod error;
 pub mod language;
 pub mod lexer;
 
+use crate::http::Response;
 pub use context::Context;
 pub use error::Error;
 pub use lexer::{Lexer, ToValue, Token, TokenWithContext, Tokenize, Value};

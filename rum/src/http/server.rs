@@ -1,25 +1,27 @@
-use super::{super::controller::Route, Error, Request, Response};
+use super::{Error, Request, Response, Route};
 use std::future::Future;
-use tokio::io::{AsyncReadExt};
-use tokio::net::{TcpListener};
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpListener;
 
-pub async fn server<F>(_routes: Vec<Route<F>>) -> Result<(), Error>
-where
-    F: Future<Output = Result<Response, crate::controller::Error>>,
-{
-    let listener = TcpListener::bind("0.0.0.0:8000").await?;
+use std::time::Instant;
+use std::sync::Arc;
+use tracing::{debug, info};
 
-    loop {
-        let (mut stream, _) = listener.accept().await?;
+pub struct Server {
+}
 
-        // let routes = routes.clone();
-        tokio::spawn(async move {
-            let _request = Request::read(&mut stream).await?;
-            Response::not_found("not found").send(&mut stream).await?;
-
-            Ok::<(), crate::http::Error>(())
-        });
+impl Server {
+    pub fn new() -> Self {
+        todo!()
     }
 
-    Ok(())
+    pub async fn launch(self) -> Result<(), Error> {
+        let mut listener = TcpListener::bind("0.0.0.0:8000").await?;
+
+        loop {
+            let (mut stream, peer_addr) = listener.accept().await?;
+        }
+
+        Ok(())
+    }
 }

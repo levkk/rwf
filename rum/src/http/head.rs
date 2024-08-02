@@ -11,7 +11,17 @@ pub enum Version {
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Version::Http1 => write!(f, "HTTP/1.1"),
+            Version::Http2 => write!(f, "HTTP/2"),
+            Version::Unknown => write!(f, "UNKNOWN"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Head {
     method: String,
     path: String,
@@ -96,6 +106,21 @@ impl Head {
         } else {
             None
         }
+    }
+
+    pub fn headers(&self) -> &HashMap<String, String> {
+        &self.headers
+    }
+
+    pub fn header(&self, name: &str) -> Option<&String> {
+        self.headers.get(name)
+    }
+
+    pub fn keep_alive(&self) -> bool {
+        self.headers
+            .get("connection")
+            .map(|s| s.to_lowercase() == "keep-alive")
+            .unwrap_or(false)
     }
 
     async fn read_line(mut stream: impl AsyncRead + Unpin) -> Result<String, std::io::Error> {

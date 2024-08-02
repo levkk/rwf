@@ -8,6 +8,9 @@ pub mod view;
 
 pub use rum_macros as macros;
 pub use tokio_postgres;
+pub use async_trait::async_trait;
+
+pub use http::Server;
 
 #[allow(dead_code)]
 fn snake_case(string: &str) -> String {
