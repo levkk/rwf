@@ -21,7 +21,6 @@ pub enum Token {
     BlockStart,
     BlockStartPrint,
     BlockEnd,
-    // BlockSign,
     Print,
     Space,
     Dot,

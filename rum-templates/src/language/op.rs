@@ -1,3 +1,4 @@
+//! Operation.
 use super::super::lexer::{Token, Value};
 use super::super::Error;
 
@@ -30,17 +31,12 @@ impl PartialOrd for Op {
 }
 
 impl Op {
+    /// Parse an operation from a language token. If the token isn't an operation, return nothing.
     pub fn from_token(token: Token) -> Option<Self> {
         Option::<Self>::from(token)
     }
 
-    pub fn binary(&self) -> bool {
-        match self {
-            Op::Not => false,
-            _ => true,
-        }
-    }
-
+    /// Execute the unary operation on the value.
     pub fn evaluate_unary(&self, value: &Value) -> Result<Value, Error> {
         match self {
             Op::Not => Ok(Value::Boolean(!value.truthy())),
@@ -54,6 +50,7 @@ impl Op {
         }
     }
 
+    /// Execute the binary operation on the two values.
     pub fn evaluate_binary(&self, left: &Value, right: &Value) -> Result<Value, Error> {
         match self {
             Op::Equals => Ok(Value::Boolean(left == right)),
@@ -68,11 +65,12 @@ impl Op {
             Op::Sub => Ok(left.sub(right)),
             Op::Mult => Ok(left.mul(right)),
             Op::Div => Ok(left.div(right)),
-            _ => todo!(),
+            _ => todo!("evaluate_binary"),
         }
     }
 
-    // Source: <https://en.cppreference.com/w/c/language/operator_precedence>
+    /// Calculate the precedence of the operation. Lower precedence operations are executed first.
+    /// Source: <https://en.cppreference.com/w/c/language/operator_precedence>
     pub fn precendence(&self) -> u8 {
         match self {
             Op::Not => 1,
@@ -81,7 +79,7 @@ impl Op {
             Op::Add | Op::Sub => 4,
             Op::Mult | Op::Div | Op::Mod => 3,
             Op::Equals | Op::NotEquals => 7,
-            _ => todo!(),
+            _ => todo!("precendence"),
         }
     }
 }

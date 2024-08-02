@@ -1,3 +1,7 @@
+//! Parse and evaluate expressions.
+//!
+//! Expressions are operations that when evaluated prdouce a single value.'
+
 use super::{
     super::lexer::{Token, TokenWithContext, Tokenize, Value},
     super::Context,
@@ -7,18 +11,19 @@ use super::{
 
 use std::iter::{Iterator, Peekable};
 
-/// An expression, like `5 == 6` or `logged_in == false`,
-/// which when evaluated produces a single value, e.g. `true`.
+/// Expression parser and executor.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    // Standard `5 + 6`-style expression.
-    // It's recusive, so you can have something like `(5 + 6) / (1 - 5)`.
+    // Binary expression, i.e. expression with two terms and one operation, e.g. `5 + 10`.
+    // The expression is recusive, so you can have something like `(5 + 6) / (1 - 5)`.
     Binary {
         left: Box<Expression>,
         op: Op,
         right: Box<Expression>,
     },
 
+    /// Unary expression, containing one operation and one term.
+    /// e.g. `!true`
     Unary {
         op: Op,
         operand: Box<Expression>,
@@ -35,12 +40,12 @@ pub enum Expression {
     // `[1, 2, variable, "hello world"]`
     //
     // The list is dynamically evaluated at runtime, so it can contain variables
-    // and constants, as long as the variable is in scope.
+    // and constants, as long as the variables are in scope.
     List {
         terms: Vec<Expression>,
     },
 
-    // Call a function on a value/expression.
+    // A function call on an expression, with optional arguments, e.g. `5.to_i`.
     Function {
         term: Box<Expression>,
         name: String,
@@ -49,21 +54,22 @@ pub enum Expression {
 }
 
 impl Expression {
-    /// Create new constant expression (term).
+    /// Create new constant term.
     pub fn constant(value: Value) -> Self {
         Self::Term {
             term: Term::constant(value),
         }
     }
 
-    /// Create new variable expression (term).
+    /// Create new variable term.
     pub fn variable(variable: String) -> Self {
         Self::Term {
             term: Term::variable(variable),
         }
     }
 
-    /// Evaluate the expression to a value given the context.
+    /// Evaluate the expression given the context.
+    /// Returns a single value as the result.
     pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         match self {
             Expression::Term { term } => term.evaluate(context),
@@ -95,6 +101,8 @@ impl Expression {
         }
     }
 
+    /// Parse a single term.
+    /// Consumes tokens from the iterator.
     fn term(iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>) -> Result<Self, Error> {
         let next = iter.next().ok_or(Error::Eof("term next"))?;
         let term = match next.token() {
@@ -155,7 +163,8 @@ impl Expression {
                     }
                 }
 
-                Self::accessor(Self::parse(&mut expr.into_iter().peekable())?, iter)?
+                // Recursively parse the expression in paranthesis.
+                Self::function(Self::parse(&mut expr.into_iter().peekable())?, iter)?
             }
 
             token => {
@@ -184,27 +193,32 @@ impl Expression {
                     _ => return Err(Error::ExpressionSyntax(next)),
                 };
 
-                Self::accessor(expr, iter)?
+                Self::function(expr, iter)?
             }
         };
 
         Ok(term)
     }
 
-    fn accessor(
+    /// Parse a function expression, e.g. `5.to_string`.
+    fn function(
         mut expr: Self,
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Self, Error> {
         loop {
-            let accessor = iter.peek().map(|t| t.token());
+            let next = iter.peek().map(|t| t.token());
 
-            expr = match accessor {
+            expr = match next {
                 Some(Token::Dot) => {
                     let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
+
                     let name = iter.next().ok_or(Error::Eof("accessor name"))?;
+
                     match name.token() {
                         Token::Variable(name) => {
                             let arg = iter.peek().map(|t| t.token());
+
+                            // Parse arguments if any.
                             let args = match arg {
                                 Some(Token::RoundBracketStart) => {
                                     let mut buffer = vec![];
@@ -219,12 +233,15 @@ impl Expression {
 
                                         match next.token() {
                                             Token::RoundBracketEnd | Token::Comma => {
+                                                // Arguments are also expressions, so we can accept variables, constants and other functions.
                                                 args.push(Self::parse(
                                                     &mut std::mem::take(&mut buffer)
                                                         .into_iter()
                                                         .peekable(),
                                                 )?);
                                             }
+
+                                            // Buffer tokens until we have the full argument value (until we hit a comma).
                                             _token => {
                                                 buffer.push(next);
                                             }
@@ -238,17 +255,21 @@ impl Expression {
                                     vec![]
                                 }
                             };
+
                             Expression::Function {
                                 term: Box::new(expr),
                                 name,
                                 args,
                             }
                         }
+
+                        // Array access notation, e.g. `list.0`
                         Token::Value(Value::Integer(n)) => Expression::Function {
                             term: Box::new(expr),
                             name: n.to_string(),
                             args: vec![],
                         },
+
                         _ => return Err(Error::ExpressionSyntax(name.clone())),
                     }
                 }
@@ -259,8 +280,6 @@ impl Expression {
     }
 
     /// Recusively parse the expression.
-    ///
-    /// Consumes language tokens automatically.
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Self, Error> {
@@ -341,8 +360,13 @@ impl Expression {
     }
 }
 
+/// Train to evaluate expressions easily. Implemented for `&str` and `String`.
 pub trait Evaluate {
+    /// Evaluate the expression with the given context.
     fn evaluate(&self, context: &Context) -> Result<Value, Error>;
+
+    /// Evaluate the expression with an empty context.
+    /// Useful for testing and expressions that don't use variables.
     fn evaluate_default(&self) -> Result<Value, Error> {
         self.evaluate(&Context::default())
     }

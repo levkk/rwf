@@ -1,3 +1,6 @@
+//! Term, basic building block of the template language.
+//!
+//! A term can be a constant or a variable.
 use super::super::{
     lexer::{Token, Value},
     Context,
@@ -5,33 +8,36 @@ use super::super::{
 
 use crate::Error;
 
+// Term parser and executor.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Constant(Value),
     Variable(String),
-    Function(fn() -> Value),
 }
 
 impl Term {
+    /// Create a term from a token.
     pub fn from_token(token: Token) -> Option<Self> {
         Option::<Self>::from(token)
     }
 
+    /// Create a constant from a value.
     pub fn constant(value: Value) -> Self {
         Term::Constant(value)
     }
 
+    /// Create a variable from a name.
     pub fn variable(name: String) -> Self {
         Term::Variable(name)
     }
 
+    /// Evaluate the term given the context.
     pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         match self {
             Term::Constant(value) => Ok(value.clone()),
             Term::Variable(name) => context
                 .get(&name)
                 .ok_or(Error::UndefinedVariable(name.clone())),
-            Term::Function(f) => Ok(f()),
         }
     }
 }

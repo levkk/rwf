@@ -1,3 +1,6 @@
+//! Language statement.
+//!
+//! A statement is a single unit of execution. It typically combines multiple expressions and control flow.
 use super::{
     super::{Context, Error, Token, TokenWithContext, Tokenize, Value},
     Expression, Term,
@@ -7,7 +10,6 @@ use std::iter::{Iterator, Peekable};
 macro_rules! expect {
     ($got:expr, $expected:expr) => {
         if $got.token() != $expected {
-            // println!("{}:{}", file!(), line!());
             return Err(Error::WrongToken($got, $expected));
         }
     };
@@ -22,6 +24,7 @@ macro_rules! block_end {
     };
 }
 
+/// Statement parser and executor.
 #[derive(Debug, Clone)]
 pub enum Statement {
     // e.g. `<%= variable %>`
@@ -50,11 +53,15 @@ pub enum Statement {
 }
 
 impl Statement {
+    /// Parse a statement from a string.
     pub fn from_str(string: &str) -> Result<Self, Error> {
         let tokens = string.tokenize()?;
         Statement::parse(&mut tokens.into_iter().peekable())
     }
 
+    /// Execute the statement with the given context.
+    ///
+    /// Since this is a template language, executing a statement produces a string.
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
             Statement::PrintText(text) => Ok(text.clone()),
@@ -95,7 +102,6 @@ impl Statement {
                                     for_context.set(&name, value)?;
                                 }
                                 Term::Constant(_) => (), // Looks like just a loop with no variables
-                                _ => todo!(),            // Function call is interesting
                             };
 
                             for statement in body {
@@ -113,6 +119,7 @@ impl Statement {
         }
     }
 
+    /// Parse a statement from the token stream.
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Statement, Error> {
