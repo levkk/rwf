@@ -6,9 +6,9 @@ pub mod model;
 pub mod server;
 pub mod view;
 
+pub use async_trait::async_trait;
 pub use rum_macros as macros;
 pub use tokio_postgres;
-pub use async_trait::async_trait;
 
 pub use http::Server;
 

@@ -116,14 +116,14 @@ impl<'a> Lexer<'a> {
                             match m {
                                 // `<%=` (print expression)
                                 Some('=') => {
-                                    self.drain_buffer();
+                                    self.process_token();
                                     self.tokens.push(self.add_token(Token::BlockStartPrint));
                                     self.code_block = true;
                                 }
 
                                 // `<%` (code block start)
                                 Some(c) => {
-                                    self.drain_buffer();
+                                    self.process_token();
                                     self.tokens.push(self.add_token(Token::BlockStart));
 
                                     match c {
@@ -137,7 +137,7 @@ impl<'a> Lexer<'a> {
                                 // Dangling code block start bracket. Syntax error,
                                 // but we don't need to handle this here.
                                 None => {
-                                    self.drain_buffer();
+                                    self.process_token();
                                     self.tokens.push(self.add_token(Token::BlockStart));
                                 }
                             }
@@ -166,10 +166,10 @@ impl<'a> Lexer<'a> {
                                         self.buffer.push(c);
                                     } else if c == ' ' {
                                         self.buffer.push('.');
-                                        self.drain_buffer();
+                                        self.process_token();
                                         self.tokens.push(self.add_token(Token::Space));
                                     } else {
-                                        self.drain_buffer();
+                                        self.process_token();
                                         self.tokens.push(self.add_token(Token::Dot));
                                         self.buffer.push(c);
                                     }
@@ -177,11 +177,11 @@ impl<'a> Lexer<'a> {
 
                                 None => {
                                     self.buffer.push('.');
-                                    self.drain_buffer();
+                                    self.process_token();
                                 }
                             }
                         } else {
-                            self.drain_buffer();
+                            self.process_token();
                             self.tokens.push(self.add_token(Token::Dot));
                         }
                     } else {
@@ -196,7 +196,7 @@ impl<'a> Lexer<'a> {
                         match next {
                             // `<% != %>`
                             Some('=') => {
-                                self.drain_buffer();
+                                self.process_token();
                                 self.tokens.push(self.add_token(Token::NotEquals));
                             }
 
@@ -226,7 +226,7 @@ impl<'a> Lexer<'a> {
                         Some('>') => {
                             // We are parsing a code block, so this tells us the code is over.
                             if self.code_block {
-                                self.drain_buffer();
+                                self.process_token();
                                 self.tokens.push(self.add_token(Token::BlockEnd));
                                 self.code_block = false;
                             } else {
@@ -240,7 +240,7 @@ impl<'a> Lexer<'a> {
                         Some(c) => {
                             // If we're parsing code, then this is a modulus operator, e.g. `5 % 3 == 2`
                             if self.code_block {
-                                self.drain_buffer();
+                                self.process_token();
                                 self.tokens.push(self.add_token(Token::Mod));
                             } else {
                                 self.buffer.push('%');
@@ -252,7 +252,7 @@ impl<'a> Lexer<'a> {
                             // A mod operator with nothing after it. Syntax error,
                             // but we don't need to handle it here.
                             if self.code_block {
-                                self.drain_buffer();
+                                self.process_token();
                                 self.tokens.push(self.add_token(Token::Mod));
                             } else {
                                 // A template ending with a "%" for some reason.
@@ -267,7 +267,7 @@ impl<'a> Lexer<'a> {
                     // We're parsing a string, e.g. `<% "hello world" %>`.
                     // TODO: handle escape characters.
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         let mut string = String::new();
 
                         // Look for the closing `"`
@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
                 ' ' => {
                     // Spaces separate tokens.
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Space));
                     } else {
                         // Spaces separate words.
@@ -301,7 +301,7 @@ impl<'a> Lexer<'a> {
 
                 '+' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Plus));
                     } else {
                         self.buffer.push('+');
@@ -310,7 +310,7 @@ impl<'a> Lexer<'a> {
 
                 '-' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Minus));
                     } else {
                         self.buffer.push('-');
@@ -319,7 +319,7 @@ impl<'a> Lexer<'a> {
 
                 '*' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Mult));
                     } else {
                         self.buffer.push('*');
@@ -328,7 +328,7 @@ impl<'a> Lexer<'a> {
 
                 '/' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Div));
                     } else {
                         self.buffer.push('/');
@@ -346,7 +346,7 @@ impl<'a> Lexer<'a> {
 
                 '[' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::SquareBracketStart));
                     } else {
                         self.buffer.push(c);
@@ -355,7 +355,7 @@ impl<'a> Lexer<'a> {
 
                 ',' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::Comma));
                     } else {
                         self.buffer.push(c);
@@ -364,7 +364,7 @@ impl<'a> Lexer<'a> {
 
                 ']' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::SquareBracketEnd));
                     } else {
                         self.buffer.push(c);
@@ -373,7 +373,7 @@ impl<'a> Lexer<'a> {
 
                 '(' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::RoundBracketStart));
                     } else {
                         self.buffer.push(c);
@@ -382,7 +382,7 @@ impl<'a> Lexer<'a> {
 
                 ')' => {
                     if self.code_block {
-                        self.drain_buffer();
+                        self.process_token();
                         self.tokens.push(self.add_token(Token::RoundBracketEnd));
                     } else {
                         self.buffer.push(c);
@@ -393,7 +393,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        self.drain_buffer();
+        self.process_token();
 
         Ok(self
             .tokens
@@ -404,11 +404,11 @@ impl<'a> Lexer<'a> {
     }
 
     // Handle multi-character tokens.
-    fn drain_buffer(&mut self) {
+    fn process_token(&mut self) {
         if !self.buffer.is_empty() {
-            let s = std::mem::take(&mut self.buffer);
+            let token = std::mem::take(&mut self.buffer);
             if self.code_block {
-                match s.as_str() {
+                match token.as_str() {
                     "if" => self.tokens.push(self.add_token(Token::If)),
                     "else" => self.tokens.push(self.add_token(Token::Else)),
                     "elsif" => self.tokens.push(self.add_token(Token::ElseIf)),
@@ -439,12 +439,12 @@ impl<'a> Lexer<'a> {
                             self.tokens
                                 .push(self.add_token(Token::Value(Value::Float(float))));
                         } else {
-                            self.tokens.push(self.add_token(Token::Variable(s)));
+                            self.tokens.push(self.add_token(Token::Variable(token)));
                         }
                     }
                 }
             } else {
-                self.tokens.push(self.add_token(Token::Text(s)));
+                self.tokens.push(self.add_token(Token::Text(token)));
             }
         }
     }

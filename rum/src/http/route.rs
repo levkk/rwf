@@ -1,9 +1,9 @@
 use super::{Error, Request, Response};
 use async_trait::async_trait;
+use dyn_clone::DynClone;
 use http::Method;
 use std::future::Future;
 use std::pin::Pin;
-use dyn_clone::DynClone;
 
 use tokio::task::JoinHandle;
 
@@ -18,8 +18,6 @@ pub trait Route: Clone + Send + 'static {
 
     fn execute_internal(&self, request: Request) -> JoinHandle<Result<Response, Error>> {
         let route = self.clone();
-        tokio::spawn(async move {
-            route.handle(request).await
-        })
+        tokio::spawn(async move { route.handle(request).await })
     }
 }

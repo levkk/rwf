@@ -163,7 +163,7 @@ impl Expression {
                     }
                 }
 
-                // Recursively parse the expression in paranthesis.
+                // Recursively parse the expression in parenthesis.
                 Self::function(Self::parse(&mut expr.into_iter().peekable())?, iter)?
             }
 
