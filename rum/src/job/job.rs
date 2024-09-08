@@ -1,11 +1,10 @@
 use super::{Error, Worker};
 use crate::model::{get_pool, FromRow, Model, ToValue, Value};
 
-
+use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use time::{Duration, OffsetDateTime};
 use tokio_postgres::Client;
-use async_trait::async_trait;
 
 static MAX_RETRIES: i64 = 25;
 
@@ -33,11 +32,7 @@ pub trait Job: Serialize + DeserializeOwned + Send + 'static {
         Ok(())
     }
 
-    async fn execute_delay(
-        &self,
-        conn: &Client,
-        delay: Duration,
-    ) -> Result<(), Error> {
+    async fn execute_delay(&self, conn: &Client, delay: Duration) -> Result<(), Error> {
         JobModel::create(
             &Self::async_job_name(),
             serde_json::to_value(self).expect("job serialization error"),
@@ -209,9 +204,9 @@ mod test {
     use super::super::Worker;
     use super::*;
     use crate::{logging, model::Pool};
+    use async_trait::async_trait;
     use once_cell::sync::OnceCell;
     use serde::Deserialize;
-    use async_trait::async_trait;
 
     static JOB_RAN: OnceCell<bool> = OnceCell::new();
 

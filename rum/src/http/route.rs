@@ -1,9 +1,7 @@
 use super::{Error, Request, Response};
 
-
 use http::Method;
 use std::future::Future;
-
 
 use tokio::task::JoinHandle;
 
