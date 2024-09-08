@@ -31,6 +31,10 @@ pub async fn get_connection() -> Result<ConnectionGuard, Error> {
     get_pool().get().await
 }
 
+pub async fn start_transaction() -> Result<Transaction, Error> {
+    get_pool().begin().await
+}
+
 /// Smart pointer that automatically checks in the connection
 /// back into the pool when the connection is dropped.
 pub struct ConnectionGuard {

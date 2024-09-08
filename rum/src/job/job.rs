@@ -5,46 +5,48 @@ use std::future::Future;
 use serde::{de::DeserializeOwned, Serialize};
 use time::{Duration, OffsetDateTime};
 use tokio_postgres::Client;
+use async_trait::async_trait;
 
 static MAX_RETRIES: i64 = 25;
 
+/// A background job.
+///
+/// Background jobs are scheduled in Postgres and executed by any
+/// available worker.
+#[async_trait]
 pub trait Job: Serialize + DeserializeOwned + Send + 'static {
-    fn execute(&self) -> impl Future<Output = Result<(), Error>> + Send;
+    async fn execute(&self) -> Result<(), Error>;
 
     fn async_job_name() -> String {
         std::any::type_name::<Self>().to_string()
     }
 
-    fn execute_async(&self, conn: &Client) -> impl Future<Output = Result<(), Error>> {
-        async move {
-            JobModel::create(
-                &Self::async_job_name(),
-                serde_json::to_value(self).expect("job serialization error"),
-                None,
-                conn,
-            )
-            .await?;
+    async fn execute_async(&self, conn: &Client) -> Result<(), Error> {
+        JobModel::create(
+            &Self::async_job_name(),
+            serde_json::to_value(self).expect("job serialization error"),
+            None,
+            conn,
+        )
+        .await?;
 
-            Ok(())
-        }
+        Ok(())
     }
 
-    fn execute_delay(
+    async fn execute_delay(
         &self,
         conn: &Client,
         delay: Duration,
-    ) -> impl Future<Output = Result<(), Error>> {
-        async move {
-            JobModel::create(
-                &Self::async_job_name(),
-                serde_json::to_value(self).expect("job serialization error"),
-                Some(delay),
-                &conn,
-            )
-            .await?;
+    ) -> Result<(), Error> {
+        JobModel::create(
+            &Self::async_job_name(),
+            serde_json::to_value(self).expect("job serialization error"),
+            Some(delay),
+            &conn,
+        )
+        .await?;
 
-            Ok(())
-        }
+        Ok(())
     }
 
     fn execute_internal(id: i64, payload: serde_json::Value) {
