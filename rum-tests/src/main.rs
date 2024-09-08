@@ -1,7 +1,6 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    http::Route,
     http::{Request, Response},
     Server,
 };
@@ -255,7 +254,7 @@ async fn handler(_request: Request) -> Result<Response, rum::http::Error> {
     }))?)
 }
 
-async fn handler2(request: Request) -> Result<Response, rum::http::Error> {
+async fn handler2(_request: Request) -> Result<Response, rum::http::Error> {
     Ok(rum::http::Response::new().json(serde_json::json!({
         "hello": "world2"
     }))?)

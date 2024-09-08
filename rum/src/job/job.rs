@@ -1,6 +1,6 @@
 use super::{Error, Worker};
 use crate::model::{get_pool, FromRow, Model, ToValue, Value};
-use std::future::Future;
+
 
 use serde::{de::DeserializeOwned, Serialize};
 use time::{Duration, OffsetDateTime};
@@ -211,6 +211,7 @@ mod test {
     use crate::{logging, model::Pool};
     use once_cell::sync::OnceCell;
     use serde::Deserialize;
+    use async_trait::async_trait;
 
     static JOB_RAN: OnceCell<bool> = OnceCell::new();
 
@@ -220,10 +221,11 @@ mod test {
         order_id: i64,
     }
 
+    #[async_trait]
     impl Job for MyJob {
-        fn execute(&self) -> impl Future<Output = Result<(), Error>> {
+        async fn execute(&self) -> Result<(), Error> {
             JOB_RAN.set(true).expect("job ran");
-            async move { Ok(()) }
+            Ok(())
         }
     }
 

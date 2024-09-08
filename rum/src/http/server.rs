@@ -1,11 +1,11 @@
-use super::{Error, Request, Response, Route};
-use std::future::Future;
-use tokio::io::AsyncReadExt;
+use super::{Error};
+
+
 use tokio::net::TcpListener;
 
-use std::sync::Arc;
-use std::time::Instant;
-use tracing::{debug, info};
+
+
+
 
 pub struct Server {}
 
@@ -15,10 +15,10 @@ impl Server {
     }
 
     pub async fn launch(self) -> Result<(), Error> {
-        let mut listener = TcpListener::bind("0.0.0.0:8000").await?;
+        let listener = TcpListener::bind("0.0.0.0:8000").await?;
 
         loop {
-            let (mut stream, peer_addr) = listener.accept().await?;
+            let (_stream, _peer_addr) = listener.accept().await?;
         }
 
         Ok(())

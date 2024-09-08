@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{Error, Headers, Request};
+use super::{Error, Headers};
 
 #[derive(Debug, Clone)]
 pub struct Response {
@@ -40,17 +40,17 @@ impl Response {
         self.code
     }
 
-    pub fn json(mut self, body: impl Serialize) -> Result<Self, Error> {
+    pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
         Ok(self.header("content-type", "application/json").body(body))
     }
 
-    pub fn html(mut self, body: impl ToString) -> Self {
+    pub fn html(self, body: impl ToString) -> Self {
         self.header("content-type", "text/html")
             .body(body.to_string().as_bytes().to_vec())
     }
 
-    pub fn text(mut self, body: impl ToString) -> Result<Self, Error> {
+    pub fn text(self, body: impl ToString) -> Result<Self, Error> {
         Ok(self
             .header("content-type", "text/plain")
             .body(body.to_string().as_bytes().to_vec()))
