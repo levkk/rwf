@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod body;
 pub mod error;
 pub mod head;

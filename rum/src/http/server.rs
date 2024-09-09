@@ -15,7 +15,5 @@ impl Server {
         loop {
             let (_stream, _peer_addr) = listener.accept().await?;
         }
-
-        Ok(())
     }
 }

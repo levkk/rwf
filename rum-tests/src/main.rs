@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{

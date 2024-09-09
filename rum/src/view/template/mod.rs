@@ -12,6 +12,7 @@ use language::Program;
 use std::path::{Path, PathBuf};
 use tokio::fs::read_to_string;
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Template {
     program: Program,

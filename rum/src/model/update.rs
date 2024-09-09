@@ -22,6 +22,7 @@ impl<T: Model> Update<T> {
             placeholders.add(&value);
         }
 
+        // "id" must always be last
         placeholders.add(&model.id().to_value());
 
         Self {
