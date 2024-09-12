@@ -1,18 +1,25 @@
 use std::marker::Unpin;
+use std::ops::Deref;
 use std::sync::Arc;
+
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Error, Head};
 
 #[derive(Debug, Clone)]
 pub struct Request {
-    head: Arc<Head>,
-    body: Arc<Vec<u8>>,
+    inner: Arc<Inner>,
+}
+
+#[derive(Debug)]
+struct Inner {
+    head: Head,
+    body: Vec<u8>,
 }
 
 impl Request {
     pub async fn read(mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
-        let head = Arc::new(Head::read(&mut stream).await?);
+        let head = Head::read(&mut stream).await?;
         let content_length = head.content_length().unwrap_or(0);
         let mut body = vec![0u8; content_length];
         stream
@@ -21,13 +28,20 @@ impl Request {
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
         Ok(Request {
-            head,
-            body: Arc::new(body),
+            inner: Arc::new(Inner { head, body }),
         })
     }
 
-    pub fn head(&self) -> &Head {
-        &self.head
+    pub fn body(&self) -> &[u8] {
+        &self.inner.body
+    }
+}
+
+impl Deref for Request {
+    type Target = Head;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner.head
     }
 }
 

@@ -1,14 +1,54 @@
 use std::collections::HashMap;
 use std::marker::Unpin;
+
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::Error;
+use super::{Error, Path};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(PartialEq, Clone, Debug, Default)]
+pub enum Method {
+    #[default]
+    Get,
+    Post,
+    Put,
+    Delete,
+    Head,
+    Other(String),
+}
+
+impl TryFrom<String> for Method {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "GET" => Ok(Method::Get),
+            "POST" => Ok(Method::Post),
+            "PUT" => Ok(Method::Put),
+            "DELETE" => Ok(Method::Delete),
+            "HEAD" => Ok(Method::Head),
+            _ => Ok(Method::Other(value)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Version {
+    #[default]
     Http1,
     Http2,
     Unknown,
+}
+
+impl TryFrom<String> for Version {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "HTTP/1.1" => Ok(Version::Http1),
+            "HTTP/2" => Ok(Version::Http2),
+            _ => Ok(Version::Unknown),
+        }
+    }
 }
 
 impl std::fmt::Display for Version {
@@ -23,9 +63,9 @@ impl std::fmt::Display for Version {
 
 #[derive(Debug, Clone, Default)]
 pub struct Head {
-    method: String,
-    path: String,
-    version: String,
+    method: Method,
+    path: Path,
+    version: Version,
     headers: HashMap<String, String>,
 }
 
@@ -41,14 +81,17 @@ impl Head {
             .get(0)
             .ok_or(Error::MalformedRequest("method"))?
             .to_string();
-        let path = request
-            .get(1)
-            .ok_or(Error::MalformedRequest("path"))?
-            .to_string();
+        let method = Method::try_from(method)?;
+
+        let path = request.get(1).ok_or(Error::MalformedRequest("path"))?;
+        let path = Path::parse(path)?;
+
         let version = request
             .get(2)
             .ok_or(Error::MalformedRequest("version"))?
             .to_string();
+        let version = Version::try_from(version)?;
+
         let mut headers = HashMap::new();
 
         loop {
@@ -81,18 +124,18 @@ impl Head {
     }
 
     pub fn http2(&self) -> bool {
-        self.version == "HTTP/2"
+        self.version == Version::Http2
     }
 
     pub fn http1(&self) -> bool {
-        self.version == "HTTP/1.1"
+        self.version == Version::Http1
     }
 
-    pub fn path(&self) -> &str {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
-    pub fn method(&self) -> &str {
+    pub fn method(&self) -> &Method {
         &self.method
     }
 
@@ -170,7 +213,8 @@ mod test {
             .to_vec();
         let head = Head::read(&body[..]).await.expect("head");
         assert!(head.http1());
-        assert_eq!(head.method(), "GET");
+        assert_eq!(head.method(), &Method::Get);
+        assert_eq!(head.path().path(), "/");
         assert_eq!(head.content_length(), Some(4));
     }
 }
