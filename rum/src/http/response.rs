@@ -36,17 +36,14 @@ impl Response {
         self
     }
 
-    pub fn get_code(&self) -> u16 {
-        self.code
-    }
-
     pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
         Ok(self.header("content-type", "application/json").body(body))
     }
 
-    pub fn html(self, body: impl ToString) -> Self {
-        self.header("content-type", "text/html")
+    pub fn html(body: impl ToString) -> Self {
+        Self::new()
+            .header("content-type", "text/html")
             .body(body.to_string().as_bytes().to_vec())
     }
 

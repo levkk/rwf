@@ -6,7 +6,7 @@ pub struct Server {}
 
 impl Server {
     pub fn new() -> Self {
-        todo!()
+        Server {}
     }
 
     pub async fn launch(self) -> Result<(), Error> {

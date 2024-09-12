@@ -1209,15 +1209,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rum-templates"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "rum-tests"
 version = "0.1.0"
 dependencies = [

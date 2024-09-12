@@ -9,15 +9,15 @@ pub struct Row {
 
 impl Model for Row {
     fn table_name() -> String {
-        unimplemented!()
+        "_rum_rows".to_string()
     }
 
     fn primary_key() -> String {
-        unimplemented!()
+        "_id".to_string()
     }
 
     fn foreign_key() -> String {
-        unimplemented!()
+        "_rum_row_id".to_string()
     }
 }
 
