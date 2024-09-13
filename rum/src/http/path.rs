@@ -20,9 +20,11 @@ impl Path {
     pub fn query(&self) -> &HashMap<String, String> {
         &self.query
     }
+
     pub fn path(&self) -> &str {
         &self.base
     }
+
     pub fn parse(path: &str) -> Result<Path, Error> {
         let parts = path.split("?").collect::<Vec<_>>();
         match parts.len() {
@@ -52,7 +54,7 @@ impl Path {
                 })
             }
 
-            _ => Err(Error::MalformedRequest("malformed path")),
+            _ => Err(Error::MalformedRequest("path has malformed query")),
         }
     }
 }

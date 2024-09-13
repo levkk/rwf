@@ -5,9 +5,6 @@ pub enum Error {
     #[error("malformed query")]
     MalformedQuery,
 
-    #[error("hyper error: {0}")]
-    Hyper(#[from] hyper::Error),
-
     #[error("http error: {0}")]
     Http(#[from] crate::http::Error),
 

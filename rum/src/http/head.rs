@@ -3,7 +3,7 @@ use std::marker::Unpin;
 
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Error, Path};
+use super::{Error, Headers, Path};
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub enum Method {
@@ -20,7 +20,7 @@ impl TryFrom<String> for Method {
     type Error = Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
+        match value.to_uppercase().as_str() {
             "GET" => Ok(Method::Get),
             "POST" => Ok(Method::Post),
             "PUT" => Ok(Method::Put),
@@ -66,7 +66,7 @@ pub struct Head {
     method: Method,
     path: Path,
     version: Version,
-    headers: HashMap<String, String>,
+    headers: Headers,
 }
 
 impl Head {
@@ -92,7 +92,7 @@ impl Head {
             .to_string();
         let version = Version::try_from(version)?;
 
-        let mut headers = HashMap::new();
+        let mut headers = Headers::new();
 
         loop {
             let header = Self::read_line(&mut stream).await?;
@@ -151,7 +151,7 @@ impl Head {
         }
     }
 
-    pub fn headers(&self) -> &HashMap<String, String> {
+    pub fn headers(&self) -> &Headers {
         &self.headers
     }
 
