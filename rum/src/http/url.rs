@@ -10,8 +10,8 @@
 /// use rum::http::urldecode;
 ///
 /// let url = "?foo=bar&hello=world%20";
-/// let encoded = urldecode(url);
-/// assert_eq!(encoded, "?foo=bar&hello=world ");
+/// let decoded = urldecode(url);
+/// assert_eq!(decoded, "?foo=bar&hello=world ");
 /// ```
 ///
 pub fn urldecode(s: &str) -> String {
@@ -54,11 +54,11 @@ mod test {
     #[test]
     fn test_urldecode() {
         let url = "?foo=bar&hello=world";
-        let encoded = urldecode(url);
-        assert_eq!(encoded, "?foo=bar&hello=world");
+        let decoded = urldecode(url);
+        assert_eq!(decoded, "?foo=bar&hello=world");
 
         let url = "?foo=bar&hello=world%20&apples%3Doranges";
-        let encoded = urldecode(url);
-        assert_eq!(encoded, "?foo=bar&hello=world &apples=oranges");
+        let decoded = urldecode(url);
+        assert_eq!(decoded, "?foo=bar&hello=world &apples=oranges");
     }
 }

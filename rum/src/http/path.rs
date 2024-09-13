@@ -1,4 +1,4 @@
-use super::Error;
+use super::{urldecode, Error};
 use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -26,6 +26,7 @@ impl Path {
     }
 
     pub fn parse(path: &str) -> Result<Path, Error> {
+        let path = urldecode(path);
         let parts = path.split("?").collect::<Vec<_>>();
         match parts.len() {
             1 => Ok(Path {
@@ -65,7 +66,7 @@ mod test {
 
     #[test]
     fn test_path() {
-        let path = "/hello?foo=bar&hello=world";
+        let path = "/hello?foo=bar&hello%3Dworld";
         let path = Path::parse(path).unwrap();
         assert_eq!(path.path(), "/hello");
         assert_eq!(path.query().get("foo"), Some(&"bar".to_string()));
