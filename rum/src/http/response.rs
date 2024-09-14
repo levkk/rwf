@@ -66,6 +66,28 @@ impl Response {
 
         stream.write_all(&response).await
     }
+
+    pub fn not_found() -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>Not Found</center>
+            </h3>
+        ",
+        )
+        .code(404)
+    }
+
+    pub fn method_not_allowed() -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>Method Not Allowed</center>
+            </h3>
+        ",
+        )
+        .code(405)
+    }
 }
 
 pub trait ToResponse {

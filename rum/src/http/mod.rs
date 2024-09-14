@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 pub mod error;
+pub mod handler;
 pub mod head;
 pub mod headers;
 pub mod path;
@@ -16,3 +17,5 @@ pub use request::Request;
 pub use response::{Response, ToResponse};
 pub use server::Server;
 pub use url::urldecode;
+
+use handler::Handler;

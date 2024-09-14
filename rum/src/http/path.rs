@@ -17,6 +17,24 @@ impl Default for Path {
 }
 
 impl Path {
+    pub fn matches(&self, path: &Path) -> bool {
+        path.base.starts_with(&self.base)
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.base.ends_with("/")
+    }
+
+    pub fn resource(&self) -> Option<&str> {
+        if self.is_root() {
+            None
+        } else {
+            let last_slash = self.base.chars().find('/').last();
+
+            todo!()
+        }
+    }
+
     pub fn query(&self) -> &HashMap<String, String> {
         &self.query
     }
