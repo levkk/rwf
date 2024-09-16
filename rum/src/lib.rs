@@ -10,6 +10,7 @@ pub use async_trait::async_trait;
 pub use rum_macros as macros;
 pub use tokio_postgres;
 
+pub use controller::{Controller, RestController};
 pub use http::Server;
 
 #[allow(dead_code)]

@@ -1,16 +1,16 @@
-use super::Path;
-use crate::controller::Controller;
+use super::{Path, Request, Response, ToResource};
+use crate::controller::{Controller, Error};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str::FromStr;
 
-pub struct Handler<T> {
+pub struct Handler {
     path: Path,
-    controller: Box<dyn Controller<Resource = T>>,
+    controller: Box<dyn Controller>,
 }
 
-impl<T: FromStr> Handler<T> {
-    pub fn new(path: &str, controller: Box<dyn Controller<Resource = T>>) -> Self {
+impl Handler {
+    pub fn new(path: &str, controller: Box<dyn Controller>) -> Self {
         Self {
             path: Path::parse(path).unwrap(),
             controller,
@@ -20,10 +20,14 @@ impl<T: FromStr> Handler<T> {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
+    pub fn controller_name(&self) -> &'static str {
+        self.deref().controller_name()
+    }
 }
 
-impl<T: FromStr> Deref for Handler<T> {
-    type Target = Box<dyn Controller<Resource = T>>;
+impl Deref for Handler {
+    type Target = Box<dyn Controller>;
 
     fn deref(&self) -> &Self::Target {
         &self.controller

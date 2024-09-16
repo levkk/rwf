@@ -19,14 +19,15 @@ impl Default for Path {
 
 impl Path {
     pub fn matches(&self, path: &Path) -> bool {
-        path.base.starts_with(&self.base)
+        let it_matches = self.base.starts_with(&path.base);
+        it_matches
     }
 
     pub fn is_root(&self) -> bool {
         self.base.ends_with("/")
     }
 
-    pub fn resource<T: FromStr>(&self) -> Option<Result<T, Error>> {
+    pub fn resource<T: ToResource>(&self) -> Option<Result<T, Error>> {
         if self.is_root() {
             None
         } else {
@@ -34,10 +35,7 @@ impl Path {
             let last_slash_offset = self.base.len() - reverse_offset;
 
             if last_slash_offset < self.base.len() {
-                Some(match self.base[last_slash_offset..].parse::<T>() {
-                    Ok(resource) => Ok(resource),
-                    Err(_) => Err(Error::MalformedRequest("resource")),
-                })
+                Some(T::to_resource(&self.base[last_slash_offset..]))
             } else {
                 None
             }
@@ -84,6 +82,27 @@ impl Path {
 
             _ => Err(Error::MalformedRequest("path has malformed query")),
         }
+    }
+}
+
+pub trait ToResource: Sync + Send {
+    fn to_resource(s: &str) -> Result<Self, Error>
+    where
+        Self: Sized;
+}
+
+impl ToResource for i64 {
+    fn to_resource(s: &str) -> Result<i64, Error> {
+        match s.parse() {
+            Ok(id) => Ok(id),
+            Err(_) => Err(Error::MalformedRequest("i64")),
+        }
+    }
+}
+
+impl ToResource for String {
+    fn to_resource(s: &str) -> Result<String, Error> {
+        Ok(s.to_string())
     }
 }
 

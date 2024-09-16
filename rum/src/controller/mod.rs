@@ -4,14 +4,23 @@ use std::str::FromStr;
 pub mod error;
 pub use error::Error;
 
-use super::http::{Method, Request, Response};
+use super::http::{Method, Request, Response, ToResource};
 use super::model::Model;
 
 use std::fmt::Debug;
 
 #[async_trait]
-pub trait Controller: Sync {
-    type Resource: FromStr + Send;
+pub trait Controller: Sync + Send {
+    async fn handle(&self, request: &Request) -> Result<Response, Error>;
+
+    fn controller_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+}
+
+#[async_trait]
+pub trait RestController: Controller {
+    type Resource: ToResource;
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
@@ -58,6 +67,6 @@ pub trait Controller: Sync {
 }
 
 #[async_trait]
-pub trait ModelController: Controller {
+pub trait ModelController: Controller + RestController {
     type Model: Model;
 }

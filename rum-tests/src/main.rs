@@ -2,8 +2,8 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    http::{Request, Response},
-    Server,
+    http::{Handler, Request, Response},
+    Controller, RestController, Server,
 };
 use rum_macros::Model;
 
@@ -59,6 +59,26 @@ struct Product {
 impl OrderItem {
     fn expensive() -> Scope<Self> {
         Self::all().filter_gt("amount", 5.0)
+    }
+}
+
+struct BaseController {
+    id: String,
+}
+
+#[rum::async_trait]
+impl Controller for BaseController {
+    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+        RestController::handle(self, request).await
+    }
+}
+
+#[rum::async_trait]
+impl RestController for BaseController {
+    type Resource = i64;
+
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, rum::controller::Error> {
+        Ok(Response::html(format!("<h1>id: {}</h1>", id)))
     }
 }
 
@@ -240,11 +260,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
-    Server::new().launch().await?;
-
-    // rum::server::launch(&vec![
-    //     Route::get("/", handler),
-    // ]).await;
+    Server::new(vec![Handler::new(
+        "/base",
+        Box::new(BaseController {
+            id: "5".to_string(),
+        }),
+    )])
+    .launch()
+    .await?;
 
     Ok(())
 }
