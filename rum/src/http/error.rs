@@ -10,4 +10,13 @@ pub enum Error {
 
     #[error("json")]
     Json(#[from] serde_json::Error),
+
+    #[error("{0}")]
+    Controller(crate::controller::Error),
+}
+
+impl From<crate::controller::Error> for Error {
+    fn from(error: crate::controller::Error) -> Error {
+        Error::Controller(error)
+    }
 }

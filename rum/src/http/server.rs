@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 
 pub struct Server {
-    handlers: Arc<Vec<Handler>>,
+    handlers: Arc<Vec<Handler<String>>>,
 }
 
 impl Server {
@@ -22,9 +22,12 @@ impl Server {
             let handlers = self.handlers.clone();
 
             // tokio::spawn(async move {
-            let request = Request::read(&mut stream).await.expect("request");
+            let request = Request::read(&mut stream).await?;
             for handler in handlers.iter() {
-                if request.path().matches(handler.path()) {}
+                if request.path().matches(handler.path()) {
+                    let response = handler.handle(&request).await?;
+                    response.send(&mut stream).await?;
+                }
             }
             // });
         }

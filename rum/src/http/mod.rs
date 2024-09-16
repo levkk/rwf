@@ -10,7 +10,7 @@ pub mod server;
 pub mod url;
 
 pub use error::Error;
-pub use head::Head;
+pub use head::{Head, Method};
 pub use headers::Headers;
 pub use path::Path;
 pub use request::Request;

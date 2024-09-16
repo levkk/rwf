@@ -71,7 +71,7 @@ impl Response {
         Self::html(
             "
             <h3>
-                <center>Not Found</center>
+                <center>404 - Not Found</center>
             </h3>
         ",
         )
@@ -82,11 +82,22 @@ impl Response {
         Self::html(
             "
             <h3>
-                <center>Method Not Allowed</center>
+                <center>405 - Method Not Allowed</center>
             </h3>
         ",
         )
         .code(405)
+    }
+
+    pub fn bad_request() -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>400 - Bad Request</center>
+            </h3>
+        ",
+        )
+        .code(400)
     }
 }
 
