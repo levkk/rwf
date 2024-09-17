@@ -271,23 +271,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-async fn handler(_request: Request) -> Result<Response, rum::http::Error> {
-    Ok(rum::http::Response::new().json(serde_json::json!({
-        "hello": "world"
-    }))?)
-}
-
-async fn handler2(_request: Request) -> Result<Response, rum::http::Error> {
-    Ok(rum::http::Response::new().json(serde_json::json!({
-        "hello": "world2"
-    }))?)
-}
-
-fn accept_async<F>(future: F) -> JoinHandle<F::Output>
-where
-    F: Future + Send + 'static,
-    F::Output: Send + 'static,
-{
-    tokio::spawn(future)
-}
