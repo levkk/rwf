@@ -5,6 +5,40 @@ use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{Error, Headers};
 
+#[derive(Debug)]
+pub enum Status {
+    NotFound,
+    InternalServerError,
+    MethodNotAllowed,
+    Code(u16),
+}
+
+impl Status {
+    pub fn code(&self) -> u16 {
+        use Status::*;
+
+        match self {
+            NotFound => 404,
+            InternalServerError => 500,
+            MethodNotAllowed => 405,
+            Code(code) => *code,
+        }
+    }
+}
+
+impl From<u16> for Status {
+    fn from(code: u16) -> Status {
+        use Status::*;
+
+        match code {
+            404 => NotFound,
+            500 => InternalServerError,
+            405 => MethodNotAllowed,
+            code => Code(code),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Response {
     code: u16,
@@ -19,6 +53,7 @@ impl Response {
             headers: Headers::from(HashMap::from([
                 ("content-type".to_string(), "text/plain".to_string()),
                 ("server".to_string(), "rum".to_string()),
+                ("connection".to_string(), "keep-alive".to_string()),
             ])),
             body: Vec::new(),
         }
@@ -29,6 +64,10 @@ impl Response {
         self.headers
             .insert("content-length".to_string(), self.body.len().to_string());
         self
+    }
+
+    pub fn status(&self) -> Status {
+        self.code.into()
     }
 
     pub fn code(mut self, code: u16) -> Self {
