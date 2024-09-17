@@ -1,26 +1,44 @@
+//! Pretty simple HTTP server.
+//!
+//! Listens for requests and maps them to a handler, if any exists for the specified path.
+//! If no handler is matched, return 404 Not Found.
+//!
+//! The server is using Tokio, so it can support millions of concurrent clients.
 use super::{Error, Handler, Path, Request, Response, ToResource};
 use crate::controller::Controller;
 
 use colored::Colorize;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::net::TcpListener;
-use tracing::{debug, info};
 
+use tokio::net::{TcpListener, ToSocketAddrs};
+use tracing::{debug, error, info};
+
+/// HTTP server.
 pub struct Server {
-    handlers: Arc<Vec<Handler>>,
+    handlers: Arc<BTreeSet<Handler>>,
 }
 
 impl Server {
+    /// Create new HTTP server.
+    ///
+    /// Accepts a list of handlers.
+    // Duplicate handlers are overwritten without warning.
     pub fn new(handlers: Vec<Handler>) -> Self {
+        let mut set = BTreeSet::new();
+        for handler in handlers {
+            set.insert(handler);
+        }
         Server {
-            handlers: Arc::new(handlers),
+            handlers: Arc::new(set),
         }
     }
 
-    pub async fn launch(self) -> Result<(), Error> {
-        let listener = TcpListener::bind("0.0.0.0:8000").await?;
+    /// Launch the server.
+    pub async fn launch(self, addr: impl ToSocketAddrs) -> Result<(), Error> {
+        let listener = TcpListener::bind(addr).await?;
 
         loop {
             let (mut stream, peer_addr) = listener.accept().await?;
@@ -39,40 +57,75 @@ impl Server {
                         }
                     };
 
-                    for handler in handlers.iter() {
+                    let start = Instant::now();
+
+                    for handler in handlers.iter().rev() {
+                        // Found matching handler.
                         if request.path().matches(handler.path()) {
                             found = true;
-                            let start = Instant::now();
-                            let response = handler.handle(&request).await.unwrap();
+
+                            // Get response.
+                            let response = match handler.handle(&request).await {
+                                Ok(response) => response,
+                                Err(err) => {
+                                    error!(
+                                        "{} {}: {:?}",
+                                        handler.controller_name().green(),
+                                        request.path().path().purple(),
+                                        err
+                                    );
+                                    Response::internal_error(err)
+                                }
+                            };
+
+                            // Calculate duration.
+                            // We include the time to find the handler in the duration.
                             let duration = Instant::now() - start;
-                            Self::log(
-                                request.path(),
-                                handler.controller_name(),
-                                &response,
-                                duration,
-                            );
-                            response.send(&mut stream).await.unwrap();
+
+                            // Log request.
+                            Self::log(&request, handler.controller_name(), &response, duration);
+
+                            // Send reply to client.
+                            match response.send(&mut stream).await {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    debug!("{} error {:?}", peer_addr, err);
+                                }
+                            }
+
+                            break;
                         }
                     }
 
+                    // No handler for this path.
                     if !found {
-                        Response::not_found().send(&mut stream).await.unwrap();
+                        // Log duration of search.
+                        let duration = Instant::now() - start;
+
+                        // Generate default not found response.
+                        let response = Response::not_found();
+
+                        // Log the response.
+                        Self::log(&request, std::any::type_name::<Self>(), &response, duration);
+
+                        // Send reply to client.
+                        match response.send(&mut stream).await {
+                            Ok(_) => (),
+                            Err(err) => {
+                                debug!("{} error {:?}", peer_addr, err);
+                            }
+                        }
                     }
                 }
             });
         }
     }
 
-    fn log(path: &Path, controller_name: &str, response: &Response, duration: Duration) {
+    fn log(request: &Request, controller_name: &str, response: &Response, duration: Duration) {
         info!(
             "{} {} {} ({:.3} ms)",
-            controller_name
-                .split("::")
-                .skip(1)
-                .collect::<Vec<_>>()
-                .join("::")
-                .green(),
-            path.path().purple(),
+            controller_name.green(),
+            request.path().path().purple(),
             response.status().code(),
             duration.as_secs_f64() * 1000.0,
         );

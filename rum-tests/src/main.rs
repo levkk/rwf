@@ -3,7 +3,8 @@ use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
     http::{Handler, Request, Response},
-    Controller, RestController, Server,
+    serde::Serialize,
+    Controller, ModelController, RestController, Server,
 };
 use rum_macros::Model;
 
@@ -25,7 +26,7 @@ struct User {
     name: String,
 }
 
-#[derive(Clone, Model, Debug)]
+#[derive(Clone, Model, Debug, Serialize)]
 #[belongs_to(User)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
@@ -75,11 +76,62 @@ impl Controller for BaseController {
 
 #[rum::async_trait]
 impl RestController for BaseController {
+    type Resource = String;
+
+    async fn get(
+        &self,
+        request: &Request,
+        id: &String,
+    ) -> Result<Response, rum::controller::Error> {
+        Ok(Response::html(format!(
+            "<h1>controller id: {}, id: {}</h1>",
+            self.id, id
+        )))
+    }
+}
+
+struct BasePlayerController {}
+
+#[rum::async_trait]
+impl Controller for BasePlayerController {
+    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+        RestController::handle(self, request).await
+    }
+}
+
+#[rum::async_trait]
+impl RestController for BasePlayerController {
     type Resource = i64;
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, rum::controller::Error> {
-        Ok(Response::html(format!("<h1>id: {}</h1>", id)))
+        Ok(Response::html(format!(
+            "<h1>base player controller, id: {}</h1>",
+            id
+        )))
     }
+
+    async fn list(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+        Ok(Response::html("list all the players"))
+    }
+}
+
+struct OrdersController {}
+
+#[rum::async_trait]
+impl Controller for OrdersController {
+    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+        ModelController::handle(self, request).await
+    }
+}
+
+#[rum::async_trait]
+impl RestController for OrdersController {
+    type Resource = i64;
+}
+
+#[rum::async_trait]
+impl ModelController for OrdersController {
+    type Model = Order;
 }
 
 #[tokio::main]
@@ -87,14 +139,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fmt()
         .with_env_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::DEBUG.into())
+                .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy(),
         )
         .finish()
         .init();
 
     let pool = Pool::new_local();
-    let conn = pool.begin().await?;
+    let conn = pool.get().await?;
+
+    for table in ["users", "order_items", "products", "orders"] {
+        conn.query(&format!("DROP TABLE IF EXISTS {}", table), &[])
+            .await?;
+    }
 
     conn.query(
         "CREATE TABLE users (
@@ -247,7 +304,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let product = product.save().fetch(&conn).await?;
 
-    conn.rollback().await?;
+    // conn.rollback().await?;
 
     let template = Template::new("templates/test.html").await?;
     let mut context = Context::default();
@@ -260,13 +317,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
-    Server::new(vec![Handler::new(
-        "/base",
-        Box::new(BaseController {
-            id: "5".to_string(),
-        }),
-    )])
-    .launch()
+    Server::new(vec![
+        Handler::new(
+            "/base",
+            Box::new(BaseController {
+                id: "5".to_string(),
+            }),
+        ),
+        Handler::new("/base/player", Box::new(BasePlayerController {})),
+        Handler::new("/orders", Box::new(OrdersController {})),
+    ])
+    .launch("0.0.0.0:8000")
     .await?;
 
     Ok(())

@@ -1,3 +1,4 @@
+//! Request head, including HTTP version and body.
 use std::collections::HashMap;
 use std::marker::Unpin;
 
@@ -5,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Error, Headers, Path};
 
+/// HTTP method, e.g. GET, POST, etc.
 #[derive(PartialEq, Clone, Debug, Default)]
 pub enum Method {
     #[default]
@@ -13,6 +15,7 @@ pub enum Method {
     Put,
     Delete,
     Head,
+    Patch,
     Other(String),
 }
 
@@ -26,11 +29,13 @@ impl TryFrom<String> for Method {
             "PUT" => Ok(Method::Put),
             "DELETE" => Ok(Method::Delete),
             "HEAD" => Ok(Method::Head),
+            "PATCH" => Ok(Method::Patch),
             _ => Ok(Method::Other(value)),
         }
     }
 }
 
+/// HTTP version, e.g. HTTP/1.1 or HTTP/2.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Version {
     #[default]
@@ -61,6 +66,7 @@ impl std::fmt::Display for Version {
     }
 }
 
+/// Request head.
 #[derive(Debug, Clone, Default)]
 pub struct Head {
     method: Method,
@@ -70,6 +76,7 @@ pub struct Head {
 }
 
 impl Head {
+    /// Read request head from a stream.
     pub async fn read(mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
         let request = Self::read_line(&mut stream)
             .await?
@@ -123,22 +130,27 @@ impl Head {
         })
     }
 
+    /// Is this a HTTP/2 request?
     pub fn http2(&self) -> bool {
         self.version == Version::Http2
     }
 
+    /// Is this a HTTP/1.1 request?
     pub fn http1(&self) -> bool {
         self.version == Version::Http1
     }
 
+    /// Request path, including query parameters, e.g. `/foo?hello=world`.
     pub fn path(&self) -> &Path {
         &self.path
     }
 
+    /// Request method, e.g. GET or POST.
     pub fn method(&self) -> &Method {
         &self.method
     }
 
+    /// The size of the request body in bytes.
     pub fn content_length(&self) -> Option<usize> {
         if let Some(cl) = self.headers.get("content-length") {
             if let Ok(cl) = cl.parse::<usize>() {
@@ -151,21 +163,30 @@ impl Head {
         }
     }
 
+    /// Request headers.
     pub fn headers(&self) -> &Headers {
         &self.headers
     }
 
+    /// Get a header value by name, if it exists.
+    ///
+    /// Case insensitive.
     pub fn header(&self, name: &str) -> Option<&String> {
         self.headers.get(name)
     }
 
+    /// Is the keep-alive flag set? Only for HTTP/1.1.
+    /// HTTP/2 connections are keep-alive by design.
     pub fn keep_alive(&self) -> bool {
-        self.headers
-            .get("connection")
-            .map(|s| s.to_lowercase() == "keep-alive")
-            .unwrap_or(false)
+        self.http2()
+            || self
+                .headers
+                .get("connection")
+                .map(|s| s.to_lowercase() == "keep-alive")
+                .unwrap_or(false)
     }
 
+    /// Read a line from the stream, parsing out \r\n.
     async fn read_line(mut stream: impl AsyncRead + Unpin) -> Result<String, std::io::Error> {
         let mut buf = Vec::new();
         let (mut cr, mut lf) = (false, false);

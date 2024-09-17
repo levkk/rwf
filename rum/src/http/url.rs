@@ -1,3 +1,5 @@
+//! URL handling helpers.
+
 /// Decode a string encoded with URL encoding.
 ///
 /// # Arguments

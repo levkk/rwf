@@ -1,3 +1,5 @@
+//! HTTP request.
+
 use std::marker::Unpin;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -6,6 +8,10 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Error, Head};
 
+/// HTTP request.
+///
+/// The request is fully loaded into memory. It's safe to clone
+/// since the contents are behind an [`std::sync::Arc`].
 #[derive(Debug, Clone)]
 pub struct Request {
     inner: Arc<Inner>,
@@ -18,6 +24,7 @@ struct Inner {
 }
 
 impl Request {
+    /// Read the request in its entirety from a stream.
     pub async fn read(mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
         let head = Head::read(&mut stream).await?;
         let content_length = head.content_length().unwrap_or(0);
@@ -32,6 +39,9 @@ impl Request {
         })
     }
 
+    /// Request's body as bytes.
+    ///
+    /// It's the job of the caller to handle encoding if any.
     pub fn body(&self) -> &[u8] {
         &self.inner.body
     }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{Error, Headers};
+use super::{head::Version, Error, Headers};
 
 #[derive(Debug)]
 pub enum Status {
@@ -43,6 +43,7 @@ impl From<u16> for Status {
 pub struct Response {
     code: u16,
     headers: Headers,
+    version: Version,
     body: Vec<u8>,
 }
 
@@ -56,6 +57,7 @@ impl Response {
                 ("connection".to_string(), "keep-alive".to_string()),
             ])),
             body: Vec::new(),
+            version: Version::Http1,
         }
     }
 
@@ -75,9 +77,11 @@ impl Response {
         self
     }
 
-    pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
+    pub fn json(body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(self.header("content-type", "application/json").body(body))
+        Ok(Self::new()
+            .header("content-type", "application/json")
+            .body(body))
     }
 
     pub fn html(body: impl ToString) -> Self {
@@ -98,8 +102,10 @@ impl Response {
     }
 
     pub async fn send(&self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
-        let mut response = format!("HTTP/1.1 {}\r\n", self.code).as_bytes().to_vec();
-        response.extend_from_slice(&self.headers.as_bytes());
+        let mut response = format!("{} {}\r\n", self.version, self.code)
+            .as_bytes()
+            .to_vec();
+        response.extend_from_slice(&self.headers.to_bytes());
         response.extend_from_slice(b"\r\n");
         response.extend_from_slice(&self.body);
 
@@ -137,6 +143,28 @@ impl Response {
         ",
         )
         .code(400)
+    }
+
+    pub fn not_implemented() -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>501 - Not Implemented</center>
+            </h3>
+            ",
+        )
+        .code(501)
+    }
+
+    pub fn internal_error(_err: impl std::error::Error) -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>500 - Internal Server Error</center>
+            </h3>
+            ",
+        )
+        .code(500)
     }
 }
 

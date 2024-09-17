@@ -1111,6 +1111,7 @@ dependencies = [
  "console-subscriber",
  "rum",
  "rum-macros",
+ "serde",
  "serde_json",
  "tokio",
  "tracing-subscriber",
