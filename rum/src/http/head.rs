@@ -1,5 +1,5 @@
 //! Request head, including HTTP version and body.
-use std::collections::HashMap;
+
 use std::marker::Unpin;
 
 use tokio::io::{AsyncRead, AsyncReadExt};

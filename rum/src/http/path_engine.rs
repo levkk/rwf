@@ -75,10 +75,9 @@ impl PartialOrd for Node {
 
 #[cfg(test)]
 mod test {
-    use super::*;
 
     #[test]
     fn test_node_arena() {
-        let parts = vec!["one", "two", "three", "four"];
+        let _parts = vec!["one", "two", "three", "four"];
     }
 }

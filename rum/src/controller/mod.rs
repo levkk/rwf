@@ -1,13 +1,10 @@
 use async_trait::async_trait;
-use std::str::FromStr;
 
 pub mod error;
 pub use error::Error;
 
 use super::http::{Method, Request, Response, ToResource};
 use super::model::Model;
-
-use std::fmt::Debug;
 
 use serde::Serialize;
 
@@ -104,7 +101,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         }
     }
 
-    async fn list(&self, request: &Request) -> Result<Response, Error> {
+    async fn list(&self, _request: &Request) -> Result<Response, Error> {
         use crate::model::pool::get_connection;
         let conn = get_connection().await?;
 
@@ -117,7 +114,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         Ok(response)
     }
 
-    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         use crate::model::pool::get_connection;
 
         let conn = get_connection().await?;

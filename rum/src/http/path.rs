@@ -1,7 +1,6 @@
 use super::{urldecode, Error};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(Clone, Debug)]
 pub struct Path {

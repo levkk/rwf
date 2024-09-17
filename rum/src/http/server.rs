@@ -4,12 +4,12 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, Path, Request, Response, ToResource};
+use super::{Error, Handler, Request, Response};
 use crate::controller::Controller;
 
 use colored::Colorize;
 use std::collections::BTreeSet;
-use std::str::FromStr;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

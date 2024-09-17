@@ -227,7 +227,7 @@ mod test {
     #[tokio::test]
     async fn test_impl_job() {
         logging::configure();
-        let worker = Worker::new(&[MyJob::register]);
+        let _worker = Worker::new(&[MyJob::register]);
 
         let pool = Pool::new_local();
 

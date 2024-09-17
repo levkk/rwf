@@ -8,9 +8,6 @@ use rum::{
 };
 use rum_macros::Model;
 
-use std::future::Future;
-use tokio::task::JoinHandle;
-
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
@@ -80,7 +77,7 @@ impl RestController for BaseController {
 
     async fn get(
         &self,
-        request: &Request,
+        _request: &Request,
         id: &String,
     ) -> Result<Response, rum::controller::Error> {
         Ok(Response::html(format!(
@@ -103,14 +100,14 @@ impl Controller for BasePlayerController {
 impl RestController for BasePlayerController {
     type Resource = i64;
 
-    async fn get(&self, request: &Request, id: &i64) -> Result<Response, rum::controller::Error> {
+    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, rum::controller::Error> {
         Ok(Response::html(format!(
             "<h1>base player controller, id: {}</h1>",
             id
         )))
     }
 
-    async fn list(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+    async fn list(&self, _request: &Request) -> Result<Response, rum::controller::Error> {
         Ok(Response::html("list all the players"))
     }
 }

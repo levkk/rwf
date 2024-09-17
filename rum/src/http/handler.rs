@@ -1,9 +1,8 @@
-use super::{Path, Request, Response, ToResource};
-use crate::controller::{Controller, Error};
+use super::Path;
+use crate::controller::Controller;
 use std::cmp::{Ordering, PartialOrd};
-use std::marker::PhantomData;
+
 use std::ops::Deref;
-use std::str::FromStr;
 
 pub struct Handler {
     path: Path,
