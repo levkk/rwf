@@ -647,7 +647,7 @@ pub trait Model: FromRow {
     }
 
     fn create(self) -> Query<Self> {
-        todo!()
+        Query::Insert(Insert::new(self))
     }
 
     fn lock() -> Query<Self> {
@@ -933,9 +933,11 @@ mod test {
         let pool = Pool::new_local();
         let transaction = pool.begin().await?;
 
+        transaction.query("DROP TABLE users", &[]).await?;
+
         transaction
             .query(
-                "CREATE TABLE users (id BIGINT, email VARCHAR, password VARCHAR);",
+                "CREATE TABLE IF NOT EXISTS users (id BIGINT, email VARCHAR, password VARCHAR);",
                 &[],
             )
             .await?;
@@ -966,7 +968,7 @@ mod test {
         let transaction = pool.begin().await?;
 
         transaction
-            .execute("CREATE TABLE users (id BIGINT);", &[])
+            .execute("CREATE TABLE IF NOT EXISTS users (id BIGINT);", &[])
             .await?;
 
         let explain = User::all().explain(&transaction).await?;

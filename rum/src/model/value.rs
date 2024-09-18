@@ -143,7 +143,19 @@ impl ToValue for Range<i64> {
 
 impl ToValue for serde_json::Value {
     fn to_value(&self) -> Value {
-        Value::Json(self.clone())
+        match self {
+            serde_json::Value::String(s) => Value::String(s.clone()),
+            serde_json::Value::Number(n) => {
+                if let Some(n) = n.as_i64() {
+                    return Value::Integer(n);
+                }
+                if let Some(n) = n.as_f64() {
+                    return Value::Float(n);
+                }
+                panic!("json number not parasable")
+            }
+            v => Value::Json(v.clone()),
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{Escape, FromRow, Model, Placeholders, ToSql, ToValue};
+use super::{Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue};
 use std::marker::PhantomData;
 
 #[derive(Debug)]
@@ -12,18 +12,27 @@ pub struct Update<T> {
 
 impl<T: Model> Update<T> {
     pub fn new(model: T) -> Self {
-        let columns = T::column_names()
-            .into_iter()
-            .map(|column| column.escape())
-            .collect();
+        let columns = T::column_names();
         let values = model.values();
+        Self::from_columns(model.id(), &columns, &values)
+    }
+
+    /// Create an update query for specific columns and values only.
+    pub fn from_columns(
+        id: impl ToValue,
+        columns: &[impl ToColumn],
+        values: &[impl ToValue],
+    ) -> Self {
+        let columns = columns
+            .iter()
+            .map(|c| c.to_column().to_string())
+            .collect::<Vec<_>>();
+        let values = values.iter().map(|v| v.to_value()).collect::<Vec<_>>();
         let mut placeholders = Placeholders::new();
         for value in values {
             placeholders.add(&value);
         }
-
-        // "id" must always be last
-        placeholders.add(&model.id().to_value());
+        placeholders.add(&id.to_value());
 
         Self {
             table_name: T::table_name(),
@@ -37,12 +46,16 @@ impl<T: Model> Update<T> {
 
 impl<T: FromRow> ToSql for Update<T> {
     fn to_sql(&self) -> String {
-        let where_id = format!("{} = ${}", self.primary_key, self.placeholders.id() - 1);
+        let where_id = format!(
+            r#""{}" = ${}"#,
+            self.primary_key,
+            self.placeholders.id() - 1
+        );
         let sets = self
             .columns
             .iter()
             .enumerate()
-            .map(|(idx, column)| format!(r#""{}" = ${}"#, column.escape(), idx + 1))
+            .map(|(idx, column)| format!(r#"{} = ${}"#, column, idx + 1))
             .collect::<Vec<_>>()
             .join(", ");
 

@@ -3,10 +3,10 @@ use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
     http::{Handler, Request, Response},
-    serde::Serialize,
-    Controller, ModelController, RestController, Server,
+    serde::{Deserialize, Serialize},
+    Controller, Error, ModelController, RestController, Server,
 };
-use rum_macros::Model;
+use rum_macros::{error, Model};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -23,7 +23,7 @@ struct User {
     name: String,
 }
 
-#[derive(Clone, Model, Debug, Serialize)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize)]
 #[belongs_to(User)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
@@ -91,7 +91,7 @@ struct BasePlayerController {}
 
 #[rum::async_trait]
 impl Controller for BasePlayerController {
-    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
         RestController::handle(self, request).await
     }
 }
@@ -100,14 +100,18 @@ impl Controller for BasePlayerController {
 impl RestController for BasePlayerController {
     type Resource = i64;
 
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, rum::controller::Error> {
+    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         Ok(Response::html(format!(
             "<h1>base player controller, id: {}</h1>",
             id
         )))
     }
 
-    async fn list(&self, _request: &Request) -> Result<Response, rum::controller::Error> {
+    async fn list(&self, _request: &Request) -> Result<Response, Error> {
+        // match tokio::fs::File::create("fsdf").await {
+        //     Ok(_) => (),
+        //     Err(err) => error!(err),
+        // };
         Ok(Response::html("list all the players"))
     }
 }
@@ -116,7 +120,7 @@ struct OrdersController {}
 
 #[rum::async_trait]
 impl Controller for OrdersController {
-    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
         ModelController::handle(self, request).await
     }
 }
@@ -136,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fmt()
         .with_env_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
+                .with_default_directive(LevelFilter::DEBUG.into())
                 .from_env_lossy(),
         )
         .finish()
@@ -164,7 +168,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     conn.query(
         "CREATE TABLE orders (
-            id BIGINT NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             name VARCHAR NOT NULL,
             optional VARCHAR
@@ -176,7 +180,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     conn.query(
         "
         CREATE TABLE order_items (
-            id BIGINT NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
             order_id BIGINT NOT NULL,
             product_id BIGINT NOT NULL,
             amount DOUBLE PRECISION NOT NULL DEFAULT 5.0
@@ -189,7 +193,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     conn.query(
         "
         CREATE TABLE products (
-            id BIGSERIAL NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
             name VARCHAR NOT NULL,
             avg_price DOUBLE PRECISION NOT NULL DEFAULT 5.0
         )
@@ -198,16 +202,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    conn.query("INSERT INTO orders VALUES (1, 2, 'test', 'optional')", &[])
-        .await?;
+    conn.query(
+        "INSERT INTO orders (user_id, name, optional) VALUES (2, 'test', 'optional')",
+        &[],
+    )
+    .await?;
 
     conn.query(
-        "INSERT INTO order_items VALUES (1, 1, 1, 5.0), (1, 1, 2, 6.0)",
+        "INSERT INTO order_items (order_id, product_id, amount) VALUES (1, 1, 5.0), (1, 2, 6.0)",
         &[],
     )
     .await?;
     conn.query(
-        "INSERT INTO products VALUES (1, 'apples', 6.0), (2, 'doodles', 7.0)",
+        "INSERT INTO products (name, avg_price) VALUES ('apples', 6.0), ('doodles', 7.0)",
         &[],
     )
     .await?;

@@ -48,6 +48,7 @@ impl From<u16> for Status {
     }
 }
 
+/// HTTP response.
 #[derive(Debug, Clone)]
 pub struct Response {
     code: u16,

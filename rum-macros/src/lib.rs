@@ -203,6 +203,16 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro]
+pub fn error(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    quote! {
+        return Err(rum::controller::Error::new(#input));
+    }
+    .into()
+}
+
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 

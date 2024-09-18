@@ -11,7 +11,7 @@ pub use rum_macros as macros;
 pub use serde;
 pub use tokio_postgres;
 
-pub use controller::{Controller, ModelController, RestController};
+pub use controller::{Controller, Error, ModelController, RestController};
 pub use http::Server;
 
 #[allow(dead_code)]
