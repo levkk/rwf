@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+pub mod authorization;
+pub mod cookies;
 pub mod error;
 pub mod handler;
 pub mod head;
@@ -10,6 +12,8 @@ pub mod response;
 pub mod server;
 pub mod url;
 
+pub use authorization::Authorization;
+pub use cookies::Cookies;
 pub use error::Error;
 pub use handler::Handler;
 pub use head::{Head, Method};

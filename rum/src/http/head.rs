@@ -5,7 +5,7 @@ use std::marker::Unpin;
 
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Error, Headers, Path};
+use super::{Authorization, Cookies, Error, Headers, Path};
 
 /// HTTP method, e.g. GET, POST, etc.
 #[derive(PartialEq, Clone, Debug, Default)]
@@ -128,6 +128,20 @@ impl Head {
             path,
             version,
             headers,
+        })
+    }
+
+    pub fn authorization(&self) -> Option<Authorization> {
+        Authorization::parse(match self.header("authorization") {
+            Some(authorization) => authorization,
+            None => return None,
+        })
+    }
+
+    pub fn cookies(&self) -> Cookies {
+        Cookies::parse(match self.header("cookie") {
+            Some(cookies) => cookies,
+            None => return Cookies::default(),
         })
     }
 

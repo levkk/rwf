@@ -1,4 +1,6 @@
+pub mod config;
 pub mod controller;
+pub mod crypto;
 pub mod http;
 pub mod job;
 pub mod logging;

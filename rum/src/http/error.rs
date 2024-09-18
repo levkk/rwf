@@ -13,6 +13,9 @@ pub enum Error {
 
     #[error("{0}")]
     Controller(crate::controller::Error),
+
+    #[error("{0}")]
+    Crypto(#[from] crate::crypto::Error),
 }
 
 impl From<crate::controller::Error> for Error {
