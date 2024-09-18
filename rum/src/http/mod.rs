@@ -16,6 +16,6 @@ pub use head::{Head, Method};
 pub use headers::Headers;
 pub use path::{Path, ToResource};
 pub use request::Request;
-pub use response::{Response, ToResponse};
+pub use response::Response;
 pub use server::Server;
 pub use url::urldecode;

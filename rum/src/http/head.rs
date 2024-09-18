@@ -1,5 +1,6 @@
 //! Request head, including HTTP version and body.
 
+use std::collections::HashMap;
 use std::marker::Unpin;
 
 use tokio::io::{AsyncRead, AsyncReadExt};
@@ -143,6 +144,11 @@ impl Head {
     /// Request path, including query parameters, e.g. `/foo?hello=world`.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// GET query.
+    pub fn query(&self) -> &HashMap<String, String> {
+        self.path().query()
     }
 
     /// Request method, e.g. GET or POST.

@@ -5,7 +5,6 @@
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
 use super::{Error, Handler, Request, Response};
-use crate::controller::Controller;
 
 use colored::Colorize;
 use std::collections::BTreeSet;

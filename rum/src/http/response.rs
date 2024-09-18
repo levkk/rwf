@@ -1,3 +1,5 @@
+//! HTTP response.
+
 use serde::Serialize;
 use std::collections::HashMap;
 use std::marker::Unpin;
@@ -5,11 +7,14 @@ use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Error, Headers};
 
+/// Response status, e.g. 404, 200, etc.
 #[derive(Debug)]
 pub enum Status {
     NotFound,
     InternalServerError,
     MethodNotAllowed,
+    Ok,
+    Created,
     Code(u16),
 }
 
@@ -21,6 +26,8 @@ impl Status {
             NotFound => 404,
             InternalServerError => 500,
             MethodNotAllowed => 405,
+            Ok => 200,
+            Created => 201,
             Code(code) => *code,
         }
     }
@@ -34,6 +41,8 @@ impl From<u16> for Status {
             404 => NotFound,
             500 => InternalServerError,
             405 => MethodNotAllowed,
+            200 => Ok,
+            201 => Created,
             code => Code(code),
         }
     }
@@ -48,6 +57,7 @@ pub struct Response {
 }
 
 impl Response {
+    /// Create empty response.
     pub fn new() -> Self {
         Self {
             code: 200,
@@ -68,15 +78,42 @@ impl Response {
         self
     }
 
+    /// Response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
         self.code.into()
     }
 
+    /// Set response code.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::http::Response;
+    ///
+    /// let response = Response::text("OK").code(200);
+    /// ```
     pub fn code(mut self, code: u16) -> Self {
         self.code = code;
         self
     }
 
+    /// Create a response with a JSON body serialized from a Rust type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::http::Response;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(Serialize)]
+    /// struct Body {
+    ///     value: String,
+    /// }
+    ///
+    /// let response = Response::json(Body { value: "hello world".to_string() })
+    ///    .unwrap()
+    ///    .code(200);
+    /// ```
     pub fn json(body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
         Ok(Self::new()
@@ -84,23 +121,54 @@ impl Response {
             .body(body))
     }
 
+    /// Create a response with an HTML body.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::http::Response;
+    ///
+    /// let response = Response::html("<h1>Hello world</h1>");
+    /// ```
     pub fn html(body: impl ToString) -> Self {
         Self::new()
             .header("content-type", "text/html")
             .body(body.to_string().as_bytes().to_vec())
     }
 
-    pub fn text(self, body: impl ToString) -> Result<Self, Error> {
-        Ok(self
+    /// Create a response with a plain text body.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::http::Response;
+    ///
+    /// let response = Response::text("Hello world");
+    /// ```
+    pub fn text(body: impl ToString) -> Self {
+        Self::new()
             .header("content-type", "text/plain")
-            .body(body.to_string().as_bytes().to_vec()))
+            .body(body.to_string().as_bytes().to_vec())
     }
 
+    /// Add a header to the response.
+    ///
+    /// Header name is lowercased automatically. The value is set as-is.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rum::http::Response;
+    ///
+    /// let response = Response::text("don't cache me")
+    ///     .header("Cache-Control", "no-cache");
+    /// ```
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {
         self.headers.insert(name.to_string(), value.to_string());
         self
     }
 
+    /// Send the response to a stream, serialized as bytes.
     pub async fn send(&self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
         let mut response = format!("{} {}\r\n", self.version, self.code)
             .as_bytes()
@@ -112,6 +180,7 @@ impl Response {
         stream.write_all(&response).await
     }
 
+    /// Default not found (404) error.
     pub fn not_found() -> Self {
         Self::html(
             "
@@ -123,6 +192,7 @@ impl Response {
         .code(404)
     }
 
+    /// Default method not allowed (405) error.
     pub fn method_not_allowed() -> Self {
         Self::html(
             "
@@ -165,27 +235,5 @@ impl Response {
             ",
         )
         .code(500)
-    }
-}
-
-pub trait ToResponse {
-    fn to_response(self) -> Result<Response, Error>;
-}
-
-impl ToResponse for String {
-    fn to_response(self) -> Result<Response, Error> {
-        Response::new().text(self)
-    }
-}
-
-impl ToResponse for Response {
-    fn to_response(self) -> Result<Response, Error> {
-        Ok(self)
-    }
-}
-
-impl ToResponse for &str {
-    fn to_response(self) -> Result<Response, Error> {
-        Response::new().text(self)
     }
 }

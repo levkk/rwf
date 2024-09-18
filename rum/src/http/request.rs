@@ -4,6 +4,8 @@ use std::marker::Unpin;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use serde::Deserialize;
+use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Error, Head};
@@ -45,6 +47,23 @@ impl Request {
     pub fn body(&self) -> &[u8] {
         &self.inner.body
     }
+
+    /// Request's body as JSON value.
+    pub fn json_raw(&self) -> Result<Value, serde_json::Error> {
+        self.json()
+    }
+
+    /// Request's body as HTML.
+    /// UTF-8 encoding is assumed, and all incompatible characters are dropped.
+    pub fn html(&self) -> String {
+        String::from_utf8_lossy(self.body()).to_string()
+    }
+
+    /// Request's body deserialized from JSON into a particular Rust type.
+    pub fn json<'a, T: Deserialize<'a>>(&'a self) -> Result<T, serde_json::Error> {
+        let mut deserializer = Deserializer::from_slice(self.body());
+        T::deserialize(&mut deserializer)
+    }
 }
 
 impl Deref for Request {
@@ -61,15 +80,21 @@ mod test {
 
     #[tokio::test]
     async fn test_response() {
+        #[derive(Deserialize)]
+        struct Hello {
+            hello: String,
+        }
+
         let body = ("GET / HTTP/1.1\r\n".to_owned()
             + "Content-Type: application/json\r\n"
             + "Accept: */*\r\n"
-            + "Content-Length: 4\r\n"
+            + "Content-Length: 18\r\n"
             + "\r\n"
-            + "hello")
+            + r#"{"hello": "world"}"#)
             .as_bytes()
             .to_vec();
         let response = Request::read(&body[..]).await.expect("response");
-        println!("{:?}", response);
+        let json = response.json::<Hello>().expect("deserialize body");
+        assert_eq!(json.hello, "world");
     }
 }
