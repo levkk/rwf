@@ -227,6 +227,17 @@ impl Response {
         .code(501)
     }
 
+    pub fn not_authorized() -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>403 - Not Authorized</center>
+            </h3>
+            ",
+        )
+        .code(403)
+    }
+
     pub fn internal_error(_err: impl std::error::Error) -> Self {
         Self::html(
             "

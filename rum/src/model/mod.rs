@@ -3,6 +3,7 @@ use colored::Colorize;
 use std::time::{Duration, Instant};
 use tracing::info;
 
+pub mod callbacks;
 pub mod column;
 pub mod error;
 pub mod escape;

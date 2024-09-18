@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 
+pub mod auth;
 pub mod error;
+pub use auth::{AllowAll, Authentication, DenyAll};
 pub use error::Error;
 
 use super::http::{Method, Request, Response, ToResource};
@@ -22,9 +24,17 @@ pub trait Controller: Sync + Send {
 pub trait RestController: Controller {
     type Resource: ToResource;
 
+    fn auth(&self) -> Box<dyn Authentication> {
+        Box::new(AllowAll {})
+    }
+
     /// Figure out which method to call based on request method
     /// and path.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        if !self.auth().authorize(request).await? {
+            return Ok(Response::not_authorized());
+        }
+
         let method = request.method();
         if request.path().is_root() {
             match method {
@@ -78,6 +88,10 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        if !self.auth().authorize(request).await? {
+            return Ok(Response::not_authorized());
+        }
+
         let method = request.method();
         if request.path().is_root() {
             match method {

@@ -2,6 +2,7 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
+    controller::{Authentication, DenyAll},
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
@@ -128,6 +129,10 @@ impl Controller for OrdersController {
 #[rum::async_trait]
 impl RestController for OrdersController {
     type Resource = i64;
+
+    fn auth(&self) -> Box<dyn Authentication> {
+        Box::new(DenyAll {})
+    }
 }
 
 #[rum::async_trait]
