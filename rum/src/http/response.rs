@@ -248,4 +248,16 @@ impl Response {
         )
         .code(500)
     }
+
+    pub fn unauthorized(auth: &str) -> Self {
+        Self::html(
+            "
+            <h3>
+                <center>401 - Unauthorized</center>
+            </h3>
+            ",
+        )
+        .code(401)
+        .header("www-authenticate", auth)
+    }
 }

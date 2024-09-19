@@ -1,5 +1,6 @@
 //! HTTP request.
 
+use std::fmt::Debug;
 use std::marker::Unpin;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Cookies, Error, Head};
+use super::{Cookies, Error, Head, ToResource};
 
 /// HTTP request.
 ///

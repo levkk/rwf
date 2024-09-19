@@ -2,20 +2,22 @@ use async_trait::async_trait;
 
 pub mod auth;
 pub mod error;
-pub use auth::{AllowAll, Authentication, DenyAll};
+pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll};
 pub use error::Error;
 
 use super::http::{Method, Request, Response, ToResource};
 use super::model::{get_connection, Model, Query, ToValue, Update};
+use crate::config::get_config;
 
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait Controller: Sync + Send {
     /// Set the authentication mechanism for this controller.
-    fn auth(&self) -> Box<dyn Authentication> {
+    fn auth(&self) -> &Box<dyn Authentication> {
         // Allow all requests by default.
-        Box::new(AllowAll {})
+        let auth = &get_config().default_auth;
+        auth.auth()
     }
 
     async fn handle_internal(&self, request: &Request) -> Result<Response, Error> {

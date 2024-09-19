@@ -7,6 +7,25 @@ use crate::http::{Authorization, Request, Response};
 
 use async_trait::async_trait;
 
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct AuthMechanism {
+    auth: Arc<Box<dyn Authentication>>,
+}
+
+impl AuthMechanism {
+    pub fn new(auth: impl Authentication + 'static) -> Self {
+        AuthMechanism {
+            auth: Arc::new(Box::new(auth)),
+        }
+    }
+
+    pub fn auth(&self) -> &Box<dyn Authentication> {
+        &self.auth
+    }
+}
+
 /// Authenticators need to implement this trait.
 #[async_trait]
 #[allow(unused_variables)]
@@ -55,6 +74,10 @@ impl Authentication for BasicAuth {
                 false
             },
         )
+    }
+
+    async fn denied(&self, request: &Request) -> Result<Response, Error> {
+        Ok(Response::unauthorized("Basic"))
     }
 }
 

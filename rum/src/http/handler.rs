@@ -6,6 +6,7 @@ use std::ops::Deref;
 
 pub struct Handler {
     path: Path,
+    name: Option<String>,
     controller: Box<dyn Controller>,
     rank: i64,
 }
@@ -16,7 +17,13 @@ impl Handler {
             path: Path::parse(path).unwrap().root(),
             controller,
             rank: -20,
+            name: None,
         }
+    }
+
+    pub fn name(mut self, name: impl ToString) -> Self {
+        self.name = Some(name.to_string());
+        self
     }
 
     pub fn rank(mut self, rank: i64) -> Self {

@@ -1,6 +1,7 @@
 use super::{urldecode, Error};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub struct Path {
@@ -125,7 +126,7 @@ impl Path {
     }
 }
 
-pub trait ToResource: Sync + Send {
+pub trait ToResource: Sync + Send + Debug {
     fn to_resource(s: &str) -> Result<Self, Error>
     where
         Self: Sized;

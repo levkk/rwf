@@ -2,7 +2,7 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    controller::{Authentication, DenyAll},
+    controller::{AuthMechanism, Authentication, BasicAuth, DenyAll},
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
@@ -101,7 +101,8 @@ impl Controller for BasePlayerController {
 impl RestController for BasePlayerController {
     type Resource = i64;
 
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+        println!("{:?}", request.cookies());
         Ok(Response::html(format!(
             "<h1>base player controller, id: {}</h1>",
             id
@@ -117,12 +118,15 @@ impl RestController for BasePlayerController {
     }
 }
 
-struct OrdersController {}
+struct OrdersController {
+    auth: AuthMechanism,
+}
 
 #[rum::async_trait]
 impl Controller for OrdersController {
-    fn auth(&self) -> Box<dyn Authentication> {
-        Box::new(DenyAll {})
+    fn auth(&self) -> &Box<dyn Authentication> {
+        self.auth.auth()
+        // Box::new(BasicAuth {user: "test".to_string(), password: "test".to_string()})
     }
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
@@ -334,7 +338,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }),
         ),
         Handler::new("/base/player", Box::new(BasePlayerController {})),
-        Handler::new("/orders", Box::new(OrdersController {})),
+        Handler::new(
+            "/orders",
+            Box::new(OrdersController {
+                auth: AuthMechanism::new(BasicAuth {
+                    user: "test".to_string(),
+                    password: "test".to_string(),
+                }),
+            }),
+        ),
     ])
     .launch("0.0.0.0:8000")
     .await?;
