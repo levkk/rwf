@@ -16,6 +16,9 @@ pub enum Error {
 
     #[error("{0}")]
     Crypto(#[from] crate::crypto::Error),
+
+    #[error("{0}")]
+    Utf8(#[from] std::string::FromUtf8Error),
 }
 
 impl From<crate::controller::Error> for Error {

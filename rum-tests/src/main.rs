@@ -121,6 +121,10 @@ struct OrdersController {}
 
 #[rum::async_trait]
 impl Controller for OrdersController {
+    fn auth(&self) -> Box<dyn Authentication> {
+        Box::new(DenyAll {})
+    }
+
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         ModelController::handle(self, request).await
     }
@@ -129,10 +133,6 @@ impl Controller for OrdersController {
 #[rum::async_trait]
 impl RestController for OrdersController {
     type Resource = i64;
-
-    fn auth(&self) -> Box<dyn Authentication> {
-        Box::new(DenyAll {})
-    }
 }
 
 #[rum::async_trait]

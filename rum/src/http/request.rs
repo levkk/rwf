@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Error, Head};
+use super::{Cookies, Error, Head};
 
 /// HTTP request.
 ///
@@ -23,6 +23,7 @@ pub struct Request {
 struct Inner {
     head: Head,
     body: Vec<u8>,
+    cookies: Cookies,
 }
 
 impl Request {
@@ -37,7 +38,11 @@ impl Request {
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
         Ok(Request {
-            inner: Arc::new(Inner { head, body }),
+            inner: Arc::new(Inner {
+                body,
+                cookies: head.cookies(),
+                head,
+            }),
         })
     }
 
@@ -63,6 +68,11 @@ impl Request {
     pub fn json<'a, T: Deserialize<'a>>(&'a self) -> Result<T, serde_json::Error> {
         let mut deserializer = Deserializer::from_slice(self.body());
         T::deserialize(&mut deserializer)
+    }
+
+    /// Request's cookies.
+    pub fn cookies(&self) -> &Cookies {
+        &self.inner.cookies
     }
 }
 

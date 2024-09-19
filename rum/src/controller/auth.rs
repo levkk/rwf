@@ -3,14 +3,18 @@
 //! Made to be easily extendable. Users need only to implement the [`crate::controller::auth::Authentication`] trait
 //! and set it on their controller.
 use super::Error;
-use crate::http::{Authorization, Request};
+use crate::http::{Authorization, Request, Response};
 
 use async_trait::async_trait;
 
 /// Authenticators need to implement this trait.
 #[async_trait]
+#[allow(unused_variables)]
 pub trait Authentication: Sync + Send {
     async fn authorize(&self, request: &Request) -> Result<bool, Error>;
+    async fn denied(&self, request: &Request) -> Result<Response, Error> {
+        Ok(Response::not_authorized())
+    }
 }
 
 /// Allow all requests.

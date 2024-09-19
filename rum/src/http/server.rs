@@ -64,7 +64,7 @@ impl Server {
                             found = true;
 
                             // Get response.
-                            let response = match handler.handle(&request).await {
+                            let response = match handler.handle_internal(&request).await {
                                 Ok(response) => response,
                                 Err(err) => {
                                     error!(

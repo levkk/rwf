@@ -139,10 +139,11 @@ impl Head {
     }
 
     pub fn cookies(&self) -> Cookies {
-        Cookies::parse(match self.header("cookie") {
-            Some(cookies) => cookies,
-            None => return Cookies::default(),
-        })
+        if let Some(cookie) = self.headers.get("cookie") {
+            Cookies::parse(&cookie)
+        } else {
+            Cookies::default()
+        }
     }
 
     /// Is this a HTTP/2 request?
