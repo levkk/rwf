@@ -9,18 +9,21 @@ use async_trait::async_trait;
 
 use std::sync::Arc;
 
+/// An authentication mechanism that can be attached to a controller.
 #[derive(Clone)]
 pub struct AuthMechanism {
     auth: Arc<Box<dyn Authentication>>,
 }
 
 impl AuthMechanism {
+    /// Create new authentication mechanism using the provided authentication method.
     pub fn new(auth: impl Authentication + 'static) -> Self {
         AuthMechanism {
             auth: Arc::new(Box::new(auth)),
         }
     }
 
+    /// Get the authentication method.
     pub fn auth(&self) -> &Box<dyn Authentication> {
         &self.auth
     }
