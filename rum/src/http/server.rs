@@ -12,6 +12,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, ToSocketAddrs};
 use tracing::{debug, error, info};
 
@@ -40,7 +41,8 @@ impl Server {
         let listener = TcpListener::bind(addr).await?;
 
         loop {
-            let (mut stream, peer_addr) = listener.accept().await?;
+            let (stream, peer_addr) = listener.accept().await?;
+            let mut stream = BufReader::new(BufWriter::new(stream));
             let handlers = self.handlers.clone();
             let mut found = false;
 
@@ -91,6 +93,8 @@ impl Server {
                                     debug!("{} error {:?}", peer_addr, err);
                                 }
                             }
+
+                            let _ = stream.flush().await;
 
                             break;
                         }
