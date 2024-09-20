@@ -7,6 +7,7 @@ pub mod part;
 pub mod tree;
 
 pub use part::Part;
+pub use tree::Node;
 
 #[derive(Clone, Debug)]
 pub struct Path {
@@ -44,6 +45,24 @@ impl Default for Path {
 }
 
 impl Path {
+    pub fn parts<'a>(&'a self) -> Vec<Part<'a>> {
+        let path = self.base.split("/").filter(|p| !p.is_empty()).map(|p| {
+            if p.starts_with(":") {
+                Part::Identifier(p)
+            } else {
+                Part::Segment(p)
+            }
+        });
+
+        let mut result = vec![];
+        for part in path {
+            result.push(Part::Slash);
+            result.push(part);
+        }
+
+        result
+    }
+
     pub fn matches(&self, path: &Path) -> bool {
         let it_matches = self.base.starts_with(&path.base);
         it_matches

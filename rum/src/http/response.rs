@@ -83,6 +83,10 @@ impl Response {
         &self.body
     }
 
+    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
+        std::str::from_utf8(self.as_slice())
+    }
+
     /// Response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
         self.code.into()
