@@ -15,12 +15,12 @@ use super::{Cookies, Error, Head, ToResource};
 ///
 /// The request is fully loaded into memory. It's safe to clone
 /// since the contents are behind an [`std::sync::Arc`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Request {
     inner: Arc<Inner>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Inner {
     head: Head,
     body: Vec<u8>,
