@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Cookies, Error, Head, ToResource};
+use super::{Cookies, Error, Head};
 
 /// HTTP request.
 ///

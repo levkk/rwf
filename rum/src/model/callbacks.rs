@@ -1,6 +1,3 @@
-use super::{Error, Model};
-use async_trait::async_trait;
-
 // #[async_trait]
 // pub trait Callbacks: Model {
 //     async fn after_save(&self, conn: &tokio_postgres::Client) -> Result<(), Error> {

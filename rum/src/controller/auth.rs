@@ -79,7 +79,7 @@ impl Authentication for BasicAuth {
         )
     }
 
-    async fn denied(&self, request: &Request) -> Result<Response, Error> {
+    async fn denied(&self, _request: &Request) -> Result<Response, Error> {
         Ok(Response::unauthorized("Basic"))
     }
 }

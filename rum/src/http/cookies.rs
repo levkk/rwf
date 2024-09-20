@@ -39,7 +39,7 @@ impl Cookies {
         Ok(())
     }
 
-    pub fn get_private(mut self, name: &str) -> Result<Option<Cookie>, Error> {
+    pub fn get_private(self, name: &str) -> Result<Option<Cookie>, Error> {
         if let Some(cookie) = self.cookies.get(name) {
             let mut cookie = cookie.clone();
             cookie.value = String::from_utf8(decrypt(&cookie.value)?)?;
@@ -75,14 +75,14 @@ pub trait ToCookie {
 
 impl ToCookie for (&str, &str) {
     fn to_cookie(self) -> Cookie {
-        let mut builder = CookieBuilder::new();
+        let builder = CookieBuilder::new();
         builder.name(self.0).value(self.1).build()
     }
 }
 
 impl ToCookie for (String, String) {
     fn to_cookie(self) -> Cookie {
-        let mut builder = CookieBuilder::new();
+        let builder = CookieBuilder::new();
         builder.name(self.0).value(self.1).build()
     }
 }
@@ -103,7 +103,7 @@ impl Cookie {
     pub fn parse(value: &str) -> Option<Self> {
         let mut parts = value.split(";");
         let mut builder = CookieBuilder::new();
-        let mut cookie = if let Some(cookie) = parts.next() {
+        let _cookie = if let Some(cookie) = parts.next() {
             match Self::key_value(cookie) {
                 (Some(key), Some(value)) => builder = builder.name(&key).value(urldecode(&value)),
                 (Some(key), None) => builder = builder.name(&key),

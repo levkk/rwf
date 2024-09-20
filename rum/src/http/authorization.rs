@@ -1,5 +1,3 @@
-use super::Head;
-
 use base64::prelude::*;
 
 #[derive(Debug)]

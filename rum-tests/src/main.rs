@@ -2,12 +2,12 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    controller::{AuthMechanism, Authentication, BasicAuth, DenyAll},
+    controller::{AuthMechanism, Authentication, BasicAuth},
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
-use rum_macros::{error, Model};
+use rum_macros::Model;
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};

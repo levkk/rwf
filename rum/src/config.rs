@@ -1,10 +1,10 @@
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use std::io::IsTerminal;
 use time::Duration;
 
-use crate::controller::{AllowAll, AuthMechanism, Authentication};
+use crate::controller::{AllowAll, AuthMechanism};
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
