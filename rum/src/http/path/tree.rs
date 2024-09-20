@@ -21,6 +21,41 @@ impl<'a> Node<'a> {
             .map(|n| n.handler.as_ref().unwrap())
     }
 
+    pub fn insert(&'a mut self, path: &Path) -> Node<'a> {
+        let parts = path.parts();
+
+        todo!()
+    }
+
+    // fn insert_internal(&'a mut self, mut parts: Vec<Part<'a>>) -> Option<&mut Node<'a>> {
+    //     if let Some(part) = parts.pop() {
+    //         for child in self.children.iter_mut() {
+    //             if child.part == part {
+    //                 let node = self.insert_internal(parts);
+
+    //                 if let Some(node) = node {
+    //                     return Some(node);
+    //                 } else {
+    //                     return Some(self);
+    //                 }
+    //             }
+    //         }
+
+    //         let mut node = Node {
+    //             part,
+    //             children: vec![],
+    //             handler: None,
+    //         };
+
+    //         let leaf = node.insert_internal(parts);
+    //         self.children.push(node);
+
+    //         leaf
+    //     } else {
+    //         None
+    //     }
+    // }
+
     pub fn traverse(&self, parts: &[Part<'_>]) -> Option<&'a Node> {
         if let Some(part) = parts.first() {
             // println!("parts: {:?}, part: {:?}", parts, part);

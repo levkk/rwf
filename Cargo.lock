@@ -1172,6 +1172,7 @@ dependencies = [
  "pluralizer",
  "postgres-types",
  "rand",
+ "regex",
  "rum-macros",
  "serde",
  "serde_json",

@@ -3,6 +3,8 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use regex::Regex;
+
 pub mod part;
 pub mod tree;
 
@@ -13,6 +15,8 @@ pub use tree::Node;
 pub struct Path {
     query: HashMap<String, String>,
     base: String,
+    regex_pattern: String,
+    regex: Option<Regex>,
 }
 
 impl PartialEq for Path {
@@ -40,11 +44,26 @@ impl Default for Path {
         Path {
             query: HashMap::new(),
             base: "/".to_string(),
+            regex_pattern: "^/(.*)".to_string(),
+            regex: None,
         }
     }
 }
 
 impl Path {
+    /// Build a regex to patch this path.
+    pub fn regex_pattern(&self) -> &str {
+        &self.regex_pattern
+    }
+
+    pub fn base(&self) -> &str {
+        &self.base
+    }
+
+    pub fn len(&self) -> usize {
+        self.base.len()
+    }
+
     pub fn parts<'a>(&'a self) -> Vec<Part<'a>> {
         let path = self.base.split("/").filter(|p| !p.is_empty()).map(|p| {
             if p.starts_with(":") {
@@ -66,13 +85,6 @@ impl Path {
     pub fn matches(&self, path: &Path) -> bool {
         let it_matches = self.base.starts_with(&path.base);
         it_matches
-    }
-
-    pub fn root(mut self) -> Self {
-        if !self.is_root() {
-            self.base.push('/');
-        }
-        self
     }
 
     pub fn is_root(&self) -> bool {
@@ -113,12 +125,9 @@ impl Path {
         // Parse the query.
         let parts = path.split("?").collect::<Vec<_>>();
 
-        match parts.len() {
+        let (base, query) = match parts.len() {
             // Path has no query.
-            1 => Ok(Path {
-                query: HashMap::new(),
-                base: path,
-            }),
+            1 => (path, HashMap::new()),
 
             // Path has a query.
             2 => {
@@ -139,14 +148,37 @@ impl Path {
                     query.insert(key, value);
                 }
 
-                Ok(Path {
-                    query,
-                    base: parts[0].to_owned(),
-                })
+                (parts[0].to_owned(), query)
             }
 
-            _ => Err(Error::MalformedRequest("path has malformed query")),
-        }
+            _ => return Err(Error::MalformedRequest("path has malformed query")),
+        };
+
+        let regex = base
+            .split("/")
+            .map(|p| {
+                if p.starts_with(":") {
+                    "([a-zA-Z0-9]+)"
+                } else {
+                    p
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut regex_pattern = "^".to_string() + &regex.join("/");
+        regex_pattern.push_str("(.*)");
+
+        Ok(Path {
+            base,
+            query,
+            regex_pattern,
+            regex: None,
+        })
+    }
+
+    pub fn with_regex(mut self) -> Result<Self, Error> {
+        let regex = Regex::new(&self.regex_pattern)?;
+        self.regex = Some(regex);
+        Ok(self)
     }
 }
 
@@ -174,6 +206,7 @@ impl ToResource for String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use regex::Regex;
 
     #[test]
     fn test_path() {
@@ -206,5 +239,14 @@ mod test {
     #[test]
     fn test_ordering() {
         assert!("asd" < "asdf");
+    }
+
+    #[test]
+    fn test_regex() {
+        let path = Path::parse("/api/orders/:id").unwrap();
+        let regex = Regex::new(&path.regex_pattern()).expect("to be a valid regex");
+        assert!(regex.find("/api/orders/1").is_some());
+        assert!(regex.find("/api/orders").is_none());
+        assert!(regex.find("/api/orders/hello/world").is_some());
     }
 }

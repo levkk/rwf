@@ -14,7 +14,7 @@ pub struct Handler {
 impl Handler {
     pub fn new(path: &str, controller: Box<dyn Controller>) -> Self {
         Self {
-            path: Path::parse(path).unwrap().root(),
+            path: Path::parse(path).unwrap().with_regex().unwrap(),
             controller,
             rank: -20,
             name: None,

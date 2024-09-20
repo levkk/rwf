@@ -4,7 +4,7 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, Request, Response};
+use super::{Error, Handler, PathHandler, Request, Response};
 
 use colored::Colorize;
 use std::collections::BTreeSet;
@@ -18,7 +18,7 @@ use tracing::{debug, error, info};
 
 /// HTTP server.
 pub struct Server {
-    handlers: Arc<BTreeSet<Handler>>,
+    handlers: Arc<PathHandler>,
 }
 
 impl Server {
@@ -27,12 +27,8 @@ impl Server {
     /// Accepts a list of handlers.
     // Duplicate handlers are overwritten without warning.
     pub fn new(handlers: Vec<Handler>) -> Self {
-        let mut set = BTreeSet::new();
-        for handler in handlers {
-            set.insert(handler);
-        }
         Server {
-            handlers: Arc::new(set),
+            handlers: Arc::new(PathHandler::new(handlers).unwrap()),
         }
     }
 
@@ -60,11 +56,8 @@ impl Server {
 
                     let start = Instant::now();
 
-                    for handler in handlers.iter().rev() {
-                        // Found matching handler.
-                        if request.path().matches(handler.path()) {
-                            found = true;
-
+                    match handlers.find(request.path()) {
+                        Ok(Some(handler)) => {
                             // Get response.
                             let response = match handler.handle_internal(&request).await {
                                 Ok(response) => response,
@@ -95,28 +88,29 @@ impl Server {
                             }
 
                             let _ = stream.flush().await;
-
-                            break;
                         }
-                    }
 
-                    // No handler for this path.
-                    if !found {
-                        // Log duration of search.
-                        let duration = Instant::now() - start;
+                        Ok(None) => {
+                            // Log duration of search.
+                            let duration = Instant::now() - start;
 
-                        // Generate default not found response.
-                        let response = Response::not_found();
+                            // Generate default not found response.
+                            let response = Response::not_found();
 
-                        // Log the response.
-                        Self::log(&request, std::any::type_name::<Self>(), &response, duration);
+                            // Log the response.
+                            Self::log(&request, std::any::type_name::<Self>(), &response, duration);
 
-                        // Send reply to client.
-                        match response.send(&mut stream).await {
-                            Ok(_) => (),
-                            Err(err) => {
-                                debug!("{} error {:?}", peer_addr, err);
+                            // Send reply to client.
+                            match response.send(&mut stream).await {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    debug!("{} error {:?}", peer_addr, err);
+                                }
                             }
+                        }
+
+                        Err(err) => {
+                            todo!()
                         }
                     }
                 }

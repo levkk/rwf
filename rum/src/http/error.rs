@@ -19,6 +19,9 @@ pub enum Error {
 
     #[error("{0}")]
     Utf8(#[from] std::string::FromUtf8Error),
+
+    #[error("{0}")]
+    Regex(#[from] regex::Error),
 }
 
 impl From<crate::controller::Error> for Error {
