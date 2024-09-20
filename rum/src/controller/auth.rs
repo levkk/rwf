@@ -33,9 +33,14 @@ impl AuthMechanism {
 #[async_trait]
 #[allow(unused_variables)]
 pub trait Authentication: Sync + Send {
+    /// Perform the authentication and allow or deny the request from
+    /// going forward.
     async fn authorize(&self, request: &Request) -> Result<bool, Error>;
+
+    /// If the request is denied, return a specific response.
+    /// Default is 403 - Forbidden.
     async fn denied(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::not_authorized())
+        Ok(Response::forbidden())
     }
 }
 

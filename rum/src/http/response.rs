@@ -235,11 +235,11 @@ impl Response {
         .code(501)
     }
 
-    pub fn not_authorized() -> Self {
+    pub fn forbidden() -> Self {
         Self::html(
             "
             <h3>
-                <center>403 - Not Authorized</center>
+                <center>403 - Forbidden</center>
             </h3>
             ",
         )
