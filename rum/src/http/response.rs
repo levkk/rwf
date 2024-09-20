@@ -79,6 +79,10 @@ impl Response {
         self
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        &self.body
+    }
+
     /// Response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
         self.code.into()

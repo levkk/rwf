@@ -3,6 +3,11 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+pub mod part;
+pub mod tree;
+
+pub use part::Part;
+
 #[derive(Clone, Debug)]
 pub struct Path {
     query: HashMap<String, String>,
