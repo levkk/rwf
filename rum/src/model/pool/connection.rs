@@ -12,6 +12,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+use std::time::Instant;
 
 use super::Error;
 
@@ -26,6 +27,7 @@ struct ConnectionInner {
 pub struct Connection {
     client: Client,
     inner: Arc<ConnectionInner>,
+    last_used: Instant,
 }
 
 impl Connection {
@@ -45,6 +47,7 @@ impl Connection {
         let guard = Connection {
             client,
             inner: inner.clone(),
+            last_used: Instant::now(),
         };
 
         spawn(async move {
@@ -66,6 +69,14 @@ impl Connection {
     /// Is the connection broken?
     pub fn bad(&self) -> bool {
         self.inner.bad.load(Ordering::Relaxed)
+    }
+
+    pub fn used(&mut self) {
+        self.last_used = Instant::now();
+    }
+
+    pub fn last_used(&self) -> Instant {
+        self.last_used
     }
 
     fn client(&self) -> &Client {

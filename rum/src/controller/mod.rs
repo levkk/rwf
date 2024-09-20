@@ -11,15 +11,26 @@ use crate::config::get_config;
 
 use serde::{Deserialize, Serialize};
 
+/// The HTTP controller.
+///
+/// The most basic version of a controller handles all requests
+/// which match the path it's assigned to.
+///
+/// Authentication is built-in and is configurable.
 #[async_trait]
 pub trait Controller: Sync + Send {
     /// Set the authentication mechanism for this controller.
+    ///
+    /// Default authentication method is to allow all requests, but can
+    /// be adjusted through configuration.
     fn auth(&self) -> &Box<dyn Authentication> {
         // Allow all requests by default.
         let auth = &get_config().default_auth;
         auth.auth()
     }
 
+    /// Internal function to handle the HTTP request. Do not implement this unless
+    /// you're looking to do something really custom.
     async fn handle_internal(&self, request: &Request) -> Result<Response, Error> {
         let auth = self.auth();
 
@@ -30,13 +41,62 @@ pub trait Controller: Sync + Send {
         self.handle(request).await
     }
 
+    /// Handle the request. Implement this function to define how your controller
+    /// will respond to requests.
     async fn handle(&self, request: &Request) -> Result<Response, Error>;
 
+    /// The name of this controller. Used for logging.
     fn controller_name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }
 }
 
+/// REST, aka CRUD, controller.
+///
+/// This controller will split incoming requests based on the REST specification and route
+/// them to their respective methods.
+///
+/// Available methods are:
+///
+/// - list (GET /)
+/// - create (POST /)
+/// - get (GET /:id)
+/// - update (PUT /:id)
+/// - patch (PATCH /:id)
+/// - delete (DELETE /:id)
+///
+/// By default, all methods will respond with 501 - Not Implemented. It's up to the user
+/// to implement each method according to their needs.
+///
+/// The `:id` can be any value which implements the [`ToResource`] trait.
+/// Common data types are implemented, e.g. i64, String, etc.
+///
+/// # Example
+///
+/// ```
+/// use rum::controller::{Controller, RestController, Error};
+/// use rum::http::{Request, Response};
+/// use rum::async_trait;
+///
+/// struct MyController {}
+///
+/// #[async_trait]
+/// impl Controller for MyController {
+///     // Delegate handling of this controller to the `RestController`.
+///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+///         RestController::handle(self, request).await
+///     }  
+/// }
+///
+/// #[async_trait]
+/// impl RestController for MyController {
+///     type Resource = i64;
+///
+///     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+///         Ok(Response::html(format!("Hello, id #{}", id)))
+///     }
+/// }
+/// ```
 #[async_trait]
 #[allow(unused_variables)] // Easier to read the code without _var_name.
 pub trait RestController: Controller {
@@ -93,6 +153,8 @@ pub trait RestController: Controller {
     }
 }
 
+/// The model controller extends the [`RestController`] to
+/// automatically performs CRUD actions on database models.
 #[async_trait]
 pub trait ModelController: Controller + RestController<Resource = i64> {
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;

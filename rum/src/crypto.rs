@@ -2,7 +2,11 @@ use aes_gcm_siv::{
     aead::{Aead, KeyInit, OsRng},
     Aes128GcmSiv, Nonce,
 };
-use base64::prelude::*;
+use base64::{
+    alphabet,
+    engine::{self, general_purpose},
+    Engine as _,
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -42,12 +46,12 @@ struct Encrypted {
 
 impl Encrypted {
     fn to_base64(&self) -> Result<String, Error> {
-        let json = serde_json::to_vec(self)?;
-        Ok(BASE64_STANDARD.encode(&json))
+        let json = serde_json::to_string(self)?;
+        Ok(general_purpose::STANDARD_NO_PAD.encode(&json))
     }
 
     fn from_base64(value: &str) -> Result<Self, Error> {
-        let decoded = BASE64_STANDARD.decode(value)?;
+        let decoded = general_purpose::STANDARD_NO_PAD.decode(value)?;
         Ok(serde_json::from_slice(&decoded)?)
     }
 

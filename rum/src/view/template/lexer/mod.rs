@@ -201,19 +201,19 @@ impl<'a> Lexer<'a> {
                             }
 
                             Some(c) => {
+                                self.tokens.push(self.add_token(Token::Not));
+
                                 if c == ' ' {
                                     self.tokens.push(self.add_token(Token::Space));
                                 } else {
                                     self.buffer.push(c);
                                 }
-
-                                self.tokens.push(self.add_token(Token::Not));
                             }
 
                             None => return Err(Error::Eof("lexer !")),
                         }
                     } else {
-                        // Just a !, e.g `<h1>oh hello there!</h1>`
+                        // Just a !, e.g `<h1>oh, hello there!</h1>`
                         self.buffer.push('!');
                     }
                 }

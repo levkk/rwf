@@ -10,6 +10,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Instant;
 
 use once_cell::sync::OnceCell;
 
@@ -66,7 +67,9 @@ impl ConnectionGuard {
 
 impl Drop for ConnectionGuard {
     fn drop(&mut self) {
-        if let Some(connection) = self.connection.take() {
+        if let Some(mut connection) = self.connection.take() {
+            connection.used();
+
             if self.rollback {
                 let pool = self.pool.clone();
                 spawn(async move {
@@ -264,14 +267,33 @@ impl Pool {
     }
 
     fn checkin(&self, connection: Connection, drop: bool) {
-        let mut inner = self.inner.lock();
-        if !connection.bad() && !drop {
-            inner.connections.push_back(connection);
-        } else {
-            inner.expected -= 1;
+        {
+            let mut inner = self.inner.lock();
+            if !connection.bad() && !drop {
+                inner.connections.push_back(connection);
+            } else {
+                inner.expected -= 1;
+            }
         }
 
         self.checkin_notify.notify_one();
+
+        // TODO: run this in a separate tokio task.
+        self.maintenance();
+    }
+
+    fn maintenance(&self) {
+        let now = Instant::now();
+        let mut inner = self.inner.lock();
+
+        let before = inner.connections.len();
+        inner.connections.retain(|c| {
+            let age = now.duration_since(c.last_used());
+            let too_old = age > self.config.idle_timeout;
+            !c.bad() && !too_old
+        });
+        let removed = before - inner.connections.len();
+        inner.expected -= removed;
     }
 
     async fn checkin_rollback(&self, connection: Connection) {
