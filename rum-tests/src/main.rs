@@ -333,19 +333,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::new(vec![
         Handler::new(
             "/base",
-            Box::new(BaseController {
+            BaseController {
                 id: "5".to_string(),
-            }),
+            },
         ),
-        Handler::new("/base/player", Box::new(BasePlayerController {})),
+        Handler::new("/base/player", BasePlayerController {}),
         Handler::new(
             "/orders",
-            Box::new(OrdersController {
+            OrdersController {
                 auth: AuthMechanism::new(BasicAuth {
                     user: "test".to_string(),
                     password: "test".to_string(),
                 }),
-            }),
+            },
         ),
     ])
     .launch("0.0.0.0:8000")

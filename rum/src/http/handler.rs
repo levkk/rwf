@@ -1,21 +1,21 @@
-use super::Path;
+use super::{path::PathWithRegex, Path};
 use crate::controller::Controller;
 use std::cmp::{Ordering, PartialOrd};
 
 use std::ops::Deref;
 
 pub struct Handler {
-    path: Path,
+    path: PathWithRegex,
     name: Option<String>,
     controller: Box<dyn Controller>,
     rank: i64,
 }
 
 impl Handler {
-    pub fn new(path: &str, controller: Box<dyn Controller>) -> Self {
+    pub fn new(path: &str, controller: impl Controller + 'static) -> Self {
         Self {
             path: Path::parse(path).unwrap().with_regex().unwrap(),
-            controller,
+            controller: Box::new(controller),
             rank: -20,
             name: None,
         }
@@ -31,8 +31,12 @@ impl Handler {
         self
     }
 
-    pub fn path(&self) -> &Path {
+    pub fn path_with_regex(&self) -> &PathWithRegex {
         &self.path
+    }
+
+    pub fn path(&self) -> &Path {
+        self.path.deref()
     }
 
     pub fn controller_name(&self) -> &'static str {

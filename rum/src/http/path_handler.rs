@@ -9,9 +9,9 @@ pub struct PathHandler {
 
 impl PathHandler {
     pub fn new(handlers: Vec<Handler>) -> Result<Self, Error> {
-        let mut paths = handlers
+        let paths = handlers
             .iter()
-            .map(|h| h.path().regex_pattern())
+            .map(|h| h.path_with_regex().regex_pattern())
             .collect::<Vec<_>>();
         let regex = RegexSet::new(paths)?;
 
@@ -59,8 +59,8 @@ mod test {
     #[tokio::test]
     async fn test_find() {
         let handler = PathHandler::new(vec![
-            Handler::new("/api/orders", Box::new(OrdersControler {})),
-            Handler::new("/api/users", Box::new(UsersController {})),
+            Handler::new("/api/orders", OrdersControler {}),
+            Handler::new("/api/users", UsersController {}),
         ])
         .expect("to compile");
 

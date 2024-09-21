@@ -5,18 +5,10 @@ use std::fmt::Debug;
 
 use regex::Regex;
 
-pub mod part;
-pub mod tree;
-
-pub use part::Part;
-pub use tree::Node;
-
 #[derive(Clone, Debug)]
 pub struct Path {
     query: HashMap<String, String>,
     base: String,
-    regex_pattern: String,
-    regex: Option<Regex>,
 }
 
 impl PartialEq for Path {
@@ -44,42 +36,17 @@ impl Default for Path {
         Path {
             query: HashMap::new(),
             base: "/".to_string(),
-            regex_pattern: "^/(.*)".to_string(),
-            regex: None,
         }
     }
 }
 
 impl Path {
-    /// Build a regex to patch this path.
-    pub fn regex_pattern(&self) -> &str {
-        &self.regex_pattern
-    }
-
     pub fn base(&self) -> &str {
         &self.base
     }
 
     pub fn len(&self) -> usize {
         self.base.len()
-    }
-
-    pub fn parts<'a>(&'a self) -> Vec<Part<'a>> {
-        let path = self.base.split("/").filter(|p| !p.is_empty()).map(|p| {
-            if p.starts_with(":") {
-                Part::Identifier(p)
-            } else {
-                Part::Segment(p)
-            }
-        });
-
-        let mut result = vec![];
-        for part in path {
-            result.push(Part::Slash);
-            result.push(part);
-        }
-
-        result
     }
 
     pub fn matches(&self, path: &Path) -> bool {
@@ -154,7 +121,24 @@ impl Path {
             _ => return Err(Error::MalformedRequest("path has malformed query")),
         };
 
-        let regex = base
+        Ok(Path { base, query })
+    }
+
+    pub fn with_regex(self) -> Result<PathWithRegex, Error> {
+        PathWithRegex::new(self)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PathWithRegex {
+    regex: Regex,
+    path: Path,
+}
+
+impl PathWithRegex {
+    pub fn new(path: Path) -> Result<Self, Error> {
+        let regex = path
+            .base()
             .split("/")
             .map(|p| {
                 if p.starts_with(":") {
@@ -164,21 +148,27 @@ impl Path {
                 }
             })
             .collect::<Vec<_>>();
-        let mut regex_pattern = "^".to_string() + &regex.join("/");
-        regex_pattern.push_str("(.*)");
+        let mut regex = "^".to_string() + &regex.join("/");
+        regex.push_str("(.*)");
 
-        Ok(Path {
-            base,
-            query,
-            regex_pattern,
-            regex: None,
-        })
+        let regex = Regex::new(&regex)?;
+        Ok(Self { regex, path })
     }
 
-    pub fn with_regex(mut self) -> Result<Self, Error> {
-        let regex = Regex::new(&self.regex_pattern)?;
-        self.regex = Some(regex);
-        Ok(self)
+    pub fn regex_pattern(&self) -> &str {
+        self.regex.as_str()
+    }
+
+    pub fn regex(&self) -> &Regex {
+        &self.regex
+    }
+}
+
+impl std::ops::Deref for PathWithRegex {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        &self.path
     }
 }
 
@@ -243,8 +233,11 @@ mod test {
 
     #[test]
     fn test_regex() {
-        let path = Path::parse("/api/orders/:id").unwrap();
-        let regex = Regex::new(&path.regex_pattern()).expect("to be a valid regex");
+        let path = Path::parse("/api/orders/:id")
+            .unwrap()
+            .with_regex()
+            .unwrap();
+        let regex = Regex::new(path.regex_pattern()).expect("to be a valid regex");
         assert!(regex.find("/api/orders/1").is_some());
         assert!(regex.find("/api/orders").is_none());
         assert!(regex.find("/api/orders/hello/world").is_some());
