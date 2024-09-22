@@ -7,7 +7,6 @@
 use super::{Error, Handler, Request, Response, Router};
 
 use colored::Colorize;
-use std::collections::BTreeSet;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};

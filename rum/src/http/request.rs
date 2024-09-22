@@ -5,7 +5,6 @@ use std::marker::Unpin;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use regex::Regex;
 use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};

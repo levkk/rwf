@@ -58,7 +58,6 @@ impl std::ops::Deref for PathWithRegex {
 
 #[cfg(test)]
 mod test {
-    use super::*;
 
     #[test]
     fn test_paramter() {
