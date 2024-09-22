@@ -77,7 +77,7 @@ impl Response {
 
     /// Create a response from a request.
     pub fn from_request(request: &Request) -> Result<Self, Error> {
-        let session = request.cookies().get_session()?;
+        let session = request.session().clone();
         let mut response = Self::new();
 
         if let Some(session) = session {
@@ -117,7 +117,7 @@ impl Response {
     /// ```
     /// use rum::http::Response;
     ///
-    /// let response = Response::text("OK").code(200);
+    /// let response = Response::new().text("OK").code(200);
     /// ```
     pub fn code(mut self, code: u16) -> Self {
         self.code = code;
@@ -137,7 +137,7 @@ impl Response {
     ///     value: String,
     /// }
     ///
-    /// let response = Response::json(Body { value: "hello world".to_string() })
+    /// let response = Response::new().json(Body { value: "hello world".to_string() })
     ///    .unwrap()
     ///    .code(200);
     /// ```
@@ -153,7 +153,7 @@ impl Response {
     /// ```
     /// use rum::http::Response;
     ///
-    /// let response = Response::html("<h1>Hello world</h1>");
+    /// let response = Response::new().html("<h1>Hello world</h1>");
     /// ```
     pub fn html(self, body: impl ToString) -> Self {
         self.header("content-type", "text/html")
@@ -167,7 +167,7 @@ impl Response {
     /// ```
     /// use rum::http::Response;
     ///
-    /// let response = Response::text("Hello world");
+    /// let response = Response::new().text("Hello world");
     /// ```
     pub fn text(self, body: impl ToString) -> Self {
         self.header("content-type", "text/plain")
@@ -183,7 +183,7 @@ impl Response {
     /// ```
     /// use rum::http::Response;
     ///
-    /// let response = Response::text("don't cache me")
+    /// let response = Response::new().text("don't cache me")
     ///     .header("Cache-Control", "no-cache");
     /// ```
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {

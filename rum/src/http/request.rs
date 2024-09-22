@@ -10,6 +10,7 @@ use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, Head, Params, ToParameter};
+use crate::controller::Session;
 
 /// HTTP request.
 ///
@@ -26,6 +27,7 @@ struct Inner {
     head: Head,
     body: Vec<u8>,
     cookies: Cookies,
+    session: Option<Session>,
 }
 
 impl Request {
@@ -39,12 +41,15 @@ impl Request {
             .await
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
+        let cookies = head.cookies();
+
         Ok(Request {
             params: None,
             inner: Arc::new(Inner {
                 body,
-                cookies: head.cookies(),
                 head,
+                session: cookies.get_session()?,
+                cookies,
             }),
         })
     }
@@ -92,6 +97,11 @@ impl Request {
     /// Request's cookies.
     pub fn cookies(&self) -> &Cookies {
         &self.inner.cookies
+    }
+
+    /// Request's session.
+    pub fn session(&self) -> &Option<Session> {
+        &self.inner.session
     }
 }
 

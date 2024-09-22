@@ -113,7 +113,7 @@ impl Authentication for Token {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Session {
     #[serde(rename = "p")]
     pub payload: serde_json::Value,
