@@ -5,7 +5,7 @@ pub mod error;
 pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll};
 pub use error::Error;
 
-use super::http::{Method, Request, Response, ToResource};
+use super::http::{Method, Request, Response, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update};
 use crate::config::get_config;
 
@@ -68,7 +68,7 @@ pub trait Controller: Sync + Send {
 /// By default, all methods will respond with 501 - Not Implemented. It's up to the user
 /// to implement each method according to their needs.
 ///
-/// The `:id` can be any value which implements the [`ToResource`] trait.
+/// The `:id` can be any value which implements the [`ToParameter`] trait.
 /// Common data types are implemented, e.g. i64, String, etc.
 ///
 /// # Example
@@ -100,7 +100,7 @@ pub trait Controller: Sync + Send {
 #[async_trait]
 #[allow(unused_variables)] // Easier to read the code without _var_name.
 pub trait RestController: Controller {
-    type Resource: ToResource;
+    type Resource: ToParameter;
 
     /// Figure out which method to call based on request method
     /// and path.

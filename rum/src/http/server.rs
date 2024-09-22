@@ -4,7 +4,7 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, PathHandler, Request, Response};
+use super::{Error, Handler, Request, Response, Router};
 
 use colored::Colorize;
 use std::collections::BTreeSet;
@@ -18,7 +18,7 @@ use tracing::{debug, error, info};
 
 /// HTTP server.
 pub struct Server {
-    handlers: Arc<PathHandler>,
+    handlers: Arc<Router>,
 }
 
 impl Server {
@@ -28,7 +28,7 @@ impl Server {
     // Duplicate handlers are overwritten without warning.
     pub fn new(handlers: Vec<Handler>) -> Self {
         Server {
-            handlers: Arc::new(PathHandler::new(handlers).unwrap()),
+            handlers: Arc::new(Router::new(handlers).unwrap()),
         }
     }
 
@@ -40,7 +40,6 @@ impl Server {
             let (stream, peer_addr) = listener.accept().await?;
             let mut stream = BufReader::new(BufWriter::new(stream));
             let handlers = self.handlers.clone();
-            let mut found = false;
 
             tokio::spawn(async move {
                 debug!("HTTP new connection from {:?}", peer_addr);

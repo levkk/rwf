@@ -1,34 +1,23 @@
+//! HTTP URL path, e.g. `/api/orders/1?sorted=true#header1`
+//!
+//! Paths are parsed for each incoming request and compared against
+//! a global regex to find a route handler.
 use super::{urldecode, Error};
-use std::cmp::{Ordering, PartialOrd};
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use regex::Regex;
+pub mod with_regex;
+pub use with_regex::PathWithRegex;
 
+pub mod to_parameter;
+pub use to_parameter::ToParameter;
+
+/// HTTP URL path.
 #[derive(Clone, Debug)]
 pub struct Path {
     query: HashMap<String, String>,
     base: String,
-}
-
-impl PartialEq for Path {
-    fn eq(&self, other: &Self) -> bool {
-        self.base.eq(&other.base)
-    }
-}
-
-impl PartialOrd for Path {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.base.partial_cmp(&other.base)
-    }
-}
-
-impl Eq for Path {}
-
-impl Ord for Path {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.base.cmp(&other.base)
-    }
 }
 
 impl Default for Path {
@@ -41,24 +30,21 @@ impl Default for Path {
 }
 
 impl Path {
+    /// Path URL base.
     pub fn base(&self) -> &str {
         &self.base
     }
 
+    /// Path length.
     pub fn len(&self) -> usize {
         self.base.len()
-    }
-
-    pub fn matches(&self, path: &Path) -> bool {
-        let it_matches = self.base.starts_with(&path.base);
-        it_matches
     }
 
     pub fn is_root(&self) -> bool {
         self.base.ends_with("/")
     }
 
-    pub fn resource<T: ToResource>(&self) -> Option<Result<T, Error>> {
+    pub fn resource<T: ToParameter>(&self) -> Option<Result<T, Error>> {
         if self.is_root() {
             None
         } else {
@@ -66,7 +52,7 @@ impl Path {
             let last_slash_offset = self.base.len() - reverse_offset;
 
             if last_slash_offset < self.base.len() {
-                Some(T::to_resource(&self.base[last_slash_offset..]))
+                Some(T::to_parameter(&self.base[last_slash_offset..]))
             } else {
                 None
             }
@@ -126,70 +112,6 @@ impl Path {
 
     pub fn with_regex(self) -> Result<PathWithRegex, Error> {
         PathWithRegex::new(self)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PathWithRegex {
-    regex: Regex,
-    path: Path,
-}
-
-impl PathWithRegex {
-    pub fn new(path: Path) -> Result<Self, Error> {
-        let regex = path
-            .base()
-            .split("/")
-            .map(|p| {
-                if p.starts_with(":") {
-                    "([a-zA-Z0-9]+)"
-                } else {
-                    p
-                }
-            })
-            .collect::<Vec<_>>();
-        let mut regex = "^".to_string() + &regex.join("/");
-        regex.push_str("(.*)");
-
-        let regex = Regex::new(&regex)?;
-        Ok(Self { regex, path })
-    }
-
-    pub fn regex_pattern(&self) -> &str {
-        self.regex.as_str()
-    }
-
-    pub fn regex(&self) -> &Regex {
-        &self.regex
-    }
-}
-
-impl std::ops::Deref for PathWithRegex {
-    type Target = Path;
-
-    fn deref(&self) -> &Self::Target {
-        &self.path
-    }
-}
-
-pub trait ToResource: Sync + Send + Debug {
-    fn to_resource(s: &str) -> Result<Self, Error>
-    where
-        Self: Sized;
-}
-
-impl ToResource for i64 {
-    fn to_resource(s: &str) -> Result<i64, Error> {
-        match s.parse() {
-            Ok(id) => Ok(id),
-            Err(_) => Err(Error::MalformedRequest("i64")),
-        }
-    }
-}
-
-impl ToResource for String {
-    fn to_resource(s: &str) -> Result<String, Error> {
-        Ok(s.to_string())
     }
 }
 

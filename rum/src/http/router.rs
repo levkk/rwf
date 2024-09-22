@@ -2,12 +2,12 @@ use super::{Error, Handler, Path};
 
 use regex::RegexSet;
 
-pub struct PathHandler {
+pub struct Router {
     regex: RegexSet,
     handlers: Vec<Handler>,
 }
 
-impl PathHandler {
+impl Router {
     pub fn new(handlers: Vec<Handler>) -> Result<Self, Error> {
         let paths = handlers
             .iter()
@@ -27,7 +27,7 @@ impl PathHandler {
             .filter(|(i, _h)| matches.matched(*i))
             .map(|(_i, h)| h)
             .collect::<Vec<_>>();
-        handlers.sort_by_key(|h| h.path().base().len());
+        handlers.sort_by_key(|h| h.path().base().len()); // Get the most specific path (longest match).
         Ok(handlers.last().copied())
     }
 }
@@ -58,7 +58,7 @@ mod test {
 
     #[tokio::test]
     async fn test_find() {
-        let handler = PathHandler::new(vec![
+        let handler = Router::new(vec![
             Handler::new("/api/orders", OrdersControler {}),
             Handler::new("/api/users", UsersController {}),
         ])

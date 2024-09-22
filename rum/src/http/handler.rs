@@ -1,6 +1,5 @@
 use super::{path::PathWithRegex, Path};
 use crate::controller::Controller;
-use std::cmp::{Ordering, PartialOrd};
 
 use std::ops::Deref;
 
@@ -41,32 +40,6 @@ impl Handler {
 
     pub fn controller_name(&self) -> &'static str {
         self.deref().controller_name()
-    }
-}
-
-impl PartialEq for Handler {
-    fn eq(&self, other: &Self) -> bool {
-        match self.path.eq(&other.path) {
-            true => self.rank == other.rank,
-            false => false,
-        }
-    }
-}
-
-impl PartialOrd for Handler {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.path.partial_cmp(&other.path) {
-            Some(Ordering::Equal) => self.rank.partial_cmp(&other.rank),
-            ordering => ordering,
-        }
-    }
-}
-
-impl Eq for Handler {}
-
-impl Ord for Handler {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.path.cmp(&other.path)
     }
 }
 
