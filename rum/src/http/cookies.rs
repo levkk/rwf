@@ -4,6 +4,7 @@ use time::{Duration, OffsetDateTime};
 use super::url::urldecode;
 use super::Error;
 use crate::config::get_config;
+use crate::controller::Session;
 use crate::crypto::{decrypt, encrypt};
 
 #[derive(Debug, Clone, Default)]
@@ -39,7 +40,7 @@ impl Cookies {
         Ok(())
     }
 
-    pub fn get_private(self, name: &str) -> Result<Option<Cookie>, Error> {
+    pub fn get_private(&self, name: &str) -> Result<Option<Cookie>, Error> {
         if let Some(cookie) = self.cookies.get(name) {
             let mut cookie = cookie.clone();
             cookie.value = String::from_utf8(decrypt(&cookie.value)?)?;
@@ -56,6 +57,35 @@ impl Cookies {
 
     pub fn get(&self, name: &str) -> Option<&Cookie> {
         self.cookies.get(name)
+    }
+
+    pub fn get_session(&self) -> Result<Option<Session>, Error> {
+        let cookie = self.get_private("rum_session")?;
+        if let Some(cookie) = cookie {
+            Ok(serde_json::from_str(cookie.value())?)
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn add_session(&mut self, session: &Session) -> Result<(), Error> {
+        let value = serde_json::to_string(session)?;
+        self.add_private(
+            CookieBuilder::new()
+                .name("rum_session")
+                .value(value)
+                .expiration(OffsetDateTime::from_unix_timestamp(session.expiration)?)
+                .build(),
+        )
+    }
+
+    /// Set all cookies on the client.
+    pub fn to_headers(&self) -> Vec<u8> {
+        let mut headers = vec![];
+        for (_, cookie) in &self.cookies {
+            headers.extend_from_slice(format!("set-cookie: {}\r\n", cookie).as_bytes());
+        }
+        headers
     }
 }
 
@@ -84,6 +114,12 @@ impl ToCookie for (String, String) {
     fn to_cookie(self) -> Cookie {
         let builder = CookieBuilder::new();
         builder.name(self.0).value(self.1).build()
+    }
+}
+
+impl ToCookie for Cookie {
+    fn to_cookie(self) -> Cookie {
+        self
     }
 }
 

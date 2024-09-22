@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{head::Version, Error, Headers};
+use super::{head::Version, Cookies, Error, Headers, Request};
+use crate::config::get_config;
 
 /// Response status, e.g. 404, 200, etc.
 #[derive(Debug)]
@@ -55,6 +56,7 @@ pub struct Response {
     headers: Headers,
     version: Version,
     body: Vec<u8>,
+    cookies: Cookies,
 }
 
 impl Response {
@@ -69,7 +71,23 @@ impl Response {
             ])),
             body: Vec::new(),
             version: Version::Http1,
+            cookies: Cookies::new(),
         }
+    }
+
+    /// Create a response from a request.
+    pub fn from_request(request: &Request) -> Result<Self, Error> {
+        let session = request.cookies().get_session()?;
+        let mut response = Self::new();
+
+        if let Some(session) = session {
+            if !session.expired()? {
+                let session = session.renew(get_config().session_duration);
+                response.cookies().add_session(&session)?;
+            }
+        }
+
+        Ok(response)
     }
 
     fn body(mut self, body: Vec<u8>) -> Self {
@@ -123,11 +141,9 @@ impl Response {
     ///    .unwrap()
     ///    .code(200);
     /// ```
-    pub fn json(body: impl Serialize) -> Result<Self, Error> {
+    pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(Self::new()
-            .header("content-type", "application/json")
-            .body(body))
+        Ok(self.header("content-type", "application/json").body(body))
     }
 
     /// Create a response with an HTML body.
@@ -139,9 +155,8 @@ impl Response {
     ///
     /// let response = Response::html("<h1>Hello world</h1>");
     /// ```
-    pub fn html(body: impl ToString) -> Self {
-        Self::new()
-            .header("content-type", "text/html")
+    pub fn html(self, body: impl ToString) -> Self {
+        self.header("content-type", "text/html")
             .body(body.to_string().as_bytes().to_vec())
     }
 
@@ -154,9 +169,8 @@ impl Response {
     ///
     /// let response = Response::text("Hello world");
     /// ```
-    pub fn text(body: impl ToString) -> Self {
-        Self::new()
-            .header("content-type", "text/plain")
+    pub fn text(self, body: impl ToString) -> Self {
+        self.header("content-type", "text/plain")
             .body(body.to_string().as_bytes().to_vec())
     }
 
@@ -178,94 +192,108 @@ impl Response {
     }
 
     /// Send the response to a stream, serialized as bytes.
-    pub async fn send(&self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
+    pub async fn send(self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
         let mut response = format!("{} {}\r\n", self.version, self.code)
             .as_bytes()
             .to_vec();
+
         response.extend_from_slice(&self.headers.to_bytes());
+        response.extend_from_slice(&self.cookies.to_headers());
         response.extend_from_slice(b"\r\n");
         response.extend_from_slice(&self.body);
 
         stream.write_all(&response).await
     }
 
+    /// Mutable reference to response cookies.
+    pub fn cookies(&mut self) -> &mut Cookies {
+        &mut self.cookies
+    }
+
     /// Default not found (404) error.
     pub fn not_found() -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>404 - Not Found</center>
             </h3>
         ",
-        )
-        .code(404)
+            )
+            .code(404)
     }
 
     /// Default method not allowed (405) error.
     pub fn method_not_allowed() -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>405 - Method Not Allowed</center>
             </h3>
         ",
-        )
-        .code(405)
+            )
+            .code(405)
     }
 
     pub fn bad_request() -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>400 - Bad Request</center>
             </h3>
         ",
-        )
-        .code(400)
+            )
+            .code(400)
     }
 
     pub fn not_implemented() -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>501 - Not Implemented</center>
             </h3>
             ",
-        )
-        .code(501)
+            )
+            .code(501)
     }
 
     pub fn forbidden() -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>403 - Forbidden</center>
             </h3>
             ",
-        )
-        .code(403)
+            )
+            .code(403)
     }
 
     pub fn internal_error(_err: impl std::error::Error) -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>500 - Internal Server Error</center>
             </h3>
             ",
-        )
-        .code(500)
+            )
+            .code(500)
     }
 
     pub fn unauthorized(auth: &str) -> Self {
-        Self::html(
-            "
+        Self::new()
+            .html(
+                "
             <h3>
                 <center>401 - Unauthorized</center>
             </h3>
             ",
-        )
-        .code(401)
-        .header("www-authenticate", auth)
+            )
+            .code(401)
+            .header("www-authenticate", auth)
     }
 }

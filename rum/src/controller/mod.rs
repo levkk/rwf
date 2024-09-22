@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 pub mod auth;
 pub mod error;
-pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll};
+pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll, Session};
 pub use error::Error;
 
 use super::http::{Method, Request, Response, ToParameter};
@@ -179,11 +179,11 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         }
     }
 
-    async fn list(&self, _request: &Request) -> Result<Response, Error> {
+    async fn list(&self, request: &Request) -> Result<Response, Error> {
         let conn = get_connection().await?;
 
         let models = Self::Model::all().fetch_all(&conn).await?;
-        let response = match Response::json(models) {
+        let response = match Response::from_request(request)?.json(models) {
             Ok(response) => response,
             Err(err) => Response::internal_error(err),
         };
@@ -191,14 +191,14 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         Ok(response)
     }
 
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
         let conn = get_connection().await?;
 
         match Self::Model::find_by(Self::Model::primary_key(), *id)
             .fetch(&conn)
             .await
         {
-            Ok(model) => match Response::json(model) {
+            Ok(model) => match Response::from_request(request)?.json(model) {
                 Ok(response) => Ok(response),
                 Err(err) => Ok(Response::internal_error(err)),
             },
@@ -211,7 +211,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         let model = request.json::<Self::Model>()?;
         let conn = get_connection().await?;
         let model = model.create().fetch(&conn).await?;
-        Ok(Response::json(model)?)
+        Ok(Response::from_request(request)?.json(model)?)
     }
 
     async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {
@@ -226,7 +226,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
         let conn = get_connection().await?;
         let model = model.save().fetch(&conn).await?;
-        Ok(Response::json(model)?)
+        Ok(Response::from_request(request)?.json(model)?)
     }
 
     async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
@@ -257,6 +257,6 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
             .fetch(&conn)
             .await?;
 
-        Ok(Response::json(model)?)
+        Ok(Response::from_request(request)?.json(model)?)
     }
 }

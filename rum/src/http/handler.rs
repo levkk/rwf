@@ -3,6 +3,7 @@ use crate::controller::Controller;
 
 use std::ops::Deref;
 
+/// Route handler.
 pub struct Handler {
     path: PathWithRegex,
     name: Option<String>,

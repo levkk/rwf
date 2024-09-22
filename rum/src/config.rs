@@ -13,6 +13,7 @@ pub struct Config {
     pub cookie_max_age: Duration,
     pub tty: bool,
     pub default_auth: AuthMechanism,
+    pub session_duration: Duration,
 }
 
 impl Default for Config {
@@ -22,6 +23,7 @@ impl Default for Config {
             cookie_max_age: Duration::days(30),
             tty: std::io::stderr().is_terminal(),
             default_auth: AuthMechanism::new(AllowAll {}),
+            session_duration: Duration::days(4),
         }
     }
 }

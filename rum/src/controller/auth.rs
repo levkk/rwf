@@ -6,7 +6,10 @@ use super::Error;
 use crate::http::{Authorization, Request, Response};
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 
+use std::fmt::Debug;
 use std::sync::Arc;
 
 /// An authentication mechanism that can be attached to a controller.
@@ -107,5 +110,43 @@ impl Authentication for Token {
                 false
             },
         )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Session {
+    #[serde(rename = "p")]
+    pub payload: serde_json::Value,
+    #[serde(rename = "e")]
+    pub expiration: i64,
+}
+
+impl Session {
+    pub fn renew(mut self, renew_for: Duration) -> Self {
+        self.expiration = (OffsetDateTime::now_utc() + renew_for).unix_timestamp();
+        self
+    }
+
+    pub fn expired(&self) -> Result<bool, Error> {
+        if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
+            let now = OffsetDateTime::now_utc();
+            Ok(expiration > now)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
+#[async_trait]
+impl Authentication for Session {
+    async fn authorize(&self, request: &Request) -> Result<bool, Error> {
+        if let Ok(Some(session)) = request.cookies().get_private("rum_session") {
+            return match serde_json::from_str::<Session>(session.value()) {
+                Ok(session) => Ok(!session.expired()?),
+                _ => Ok(false),
+            };
+        }
+
+        Ok(false)
     }
 }

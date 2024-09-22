@@ -22,10 +22,19 @@ pub enum Error {
 
     #[error("{0}")]
     Regex(#[from] regex::Error),
+
+    #[error("{0}")]
+    Time(time::error::ComponentRange),
 }
 
 impl From<crate::controller::Error> for Error {
     fn from(error: crate::controller::Error) -> Error {
         Error::Controller(error)
+    }
+}
+
+impl From<time::error::ComponentRange> for Error {
+    fn from(error: time::error::ComponentRange) -> Error {
+        Error::Time(error)
     }
 }

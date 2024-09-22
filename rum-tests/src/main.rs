@@ -81,10 +81,7 @@ impl RestController for BaseController {
         _request: &Request,
         id: &String,
     ) -> Result<Response, rum::controller::Error> {
-        Ok(Response::html(format!(
-            "<h1>controller id: {}, id: {}</h1>",
-            self.id, id
-        )))
+        Ok(Response::new().html(format!("<h1>controller id: {}, id: {}</h1>", self.id, id)))
     }
 }
 
@@ -103,10 +100,7 @@ impl RestController for BasePlayerController {
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
         println!("{:?}", request.cookies());
-        Ok(Response::html(format!(
-            "<h1>base player controller, id: {}</h1>",
-            id
-        )))
+        Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
     }
 
     async fn list(&self, _request: &Request) -> Result<Response, Error> {
@@ -114,7 +108,7 @@ impl RestController for BasePlayerController {
         //     Ok(_) => (),
         //     Err(err) => error!(err),
         // };
-        Ok(Response::html("list all the players"))
+        Ok(Response::new().html("list all the players"))
     }
 }
 
