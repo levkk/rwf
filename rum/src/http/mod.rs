@@ -19,7 +19,7 @@ pub use error::Error;
 pub use handler::Handler;
 pub use head::{Head, Method};
 pub use headers::Headers;
-pub use path::{Path, ToParameter};
+pub use path::{Params, Path, ToParameter};
 pub use request::Request;
 pub use response::Response;
 pub use router::Router;

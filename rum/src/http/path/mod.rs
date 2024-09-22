@@ -13,6 +13,9 @@ pub use with_regex::PathWithRegex;
 pub mod to_parameter;
 pub use to_parameter::ToParameter;
 
+pub mod params;
+pub use params::Params;
+
 /// HTTP URL path.
 #[derive(Clone, Debug)]
 pub struct Path {
@@ -42,21 +45,6 @@ impl Path {
 
     pub fn is_root(&self) -> bool {
         self.base.ends_with("/")
-    }
-
-    pub fn resource<T: ToParameter>(&self) -> Option<Result<T, Error>> {
-        if self.is_root() {
-            None
-        } else {
-            let reverse_offset = self.base.chars().rev().position(|c| c == '/').unwrap_or(0);
-            let last_slash_offset = self.base.len() - reverse_offset;
-
-            if last_slash_offset < self.base.len() {
-                Some(T::to_parameter(&self.base[last_slash_offset..]))
-            } else {
-                None
-            }
-        }
     }
 
     pub fn query(&self) -> &HashMap<String, String> {
@@ -118,7 +106,6 @@ impl Path {
 #[cfg(test)]
 mod test {
     use super::*;
-    use regex::Regex;
 
     #[test]
     fn test_path() {
@@ -126,26 +113,6 @@ mod test {
         let path = Path::parse(path).unwrap();
         assert_eq!(path.path(), "/hello");
         assert_eq!(path.query().get("foo"), Some(&"bar".to_string()));
-    }
-
-    #[test]
-    fn test_path_resource() {
-        let path = "/hello/world?foo=bar";
-        let path = Path::parse(path).unwrap();
-        let resource = path.resource::<String>().unwrap().unwrap();
-        assert_eq!(resource, "world".to_string());
-
-        let path = "/hello/?foo=bar&hello=world";
-        let path = Path::parse(path).unwrap();
-        assert!(path.resource::<String>().is_none());
-
-        let path = "/?foo=bar";
-        let path = Path::parse(path).unwrap();
-        assert!(path.resource::<String>().is_none());
-
-        let path = "/hello/1";
-        let path = Path::parse(path).unwrap();
-        assert_eq!(path.resource::<i64>().unwrap().unwrap(), 1);
     }
 
     #[test]
@@ -159,7 +126,7 @@ mod test {
             .unwrap()
             .with_regex()
             .unwrap();
-        let regex = Regex::new(path.regex_pattern()).expect("to be a valid regex");
+        let regex = path.regex();
         assert!(regex.find("/api/orders/1").is_some());
         assert!(regex.find("/api/orders").is_none());
         assert!(regex.find("/api/orders/hello/world").is_some());

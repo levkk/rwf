@@ -106,25 +106,22 @@ pub trait RestController: Controller {
     /// and path.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        if request.path().is_root() {
-            match method {
+        let parameter = request.parameter::<Self::Resource>(0);
+
+        match parameter {
+            Ok(Some(id)) => match method {
+                Method::Get => self.get(request, &id).await,
+                Method::Put => self.update(request, &id).await,
+                Method::Delete => self.delete(request, &id).await,
+                Method::Patch => self.patch(request, &id).await,
+                _ => Ok(Response::method_not_allowed()),
+            },
+            Ok(None) => match method {
                 Method::Get => self.list(request).await,
                 Method::Post => self.create(request).await,
                 _ => Ok(Response::method_not_allowed()),
-            }
-        } else {
-            let resource = request.path().resource::<Self::Resource>();
-            if let Some(Ok(id)) = resource {
-                match method {
-                    Method::Get => self.get(request, &id).await,
-                    Method::Put => self.update(request, &id).await,
-                    Method::Delete => self.delete(request, &id).await,
-                    Method::Patch => self.patch(request, &id).await,
-                    _ => Ok(Response::method_not_allowed()),
-                }
-            } else {
-                Ok(Response::bad_request())
-            }
+            },
+            _ => Ok(Response::bad_request()),
         }
     }
 
@@ -161,25 +158,24 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        if request.path().is_root() {
-            match method {
+        let parameter = request.parameter::<Self::Resource>(0);
+
+        match parameter {
+            Ok(Some(id)) => match method {
+                Method::Get => ModelController::get(self, request, &id).await,
+                Method::Put => ModelController::update(self, request, &id).await,
+                Method::Delete => self.delete(request, &id).await,
+                Method::Patch => ModelController::patch(self, request, &id).await,
+                _ => Ok(Response::method_not_allowed()),
+            },
+
+            Ok(None) => match method {
                 Method::Get => ModelController::list(self, request).await,
                 Method::Post => ModelController::create(self, request).await,
                 _ => Ok(Response::method_not_allowed()),
-            }
-        } else {
-            let resource = request.path().resource::<Self::Resource>();
-            if let Some(Ok(id)) = resource {
-                match method {
-                    Method::Get => ModelController::get(self, request, &id).await,
-                    Method::Put => ModelController::update(self, request, &id).await,
-                    Method::Delete => self.delete(request, &id).await,
-                    Method::Patch => ModelController::patch(self, request, &id).await,
-                    _ => Ok(Response::method_not_allowed()),
-                }
-            } else {
-                Ok(Response::bad_request())
-            }
+            },
+
+            _ => Ok(Response::bad_request()),
         }
     }
 

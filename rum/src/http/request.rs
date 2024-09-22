@@ -5,11 +5,12 @@ use std::marker::Unpin;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Cookies, Error, Head};
+use super::{Cookies, Error, Head, Params, ToParameter};
 
 /// HTTP request.
 ///
@@ -18,6 +19,7 @@ use super::{Cookies, Error, Head};
 #[derive(Debug, Clone, Default)]
 pub struct Request {
     inner: Arc<Inner>,
+    params: Option<Arc<Params>>,
 }
 
 #[derive(Debug, Default)]
@@ -39,12 +41,29 @@ impl Request {
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
         Ok(Request {
+            params: None,
             inner: Arc::new(Inner {
                 body,
                 cookies: head.cookies(),
                 head,
             }),
         })
+    }
+
+    pub fn with_params(mut self, params: Arc<Params>) -> Self {
+        self.params = Some(params);
+        self
+    }
+
+    /// Extract a parameter from the provided path.
+    pub fn parameter<T: ToParameter>(&self, index: usize) -> Result<Option<T>, Error> {
+        if let Some(ref params) = self.params {
+            if let Some(parameter) = params.parameter(self.path().base(), index) {
+                return Ok(Some(T::to_parameter(parameter)?));
+            }
+        }
+
+        Ok(None)
     }
 
     /// Request's body as bytes.

@@ -11,7 +11,7 @@ impl Router {
     pub fn new(handlers: Vec<Handler>) -> Result<Self, Error> {
         let paths = handlers
             .iter()
-            .map(|h| h.path_with_regex().regex_pattern())
+            .map(|h| h.path_with_regex().regex().as_str())
             .collect::<Vec<_>>();
         let regex = RegexSet::new(paths)?;
 

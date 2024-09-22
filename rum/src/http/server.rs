@@ -57,7 +57,10 @@ impl Server {
 
                     match handlers.find(request.path()) {
                         Ok(Some(handler)) => {
-                            // Get response.
+                            // Set the matching regex to extract parameters.
+                            let request = request.with_params(handler.path_with_regex().params());
+
+                            // Pass the request to the controller to get a response.
                             let response = match handler.handle_internal(&request).await {
                                 Ok(response) => response,
                                 Err(err) => {
