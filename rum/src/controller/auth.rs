@@ -3,6 +3,7 @@
 //! Made to be easily extendable. Users need only to implement the [`crate::controller::auth::Authentication`] trait
 //! and set it on their controller.
 use super::Error;
+use crate::config::get_config;
 use crate::http::{Authorization, Request, Response};
 
 use async_trait::async_trait;
@@ -122,6 +123,14 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn new(payload: impl Serialize) -> Result<Self, Error> {
+        Ok(Self {
+            payload: serde_json::to_value(payload)?,
+            expiration: (OffsetDateTime::now_utc() + get_config().session_duration)
+                .unix_timestamp(),
+        })
+    }
+
     pub fn renew(mut self, renew_for: Duration) -> Self {
         self.expiration = (OffsetDateTime::now_utc() + renew_for).unix_timestamp();
         self

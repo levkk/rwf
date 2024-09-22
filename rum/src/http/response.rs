@@ -6,7 +6,7 @@ use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Cookies, Error, Headers, Request};
-use crate::config::get_config;
+use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
 #[derive(Debug)]
@@ -208,6 +208,12 @@ impl Response {
     /// Mutable reference to response cookies.
     pub fn cookies(&mut self) -> &mut Cookies {
         &mut self.cookies
+    }
+
+    /// Set session on the response.
+    pub fn session(mut self, payload: impl Serialize) -> Result<Self, Error> {
+        self.cookies().add_session(&Session::new(payload)?)?;
+        Ok(self)
     }
 
     /// Default not found (404) error.
