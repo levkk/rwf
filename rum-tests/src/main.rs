@@ -330,7 +330,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
     Server::new(vec![
-        StaticFiles::new("static")?,
+        StaticFiles::serve("static")?,
         Handler::new(
             "/base",
             BaseController {

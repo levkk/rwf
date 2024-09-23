@@ -11,7 +11,7 @@ pub struct StaticFiles {
 }
 
 impl StaticFiles {
-    pub fn new(path: &str) -> std::io::Result<Handler> {
+    pub fn serve(path: &str) -> std::io::Result<Handler> {
         let cwd = std::env::current_dir()?;
         let root = cwd.join(Path::new(path));
 
