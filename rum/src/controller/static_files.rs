@@ -1,5 +1,5 @@
 use super::{Controller, Error};
-use crate::http::{Body, Request, Response};
+use crate::http::{Body, Handler, Request, Response};
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
@@ -10,23 +10,36 @@ pub struct StaticFiles {
     root: PathBuf,
 }
 
+impl StaticFiles {
+    pub fn new(path: &str) -> std::io::Result<Handler> {
+        let cwd = std::env::current_dir()?;
+        let root = cwd.join(Path::new(path));
+
+        let statics = Self {
+            prefix: PathBuf::from(path),
+            root,
+        };
+
+        Ok(Handler::new(path, statics))
+    }
+}
+
 #[async_trait]
 impl Controller for StaticFiles {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let path = request.path().to_std();
 
-        if !path.starts_with(&self.prefix) {
-            return Ok(Response::not_found());
-        }
-
         let path = path.display().to_string().replace(
             self.prefix.display().to_string().as_str(),
             self.root.display().to_string().as_str(),
         );
-        let path = PathBuf::from(path);
-        let path = match tokio::fs::canonicalize(path).await {
+
+        let path = PathBuf::from(self.root.join(path));
+        let path = match tokio::fs::canonicalize(&path).await {
             Ok(path) => path,
-            Err(_) => return Ok(Response::not_found()),
+            Err(err) => {
+                return Ok(Response::not_found());
+            }
         };
 
         // Protect against .. and symlinks going out of the root folder.

@@ -4,7 +4,7 @@ use rum::view::template::{Context, Template};
 use rum::{
     controller::{
         AllowAll, AuthHandler, Authentication, BasicAuth, Middleware, MiddlewareHandler,
-        MiddlewareSet, Outcome, RateLimiter,
+        MiddlewareSet, Outcome, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
@@ -331,6 +331,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
     Server::new(vec![
+        StaticFiles::new("static")?,
         Handler::new(
             "/base",
             BaseController {
