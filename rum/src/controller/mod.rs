@@ -8,6 +8,7 @@ pub mod static_files;
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session};
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
+pub use static_files::StaticFiles;
 
 use super::http::{Method, Request, Response, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update};

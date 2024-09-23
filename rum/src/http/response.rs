@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{head::Version, Cookies, Error, Headers, Request};
+use super::{head::Version, Body, Cookies, Error, Headers, Request};
 use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
@@ -50,12 +50,12 @@ impl From<u16> for Status {
 }
 
 /// HTTP response.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Response {
     code: u16,
     headers: Headers,
     version: Version,
-    body: Vec<u8>,
+    body: Body,
     cookies: Cookies,
 }
 
@@ -68,7 +68,7 @@ impl Default for Response {
                 ("server".to_string(), "rum".to_string()),
                 ("connection".to_string(), "keep-alive".to_string()),
             ])),
-            body: Vec::new(),
+            body: Body::bytes(vec![]),
             version: Version::Http1,
             cookies: Cookies::new(),
         }
@@ -85,7 +85,7 @@ impl Response {
                 ("server".to_string(), "rum".to_string()),
                 ("connection".to_string(), "keep-alive".to_string()),
             ])),
-            body: Vec::new(),
+            body: Body::bytes(vec![]),
             version: Version::Http1,
             cookies: Cookies::new(),
         }
@@ -106,20 +106,22 @@ impl Response {
         Ok(response)
     }
 
-    fn body(mut self, body: Vec<u8>) -> Self {
-        self.body = body;
+    pub fn body(mut self, body: impl Into<Body>) -> Self {
+        self.body = body.into();
         self.headers
             .insert("content-length".to_string(), self.body.len().to_string());
+        self.headers
+            .insert("content-type", self.body.mime_type().to_string());
         self
     }
 
-    pub fn as_slice(&self) -> &[u8] {
-        &self.body
-    }
+    // pub fn as_slice(&self) -> &[u8] {
+    //     &self.body
+    // }
 
-    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
-        std::str::from_utf8(self.as_slice())
-    }
+    // pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
+    //     std::str::from_utf8(self.as_slice())
+    // }
 
     /// Response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
@@ -159,7 +161,7 @@ impl Response {
     /// ```
     pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(self.header("content-type", "application/json").body(body))
+        Ok(self.body(Body::Json(body)))
     }
 
     /// Create a response with an HTML body.
@@ -172,8 +174,7 @@ impl Response {
     /// let response = Response::new().html("<h1>Hello world</h1>");
     /// ```
     pub fn html(self, body: impl ToString) -> Self {
-        self.header("content-type", "text/html")
-            .body(body.to_string().as_bytes().to_vec())
+        self.body(Body::Html(body.to_string()))
     }
 
     /// Create a response with a plain text body.
@@ -186,8 +187,7 @@ impl Response {
     /// let response = Response::new().text("Hello world");
     /// ```
     pub fn text(self, body: impl ToString) -> Self {
-        self.header("content-type", "text/plain")
-            .body(body.to_string().as_bytes().to_vec())
+        self.body(Body::Text(body.to_string()))
     }
 
     /// Add a header to the response.
@@ -208,7 +208,7 @@ impl Response {
     }
 
     /// Send the response to a stream, serialized as bytes.
-    pub async fn send(self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
+    pub async fn send(mut self, mut stream: impl AsyncWrite + Unpin) -> Result<(), std::io::Error> {
         let mut response = format!("{} {}\r\n", self.version, self.code)
             .as_bytes()
             .to_vec();
@@ -216,9 +216,9 @@ impl Response {
         response.extend_from_slice(&self.headers.to_bytes());
         response.extend_from_slice(&self.cookies.to_headers());
         response.extend_from_slice(b"\r\n");
-        response.extend_from_slice(&self.body);
 
-        stream.write_all(&response).await
+        stream.write_all(&response).await?;
+        self.body.send(stream).await
     }
 
     /// Mutable reference to response cookies.

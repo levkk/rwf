@@ -6,6 +6,7 @@ use super::{urldecode, Error};
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 
 pub mod with_regex;
 pub use with_regex::PathWithRegex;
@@ -96,6 +97,10 @@ impl Path {
         };
 
         Ok(Path { base, query })
+    }
+
+    pub fn to_std(&self) -> PathBuf {
+        std::path::Path::new(&self.base).to_owned()
     }
 
     pub fn with_regex(self) -> Result<PathWithRegex, Error> {
