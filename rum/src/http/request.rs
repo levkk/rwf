@@ -2,6 +2,7 @@
 
 use std::fmt::Debug;
 use std::marker::Unpin;
+use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -28,11 +29,12 @@ struct Inner {
     body: Vec<u8>,
     cookies: Cookies,
     session: Option<Session>,
+    peer: Option<SocketAddr>,
 }
 
 impl Request {
     /// Read the request in its entirety from a stream.
-    pub async fn read(mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
+    pub async fn read(peer: SocketAddr, mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
         let head = Head::read(&mut stream).await?;
         let content_length = head.content_length().unwrap_or(0);
         let mut body = vec![0u8; content_length];
@@ -50,8 +52,17 @@ impl Request {
                 head,
                 session: cookies.get_session()?,
                 cookies,
+                peer: Some(peer),
             }),
         })
+    }
+
+    /// Get the request's source IP address.
+    pub fn peer(&self) -> &SocketAddr {
+        self.inner
+            .peer
+            .as_ref()
+            .expect("peer is not set on the request")
     }
 
     /// Set params on the request.

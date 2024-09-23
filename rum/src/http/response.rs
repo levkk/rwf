@@ -318,4 +318,16 @@ impl Response {
             .code(401)
             .header("www-authenticate", auth)
     }
+
+    pub fn too_many() -> Self {
+        Self::new()
+            .html(
+                "
+            <h3>
+                <center>429 - Too Many</center>
+            </h3>
+            ",
+            )
+            .code(429)
+    }
 }

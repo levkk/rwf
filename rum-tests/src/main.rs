@@ -2,7 +2,10 @@
 use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
-    controller::{AuthMechanism, Authentication, BasicAuth},
+    controller::{
+        AllowAll, AuthHandler, Authentication, BasicAuth, Middleware, MiddlewareHandler,
+        MiddlewareSet, Outcome, RateLimiter,
+    },
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
@@ -99,7 +102,6 @@ impl RestController for BasePlayerController {
     type Resource = i64;
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-        println!("{:?}", request.cookies());
         Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
     }
 
@@ -113,14 +115,18 @@ impl RestController for BasePlayerController {
 }
 
 struct OrdersController {
-    auth: AuthMechanism,
+    auth: AuthHandler,
+    middlware: MiddlewareSet,
 }
 
 #[rum::async_trait]
 impl Controller for OrdersController {
-    fn auth(&self) -> &Box<dyn Authentication> {
-        self.auth.auth()
-        // Box::new(BasicAuth {user: "test".to_string(), password: "test".to_string()})
+    fn auth(&self) -> &AuthHandler {
+        &self.auth
+    }
+
+    fn middleware(&self) -> &MiddlewareSet {
+        &self.middlware
     }
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
@@ -335,10 +341,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Handler::new(
             "/orders",
             OrdersController {
-                auth: AuthMechanism::new(BasicAuth {
-                    user: "test".to_string(),
-                    password: "test".to_string(),
-                }),
+                // auth: AuthHandler::new(BasicAuth {
+                //     user: "test".to_string(),
+                //     password: "test".to_string(),
+                // }),
+                auth: AuthHandler::new(AllowAll {}),
+                middlware: MiddlewareSet::new(vec![MiddlewareHandler::new(
+                    RateLimiter::per_second(10),
+                )]),
             },
         ),
     ])

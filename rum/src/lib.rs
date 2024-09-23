@@ -16,6 +16,8 @@ pub use tokio_postgres;
 pub use controller::{Controller, Error, ModelController, RestController};
 pub use http::Server;
 
+use std::net::SocketAddr;
+
 #[allow(dead_code)]
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
@@ -30,4 +32,16 @@ fn snake_case(string: &str) -> String {
     }
 
     result
+}
+
+fn peer_addr(addr: &str) -> Option<SocketAddr> {
+    use std::net::ToSocketAddrs;
+
+    if let Ok(mut iter) = addr.to_socket_addrs() {
+        if let Some(addr) = iter.next() {
+            return Some(addr.clone());
+        }
+    }
+
+    None
 }

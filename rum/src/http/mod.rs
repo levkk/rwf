@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 pub mod authorization;
+pub mod body;
 pub mod cookies;
 pub mod error;
 pub mod handler;
@@ -14,6 +15,7 @@ pub mod session;
 pub mod url;
 
 pub use authorization::Authorization;
+pub use body::Body;
 pub use cookies::Cookies;
 pub use error::Error;
 pub use handler::Handler;

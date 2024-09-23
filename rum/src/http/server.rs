@@ -65,7 +65,7 @@ impl Server {
             debug!("HTTP new connection from {:?}", peer_addr);
 
             loop {
-                let request = match Request::read(&mut stream).await {
+                let request = match Request::read(peer_addr, &mut stream).await {
                     Ok(request) => request,
                     Err(err) => {
                         debug!("client {:?} disconnected: {:?}", peer_addr, err);

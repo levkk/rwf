@@ -15,14 +15,14 @@ use std::sync::Arc;
 
 /// An authentication mechanism that can be attached to a controller.
 #[derive(Clone)]
-pub struct AuthMechanism {
+pub struct AuthHandler {
     auth: Arc<Box<dyn Authentication>>,
 }
 
-impl AuthMechanism {
+impl AuthHandler {
     /// Create new authentication mechanism using the provided authentication method.
     pub fn new(auth: impl Authentication + 'static) -> Self {
-        AuthMechanism {
+        AuthHandler {
             auth: Arc::new(Box::new(auth)),
         }
     }

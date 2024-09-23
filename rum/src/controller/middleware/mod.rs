@@ -2,6 +2,9 @@ use super::Error;
 use crate::http::{Request, Response};
 use async_trait::async_trait;
 
+pub mod rate_limiter;
+pub use rate_limiter::RateLimiter;
+
 /// The result of middleware processing a request.
 ///
 /// The middleware can either forward the request to the next middleware,
@@ -13,8 +16,16 @@ pub enum Outcome {
 }
 
 #[async_trait]
+#[allow(unused_variables)]
 pub trait Middleware: Send + Sync {
-    async fn handle(&self, mut request: Request) -> Result<Outcome, Error>;
+    async fn handle_request(&self, request: Request) -> Result<Outcome, Error>;
+    async fn handle_response(
+        &self,
+        request: &Request,
+        response: Response,
+    ) -> Result<Response, Error> {
+        Ok(response)
+    }
 }
 
 pub struct MiddlewareHandler {
@@ -28,8 +39,16 @@ impl MiddlewareHandler {
         }
     }
 
-    async fn handle(&self, request: Request) -> Result<Outcome, Error> {
-        self.middleware.handle(request).await
+    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+        self.middleware.handle_request(request).await
+    }
+
+    async fn handle_response(
+        &self,
+        request: &Request,
+        response: Response,
+    ) -> Result<Response, Error> {
+        self.middleware.handle_response(request, response).await
     }
 }
 
@@ -43,14 +62,26 @@ impl MiddlewareSet {
         Self { handlers }
     }
 
-    pub async fn handle(&self, mut request: Request) -> Result<Outcome, Error> {
+    pub async fn handle_request(&self, mut request: Request) -> Result<Outcome, Error> {
         for middleware in &self.handlers {
-            match middleware.handle(request).await? {
+            match middleware.handle_request(request).await? {
                 Outcome::Forward(req) => request = req,
                 Outcome::Block(response) => return Ok(Outcome::Block(response)),
             }
         }
 
         Ok(Outcome::Forward(request))
+    }
+
+    pub async fn handle_response(
+        &self,
+        request: &Request,
+        mut response: Response,
+    ) -> Result<Response, Error> {
+        for middleware in self.handlers.iter().rev() {
+            response = middleware.handle_response(request, response).await?;
+        }
+
+        Ok(response)
     }
 }

@@ -3,10 +3,11 @@ use async_trait::async_trait;
 pub mod auth;
 pub mod error;
 pub mod middleware;
+pub mod static_files;
 
-pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll, Session};
+pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session};
 pub use error::Error;
-pub use middleware::{Middleware, MiddlewareSet, Outcome};
+pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 
 use super::http::{Method, Request, Response, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update};
@@ -26,14 +27,13 @@ pub trait Controller: Sync + Send {
     ///
     /// Default authentication method is to allow all requests, but can
     /// be adjusted through configuration.
-    fn auth(&self) -> &Box<dyn Authentication> {
+    fn auth(&self) -> &AuthHandler {
         // Allow all requests by default.
-        let auth = &get_config().default_auth;
-        auth.auth()
+        &get_config().default_auth
     }
 
-    fn middleware(&self) -> MiddlewareSet {
-        MiddlewareSet::default()
+    fn middleware(&self) -> &MiddlewareSet {
+        &get_config().default_middleware
     }
 
     /// Internal function to handle the HTTP request. Do not implement this unless
@@ -41,13 +41,16 @@ pub trait Controller: Sync + Send {
     async fn handle_internal(&self, request: Request) -> Result<Response, Error> {
         let auth = self.auth();
 
-        if !auth.authorize(&request).await? {
-            return auth.denied(&request).await;
+        if !auth.auth().authorize(&request).await? {
+            return auth.auth().denied(&request).await;
         }
 
-        let outcome = self.middleware().handle(request).await?;
+        let outcome = self.middleware().handle_request(request).await?;
         match outcome {
-            Outcome::Forward(request) => self.handle(&request).await,
+            Outcome::Forward(request) => match self.handle(&request).await {
+                Ok(response) => self.middleware().handle_response(&request, response).await,
+                Err(err) => Err(err),
+            },
             Outcome::Block(response) => Ok(response),
         }
     }
