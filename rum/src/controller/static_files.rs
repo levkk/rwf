@@ -37,7 +37,7 @@ impl Controller for StaticFiles {
         let path = PathBuf::from(self.root.join(path));
         let path = match tokio::fs::canonicalize(&path).await {
             Ok(path) => path,
-            Err(err) => {
+            Err(_) => {
                 return Ok(Response::not_found());
             }
         };
