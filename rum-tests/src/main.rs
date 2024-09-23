@@ -3,8 +3,7 @@ use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
     controller::{
-        AllowAll, AuthHandler, Authentication, BasicAuth, Middleware, MiddlewareHandler,
-        MiddlewareSet, Outcome, RateLimiter, StaticFiles,
+        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
     serde::{Deserialize, Serialize},
