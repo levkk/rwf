@@ -3,9 +3,7 @@ use std::fs::Metadata;
 use std::marker::Unpin;
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::{copy, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-
-use async_trait::async_trait;
+use tokio::io::{copy, AsyncWrite, AsyncWriteExt};
 
 #[derive(Debug)]
 pub enum Body {

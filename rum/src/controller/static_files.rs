@@ -1,9 +1,9 @@
 use super::{Controller, Error};
-use crate::http::{Body, Handler, Request, Response};
+use crate::http::{Handler, Request, Response};
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
-use tokio::fs::{canonicalize, File};
+use tokio::fs::File;
 
 pub struct StaticFiles {
     prefix: PathBuf,
