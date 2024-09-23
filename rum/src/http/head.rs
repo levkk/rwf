@@ -189,6 +189,11 @@ impl Head {
         &self.headers
     }
 
+    /// Get a mutable reference to the headers.
+    pub fn headers_mut(&mut self) -> &mut Headers {
+        &mut self.headers
+    }
+
     /// Get a header value by name, if it exists.
     ///
     /// Case insensitive.

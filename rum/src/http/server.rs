@@ -8,11 +8,13 @@ use super::{Error, Handler, Request, Response, Router};
 
 use colored::Colorize;
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
-use tokio::net::{TcpListener, ToSocketAddrs};
+use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
+use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
 
 /// HTTP server.
@@ -37,86 +39,102 @@ impl Server {
 
         loop {
             let (stream, peer_addr) = listener.accept().await?;
-            let mut stream = BufReader::new(BufWriter::new(stream));
             let handlers = self.handlers.clone();
 
             tokio::spawn(async move {
                 debug!("HTTP new connection from {:?}", peer_addr);
 
-                loop {
-                    let request = match Request::read(&mut stream).await {
-                        Ok(request) => request,
-                        Err(err) => {
-                            debug!("client {:?} disconnected: {:?}", peer_addr, err);
-                            return;
-                        }
-                    };
-
-                    let start = Instant::now();
-
-                    match handlers.find(request.path()) {
-                        Ok(Some(handler)) => {
-                            // Set the matching regex to extract parameters.
-                            let request = request.with_params(handler.path_with_regex().params());
-
-                            // Pass the request to the controller to get a response.
-                            let response = match handler.handle_internal(&request).await {
-                                Ok(response) => response,
-                                Err(err) => {
-                                    error!(
-                                        "{} {}: {:?}",
-                                        handler.controller_name().green(),
-                                        request.path().path().purple(),
-                                        err
-                                    );
-                                    Response::internal_error(err)
-                                }
-                            };
-
-                            // Calculate duration.
-                            // We include the time to find the handler in the duration.
-                            let duration = Instant::now() - start;
-
-                            // Log request.
-                            Self::log(&request, handler.controller_name(), &response, duration);
-
-                            // Send reply to client.
-                            match response.send(&mut stream).await {
-                                Ok(_) => (),
-                                Err(err) => {
-                                    debug!("{} error {:?}", peer_addr, err);
-                                }
-                            }
-
-                            let _ = stream.flush().await;
-                        }
-
-                        Ok(None) => {
-                            // Log duration of search.
-                            let duration = Instant::now() - start;
-
-                            // Generate default not found response.
-                            let response = Response::not_found();
-
-                            // Log the response.
-                            Self::log(&request, std::any::type_name::<Self>(), &response, duration);
-
-                            // Send reply to client.
-                            match response.send(&mut stream).await {
-                                Ok(_) => (),
-                                Err(err) => {
-                                    debug!("{} error {:?}", peer_addr, err);
-                                }
-                            }
-                        }
-
-                        Err(err) => {
-                            todo!()
-                        }
+                match Self::handle_connection(handlers, stream, peer_addr).await {
+                    Ok(_) => (),
+                    Err(err) => {
+                        error!("Panic detected. This is a bug; controllers should not panic and return an error instead. Error: {:?}", err);
                     }
                 }
             });
         }
+    }
+
+    fn handle_connection(
+        handlers: Arc<Router>,
+        stream: TcpStream,
+        peer_addr: SocketAddr,
+    ) -> JoinHandle<()> {
+        let mut stream = BufReader::new(BufWriter::new(stream));
+
+        tokio::spawn(async move {
+            debug!("HTTP new connection from {:?}", peer_addr);
+
+            loop {
+                let request = match Request::read(&mut stream).await {
+                    Ok(request) => request,
+                    Err(err) => {
+                        debug!("client {:?} disconnected: {:?}", peer_addr, err);
+                        return;
+                    }
+                };
+
+                let start = Instant::now();
+
+                match handlers.find(request.path()) {
+                    Some(handler) => {
+                        // Set the matching regex to extract parameters.
+                        let request = request.with_params(handler.path_with_regex().params());
+
+                        // Pass the request to the controller to get a response.
+                        let response = match handler.handle_internal(request.clone()).await {
+                            Ok(response) => response,
+                            Err(err) => {
+                                error!(
+                                    "{} {} 500 {:?}",
+                                    handler.controller_name().green(),
+                                    request.path().path().purple(),
+                                    err
+                                );
+                                Response::internal_error(err)
+                            }
+                        };
+
+                        // Calculate duration.
+                        // We include the time to find the handler in the duration.
+                        let duration = Instant::now() - start;
+
+                        // Log request.
+                        Self::log(&request, handler.controller_name(), &response, duration);
+
+                        // Send reply to client.
+                        match response.send(&mut stream).await {
+                            Ok(_) => (),
+                            Err(err) => {
+                                debug!("{} error {:?}", peer_addr, err);
+                            }
+                        }
+
+                        let _ = stream.flush().await;
+                    }
+
+                    None => {
+                        // Log duration of search.
+                        let duration = Instant::now() - start;
+
+                        // Generate default not found response.
+                        let response = Response::not_found();
+
+                        // Log the response.
+                        Self::log(&request, std::any::type_name::<Self>(), &response, duration);
+
+                        // Send reply to client.
+                        match response.send(&mut stream).await {
+                            Ok(_) => {
+                                let _ = stream.flush().await;
+                            }
+                            Err(err) => {
+                                debug!("{} error {:?}", peer_addr, err);
+                            }
+                        }
+                    }
+                }
+            }
+        })
     }
 
     fn log(request: &Request, controller_name: &str, response: &Response, duration: Duration) {

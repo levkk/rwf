@@ -2,8 +2,11 @@ use async_trait::async_trait;
 
 pub mod auth;
 pub mod error;
+pub mod middleware;
+
 pub use auth::{AllowAll, AuthMechanism, Authentication, BasicAuth, DenyAll, Session};
 pub use error::Error;
+pub use middleware::{Middleware, MiddlewareSet, Outcome};
 
 use super::http::{Method, Request, Response, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update};
@@ -29,16 +32,24 @@ pub trait Controller: Sync + Send {
         auth.auth()
     }
 
+    fn middleware(&self) -> MiddlewareSet {
+        MiddlewareSet::default()
+    }
+
     /// Internal function to handle the HTTP request. Do not implement this unless
     /// you're looking to do something really custom.
-    async fn handle_internal(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle_internal(&self, request: Request) -> Result<Response, Error> {
         let auth = self.auth();
 
-        if !auth.authorize(request).await? {
-            return auth.denied(request).await;
+        if !auth.authorize(&request).await? {
+            return auth.denied(&request).await;
         }
 
-        self.handle(request).await
+        let outcome = self.middleware().handle(request).await?;
+        match outcome {
+            Outcome::Forward(request) => self.handle(&request).await,
+            Outcome::Block(response) => Ok(response),
+        }
     }
 
     /// Handle the request. Implement this function to define how your controller
@@ -93,7 +104,7 @@ pub trait Controller: Sync + Send {
 ///     type Resource = i64;
 ///
 ///     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-///         Ok(Response::html(format!("Hello, id #{}", id)))
+///         Ok(Response::new().html(format!("Hello, id #{}", id)))
 ///     }
 /// }
 /// ```

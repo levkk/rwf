@@ -18,7 +18,7 @@ impl Router {
         Ok(Self { regex, handlers })
     }
 
-    pub fn find(&self, path: &Path) -> Result<Option<&Handler>, Error> {
+    pub fn find(&self, path: &Path) -> Option<&Handler> {
         let matches = self.regex.matches(path.base());
         let mut handlers = self
             .handlers
@@ -28,7 +28,7 @@ impl Router {
             .map(|(_i, h)| h)
             .collect::<Vec<_>>();
         handlers.sort_by_key(|h| h.path().base().len()); // Get the most specific path (longest match).
-        Ok(handlers.last().copied())
+        handlers.last().copied()
     }
 }
 

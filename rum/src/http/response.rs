@@ -59,6 +59,22 @@ pub struct Response {
     cookies: Cookies,
 }
 
+impl Default for Response {
+    fn default() -> Self {
+        Self {
+            code: 200,
+            headers: Headers::from(HashMap::from([
+                ("content-type".to_string(), "text/plain".to_string()),
+                ("server".to_string(), "rum".to_string()),
+                ("connection".to_string(), "keep-alive".to_string()),
+            ])),
+            body: Vec::new(),
+            version: Version::Http1,
+            cookies: Cookies::new(),
+        }
+    }
+}
+
 impl Response {
     /// Create empty response.
     pub fn new() -> Self {

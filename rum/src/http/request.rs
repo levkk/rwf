@@ -22,7 +22,7 @@ pub struct Request {
     params: Option<Arc<Params>>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct Inner {
     head: Head,
     body: Vec<u8>,
@@ -54,9 +54,30 @@ impl Request {
         })
     }
 
+    /// Set params on the request.
     pub fn with_params(mut self, params: Arc<Params>) -> Self {
         self.params = Some(params);
         self
+    }
+
+    /// Replace the head of the request.
+    pub fn with_head(mut self, head: Head) -> Self {
+        let mut inner = self.inner.deref().clone();
+        inner.head = head;
+        self.inner = Arc::new(inner);
+        self
+    }
+
+    /// Replace the body of the request.
+    pub fn with_body(mut self, body: &[u8]) -> Self {
+        let mut inner = self.inner.deref().clone();
+        inner.body = body.to_vec();
+        self.inner = Arc::new(inner);
+        self
+    }
+
+    pub fn head(&self) -> &Head {
+        &self.inner.head
     }
 
     /// Extract a parameter from the provided path.
