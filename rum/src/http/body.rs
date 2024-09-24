@@ -102,6 +102,7 @@ impl From<(PathBuf, File, Metadata)> for Body {
         }
     }
 }
+
 impl TryFrom<serde_json::Value> for Body {
     type Error = serde_json::Error;
 

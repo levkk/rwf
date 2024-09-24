@@ -199,7 +199,7 @@ impl Response {
     /// ```
     /// use rum::http::Response;
     ///
-    /// let response = Response::new().text("don't cache me")
+    /// let response = Response::default().text("don't cache me")
     ///     .header("Cache-Control", "no-cache");
     /// ```
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {
