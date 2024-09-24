@@ -102,3 +102,10 @@ impl From<(PathBuf, File, Metadata)> for Body {
         }
     }
 }
+impl TryFrom<serde_json::Value> for Body {
+    type Error = serde_json::Error;
+
+    fn try_from(json: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(Self::Json(serde_json::to_vec(&json)?))
+    }
+}
