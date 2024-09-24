@@ -71,22 +71,6 @@ impl Request {
         self
     }
 
-    /// Replace the head of the request.
-    pub fn with_head(mut self, head: Head) -> Self {
-        let mut inner = self.inner.deref().clone();
-        inner.head = head;
-        self.inner = Arc::new(inner);
-        self
-    }
-
-    /// Replace the body of the request.
-    pub fn with_body(mut self, body: &[u8]) -> Self {
-        let mut inner = self.inner.deref().clone();
-        inner.body = body.to_vec();
-        self.inner = Arc::new(inner);
-        self
-    }
-
     pub fn head(&self) -> &Head {
         &self.inner.head
     }

@@ -106,6 +106,13 @@ impl Middleware for RateLimiter {
         // You'd be surprised how slow this function can be.
         let now = Instant::now();
 
+        let reset_duration = match self.frequency {
+            Frequency::Second(limit) => Duration::from_millis(1000 * limit),
+            Frequency::Minute(limit) => Duration::from_millis(1000 * 60 * limit),
+            Frequency::Hour(limit) => Duration::from_millis(1000 * 3600 * limit),
+            Frequency::Day(limit) => Duration::from_millis(1000 * 3600 * 24 * limit),
+        };
+
         let too_many = {
             let mut guard = self.state.lock();
             let state = guard
@@ -115,14 +122,7 @@ impl Middleware for RateLimiter {
             let duration = now.duration_since(state.last_reset);
             state.counter += 1;
 
-            let reset_duration = match self.frequency {
-                Frequency::Second(limit) => Duration::from_millis(1000 * limit),
-                Frequency::Minute(limit) => Duration::from_millis(1000 * 60 * limit),
-                Frequency::Hour(limit) => Duration::from_millis(1000 * 3600 * limit),
-                Frequency::Day(limit) => Duration::from_millis(1000 * 3600 * 24 * limit),
-            };
-
-            if duration > reset_duration {
+            if duration >= reset_duration {
                 state.rate = state.counter as f32 / duration.as_secs_f32();
                 state.counter = 1;
                 state.last_reset = now;
@@ -132,7 +132,7 @@ impl Middleware for RateLimiter {
         };
 
         if too_many {
-            Ok(Outcome::Block(Response::too_many()))
+            Ok(Outcome::Stop(Response::too_many()))
         } else {
             Ok(Outcome::Forward(request))
         }

@@ -2,7 +2,7 @@ use super::{Error, Worker};
 use crate::model::{get_pool, FromRow, Model, ToValue, Value};
 
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use tokio_postgres::Client;
 
@@ -13,16 +13,16 @@ static MAX_RETRIES: i64 = 25;
 /// Background jobs are scheduled in Postgres and executed by any
 /// available worker.
 #[async_trait]
-pub trait Job: Serialize + DeserializeOwned + Send + 'static {
+pub trait Job: Serialize + for<'a> Deserialize<'a> + Send + 'static {
     async fn execute(&self) -> Result<(), Error>;
 
-    fn async_job_name() -> String {
-        std::any::type_name::<Self>().to_string()
+    fn job_name() -> &'static str {
+        std::any::type_name::<Self>()
     }
 
     async fn execute_async(&self, conn: &Client) -> Result<(), Error> {
         JobModel::create(
-            &Self::async_job_name(),
+            &Self::job_name(),
             serde_json::to_value(self).expect("job serialization error"),
             None,
             conn,
@@ -34,7 +34,7 @@ pub trait Job: Serialize + DeserializeOwned + Send + 'static {
 
     async fn execute_delay(&self, conn: &Client, delay: Duration) -> Result<(), Error> {
         JobModel::create(
-            &Self::async_job_name(),
+            &Self::job_name(),
             serde_json::to_value(self).expect("job serialization error"),
             Some(delay),
             &conn,
@@ -83,7 +83,7 @@ pub trait Job: Serialize + DeserializeOwned + Send + 'static {
     }
 
     fn register(worker: &mut Worker) {
-        worker.add(Self::async_job_name().as_str(), Self::execute_internal);
+        worker.add(Self::job_name(), Self::execute_internal);
     }
 }
 

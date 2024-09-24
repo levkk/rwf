@@ -52,7 +52,7 @@ pub trait Controller: Sync + Send {
                 Ok(response) => self.middleware().handle_response(&request, response).await,
                 Err(err) => Err(err),
             },
-            Outcome::Block(response) => Ok(response),
+            Outcome::Stop(response) => Ok(response),
         }
     }
 
@@ -97,8 +97,8 @@ pub trait Controller: Sync + Send {
 ///
 /// #[async_trait]
 /// impl Controller for MyController {
-///     // Delegate handling of this controller to the `RestController`.
 ///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+///         // Delegate handling of this controller to the `RestController`.
 ///         RestController::handle(self, request).await
 ///     }  
 /// }
@@ -108,7 +108,7 @@ pub trait Controller: Sync + Send {
 ///     type Resource = i64;
 ///
 ///     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-///         Ok(Response::new().html(format!("Hello, id #{}", id)))
+///         Ok(Response::default().html(format!("Hello, id #{}", id)))
 ///     }
 /// }
 /// ```

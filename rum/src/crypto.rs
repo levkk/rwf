@@ -56,6 +56,15 @@ impl Encrypted {
     }
 }
 
+/// Encrypt some bytes using the global configured encryption key.
+///
+/// # Example
+///
+/// ```
+/// use rum::crypto::encrypt;
+///
+/// let ciphertext = encrypt("hello world".as_bytes()).expect("encryption failed");
+/// ```
 pub fn encrypt(data: &[u8]) -> Result<String, Error> {
     let config = get_config();
     let nonce = nonce();

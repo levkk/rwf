@@ -100,7 +100,7 @@ impl Controller for BasePlayerController {
 impl RestController for BasePlayerController {
     type Resource = i64;
 
-    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
     }
 

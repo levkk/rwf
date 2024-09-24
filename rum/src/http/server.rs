@@ -42,12 +42,10 @@ impl Server {
             let handlers = self.handlers.clone();
 
             tokio::spawn(async move {
-                debug!("HTTP new connection from {:?}", peer_addr);
-
                 match Self::handle_connection(handlers, stream, peer_addr).await {
                     Ok(_) => (),
-                    Err(err) => {
-                        error!("Panic detected. This is a bug; controllers should not panic and return an error instead. Error: {:?}", err);
+                    Err(_) => {
+                        error!("panic detected, this is a bug; controllers should return an error instead");
                     }
                 }
             });
@@ -62,7 +60,7 @@ impl Server {
         let mut stream = BufReader::new(BufWriter::new(stream));
 
         tokio::spawn(async move {
-            debug!("HTTP new connection from {:?}", peer_addr);
+            debug!("new connection from {:?}", peer_addr);
 
             loop {
                 let request = match Request::read(peer_addr, &mut stream).await {
@@ -128,7 +126,7 @@ impl Server {
                                 let _ = stream.flush().await;
                             }
                             Err(err) => {
-                                debug!("{} error {:?}", peer_addr, err);
+                                debug!("2 {} error {:?}", peer_addr, err);
                             }
                         }
                     }

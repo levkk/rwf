@@ -12,7 +12,7 @@ pub use rate_limiter::RateLimiter;
 /// adding/removing headers or changing the body.
 pub enum Outcome {
     Forward(Request),
-    Block(Response),
+    Stop(Response),
 }
 
 #[async_trait]
@@ -66,7 +66,7 @@ impl MiddlewareSet {
         for middleware in &self.handlers {
             match middleware.handle_request(request).await? {
                 Outcome::Forward(req) => request = req,
-                Outcome::Block(response) => return Ok(Outcome::Block(response)),
+                Outcome::Stop(response) => return Ok(Outcome::Stop(response)),
             }
         }
 
