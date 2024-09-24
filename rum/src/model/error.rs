@@ -30,6 +30,12 @@ pub enum Error {
 
     #[error("template syntax error: {0}")]
     SyntaxError(String),
+
+    #[error("migration error: {0}")]
+    MigrationError(String),
+
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 impl Error {

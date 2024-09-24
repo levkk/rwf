@@ -11,7 +11,7 @@ pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, Rate
 pub use static_files::StaticFiles;
 
 use super::http::{Method, Request, Response, ToParameter};
-use super::model::{get_connection, Model, Query, ToValue, Update};
+use super::model::{get_connection, Model, Query, ToValue, Update, Value};
 use crate::config::get_config;
 
 use serde::{Deserialize, Serialize};
@@ -235,7 +235,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
         // The id field is immutable, but let's do a sanity check here just to
         // be sure the client sent the right model.
-        if model.id() != Some(*id) {
+        if model.id() != Value::Integer(*id) {
             return Ok(Response::bad_request());
         }
 

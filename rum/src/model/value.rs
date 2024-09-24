@@ -41,6 +41,12 @@ pub enum Value {
     Null,
 }
 
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Value")
+    }
+}
+
 impl Value {
     /// Create a new value.
     ///
@@ -69,6 +75,12 @@ pub trait ToValue {
 impl ToValue for String {
     fn to_value(&self) -> Value {
         Value::String(self.clone())
+    }
+}
+
+impl ToValue for &String {
+    fn to_value(&self) -> Value {
+        Value::String(self.to_string())
     }
 }
 
@@ -138,6 +150,12 @@ impl ToValue for Range<i64> {
             Box::new(self.start.to_value()),
             Box::new(self.end.to_value()),
         ))
+    }
+}
+
+impl ToValue for &[Value] {
+    fn to_value(&self) -> Value {
+        Value::List(self.to_vec())
     }
 }
 
@@ -251,16 +269,14 @@ impl From<i64> for Value {
     }
 }
 
-impl TryFrom<Value> for serde_json::Value {
-    type Error = Error;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
+impl From<Value> for serde_json::Value {
+    fn from(value: Value) -> Self {
         use serde_json::value::Number;
         match value {
-            Value::Integer(i) => Ok(serde_json::Value::Number(i.into())),
-            Value::String(s) => Ok(serde_json::Value::String(s)),
-            Value::Float(f) => Ok(serde_json::Value::Number(Number::from_f64(f).unwrap())),
-            Value::Json(json) => Ok(json),
+            Value::Integer(i) => serde_json::Value::Number(i.into()),
+            Value::String(s) => serde_json::Value::String(s),
+            Value::Float(f) => serde_json::Value::Number(Number::from_f64(f).unwrap()),
+            Value::Json(json) => json,
             _ => todo!("model::Value to serde_json::Value"),
         }
     }

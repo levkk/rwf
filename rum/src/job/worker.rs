@@ -30,18 +30,23 @@ impl Worker {
     async fn run_job(&self, mut job: JobModel, conn: &tokio_postgres::Client) -> Result<(), Error> {
         match self.jobs.get(job.name()) {
             Some(f) => {
-                info!("{} running job ({})", job.name().green(), job.id().unwrap());
+                let id = match job.id() {
+                    Value::Integer(id) => id,
+                    _ => return Err(Error::JobError),
+                };
+
+                info!("{} running job ({})", job.name().green(), id);
 
                 job.executed_at = Some(OffsetDateTime::now_utc());
                 let job = job.save().fetch(&conn).await?;
 
-                f(job.id().unwrap(), job.payload())
+                f(id, job.payload())
             }
             None => {
                 warn!(
                     "{} job ({}) not registered with worker, skipping",
                     job.name(),
-                    job.id().unwrap()
+                    job.id(),
                 );
             }
         };

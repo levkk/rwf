@@ -1,4 +1,4 @@
-use super::{Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue};
+use super::{Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue, Value};
 use std::marker::PhantomData;
 
 #[derive(Debug)]

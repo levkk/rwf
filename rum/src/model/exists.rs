@@ -1,4 +1,4 @@
-use super::{FromRow, Model};
+use super::{FromRow, Model, Value};
 
 #[derive(Debug, Clone)]
 pub struct Exists {
@@ -20,5 +20,17 @@ impl Model for Exists {
 
     fn foreign_key() -> String {
         unimplemented!()
+    }
+
+    fn column_names() -> Vec<String> {
+        vec![]
+    }
+
+    fn values(&self) -> Vec<Value> {
+        vec![]
+    }
+
+    fn id(&self) -> Value {
+        Value::Null
     }
 }

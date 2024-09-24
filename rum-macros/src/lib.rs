@@ -27,8 +27,9 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
             let id = if has_id {
                 quote! {
-                    fn id(&self) -> Option<i64> {
-                        self.id
+                    fn id(&self) -> rum::model::Value {
+                        use rum::model::ToValue;
+                        self.id.to_value()
                     }
                 }
             } else {

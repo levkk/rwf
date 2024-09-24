@@ -129,7 +129,7 @@ impl JobModel {
 
         let model = model.save().fetch(conn).await?;
 
-        conn.execute(&format!(r#"NOTIFY "jobs", '{}'"#, model.id().unwrap()), &[])
+        conn.execute(&format!(r#"NOTIFY "jobs", '{}'"#, model.id()), &[])
             .await?;
 
         Ok(model)
@@ -178,8 +178,8 @@ impl Model for JobModel {
         ]
     }
 
-    fn id(&self) -> Option<i64> {
-        self.id
+    fn id(&self) -> Value {
+        self.id.to_value()
     }
 
     fn column_names() -> Vec<String> {

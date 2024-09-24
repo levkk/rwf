@@ -1,4 +1,4 @@
-use super::{FromRow, Model};
+use super::{FromRow, Model, Value};
 
 use std::sync::Arc;
 
@@ -18,6 +18,18 @@ impl Model for Row {
 
     fn foreign_key() -> String {
         "_rum_row_id".to_string()
+    }
+
+    fn column_names() -> Vec<String> {
+        vec![]
+    }
+
+    fn values(&self) -> Vec<Value> {
+        vec![]
+    }
+
+    fn id(&self) -> Value {
+        Value::Null
     }
 }
 

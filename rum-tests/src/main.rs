@@ -6,6 +6,7 @@ use rum::{
         AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
+    model::Value,
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
@@ -233,7 +234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch(&conn)
         .await?;
 
-    assert_eq!(order.id(), Some(1));
+    assert_eq!(order.id(), Value::Integer(1));
     assert_eq!(order.user_id, 2);
     assert_eq!(order.name, "test");
     assert_eq!(order.optional, Some("optional".to_string()));
@@ -248,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch(&conn)
         .await?;
 
-    assert_eq!(user.id(), Some(2));
+    assert_eq!(user.id(), Value::Integer(2));
     assert_eq!(user.name, "test");
 
     let products = Product::all()
@@ -284,7 +285,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", user);
 
     let user = User::find([1, 2].as_slice()).fetch_all(&conn).await?;
-    assert_eq!(user.clone().pop().unwrap().id(), Some(2));
+    assert_eq!(user.clone().pop().unwrap().id(), Value::Integer(2));
 
     assert!(User::find(3).fetch(&conn).await.is_err());
 
@@ -306,7 +307,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let raw = User::find_by_sql("SELECT * FROM users LIMIT 1")
         .fetch(&conn)
         .await?;
-    assert_eq!(raw.id(), Some(2));
+    assert_eq!(raw.id(), Value::Integer(2));
 
     let product = Product {
         id: None,

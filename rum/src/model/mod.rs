@@ -15,6 +15,7 @@ pub mod join;
 pub mod limit;
 pub mod lock;
 pub mod macros;
+pub mod migrations;
 pub mod order_by;
 pub mod placeholders;
 pub mod pool;
@@ -526,9 +527,7 @@ pub trait Model: FromRow {
     ///
     /// If you're using the derive macro, you don't need to specify these,
     /// they will be inferred from the struct attributes.
-    fn column_names() -> Vec<String> {
-        vec![]
-    }
+    fn column_names() -> Vec<String>;
 
     /// The value of the primary key (id).
     ///
@@ -537,31 +536,12 @@ pub trait Model: FromRow {
     ///
     /// This method is implemented if the derive macro is used.
     /// Otherwise, it should return the value of the `id` struct attribute.
-    fn id(&self) -> Option<i64> {
-        let model_name = std::any::type_name::<Self>();
-        panic!(
-            "
-            {} doesn't have the id() method implemented.
-            Did you use the rum_macros::Model derive macro,
-            and if so, does your model have an id: i64 field?
-        ",
-            model_name
-        );
-    }
+    fn id(&self) -> Value;
 
     /// Values is a list of all column values as mapped to the struct attributes.
     ///
     /// Should be in the same order as the [`Self::column_names`].
-    fn values(&self) -> Vec<Value> {
-        let model_name = std::any::type_name::<Self>();
-        panic!(
-            "
-            {} doesn't have the values() method implemented.
-            Did you use the run_macros::Model derive macro?
-        ",
-            model_name
-        );
-    }
+    fn values(&self) -> Vec<Value>;
 
     /// If this table is related to another table, this is the name of the foreign key.
     ///
@@ -634,16 +614,16 @@ pub trait Model: FromRow {
     fn related<F: Association<Self>>(models: &[impl Model]) -> Query<F> {
         let fks = models
             .iter()
-            .filter(|model| model.id().is_some())
-            .map(|fk| fk.id().unwrap())
+            .filter(|model| !model.id().is_null())
+            .map(|fk| fk.id())
             .collect::<Vec<_>>();
         F::all().filter(Self::foreign_key(), fks.as_slice())
     }
 
     fn save(self) -> Query<Self> {
-        match self.id() {
-            Some(_) => Query::Update(Update::new(self)),
-            None => Query::Insert(Insert::new(self)),
+        match self.id().is_null() {
+            false => Query::Update(Update::new(self)),
+            true => Query::Insert(Insert::new(self)),
         }
     }
 
@@ -661,7 +641,7 @@ pub trait Model: FromRow {
 
         let mut map = serde_json::Map::new();
         for (column, value) in columns.iter().zip(values.iter()) {
-            map.insert(column.clone(), value.clone().try_into()?);
+            map.insert(column.clone(), value.clone().into());
         }
 
         map.insert("id".into(), self.id().into());
