@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS order_items;
-
 CREATE TABLE order_items (
     id BIGSERIAL PRIMARY KEY,
     order_id BIGINT NOT NULL,

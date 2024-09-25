@@ -6,7 +6,7 @@ use rum::{
         AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
-    model::{migrate, Value},
+    model::{migrate, rollback, Value},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
@@ -155,6 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .finish()
         .init();
 
+    rollback().await?;
     migrate().await?;
 
     let pool = Pool::new_local();

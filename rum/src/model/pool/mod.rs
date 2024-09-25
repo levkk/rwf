@@ -206,7 +206,6 @@ impl Pool {
     {
         let transaction = self.begin().await?;
         let result = f(transaction).await?;
-        // transaction.commit().await?;
         Ok(result)
     }
 

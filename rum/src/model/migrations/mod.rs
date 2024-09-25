@@ -1,5 +1,5 @@
 pub mod model;
-use crate::model::{get_connection, Model};
+use crate::model::{get_connection, get_pool, Model};
 pub use model::Migration;
 
 use super::Error;
@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
+use time::OffsetDateTime;
 use tokio::fs::{read_dir, read_to_string};
 use tracing::{error, info};
 
@@ -20,7 +21,7 @@ pub struct Migrations {
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("([0-9]+)_([a-zA-Z0-9_]+).(up|down).sql").expect("migration regex"));
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum Direction {
     Up,
     Down,
@@ -41,7 +42,9 @@ impl Check {
     }
 
     fn valid(&self) -> bool {
-        self.up.len() == 1 && self.down.len() == 1
+        self.up.len() == 1
+            && self.down.len() == 1
+            && self.up.first().unwrap().version == self.down.first().unwrap().version
     }
 
     fn missing(&self) -> &str {
@@ -50,6 +53,10 @@ impl Check {
         } else {
             "down"
         }
+    }
+
+    fn version(&self) -> u64 {
+        self.up.first().unwrap().version
     }
 }
 
@@ -63,13 +70,13 @@ struct MigrationFile {
 impl MigrationFile {
     fn parse(name: &str) -> Result<Self, Error> {
         if !RE.is_match(name) {
+            error!(r#""{}" is not a valid migration file name"#, name);
             return Err(Error::MigrationError(format!(
                 r#""{}" is not a valid migration file name"#,
                 name
             )));
         }
         let captures = RE.captures(name).unwrap();
-        println!("{:?}", captures);
         let version = captures.get(1).unwrap().as_str().parse().unwrap();
         let name = captures.get(2).unwrap();
         let direction = captures.get(3).unwrap();
@@ -111,7 +118,7 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
-    pub async fn sync(direction: Direction) -> Result<Self, Error> {
+    pub async fn sync() -> Result<Self, Error> {
         let root_path = Self::root_path()?;
         let mut checks = HashMap::new();
 
@@ -129,7 +136,20 @@ impl Migrations {
             }
         }
 
-        // let mut migrations = vec![];
+        let conn = get_connection().await?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS rum_migrations (
+            id BIGSERIAL PRIMARY KEY,
+            version BIGINT NOT NULL,
+            name VARCHAR UNIQUE NOT NULL,
+            applied_at TIMESTAMPTZ
+        )",
+            &[],
+        )
+        .await?;
+
+        let mut migrations = vec![];
 
         for (name, check) in checks {
             if !check.valid() {
@@ -140,18 +160,18 @@ impl Migrations {
                 );
                 return Err(Error::MigrationError("migrations file missing".into()));
             } else {
-                // match direction {
-                //     Direction::Up => migrations.push(check.up.pop().unwrap()),
-                //     Direction::Down => migrations.push(check.down.pop().unwrap()),
-                // }
+                let migration = Migration::filter("name", name)
+                    .filter("version", check.version() as i64)
+                    .find_or_create()
+                    .fetch(&conn)
+                    .await?;
+                migrations.push(migration);
             }
         }
 
-        todo!()
+        migrations.sort_by_key(|migration| migration.version);
 
-        // Ok(Self {
-        //     migrations,
-        // })
+        Ok(Self { migrations })
     }
 
     async fn apply(mut self, direction: Direction) -> Result<Self, Error> {
@@ -160,28 +180,65 @@ impl Migrations {
             Direction::Down => self.migrations.into_iter().rev().collect::<Vec<_>>(),
         };
 
-        for migration in &migrations {
-            if migration.applied_at.is_some() {
-                info!(r#"migration "{}" already applied"#, migration.name);
+        for mut migration in migrations {
+            let (skip, message) = match direction {
+                Direction::Up => (migration.applied_at.is_some(), "applied"),
+                Direction::Down => (migration.applied_at.is_none(), "reverted"),
+            };
+
+            if skip {
+                info!(r#"migration "{}" already {}"#, migration.name, message);
                 continue;
             }
 
-            let path = Self::root_path()?.join(format!(
-                "{}.{}.sql",
-                migration.name,
+            info!(
+                r#"{} migration "{}""#,
                 match direction {
-                    Direction::Up => "up",
-                    Direction::Down => "down",
+                    Direction::Up => "applying",
+                    Direction::Down => "reverting",
+                },
+                migration.version
+            );
+
+            let path = Self::root_path()?.join(migration.path(direction));
+
+            let sql = read_to_string(path).await?;
+            let queries = sql
+                .split(";")
+                .filter(|q| !q.trim().is_empty())
+                .map(|q| q.trim().to_string())
+                .collect::<Vec<_>>();
+            let pool = get_pool();
+            pool.with_transaction(|transaction| async move {
+                for query in queries {
+                    if let Err(err) = transaction.execute(&query, &[]).await {
+                        error!(r#"migration "{}" failed: {:?}"#, migration.name, err);
+                        return Err(Error::MigrationError("migration failed".into()));
+                    }
                 }
-            ));
+                match direction {
+                    Direction::Up => migration.applied_at = Some(OffsetDateTime::now_utc()),
+                    Direction::Down => migration.applied_at = None,
+                };
+
+                migration.save().execute(&transaction).await?;
+                transaction.commit().await?;
+
+                Ok(())
+            })
+            .await?;
         }
 
         Self::load().await
     }
 }
 
-pub async fn migrate() -> Result<Vec<Migration>, super::Error> {
-    Migration::sync().await
+pub async fn migrate() -> Result<Migrations, Error> {
+    Migrations::sync().await?.apply(Direction::Up).await
+}
+
+pub async fn rollback() -> Result<Migrations, Error> {
+    Migrations::sync().await?.apply(Direction::Down).await
 }
 
 #[cfg(test)]

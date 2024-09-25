@@ -35,7 +35,7 @@ pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
 pub use lock::Lock;
 pub use macros::belongs_to;
-pub use migrations::migrate;
+pub use migrations::{migrate, rollback};
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::{get_connection, get_pool, Pool};
@@ -145,6 +145,7 @@ pub enum Query<T: FromRow + ?Sized = Row> {
     InsertIfNotExists {
         select: Select<T>,
         insert: Insert<T>,
+        created: bool,
     },
     Raw(String),
 }
@@ -158,7 +159,7 @@ impl<T: FromRow> ToSql for Query<T> {
             Raw(query) => query.clone(),
             Update(update) => update.to_sql(),
             Insert(insert) => insert.to_sql(),
-            InsertIfNotExists { select, insert } => {
+            InsertIfNotExists { select, insert, .. } => {
                 format!("{}; {};", select.to_sql(), insert.to_sql())
             }
         }
@@ -402,7 +403,11 @@ impl<T: Model> Query<T> {
             Query::Select(select) => {
                 let (columns, values) = select.create_columns();
                 let insert = Insert::from_columns(&columns, &values);
-                Query::InsertIfNotExists { select, insert }
+                Query::InsertIfNotExists {
+                    select,
+                    insert,
+                    created: false,
+                }
             }
             _ => self,
         }
@@ -442,7 +447,7 @@ impl<T: Model> Query<T> {
                 client.query(&query, &values).await?
             }
 
-            Query::InsertIfNotExists { select, insert } => {
+            Query::InsertIfNotExists { select, insert, .. } => {
                 let query = select.to_sql();
                 let values = select.placeholders().values();
                 let result = client.query(&query, &values).await?;
@@ -535,7 +540,7 @@ impl<T: Model> Query<T> {
                 Query::Update(_) => "save".purple(),
                 Query::Raw(_) => "query".purple(),
                 Query::Insert(_) => "save".purple(),
-                _ => unreachable!(),
+                Query::InsertIfNotExists { .. } => "load/create".purple(),
             },
             duration.as_secs_f64() * 1000.0,
             self.to_sql()

@@ -1,5 +1,8 @@
 use super::{ConnectionGuard, Error};
 
+use std::time::Instant;
+use tracing::info;
+
 /// Explicit PostgreSQL transaction.
 pub struct Transaction {
     connection: ConnectionGuard,
@@ -12,7 +15,10 @@ impl Transaction {
     /// The transaction is automatically rolled back if it is not committed
     /// manually using [`Transaction::commit`].
     pub async fn new(connection: ConnectionGuard) -> Result<Self, Error> {
+        let start = Instant::now();
         connection.query("BEGIN", &[]).await?;
+
+        info!("BEGIN ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
 
         Ok(Self {
             connection,
@@ -25,7 +31,11 @@ impl Transaction {
     /// The connection is automatically returned into the pool.
     pub async fn commit(mut self) -> Result<(), Error> {
         self.rollback = false;
+
+        let start = Instant::now();
         self.connection.query("COMMIT", &[]).await?;
+
+        info!("COMMIT ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
 
         Ok(())
     }
@@ -35,7 +45,14 @@ impl Transaction {
     /// The connection is automatically returned into the pool.
     pub async fn rollback(mut self) -> Result<(), Error> {
         self.rollback = false;
+
+        let start = Instant::now();
         self.connection.query("ROLLBACK", &[]).await?;
+
+        info!(
+            "ROLLBACK ({:.3} ms)",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
 
         Ok(())
     }
