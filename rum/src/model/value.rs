@@ -63,6 +63,13 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn exists(self) -> Value {
+        match self {
+            Value::Optional(value) => value.unwrap(),
+            value => value,
+        }
+    }
 }
 
 /// Convert anything to a [`Value`].

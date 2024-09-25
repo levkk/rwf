@@ -1,6 +1,7 @@
 use crate::model::{get_connection, get_pool, Error, FromRow, Model, ToValue, Value};
 use time::OffsetDateTime;
 use tokio::fs::{read_dir, read_to_string};
+use tracing::{error, info};
 
 use std::path::{Path, PathBuf};
 
@@ -54,16 +55,27 @@ impl Migration {
         Ok(cwd.join(Path::new("migrations")).to_owned())
     }
 
-    async fn sql(&self, up: bool) -> Result<String, std::io::Error> {
+    async fn sql(&self, up: bool) -> Result<Vec<String>, std::io::Error> {
         let postfix = if up { "up" } else { "down" };
         let name = self.name.clone() + &format!(".{}.sql", postfix);
         let path = Self::path()?.join(Path::new(&name));
-        read_to_string(path).await
+        let sql = read_to_string(path).await?;
+        let sql = sql
+            .split(";")
+            .filter(|sql| !sql.trim().is_empty())
+            .map(|s| s.trim().to_string())
+            .collect::<Vec<_>>();
+        Ok(sql)
     }
 
     pub async fn sync() -> Result<Vec<Self>, Error> {
         let mut models = vec![];
         let path = Self::path()?;
+
+        if !path.exists() {
+            error!("migrations folder does not exist, did you create this project with rum-cli?");
+            return Ok(vec![]);
+        }
         let mut dir = read_dir(&path).await?;
         while let Some(file) = dir.next_entry().await? {
             if file.file_type().await?.is_file() {
@@ -119,7 +131,9 @@ impl Migration {
         let pool = get_pool();
         let transaction = pool.begin().await?;
 
-        transaction.execute(&sql, &[]).await?;
+        for query in sql {
+            transaction.execute(&query, &[]).await?;
+        }
 
         self.applied_at = None;
         let migration = self.save().fetch(&transaction).await?;
@@ -131,6 +145,7 @@ impl Migration {
 
     pub async fn apply(mut self) -> Result<Self, Error> {
         if self.applied_at.is_some() {
+            info!("migration \"{}\" already applied", self.name);
             return Ok(self);
         }
 
@@ -144,10 +159,14 @@ impl Migration {
             }
         };
 
+        info!("running migration \"{}\"", self.name);
+
         let pool = get_pool();
         let transaction = pool.begin().await?;
 
-        transaction.execute(&sql, &[]).await?;
+        for query in sql {
+            transaction.execute(&query, &[]).await?;
+        }
 
         self.applied_at = Some(OffsetDateTime::now_utc());
         let migration = self.save().fetch(&transaction).await?;

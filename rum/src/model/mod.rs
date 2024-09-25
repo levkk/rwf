@@ -35,6 +35,7 @@ pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
 pub use lock::Lock;
 pub use macros::belongs_to;
+pub use migrations::migrate;
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::{get_connection, get_pool, Pool};
@@ -141,6 +142,10 @@ pub enum Query<T: FromRow + ?Sized = Row> {
     Select(Select<T>),
     Update(Update<T>),
     Insert(Insert<T>),
+    InsertIfNotExists {
+        select: Select<T>,
+        insert: Insert<T>,
+    },
     Raw(String),
 }
 
@@ -153,6 +158,7 @@ impl<T: FromRow> ToSql for Query<T> {
             Raw(query) => query.clone(),
             Update(update) => update.to_sql(),
             Insert(insert) => insert.to_sql(),
+            _ => unreachable!(),
         }
     }
 }
@@ -393,10 +399,9 @@ impl<T: Model> Query<T> {
         &self,
         client: &tokio_postgres::Client,
     ) -> Result<Vec<tokio_postgres::Row>, Error> {
-        let query = self.to_sql();
-
         let rows = match self {
             Query::Select(select) => {
+                let query = self.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
                 match client.query(&query, &values).await {
@@ -413,13 +418,29 @@ impl<T: Model> Query<T> {
             Query::Raw(query) => client.query(query, &[]).await?,
 
             Query::Update(update) => {
+                let query = self.to_sql();
                 let values = update.placeholders.values();
                 client.query(&query, &values).await?
             }
 
             Query::Insert(insert) => {
+                let query = self.to_sql();
                 let values = insert.placeholders.values();
                 client.query(&query, &values).await?
+            }
+
+            Query::InsertIfNotExists { select, insert } => {
+                let query = select.to_sql();
+                let values = select.placeholders().values();
+                let result = client.query(&query, &values).await?;
+
+                if result.is_empty() {
+                    let query = insert.to_sql();
+                    let values = insert.placeholders.values();
+                    client.query(&query, &values).await?
+                } else {
+                    result
+                }
             }
         };
 
@@ -501,6 +522,7 @@ impl<T: Model> Query<T> {
                 Query::Update(_) => "save".purple(),
                 Query::Raw(_) => "query".purple(),
                 Query::Insert(_) => "save".purple(),
+                _ => unreachable!(),
             },
             duration.as_secs_f64() * 1000.0,
             self.to_sql()
@@ -625,6 +647,14 @@ pub trait Model: FromRow {
             false => Query::Update(Update::new(self)),
             true => Query::Insert(Insert::new(self)),
         }
+    }
+
+    fn get_or_create(self) -> Query<Self> {
+        todo!()
+        // Query::InsertIfNotExists {
+        //     insert: Insert::new(self),
+        //     select: Select::new(self),
+        // }
     }
 
     fn create(self) -> Query<Self> {

@@ -393,11 +393,16 @@ impl TryInto<serde_json::Value> for Value {
 impl ToValue for crate::model::Value {
     fn to_value(&self) -> Result<Value, Error> {
         use crate::model::Value as ModelValue;
+        use std::ops::Deref;
         match self {
             ModelValue::Integer(i) => i.to_value(),
             ModelValue::Float(f) => f.to_value(),
             ModelValue::String(s) => s.to_value(),
-            _ => todo!("model value to template value"),
+            ModelValue::Optional(v) => match v.deref() {
+                Some(v) => v.to_value(),
+                None => Ok(Value::Null),
+            },
+            value => todo!("model value {:?} to template value", value),
         }
     }
 }
