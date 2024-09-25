@@ -6,7 +6,7 @@ use rum::{
         AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
-    model::{migrate, rollback, Value},
+    model::{migrate, rollback},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };

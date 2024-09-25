@@ -1,6 +1,6 @@
 pub mod model;
 use crate::model::{get_connection, get_pool, Model};
-pub use model::Migration;
+use model::Migration;
 
 use super::Error;
 
@@ -22,7 +22,7 @@ static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("([0-9]+)_([a-zA-Z0-9_]+).(up|down).sql").expect("migration regex"));
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-enum Direction {
+pub(crate) enum Direction {
     Up,
     Down,
 }
@@ -110,15 +110,14 @@ impl Migrations {
         }
     }
 
-    pub async fn load() -> Result<Self, Error> {
-        let root_path = Self::root_path()?;
+    async fn load() -> Result<Self, Error> {
         let conn = get_connection().await?;
         let migrations = Migration::all().fetch_all(&conn).await?;
 
         Ok(Self { migrations })
     }
 
-    pub async fn sync() -> Result<Self, Error> {
+    async fn sync() -> Result<Self, Error> {
         let root_path = Self::root_path()?;
         let mut checks = HashMap::new();
 
@@ -174,7 +173,7 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
-    async fn apply(mut self, direction: Direction) -> Result<Self, Error> {
+    async fn apply(self, direction: Direction) -> Result<Self, Error> {
         let migrations = match direction {
             Direction::Up => self.migrations.into_iter().collect::<Vec<_>>(),
             Direction::Down => self.migrations.into_iter().rev().collect::<Vec<_>>(),

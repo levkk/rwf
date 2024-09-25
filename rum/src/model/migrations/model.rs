@@ -1,9 +1,7 @@
-use crate::model::{get_connection, get_pool, Error, FromRow, Model, ToValue, Value};
+use crate::model::{FromRow, Model, ToValue, Value};
 use time::OffsetDateTime;
-use tokio::fs::{read_dir, read_to_string};
-use tracing::{error, info};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::Direction;
 
@@ -62,7 +60,7 @@ impl Model for Migration {
 }
 
 impl Migration {
-    pub fn path(&self, direction: Direction) -> PathBuf {
+    pub(crate) fn path(&self, direction: Direction) -> PathBuf {
         PathBuf::from(format!(
             "{}_{}.{}.sql",
             self.version,
