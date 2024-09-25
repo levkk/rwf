@@ -208,7 +208,10 @@ impl Migrations {
                 .filter(|q| !q.trim().is_empty())
                 .map(|q| q.trim().to_string())
                 .collect::<Vec<_>>();
+
             let pool = get_pool();
+
+            // Execute the migration in a transaction.
             pool.with_transaction(|transaction| async move {
                 for query in queries {
                     if let Err(err) = transaction.execute(&query, &[]).await {
@@ -222,6 +225,7 @@ impl Migrations {
                 };
 
                 migration.save().execute(&transaction).await?;
+
                 transaction.commit().await?;
 
                 Ok(())

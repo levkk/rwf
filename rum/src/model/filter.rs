@@ -93,8 +93,8 @@ impl WhereClause {
         self.filter.clone()
     }
 
-    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
-        self.filter.create_columns()
+    pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {
+        self.filter.insert_columns()
     }
 }
 
@@ -226,7 +226,7 @@ impl Filter {
         }
     }
 
-    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
+    pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {
         let (mut columns, mut values) = (vec![], vec![]);
         for op in &self.clauses {
             match op {
@@ -235,7 +235,7 @@ impl Filter {
                     values.push(value.clone());
                 }
                 Comparison::Filter(filter) => {
-                    let (c, v) = filter.create_columns();
+                    let (c, v) = filter.insert_columns();
                     columns.extend(c);
                     values.extend(v);
                 }

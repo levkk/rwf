@@ -401,7 +401,7 @@ impl<T: Model> Query<T> {
     pub fn find_or_create(self) -> Self {
         match self {
             Query::Select(select) => {
-                let (columns, values) = select.create_columns();
+                let (columns, values) = select.insert_columns();
                 let insert = Insert::from_columns(&columns, &values);
                 Query::InsertIfNotExists {
                     select,

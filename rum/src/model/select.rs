@@ -198,8 +198,8 @@ impl<T: FromRow> Select<T> {
         &self.where_clause
     }
 
-    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
-        let (columns, values) = self.where_clause.create_columns();
+    pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {
+        let (columns, values) = self.where_clause.insert_columns();
         let mut actual_values = vec![];
 
         for value in values {
