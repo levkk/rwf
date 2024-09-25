@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 #[allow(dead_code)]
 pub struct Migration {
     id: Option<i64>,
-    name: String,
-    applied_at: Option<OffsetDateTime>,
+    pub name: String,
+    pub applied_at: Option<OffsetDateTime>,
 }
 
 impl FromRow for Migration {

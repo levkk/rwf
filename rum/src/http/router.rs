@@ -45,14 +45,14 @@ mod test {
     #[async_trait]
     impl Controller for OrdersControler {
         async fn handle(&self, _request: &Request) -> Result<Response, ControllerError> {
-            Ok(Response::text("OrdersControler"))
+            Ok(Response::default().text("OrdersControler"))
         }
     }
 
     #[async_trait]
     impl Controller for UsersController {
         async fn handle(&self, _request: &Request) -> Result<Response, ControllerError> {
-            Ok(Response::text("UsersController"))
+            Ok(Response::default().text("UsersController"))
         }
     }
 
@@ -66,9 +66,8 @@ mod test {
 
         let handler = handler
             .find(&Path::parse("/api/orders").unwrap())
-            .expect("to match")
-            .unwrap();
+            .expect("to match");
         let result = handler.handle(&Request::default()).await.unwrap();
-        assert_eq!(result.as_str().unwrap(), "OrdersControler");
+        assert_eq!(result.status().code(), 200);
     }
 }

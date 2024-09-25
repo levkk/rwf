@@ -132,6 +132,7 @@ impl Deref for Request {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     #[tokio::test]
     async fn test_response() {
@@ -148,7 +149,9 @@ mod test {
             + r#"{"hello": "world"}"#)
             .as_bytes()
             .to_vec();
-        let response = Request::read(&body[..]).await.expect("response");
+        let response = Request::read("127.0.0.1".parse().unwrap(), &body[..])
+            .await
+            .expect("response");
         let json = response.json::<Hello>().expect("deserialize body");
         assert_eq!(json.hello, "world");
     }

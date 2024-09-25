@@ -92,6 +92,10 @@ impl WhereClause {
     pub fn filter(&self) -> Filter {
         self.filter.clone()
     }
+
+    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
+        self.filter.create_columns()
+    }
 }
 
 impl ToSql for WhereClause {
@@ -220,6 +224,26 @@ impl Filter {
             clauses,
             op: self.op,
         }
+    }
+
+    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
+        let (mut columns, mut values) = (vec![], vec![]);
+        for op in &self.clauses {
+            match op {
+                Comparison::Equal((column, value)) => {
+                    columns.push(column.clone());
+                    values.push(value.clone());
+                }
+                Comparison::Filter(filter) => {
+                    let (c, v) = filter.create_columns();
+                    columns.extend(c);
+                    values.extend(v);
+                }
+                _ => (),
+            }
+        }
+
+        (columns, values)
     }
 
     fn join(&self, op: JoinOp, filter: Filter) -> Self {

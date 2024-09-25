@@ -1,8 +1,8 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, ToSql, ToValue,
-    Value, WhereClause,
+    Column, Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, ToSql,
+    ToValue, Value, WhereClause,
 };
 
 use std::marker::PhantomData;
@@ -192,6 +192,30 @@ impl<T: FromRow> Select<T> {
 
     pub fn placeholders(&self) -> &Placeholders {
         &self.placeholders
+    }
+
+    pub fn where_clause(&self) -> &WhereClause {
+        &self.where_clause
+    }
+
+    pub fn create_columns(&self) -> (Vec<Column>, Vec<Value>) {
+        let (columns, values) = self.where_clause.create_columns();
+        let mut actual_values = vec![];
+
+        for value in values {
+            let value = match value {
+                Value::Placeholder(id) => self
+                    .placeholders
+                    .get(id)
+                    .expect("to have a valid placeholder")
+                    .clone(),
+                value => value,
+            };
+
+            actual_values.push(value);
+        }
+
+        (columns, actual_values)
     }
 
     pub fn or(&self) -> Self {

@@ -56,6 +56,11 @@ impl Column {
         self.table_name = table_name.to_string();
         self
     }
+
+    pub fn unqualify(mut self) -> Self {
+        self.table_name = "".to_string();
+        self
+    }
 }
 
 #[derive(Debug, Default)]

@@ -16,6 +16,10 @@ impl Placeholders {
         Value::Placeholder(id as i32)
     }
 
+    pub fn get(&self, index: i32) -> Option<&Value> {
+        self.values.get(index as usize - 1)
+    }
+
     pub fn values(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
         self.values
             .iter()

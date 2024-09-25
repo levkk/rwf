@@ -158,7 +158,9 @@ impl<T: FromRow> ToSql for Query<T> {
             Raw(query) => query.clone(),
             Update(update) => update.to_sql(),
             Insert(insert) => insert.to_sql(),
-            _ => unreachable!(),
+            InsertIfNotExists { select, insert } => {
+                format!("{}; {};", select.to_sql(), insert.to_sql())
+            }
         }
     }
 }
@@ -391,6 +393,17 @@ impl<T: Model> Query<T> {
     pub fn skip_locked(self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.skip_locked()),
+            _ => self,
+        }
+    }
+
+    pub fn find_or_create(self) -> Self {
+        match self {
+            Query::Select(select) => {
+                let (columns, values) = select.create_columns();
+                let insert = Insert::from_columns(&columns, &values);
+                Query::InsertIfNotExists { select, insert }
+            }
             _ => self,
         }
     }
@@ -649,14 +662,6 @@ pub trait Model: FromRow {
         }
     }
 
-    fn get_or_create(self) -> Query<Self> {
-        todo!()
-        // Query::InsertIfNotExists {
-        //     insert: Insert::new(self),
-        //     select: Select::new(self),
-        // }
-    }
-
     fn create(self) -> Query<Self> {
         Query::Insert(Insert::new(self))
     }
@@ -694,12 +699,24 @@ mod test {
     }
 
     impl Model for User {
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn table_name() -> String {
             "users".into()
         }
 
         fn foreign_key() -> String {
             "user_id".into()
+        }
+
+        fn column_names() -> Vec<String> {
+            vec!["email".to_string(), "password".to_string()]
+        }
+
+        fn values(&self) -> Vec<Value> {
+            vec![self.email.to_value(), self.password.to_value()]
         }
     }
 
@@ -711,12 +728,24 @@ mod test {
     }
 
     impl Model for Order {
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn table_name() -> String {
             "orders".into()
         }
 
         fn foreign_key() -> String {
             "order_id".into()
+        }
+
+        fn column_names() -> Vec<String> {
+            vec!["user_id".to_string(), "amount".to_string()]
+        }
+
+        fn values(&self) -> Vec<Value> {
+            vec![self.user_id.to_value(), self.amount.to_value()]
         }
     }
 
@@ -728,12 +757,24 @@ mod test {
     }
 
     impl Model for OrderItem {
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn table_name() -> String {
             "order_items".into()
         }
 
         fn foreign_key() -> String {
             "order_item_id".into()
+        }
+
+        fn column_names() -> Vec<String> {
+            vec!["order_id".to_string(), "product_id".to_string()]
+        }
+
+        fn values(&self) -> Vec<Value> {
+            vec![self.order_id.to_value(), self.product_id.to_value()]
         }
     }
 
@@ -744,12 +785,24 @@ mod test {
     }
 
     impl Model for Product {
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn table_name() -> String {
             "products".into()
         }
 
         fn foreign_key() -> String {
             "product_id".into()
+        }
+
+        fn column_names() -> Vec<String> {
+            vec!["name".to_string()]
+        }
+
+        fn values(&self) -> Vec<Value> {
+            vec![self.name.to_value()]
         }
     }
 
@@ -984,6 +1037,34 @@ mod test {
 
         let explain = User::all().explain(&transaction).await?;
         assert!(explain.to_string().starts_with("Seq Scan on users"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_or_create() -> Result<(), Error> {
+        let pool = Pool::new_local();
+
+        let transaction = pool.begin().await?;
+
+        transaction
+            .execute("DROP TABLE IF EXISTS users", &[])
+            .await?;
+        transaction
+            .execute("CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY, email VARCHAR NOT NULL, password VARCHAR NOT NULL);", &[])
+            .await?;
+
+        let query = User::all()
+            .filter("email", "test@test.com")
+            .filter("password", "password")
+            .find_or_create();
+        let sql = query.to_sql();
+        assert_eq!(
+            sql,
+            r#"SELECT * FROM "users" WHERE "users"."email" = $1 AND "users"."password" = $2; INSERT INTO "users" ("email", "password") VALUES ($1, $2) RETURNING *;"#
+        );
+
+        query.fetch(&transaction).await?;
 
         Ok(())
     }
