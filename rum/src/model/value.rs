@@ -38,7 +38,7 @@ pub enum Value {
     /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
 
-    Sql(String),
+    Function((String, Vec<Value>)),
 
     Null,
 }
@@ -71,6 +71,10 @@ impl Value {
             Value::Optional(value) => value.unwrap(),
             value => value,
         }
+    }
+
+    pub fn function(name: impl ToString) -> Self {
+        Self::Function((name.to_string(), vec![]))
     }
 }
 
@@ -261,7 +265,14 @@ impl ToSql for Value {
                 None => "NULL".to_string(),
             },
             Column(column) => column.to_sql(),
-            Sql(sql) => sql.escape(),
+            Function((name, args)) => format!(
+                r#""{}"({})"#,
+                name.escape().to_lowercase(),
+                args.into_iter()
+                    .map(|v| v.to_sql())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             _ => todo!(),
         }
     }
@@ -300,5 +311,12 @@ mod test {
     fn test_range_i64() {
         let value = Value::new(1_i64..25);
         assert_eq!(value.to_sql(), "BETWEEN 1 AND 25");
+    }
+
+    #[test]
+    fn test_function_args() {
+        let value = Value::Function(("lower".into(), vec!["my string".to_value()]));
+
+        assert_eq!(value.to_sql(), r#""lower"('my string')"#);
     }
 }

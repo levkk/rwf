@@ -110,7 +110,7 @@ impl<T: FromRow> Select<T> {
                 }
 
                 Value::Column(ref _column) => value,
-                Value::Sql(ref _sql) => value,
+                Value::Function(ref _function) => value,
 
                 value => self.placeholders.add(&value),
             }

@@ -48,7 +48,7 @@ impl JobModel {
         Self::filter("completed_at", Value::Null)
             .filter("started_at", Value::Null)
             .filter_lt("attempts", JobModel::column("retries"))
-            .filter_lte("start_after", Value::Sql("NOW()".into())) // use database time
+            .filter_lte("start_after", Value::function("NOW")) // use database time
             .order((JobModel::column("created_at"), "ASC"))
             .take_one()
             .lock()
