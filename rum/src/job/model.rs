@@ -1,5 +1,5 @@
 use crate::job::Error;
-use crate::model::{get_connection, get_pool, FromRow, Model, ToValue, Value};
+use crate::model::{get_connection, get_pool, FromRow, Model, Scope, ToValue, Value};
 use time::OffsetDateTime;
 
 use std::collections::HashMap;
@@ -39,6 +39,22 @@ impl JobModel {
             completed_at: None,
             error: None,
         }
+    }
+}
+
+impl JobModel {
+    /// Fetch the next job from the queue.
+    ///
+    /// Locks the job from being fetched by other workers.
+    pub fn next() -> Scope<Self> {
+        Self::filter("completed_at", Value::Null)
+            .filter("started_at", Value::Null)
+            .filter_lt("attempts", JobModel::column("retries"))
+            .filter_lte("start_after", OffsetDateTime::now_utc())
+            .order((JobModel::column("created_at"), "ASC"))
+            .take_one()
+            .lock()
+            .skip_locked()
     }
 }
 
@@ -168,16 +184,7 @@ impl Worker {
 
                 let job = pool
                     .with_transaction(|transaction| async move {
-                        let job = JobModel::all()
-                            .filter("completed_at", Value::Null)
-                            .filter("started_at", Value::Null)
-                            .filter_lte("attempts", JobModel::column("retries"))
-                            .filter_lte("start_after", OffsetDateTime::now_utc())
-                            .take_one()
-                            .lock()
-                            .skip_locked()
-                            .fetch_optional(&transaction)
-                            .await?;
+                        let job = JobModel::next().fetch_optional(&transaction).await?;
 
                         let job = if let Some(mut job) = job {
                             job.started_at = Some(OffsetDateTime::now_utc());

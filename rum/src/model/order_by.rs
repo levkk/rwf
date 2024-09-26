@@ -49,6 +49,18 @@ impl ToOrderBy for (&str, &str) {
     }
 }
 
+impl ToOrderBy for (Column, &str) {
+    fn to_order_by(&self) -> OrderBy {
+        OrderBy {
+            order_by: vec![OrderColumn::Raw(format!(
+                "{} {}",
+                self.0.to_sql(),
+                self.1.to_ascii_uppercase().escape()
+            ))],
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct OrderBy {
     pub order_by: Vec<OrderColumn>,
