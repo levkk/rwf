@@ -17,8 +17,12 @@ pub enum Value {
     String(String),
     /// Integer, e.g. `123`.
     Integer(i64),
+    BigInt(i64),
+    Int(i32),
+    SmallInt(i8),
     /// Floating point number, e.g. `3.14`.
     Float(f64),
+    Real(f32),
     /// Timestamp with time zone speficiation.
     TimestampT(OffsetDateTime),
     /// Timestamp without time zone.
@@ -121,7 +125,31 @@ impl ToValue for i64 {
     }
 }
 
+impl ToValue for i32 {
+    fn to_value(&self) -> Value {
+        Value::Int(*self)
+    }
+}
+
+impl ToValue for i8 {
+    fn to_value(&self) -> Value {
+        Value::SmallInt(*self)
+    }
+}
+
 impl ToValue for Option<i64> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
+impl ToValue for Option<i32> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
+impl ToValue for Option<i8> {
     fn to_value(&self) -> Value {
         Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
     }
@@ -130,6 +158,12 @@ impl ToValue for Option<i64> {
 impl ToValue for f64 {
     fn to_value(&self) -> Value {
         Value::Float(*self)
+    }
+}
+
+impl ToValue for f32 {
+    fn to_value(&self) -> Value {
+        Value::Real(*self)
     }
 }
 
@@ -151,6 +185,30 @@ impl ToValue for &[i64] {
     }
 }
 
+impl ToValue for &[i32] {
+    fn to_value(&self) -> Value {
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+impl ToValue for &[i8] {
+    fn to_value(&self) -> Value {
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+impl ToValue for &[f32] {
+    fn to_value(&self) -> Value {
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
+impl ToValue for &[f64] {
+    fn to_value(&self) -> Value {
+        Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
+    }
+}
+
 impl ToValue for Column {
     fn to_value(&self) -> Value {
         Value::Column(self.clone())
@@ -158,6 +216,24 @@ impl ToValue for Column {
 }
 
 impl ToValue for Range<i64> {
+    fn to_value(&self) -> Value {
+        Value::Range((
+            Box::new(self.start.to_value()),
+            Box::new(self.end.to_value()),
+        ))
+    }
+}
+
+impl ToValue for Range<i32> {
+    fn to_value(&self) -> Value {
+        Value::Range((
+            Box::new(self.start.to_value()),
+            Box::new(self.end.to_value()),
+        ))
+    }
+}
+
+impl ToValue for Range<i8> {
     fn to_value(&self) -> Value {
         Value::Range((
             Box::new(self.start.to_value()),
@@ -212,7 +288,11 @@ impl tokio_postgres::types::ToSql for Value {
         match self {
             Value::String(string) => string.to_sql(ty, out),
             Value::Integer(integer) => integer.to_sql(ty, out),
+            Value::Int(integer) => integer.to_sql(ty, out),
+            Value::BigInt(integer) => integer.to_sql(ty, out),
+            Value::SmallInt(integer) => integer.to_sql(ty, out),
             Value::Float(float) => float.to_sql(ty, out),
+            Value::Real(float) => float.to_sql(ty, out),
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),
@@ -243,7 +323,11 @@ impl ToSql for Value {
         match self {
             Value::String(string) => format!("'{}'", string.escape()),
             Integer(integer) => integer.to_string(),
+            Int(integer) => integer.to_string(),
+            BigInt(integer) => integer.to_string(),
+            SmallInt(integer) => integer.to_string(),
             Float(float) => float.to_string(),
+            Real(float) => float.to_string(),
             Placeholder(number) => format!("${}", number),
             Range((a, b)) => format!("BETWEEN {} AND {}", a.to_sql(), b.to_sql()),
             List(values) => format!(
@@ -290,13 +374,29 @@ impl From<i64> for Value {
     }
 }
 
+impl From<i32> for Value {
+    fn from(value: i32) -> Self {
+        Value::Int(value)
+    }
+}
+
+impl From<i8> for Value {
+    fn from(value: i8) -> Self {
+        Value::SmallInt(value)
+    }
+}
+
 impl From<Value> for serde_json::Value {
     fn from(value: Value) -> Self {
         use serde_json::value::Number;
         match value {
             Value::Integer(i) => serde_json::Value::Number(i.into()),
+            Value::Int(i) => serde_json::Value::Number(i.into()),
+            Value::BigInt(i) => serde_json::Value::Number(i.into()),
+            Value::SmallInt(i) => serde_json::Value::Number(i.into()),
             Value::String(s) => serde_json::Value::String(s),
             Value::Float(f) => serde_json::Value::Number(Number::from_f64(f).unwrap()),
+            Value::Real(f) => serde_json::Value::Number(Number::from_f64(f as f64).unwrap()),
             Value::Json(json) => json,
             _ => todo!("model::Value to serde_json::Value"),
         }
