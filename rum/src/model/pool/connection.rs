@@ -5,9 +5,10 @@ use tokio::sync::Notify;
 use tokio::task::spawn;
 
 use tokio_postgres::tls::NoTls;
-use tokio_postgres::Client;
+use tokio_postgres::{types::ToSql, Client, Row, Statement};
 
-use std::ops::Deref;
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -15,6 +16,7 @@ use std::sync::{
 use std::time::Instant;
 
 use super::Error;
+use crate::model::{FromRow, Placeholders};
 
 #[derive(Debug)]
 struct ConnectionInner {
@@ -28,6 +30,7 @@ pub struct Connection {
     client: Client,
     inner: Arc<ConnectionInner>,
     last_used: Instant,
+    cache: HashMap<String, Statement>,
 }
 
 impl Connection {
@@ -48,6 +51,7 @@ impl Connection {
             client,
             inner: inner.clone(),
             last_used: Instant::now(),
+            cache: HashMap::new(),
         };
 
         spawn(async move {
@@ -64,6 +68,22 @@ impl Connection {
         });
 
         Ok(guard)
+    }
+
+    pub async fn query_cached(
+        &mut self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<Vec<Row>, Error> {
+        let statement = if let Some(statement) = self.cache.get(query) {
+            statement
+        } else {
+            let statement = self.client().prepare(query).await?;
+            self.cache.insert(query.to_string(), statement);
+            &self.cache[query]
+        };
+
+        Ok(self.client().query(statement, &params).await?)
     }
 
     /// Is the connection broken?
@@ -98,6 +118,12 @@ impl Deref for Connection {
     type Target = Client;
 
     fn deref(&self) -> &Self::Target {
-        self.client()
+        &self.client
+    }
+}
+
+impl DerefMut for Connection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.client
     }
 }

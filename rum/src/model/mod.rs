@@ -38,7 +38,7 @@ pub use macros::belongs_to;
 pub use migrations::{migrate, rollback};
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::{get_connection, get_pool, Pool};
+pub use pool::{get_connection, get_pool, Connection, ConnectionGuard, Pool};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
@@ -431,28 +431,14 @@ impl<T: Model> Query<T> {
 
     async fn execute_internal(
         &self,
-        client: &tokio_postgres::Client,
+        client: &mut ConnectionGuard,
     ) -> Result<Vec<tokio_postgres::Row>, Error> {
         let rows = match self {
             Query::Select(select) => {
                 let query = self.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
-                match client.query(&query, &values).await {
-                    Ok(rows) => rows,
-                    Err(err) => {
-                        let error = err.as_db_error().expect("db error");
-                        tracing::error!("{:?}", err);
-
-                        return match error.code().code() {
-                            "08P01" => Err(Error::ValueError(
-                                "query parameter data type does not match the table schema",
-                                error.message().to_string(),
-                            )),
-                            _ => Err(Error::QueryError(query, error.message().to_string())),
-                        };
-                    }
-                }
+                client.query_cached(&query, &values).await?
             }
 
             Query::Raw(query) => client.query(query, &[]).await?,
@@ -460,13 +446,13 @@ impl<T: Model> Query<T> {
             Query::Update(update) => {
                 let query = self.to_sql();
                 let values = update.placeholders.values();
-                client.query(&query, &values).await?
+                client.query_cached(&query, &values).await?
             }
 
             Query::Insert(insert) => {
                 let query = self.to_sql();
                 let values = insert.placeholders.values();
-                client.query(&query, &values).await?
+                client.query_cached(&query, &values).await?
             }
 
             Query::InsertIfNotExists { select, insert, .. } => {
@@ -477,7 +463,7 @@ impl<T: Model> Query<T> {
                 if result.is_empty() {
                     let query = insert.to_sql();
                     let values = insert.placeholders.values();
-                    client.query(&query, &values).await?
+                    client.query_cached(&query, &values).await?
                 } else {
                     result
                 }
@@ -488,14 +474,14 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute the query and fetch the first row from the database.
-    pub async fn fetch(self, conn: &tokio_postgres::Client) -> Result<T, Error> {
+    pub async fn fetch(self, conn: &mut ConnectionGuard) -> Result<T, Error> {
         match self.execute(conn).await?.first().cloned() {
             Some(row) => Ok(row),
             None => Err(Error::RecordNotFound),
         }
     }
 
-    pub async fn fetch_optional(self, conn: &tokio_postgres::Client) -> Result<Option<T>, Error> {
+    pub async fn fetch_optional(self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
         match self.fetch(conn).await {
             Ok(row) => Ok(Some(row)),
             Err(Error::RecordNotFound) => Ok(None),
@@ -504,14 +490,14 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute the query and fetch all rows from the database.
-    pub async fn fetch_all(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
+    pub async fn fetch_all(self, conn: &mut ConnectionGuard) -> Result<Vec<T>, Error> {
         self.execute(conn).await
     }
 
     /// Get the query plan from Postgres.
     ///
     /// Take the actual query, prepend `EXPLAIN` and execute.
-    pub async fn explain(self, conn: &tokio_postgres::Client) -> Result<Explain, Error> {
+    pub async fn explain(self, conn: &mut ConnectionGuard) -> Result<Explain, Error> {
         let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
         match query.execute_internal(conn).await?.pop() {
             Some(explain) => Ok(Explain::from_row(explain)),
@@ -519,11 +505,11 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub async fn exists(self, conn: &tokio_postgres::Client) -> Result<bool, Error> {
+    pub async fn exists(self, conn: &mut ConnectionGuard) -> Result<bool, Error> {
         Ok(self.count(conn).await? > 0)
     }
 
-    pub async fn count(self, conn: &tokio_postgres::Client) -> Result<i64, Error> {
+    pub async fn count(self, conn: &mut ConnectionGuard) -> Result<i64, Error> {
         let query = match self {
             Query::Select(select) => Query::Select(select.exists()),
             _ => self,
@@ -541,7 +527,7 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute a query and return an optional result.
-    pub async fn execute(self, conn: &tokio_postgres::Client) -> Result<Vec<T>, Error> {
+    pub async fn execute(self, conn: &mut ConnectionGuard) -> Result<Vec<T>, Error> {
         let start = Instant::now();
         let result = self
             .execute_internal(conn)
@@ -1049,12 +1035,12 @@ mod test {
 
         let user = User::order(("email", "ASC"))
             .first_one()
-            .fetch(&transaction)
+            .fetch(&mut transaction)
             .await?;
 
         assert_eq!(user.email, "test@test.com");
 
-        let users = User::all().fetch_all(&transaction).await?;
+        let users = User::all().fetch_all(&mut transaction).await?;
 
         assert_eq!(users.len(), 1);
 
@@ -1070,7 +1056,7 @@ mod test {
             .execute("CREATE TABLE IF NOT EXISTS users (id BIGINT);", &[])
             .await?;
 
-        let explain = User::all().explain(&transaction).await?;
+        let explain = User::all().explain(&mut transaction).await?;
         assert!(explain.to_string().starts_with("Seq Scan on users"));
 
         Ok(())
@@ -1099,7 +1085,7 @@ mod test {
             r#"SELECT * FROM "users" WHERE "users"."email" = $1 AND "users"."password" = $2; INSERT INTO "users" ("email", "password") VALUES ($1, $2) RETURNING *;"#
         );
 
-        query.fetch(&transaction).await?;
+        query.fetch(&mut transaction).await?;
 
         Ok(())
     }

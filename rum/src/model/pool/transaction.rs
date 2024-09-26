@@ -1,4 +1,4 @@
-use super::{ConnectionGuard, Error};
+use super::{Connection, ConnectionGuard, Error};
 
 use std::time::Instant;
 use tracing::info;
@@ -14,9 +14,9 @@ impl Transaction {
     ///
     /// The transaction is automatically rolled back if it is not committed
     /// manually using [`Transaction::commit`].
-    pub async fn new(connection: ConnectionGuard) -> Result<Self, Error> {
+    pub async fn new(mut connection: ConnectionGuard) -> Result<Self, Error> {
         let start = Instant::now();
-        connection.query("BEGIN", &[]).await?;
+        connection.query_cached("BEGIN", &[]).await?;
 
         info!("BEGIN ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
 
@@ -33,7 +33,7 @@ impl Transaction {
         self.rollback = false;
 
         let start = Instant::now();
-        self.connection.query("COMMIT", &[]).await?;
+        self.connection.query_cached("COMMIT", &[]).await?;
 
         info!("COMMIT ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
 
@@ -47,7 +47,7 @@ impl Transaction {
         self.rollback = false;
 
         let start = Instant::now();
-        self.connection.query("ROLLBACK", &[]).await?;
+        self.connection.query_cached("ROLLBACK", &[]).await?;
 
         info!(
             "ROLLBACK ({:.3} ms)",
@@ -67,9 +67,15 @@ impl Drop for Transaction {
 }
 
 impl std::ops::Deref for Transaction {
-    type Target = tokio_postgres::Client;
+    type Target = ConnectionGuard;
 
     fn deref(&self) -> &Self::Target {
-        self.connection.deref()
+        &self.connection
+    }
+}
+
+impl std::ops::DerefMut for Transaction {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.connection
     }
 }

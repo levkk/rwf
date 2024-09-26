@@ -137,10 +137,10 @@ pub trait Job: Sync + Send {
 
     async fn execute(&self, args: serde_json::Value) -> Result<(), Error>;
     async fn execute_async(&self, args: serde_json::Value) -> Result<(), Error> {
-        let conn = get_connection().await?;
+        let mut conn = get_connection().await?;
         JobModel::new(self.job_name(), args)
             .create()
-            .execute(&conn)
+            .execute(&mut conn)
             .await?;
         Ok(())
     }
@@ -181,12 +181,12 @@ impl Worker {
                 let pool = get_pool();
 
                 let job = pool
-                    .with_transaction(|transaction| async move {
-                        let job = JobModel::next().fetch_optional(&transaction).await?;
+                    .with_transaction(|mut transaction| async move {
+                        let job = JobModel::next().fetch_optional(&mut transaction).await?;
 
                         let job = if let Some(mut job) = job {
                             job.started_at = Some(OffsetDateTime::now_utc());
-                            Ok(Some(job.save().fetch(&transaction).await?))
+                            Ok(Some(job.save().fetch(&mut transaction).await?))
                         } else {
                             Ok(None)
                         };
@@ -215,7 +215,7 @@ impl Worker {
 
                         let elapsed = now.elapsed();
 
-                        let conn = get_connection().await?;
+                        let mut conn = get_connection().await?;
 
                         match result {
                             Ok(Ok(())) => {
@@ -226,7 +226,7 @@ impl Worker {
                                 );
                                 job.completed_at = Some(OffsetDateTime::now_utc());
                                 job.attempts += 1;
-                                job.save().execute(&conn).await?;
+                                job.save().execute(&mut conn).await?;
                             }
                             Ok(Err(err)) => {
                                 error!(
@@ -245,7 +245,7 @@ impl Worker {
                                 job.start_after = job.created_at + delay;
                                 job.started_at = None;
 
-                                job.save().execute(&conn).await?;
+                                job.save().execute(&mut conn).await?;
                             }
                             Err(_) => {
                                 error!("worker crashed because of panic inside job, this is a bug");

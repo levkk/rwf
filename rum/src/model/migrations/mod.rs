@@ -111,8 +111,8 @@ impl Migrations {
     }
 
     async fn load() -> Result<Self, Error> {
-        let conn = get_connection().await?;
-        let migrations = Migration::all().fetch_all(&conn).await?;
+        let mut conn = get_connection().await?;
+        let migrations = Migration::all().fetch_all(&mut conn).await?;
 
         Ok(Self { migrations })
     }
@@ -135,7 +135,7 @@ impl Migrations {
             }
         }
 
-        let conn = get_connection().await?;
+        let mut conn = get_connection().await?;
 
         conn.execute(include_str!("bootstrap.sql"), &[]).await?;
 
@@ -153,7 +153,7 @@ impl Migrations {
                 let migration = Migration::filter("name", name)
                     .filter("version", check.version() as i64)
                     .find_or_create()
-                    .fetch(&conn)
+                    .fetch(&mut conn)
                     .await?;
                 migrations.push(migration);
             }
@@ -202,7 +202,7 @@ impl Migrations {
             let pool = get_pool();
 
             // Execute the migration in a transaction.
-            pool.with_transaction(|transaction| async move {
+            pool.with_transaction(|mut transaction| async move {
                 for query in queries {
                     if let Err(err) = transaction.execute(&query, &[]).await {
                         error!(r#"migration "{}" failed: {:?}"#, migration.name, err);
@@ -214,7 +214,7 @@ impl Migrations {
                     Direction::Down => migration.applied_at = None,
                 };
 
-                migration.save().execute(&transaction).await?;
+                migration.save().execute(&mut transaction).await?;
 
                 transaction.commit().await?;
 

@@ -1,6 +1,6 @@
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
-use tokio_postgres::types::{to_sql_checked, IsNull, Type};
+use tokio_postgres::types::{self, to_sql_checked, IsNull, Type};
 
 use std::ops::Range;
 
@@ -19,7 +19,7 @@ pub enum Value {
     Integer(i64),
     BigInt(i64),
     Int(i32),
-    SmallInt(i8),
+    SmallInt(i16),
     /// Floating point number, e.g. `3.14`.
     Float(f64),
     Real(f32),
@@ -131,7 +131,7 @@ impl ToValue for i32 {
     }
 }
 
-impl ToValue for i8 {
+impl ToValue for i16 {
     fn to_value(&self) -> Value {
         Value::SmallInt(*self)
     }
@@ -149,7 +149,7 @@ impl ToValue for Option<i32> {
     }
 }
 
-impl ToValue for Option<i8> {
+impl ToValue for Option<i16> {
     fn to_value(&self) -> Value {
         Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
     }
@@ -191,7 +191,7 @@ impl ToValue for &[i32] {
     }
 }
 
-impl ToValue for &[i8] {
+impl ToValue for &[i16] {
     fn to_value(&self) -> Value {
         Value::List(self.iter().map(|v| v.to_value()).collect::<Vec<_>>())
     }
@@ -233,7 +233,7 @@ impl ToValue for Range<i32> {
     }
 }
 
-impl ToValue for Range<i8> {
+impl ToValue for Range<i16> {
     fn to_value(&self) -> Value {
         Value::Range((
             Box::new(self.start.to_value()),
@@ -288,7 +288,13 @@ impl tokio_postgres::types::ToSql for Value {
         match self {
             Value::String(string) => string.to_sql(ty, out),
             Value::Integer(integer) => integer.to_sql(ty, out),
-            Value::Int(integer) => integer.to_sql(ty, out),
+
+            // Rust default number is an i32.
+            // If the field is a bigint, this will automatically cast it.
+            Value::Int(integer) => match ty {
+                &Type::INT8 => (*integer as i64).to_sql(ty, out),
+                _ => integer.to_sql(ty, out),
+            },
             Value::BigInt(integer) => integer.to_sql(ty, out),
             Value::SmallInt(integer) => integer.to_sql(ty, out),
             Value::Float(float) => float.to_sql(ty, out),
@@ -380,8 +386,8 @@ impl From<i32> for Value {
     }
 }
 
-impl From<i8> for Value {
-    fn from(value: i8) -> Self {
+impl From<i16> for Value {
+    fn from(value: i16) -> Self {
         Value::SmallInt(value)
     }
 }

@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 
 use std::collections::VecDeque;
 use std::future::Future;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -63,6 +63,14 @@ impl ConnectionGuard {
     fn rollback(&mut self) {
         self.rollback = true;
     }
+
+    pub fn connection(&self) -> &Connection {
+        self.connection.as_ref().unwrap()
+    }
+
+    pub fn connection_mut(&mut self) -> &mut Connection {
+        self.connection.as_mut().unwrap()
+    }
 }
 
 impl Drop for ConnectionGuard {
@@ -83,10 +91,16 @@ impl Drop for ConnectionGuard {
 }
 
 impl Deref for ConnectionGuard {
-    type Target = Client;
+    type Target = Connection;
 
     fn deref(&self) -> &Self::Target {
         self.connection.as_ref().unwrap()
+    }
+}
+
+impl DerefMut for ConnectionGuard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.connection.as_mut().unwrap()
     }
 }
 
@@ -185,7 +199,7 @@ impl Pool {
 
     /// See [`Pool::transaction`]
     pub async fn begin(&self) -> Result<Transaction, Error> {
-        let connection = self.get().await?;
+        let mut connection = self.get().await?;
         Ok(Transaction::new(connection).await?)
     }
 
@@ -216,7 +230,7 @@ impl Pool {
     where
         Fut: Future<Output = Result<R, Error>>,
     {
-        let connection = self.get().await?;
+        let mut connection = self.get().await?;
         f(connection).await
     }
 
@@ -316,7 +330,7 @@ mod test {
     #[tokio::test]
     async fn test_pool() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let conn = pool.get().await?;
+        let mut conn = pool.get().await?;
         let row = conn.query("SELECT 1", &[]).await?;
 
         assert_eq!(row.len(), 1);

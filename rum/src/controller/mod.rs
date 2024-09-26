@@ -202,9 +202,9 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
     }
 
     async fn list(&self, request: &Request) -> Result<Response, Error> {
-        let conn = get_connection().await?;
+        let mut conn = get_connection().await?;
 
-        let models = Self::Model::all().fetch_all(&conn).await?;
+        let models = Self::Model::all().fetch_all(&mut conn).await?;
         let response = match Response::from_request(request)?.json(models) {
             Ok(response) => response,
             Err(err) => Response::internal_error(err),
@@ -214,10 +214,10 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
     }
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-        let conn = get_connection().await?;
+        let mut conn = get_connection().await?;
 
         match Self::Model::find_by(Self::Model::primary_key(), *id)
-            .fetch(&conn)
+            .fetch(&mut conn)
             .await
         {
             Ok(model) => match Response::from_request(request)?.json(model) {
@@ -231,8 +231,8 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
     async fn create(&self, request: &Request) -> Result<Response, Error> {
         let model = request.json::<Self::Model>()?;
-        let conn = get_connection().await?;
-        let model = model.create().fetch(&conn).await?;
+        let mut conn = get_connection().await?;
+        let model = model.create().fetch(&mut conn).await?;
         Ok(Response::from_request(request)?.json(model)?)
     }
 
@@ -246,14 +246,14 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
             return Ok(Response::bad_request());
         }
 
-        let conn = get_connection().await?;
-        let model = model.save().fetch(&conn).await?;
+        let mut conn = get_connection().await?;
+        let model = model.save().fetch(&mut conn).await?;
         Ok(Response::from_request(request)?.json(model)?)
     }
 
     async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-        let conn = get_connection().await?;
-        let exists = Self::Model::find(*id).count(&conn).await?;
+        let mut conn = get_connection().await?;
+        let exists = Self::Model::find(*id).count(&mut conn).await?;
 
         if exists == 0 {
             return Ok(Response::not_found());
@@ -276,7 +276,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         }
 
         let model = Query::Update(Update::<Self::Model>::from_columns(*id, &columns, &values))
-            .fetch(&conn)
+            .fetch(&mut conn)
             .await?;
 
         Ok(Response::from_request(request)?.json(model)?)

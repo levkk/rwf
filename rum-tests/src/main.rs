@@ -169,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fmt()
         .with_env_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
+                .with_default_directive(LevelFilter::DEBUG.into())
                 .from_env_lossy(),
         )
         .finish()
@@ -179,7 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     migrate().await?;
 
     let pool = Pool::new_local();
-    let conn = pool.get().await?;
+    let mut conn = pool.get().await?;
 
     conn.query(
         "INSERT INTO orders (user_id, name, optional) VALUES (2, 'test', 'optional')",
@@ -200,8 +200,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut order = Order::all()
         .join::<User>()
-        .find_by(User::column("id"), 2_i64)
-        .fetch(&conn)
+        .find_by(User::column("id"), 2)
+        .fetch(&mut conn)
         .await?;
 
     assert_eq!(order.id, Some(1));
@@ -210,13 +210,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(order.optional, Some("optional".to_string()));
 
     order.name = "test 2".into();
-    let order = order.save().fetch(&conn).await?;
+    let order = order.save().fetch(&mut conn).await?;
     assert_eq!(order.name, "test 2");
 
     let user = User::all()
         .join::<Order>()
-        .find_by("id", 2_i64)
-        .fetch(&conn)
+        .find_by("id", 2)
+        .fetch(&mut conn)
         .await?;
 
     assert_eq!(user.id, Some(2));
@@ -225,41 +225,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let products = Product::all()
         .join::<OrderItem>()
         .join_nested(OrderItem::join::<Order>().join::<User>())
-        .filter(User::column("id"), 2_i64)
-        .fetch_all(&conn)
+        .filter(User::column("id"), 2)
+        .fetch_all(&mut conn)
         .await?;
     println!("{:#?}", products);
 
     let mut product = products.first().unwrap().clone();
     product.name = "something else".to_string();
 
-    let product = product.save().fetch(&conn).await?;
+    let product = product.save().fetch(&mut conn).await?;
     assert_eq!(product.name, "something else");
     println!("{:#?}", product);
 
     let order_items = OrderItem::expensive()
         .join::<Order>()
-        .filter(Order::column("user_id"), 2_i64)
-        .fetch_all(&conn)
+        .filter(Order::column("user_id"), 2)
+        .fetch_all(&mut conn)
         .await?;
 
     println!("{:?}", order_items);
 
     let user = User::lock()
         .filter("id", 6_i64)
-        .or(|query| query.filter("id", 2_i64).filter("name", "test"))
+        .or(|query| query.filter("id", 2).filter("name", "test"))
         .first_one()
-        .fetch(&conn)
+        .fetch(&mut conn)
         .await?;
 
     println!("{:?}", user);
 
-    let user = User::find([1_i64, 2_i64].as_slice())
-        .fetch_all(&conn)
-        .await?;
+    let user = User::find([1, 2].as_slice()).fetch_all(&mut conn).await?;
     assert_eq!(user.clone().pop().unwrap().id, Some(2));
 
-    assert!(User::find(3_i64).fetch(&conn).await.is_err());
+    assert!(User::find(3).fetch(&mut conn).await.is_err());
 
     println!("{:?}", user);
 
@@ -267,17 +265,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter("id", 2_i64)
         .filter("name", "test")
         .order("count")
-        .exists(&conn)
+        .exists(&mut conn)
         .await?;
 
     assert_eq!(exists, true);
 
-    let count = User::all().filter("id", 2_i64).count(&conn).await?;
+    let count = User::all().filter("id", 2).count(&mut conn).await?;
 
     assert_eq!(count, 1);
 
     let raw = User::find_by_sql("SELECT * FROM users LIMIT 1")
-        .fetch(&conn)
+        .fetch(&mut conn)
         .await?;
     assert_eq!(raw.id, Some(2));
 
@@ -287,7 +285,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         name: "test 2".to_string(),
     };
 
-    let product = product.save().fetch(&conn).await?;
+    let product = product.save().fetch(&mut conn).await?;
 
     // conn.rollback().await?;
 
