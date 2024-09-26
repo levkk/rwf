@@ -6,6 +6,7 @@ use rum::{
         AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
     http::{Handler, Request, Response},
+    job::{Job, Worker},
     model::{migrate, rollback},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
@@ -144,6 +145,25 @@ impl ModelController for OrdersController {
     type Model = Order;
 }
 
+struct JobOne;
+
+#[rum::async_trait]
+impl Job for JobOne {
+    async fn execute(&self, _args: serde_json::Value) -> Result<(), rum::job::Error> {
+        Ok(())
+    }
+}
+
+struct JobTwo;
+
+#[rum::async_trait]
+impl Job for JobTwo {
+    async fn execute(&self, args: serde_json::Value) -> Result<(), rum::job::Error> {
+        println!("job two args: {:?}", args);
+        Err(rum::job::Error::Unknown("random error".to_string()))
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fmt()
@@ -280,14 +300,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = template.render(&context)?;
     println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
 
+    JobOne {}
+        .execute_async(serde_json::json!({
+            "arg1": 2,
+        }))
+        .await?;
+
+    JobTwo {}
+        .execute_async(serde_json::json!({
+            "arg2": 1,
+        }))
+        .await?;
+
+    Worker::new(vec![JobOne {}.job(), JobTwo {}.job()]).spawn();
+
     Server::new(vec![
         StaticFiles::serve("static")?,
-        Handler::new(
-            "/base",
-            BaseController {
-                id: "5".to_string(),
-            },
-        ),
+        BaseController {
+            id: "5".to_string(),
+        }
+        .route("/base"),
         Handler::new("/base/player", BasePlayerController {}),
         Handler::new(
             "/orders",

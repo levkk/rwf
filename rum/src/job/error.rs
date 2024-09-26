@@ -13,6 +13,12 @@ pub enum Error {
 
     #[error("job retry")]
     Retry,
+
+    #[error("tokio error: {0}")]
+    WorkerError(#[from] tokio::task::JoinError),
+
+    #[error("job error: {0}")]
+    Unknown(String),
 }
 
 impl From<serde_json::Error> for Error {

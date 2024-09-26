@@ -109,6 +109,8 @@ impl<T: FromRow> Select<T> {
                     Value::Record(Box::new(placeholder))
                 }
 
+                Value::Column(ref _column) => value,
+
                 value => self.placeholders.add(&value),
             }
         } else {

@@ -279,6 +279,22 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn filter_lt(self, column: impl ToColumn, value: impl ToValue) -> Self {
+        use Query::*;
+        match self {
+            Select(select) => Select(select.filter_lt(column, value)),
+            _ => self,
+        }
+    }
+
+    pub fn filter_lte(self, column: impl ToColumn, value: impl ToValue) -> Self {
+        use Query::*;
+        match self {
+            Select(select) => Select(select.filter_lte(column, value)),
+            _ => self,
+        }
+    }
+
     pub fn or(self, f: fn(Self) -> Self) -> Self {
         use Query::*;
         match self {
@@ -425,10 +441,11 @@ impl<T: Model> Query<T> {
                 match client.query(&query, &values).await {
                     Ok(rows) => rows,
                     Err(err) => {
+                        println!("{:?}", err);
                         return Err(Error::QueryError(
                             query,
                             err.as_db_error().expect("db error").message().to_string(),
-                        ))
+                        ));
                     }
                 }
             }
@@ -470,6 +487,14 @@ impl<T: Model> Query<T> {
         match self.execute(conn).await?.first().cloned() {
             Some(row) => Ok(row),
             None => Err(Error::RecordNotFound),
+        }
+    }
+
+    pub async fn fetch_optional(self, conn: &tokio_postgres::Client) -> Result<Option<T>, Error> {
+        match self.fetch(conn).await {
+            Ok(row) => Ok(Some(row)),
+            Err(Error::RecordNotFound) => Ok(None),
+            Err(err) => Err(err),
         }
     }
 

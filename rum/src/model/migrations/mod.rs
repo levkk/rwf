@@ -137,16 +137,7 @@ impl Migrations {
 
         let conn = get_connection().await?;
 
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS rum_migrations (
-            id BIGSERIAL PRIMARY KEY,
-            version BIGINT NOT NULL,
-            name VARCHAR UNIQUE NOT NULL,
-            applied_at TIMESTAMPTZ
-        )",
-            &[],
-        )
-        .await?;
+        conn.execute(include_str!("bootstrap.sql"), &[]).await?;
 
         let mut migrations = vec![];
 

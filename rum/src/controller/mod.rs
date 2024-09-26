@@ -10,7 +10,7 @@ pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
 
-use super::http::{Method, Request, Response, ToParameter};
+use super::http::{Handler, Method, Request, Response, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update, Value};
 use crate::config::get_config;
 
@@ -35,6 +35,13 @@ pub trait Controller: Sync + Send {
 
     fn middleware(&self) -> &MiddlewareSet {
         &get_config().default_middleware
+    }
+
+    fn route(self, path: &str) -> Handler
+    where
+        Self: Sized + 'static,
+    {
+        Handler::new(path, self)
     }
 
     /// Internal function to handle the HTTP request. Do not implement this unless
