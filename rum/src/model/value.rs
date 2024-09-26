@@ -38,6 +38,8 @@ pub enum Value {
     /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
 
+    Sql(String),
+
     Null,
 }
 
@@ -259,6 +261,7 @@ impl ToSql for Value {
                 None => "NULL".to_string(),
             },
             Column(column) => column.to_sql(),
+            Sql(sql) => sql.escape(),
             _ => todo!(),
         }
     }
