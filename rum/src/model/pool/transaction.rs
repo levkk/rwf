@@ -1,4 +1,4 @@
-use super::{Connection, ConnectionGuard, Error};
+use super::{ConnectionGuard, Error};
 
 use std::time::Instant;
 use tracing::info;

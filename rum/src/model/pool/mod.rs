@@ -2,8 +2,6 @@ use tokio::sync::Notify;
 use tokio::task::spawn;
 use tokio::time::{timeout, Duration};
 
-use tokio_postgres::Client;
-
 use parking_lot::Mutex;
 
 use std::collections::VecDeque;
@@ -199,7 +197,7 @@ impl Pool {
 
     /// See [`Pool::transaction`]
     pub async fn begin(&self) -> Result<Transaction, Error> {
-        let mut connection = self.get().await?;
+        let connection = self.get().await?;
         Ok(Transaction::new(connection).await?)
     }
 
@@ -230,7 +228,7 @@ impl Pool {
     where
         Fut: Future<Output = Result<R, Error>>,
     {
-        let mut connection = self.get().await?;
+        let connection = self.get().await?;
         f(connection).await
     }
 

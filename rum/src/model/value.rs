@@ -1,6 +1,6 @@
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
-use tokio_postgres::types::{self, to_sql_checked, IsNull, Type};
+use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 
 use std::ops::Range;
 

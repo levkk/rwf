@@ -16,7 +16,6 @@ use std::sync::{
 use std::time::Instant;
 
 use super::Error;
-use crate::model::{FromRow, Placeholders};
 
 #[derive(Debug)]
 struct ConnectionInner {
@@ -70,10 +69,12 @@ impl Connection {
         Ok(guard)
     }
 
+    /// Execute the query against the database, preparing it if we haven't seen it before
+    /// on this connection.
     pub async fn query_cached(
         &mut self,
         query: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<Row>, Error> {
         let statement = if let Some(statement) = self.cache.get(query) {
             statement
@@ -83,7 +84,21 @@ impl Connection {
             &self.cache[query]
         };
 
-        Ok(self.client().query(statement, &params).await?)
+        match self.client().query(statement, &params).await {
+            Ok(rows) => Ok(rows),
+            Err(err) => {
+                // If schema changed, we better close this connection entirely
+                // that evicting prepared statements one by one.
+                //  TODO: find and use the error code instead of using the English
+                // error message which will be translated on databases running in other locales.
+                if let Some(db_error) = err.as_db_error() {
+                    if db_error.message() == "cached plan must not change result type" {
+                        self.inner.bad.store(true, Ordering::Relaxed);
+                    }
+                }
+                Err(Error::DatabaseError(err))
+            }
+        }
     }
 
     /// Is the connection broken?
