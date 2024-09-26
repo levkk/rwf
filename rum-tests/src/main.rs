@@ -181,22 +181,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = Pool::new_local();
     let mut conn = pool.get().await?;
 
-    conn.query(
-        "INSERT INTO orders (user_id, name, optional) VALUES (2, 'test', 'optional')",
-        &[],
-    )
-    .await?;
+    conn.client()
+        .query(
+            "INSERT INTO orders (user_id, name, optional) VALUES (2, 'test', 'optional')",
+            &[],
+        )
+        .await?;
 
-    conn.query(
+    conn.client().query(
         "INSERT INTO order_items (order_id, product_id, amount) VALUES (1, 1, 5.0), (1, 2, 6.0)",
         &[],
     )
     .await?;
-    conn.query(
-        "INSERT INTO products (name, avg_price) VALUES ('apples', 6.0), ('doodles', 7.0)",
-        &[],
-    )
-    .await?;
+    conn.client()
+        .query(
+            "INSERT INTO products (name, avg_price) VALUES ('apples', 6.0), ('doodles', 7.0)",
+            &[],
+        )
+        .await?;
 
     let mut order = Order::all()
         .join::<User>()

@@ -307,8 +307,8 @@ impl Pool {
         inner.expected -= removed;
     }
 
-    async fn checkin_rollback(&self, connection: Connection) {
-        match connection.execute("ROLLBACK", &[]).await {
+    async fn checkin_rollback(&self, mut connection: Connection) {
+        match connection.query_cached("ROLLBACK", &[]).await {
             Ok(_) => {
                 tracing::debug!("ROLLBACK");
                 self.checkin(connection, false)

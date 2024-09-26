@@ -441,7 +441,7 @@ impl<T: Model> Query<T> {
                 client.query_cached(&query, &values).await?
             }
 
-            Query::Raw(query) => client.query(query, &[]).await?,
+            Query::Raw(query) => client.query_cached(query, &[]).await?,
 
             Query::Update(update) => {
                 let query = self.to_sql();
@@ -458,7 +458,7 @@ impl<T: Model> Query<T> {
             Query::InsertIfNotExists { select, insert, .. } => {
                 let query = select.to_sql();
                 let values = select.placeholders().values();
-                let result = client.query(&query, &values).await?;
+                let result = client.query_cached(&query, &values).await?;
 
                 if result.is_empty() {
                     let query = insert.to_sql();

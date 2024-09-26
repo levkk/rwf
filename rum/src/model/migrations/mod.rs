@@ -137,7 +137,9 @@ impl Migrations {
 
         let mut conn = get_connection().await?;
 
-        conn.execute(include_str!("bootstrap.sql"), &[]).await?;
+        conn.client()
+            .execute(include_str!("bootstrap.sql"), &[])
+            .await?;
 
         let mut migrations = vec![];
 
@@ -204,7 +206,7 @@ impl Migrations {
             // Execute the migration in a transaction.
             pool.with_transaction(|mut transaction| async move {
                 for query in queries {
-                    if let Err(err) = transaction.execute(&query, &[]).await {
+                    if let Err(err) = transaction.client().query(&query, &[]).await {
                         error!(r#"migration "{}" failed: {:?}"#, migration.name, err);
                         return Err(Error::MigrationError("migration failed".into()));
                     }

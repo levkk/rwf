@@ -114,7 +114,7 @@ impl Connection {
         self.last_used
     }
 
-    fn client(&self) -> &Client {
+    pub fn client(&self) -> &Client {
         &self.client
     }
 
@@ -126,19 +126,5 @@ impl Connection {
 impl Drop for Connection {
     fn drop(&mut self) {
         self.shutdown();
-    }
-}
-
-impl Deref for Connection {
-    type Target = Client;
-
-    fn deref(&self) -> &Self::Target {
-        &self.client
-    }
-}
-
-impl DerefMut for Connection {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.client
     }
 }
