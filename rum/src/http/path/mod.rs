@@ -44,10 +44,6 @@ impl Path {
         self.base.len()
     }
 
-    pub fn is_root(&self) -> bool {
-        self.base.ends_with("/")
-    }
-
     pub fn query(&self) -> &HashMap<String, String> {
         &self.query
     }
@@ -79,13 +75,14 @@ impl Path {
                 let query_parts = without_anchor.split("&");
                 for part in query_parts {
                     let key_value = part.split("=").collect::<Vec<_>>();
-                    if key_value.len() != 2 {
+
+                    if key_value.len() > 2 {
                         continue;
                     }
 
                     // Decode any URL-encoded values back into UTF-8.
                     let key = urldecode(&key_value.first().expect("path query key"));
-                    let value = urldecode(&key_value.last().expect("path query value"));
+                    let value = urldecode(&key_value.last().unwrap_or(&"")); // ?key=&value=two
 
                     query.insert(key, value);
                 }

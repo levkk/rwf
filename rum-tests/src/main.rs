@@ -7,7 +7,7 @@ use rum::{
     },
     http::{Handler, Request, Response},
     job::{Job, Worker},
-    model::{migrate, rollback},
+    model::{migrate, rollback, Value},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
@@ -200,7 +200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut order = Order::all()
         .join::<User>()
-        .find_by(User::column("id"), 2)
+        .find_by(User::column("id"), 2_i64)
         .fetch(&conn)
         .await?;
 
@@ -215,7 +215,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let user = User::all()
         .join::<Order>()
-        .find_by("id", 2)
+        .find_by("id", 2_i64)
         .fetch(&conn)
         .await?;
 
@@ -225,7 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let products = Product::all()
         .join::<OrderItem>()
         .join_nested(OrderItem::join::<Order>().join::<User>())
-        .filter(User::column("id"), 2)
+        .filter(User::column("id"), 2_i64)
         .fetch_all(&conn)
         .await?;
     println!("{:#?}", products);
@@ -239,30 +239,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let order_items = OrderItem::expensive()
         .join::<Order>()
-        .filter(Order::column("user_id"), 2)
+        .filter(Order::column("user_id"), 2_i64)
         .fetch_all(&conn)
         .await?;
 
     println!("{:?}", order_items);
 
     let user = User::lock()
-        .filter("id", 6)
-        .or(|query| query.filter("id", 2).filter("name", "test"))
+        .filter("id", 6_i64)
+        .or(|query| query.filter("id", 2_i64).filter("name", "test"))
         .first_one()
         .fetch(&conn)
         .await?;
 
     println!("{:?}", user);
 
-    let user = User::find([1, 2].as_slice()).fetch_all(&conn).await?;
+    let user = User::find([1_i64, 2_i64].as_slice())
+        .fetch_all(&conn)
+        .await?;
     assert_eq!(user.clone().pop().unwrap().id, Some(2));
 
-    assert!(User::find(3).fetch(&conn).await.is_err());
+    assert!(User::find(3_i64).fetch(&conn).await.is_err());
 
     println!("{:?}", user);
 
     let exists = User::all()
-        .filter("id", 2)
+        .filter("id", 2_i64)
         .filter("name", "test")
         .order("count")
         .exists(&conn)
@@ -270,7 +272,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(exists, true);
 
-    let count = User::all().filter("id", 2).count(&conn).await?;
+    let count = User::all().filter("id", 2_i64).count(&conn).await?;
 
     assert_eq!(count, 1);
 

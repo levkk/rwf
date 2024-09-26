@@ -16,6 +16,9 @@ pub enum Error {
     #[error("ORM serialization error: {0:?}")]
     OrmSerializationError(Value),
 
+    #[error("{0}: {1}")]
+    ValueError(&'static str, String),
+
     #[error("pool timeout")]
     PoolTimeout,
 

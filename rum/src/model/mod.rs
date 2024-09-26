@@ -441,11 +441,16 @@ impl<T: Model> Query<T> {
                 match client.query(&query, &values).await {
                     Ok(rows) => rows,
                     Err(err) => {
-                        println!("{:?}", err);
-                        return Err(Error::QueryError(
-                            query,
-                            err.as_db_error().expect("db error").message().to_string(),
-                        ));
+                        let error = err.as_db_error().expect("db error");
+                        tracing::error!("{:?}", err);
+
+                        return match error.code().code() {
+                            "08P01" => Err(Error::ValueError(
+                                "query parameter data type does not match the table schema",
+                                error.message().to_string(),
+                            )),
+                            _ => Err(Error::QueryError(query, error.message().to_string())),
+                        };
                     }
                 }
             }
