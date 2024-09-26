@@ -3,4 +3,5 @@
 - [ ] Websockes
 - [ ] HTTP2
 - [x] Migrations
-- [ ] Cleaner Job interface
+- [x] Cleaner Job interface
+- [ ] prepared statements cache per connection
