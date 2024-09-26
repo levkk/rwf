@@ -2,5 +2,5 @@
 
 - [ ] Websockes
 - [ ] HTTP2
-- [ ] Migrations
+- [x] Migrations
 - [ ] Cleaner Job interface

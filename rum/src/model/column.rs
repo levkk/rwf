@@ -58,7 +58,7 @@ impl Column {
     }
 
     pub fn unqualify(mut self) -> Self {
-        self.table_name = "".to_string();
+        self.table_name.clear();
         self
     }
 }
