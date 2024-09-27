@@ -148,7 +148,7 @@ mod test {
             + r#"{"hello": "world"}"#)
             .as_bytes()
             .to_vec();
-        let response = Request::read("127.0.0.1".parse().unwrap(), &body[..])
+        let response = Request::read("127.0.0.1:1337".parse().unwrap(), &body[..])
             .await
             .expect("response");
         let json = response.json::<Hello>().expect("deserialize body");
