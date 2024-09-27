@@ -19,14 +19,19 @@ impl Params {
     }
 
     /// Extract a parameter from the URL.
-    pub fn parameter<'a>(&'a self, base: &'a str, name: &str) -> Option<String> {
+    pub fn parameter<'a>(&'a self, base: &'a str, name: &str) -> Option<&'a str> {
         if let Some(index) = self.params.get(name) {
             let captures = self.regex.captures(base);
 
             if let Some(captures) = captures {
                 if let Some(capture) = captures.get(*index) {
                     // TODO: figure out how to remove the / from the regex capture.
-                    return Some(capture.as_str().replace("/", ""));
+                    let capture = capture.as_str();
+                    return Some(if capture.starts_with("/") {
+                        &capture[1..]
+                    } else {
+                        capture
+                    });
                 }
             }
         }

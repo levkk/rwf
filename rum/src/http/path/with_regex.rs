@@ -72,18 +72,18 @@ mod test {
     fn test_paramters() {
         let path = Path::parse("/api/orders/:name/receipt").unwrap();
         let with_regex = PathWithRegex::new(path).unwrap();
-        println!("{}", with_regex.regex().as_str());
+        let params = with_regex.params();
 
         let url = "/api/orders/apple_bees/receipt/5";
 
-        let name = with_regex.params().parameter(url, "name");
-        assert_eq!(name, Some("apple_bees".to_string()));
+        let name = params.parameter(url, "name");
+        assert_eq!(name, Some("apple_bees"));
 
-        let name = with_regex.params().parameter(url, "id");
-        assert_eq!(name, Some("5".to_string()));
+        let name = params.parameter(url, "id");
+        assert_eq!(name, Some("5"));
 
         let url = "/api/orders/hello-world/receipt/";
-        let name = with_regex.params().parameter(url, "name");
-        assert_eq!(name, Some("hello-world".to_string()));
+        let name = params.parameter(url, "name");
+        assert_eq!(name, Some("hello-world"));
     }
 }
