@@ -25,7 +25,7 @@ impl Params {
 
             if let Some(captures) = captures {
                 if let Some(capture) = captures.get(*index) {
-                    // TODO: figure out how to remove the / from the regex capture.
+                    // TODO: figure out how to remove '/' from the regex capture.
                     let capture = capture.as_str();
                     return Some(if capture.starts_with("/") {
                         &capture[1..]
