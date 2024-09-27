@@ -14,13 +14,14 @@ impl PathWithRegex {
     /// Create the path-specifid regex.
     pub fn new(path: Path) -> Result<Self, Error> {
         let mut params = vec![];
+        let mut i = 1;
         let regex = path
             .base()
             .split("/")
-            .enumerate()
-            .map(|(i, p)| {
+            .map(|p| {
                 if p.starts_with(":") {
                     params.push(i);
+                    i += 1;
                     "([a-zA-Z0-9]+)"
                 } else {
                     p
@@ -28,7 +29,8 @@ impl PathWithRegex {
             })
             .collect::<Vec<_>>();
         let mut regex = "^".to_string() + &regex.join("/");
-        regex.push_str("(.*)");
+        params.push(i);
+        regex.push_str("/?([a-zA-Z0-9]+)?(.*)");
 
         let regex = Regex::new(&regex)?;
         Ok(Self {
