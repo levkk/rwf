@@ -88,8 +88,8 @@ impl Connection {
             Ok(rows) => Ok(rows),
             Err(err) => {
                 // If schema changed, we better close this connection entirely
-                // that evicting prepared statements one by one.
-                //  TODO: find and use the error code instead of using the English
+                // than evicting prepared statements one by one.
+                // TODO: find and use the error code instead of using the English
                 // error message which will be translated on databases running in other locales.
                 if let Some(db_error) = err.as_db_error() {
                     if db_error.message() == "cached plan must not change result type" {

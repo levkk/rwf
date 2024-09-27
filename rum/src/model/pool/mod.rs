@@ -105,6 +105,9 @@ impl DerefMut for ConnectionGuard {
 #[derive(Debug)]
 struct PoolInner {
     connections: VecDeque<Connection>,
+
+    /// Number of connections the pool has idle
+    /// and checked out by users.
     expected: usize,
 }
 
@@ -245,6 +248,7 @@ impl Pool {
                         if !candidate.bad() {
                             return Ok(ConnectionGuard::new(candidate, self.clone()));
                         }
+                        // Drop (close) all bad connections.
                     }
                 }
             }
