@@ -8,7 +8,7 @@ use tokio_postgres::tls::NoTls;
 use tokio_postgres::{types::ToSql, Client, Row, Statement};
 
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,

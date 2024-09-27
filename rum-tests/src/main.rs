@@ -5,9 +5,9 @@ use rum::{
     controller::{
         AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
     },
-    http::{Handler, Request, Response},
+    http::{Request, Response},
     job::{Job, Worker},
-    model::{migrate, rollback, Value},
+    model::{migrate, rollback},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
