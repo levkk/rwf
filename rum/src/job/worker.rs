@@ -2,18 +2,30 @@ use super::{Error, Job, JobHandler, JobModel};
 
 use colored::Colorize;
 use time::OffsetDateTime;
+use tokio::select;
+use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 use crate::model::{get_connection, get_pool, Model};
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::Instant;
+
+#[derive(Default)]
+struct Internal {
+    shutdown: Notify,
+    instances: AtomicUsize,
+}
 
 #[derive(Clone)]
 pub struct Worker {
     jobs: Arc<HashMap<String, JobHandler>>,
+    internal: Arc<Internal>,
 }
 
 impl Worker {
@@ -24,7 +36,14 @@ impl Worker {
             .collect();
         Self {
             jobs: Arc::new(jobs),
+            internal: Arc::new(Internal::default()),
         }
+    }
+
+    pub async fn start(self) -> Result<Self, Error> {
+        let mut conn = get_connection().await?;
+        JobModel::reschedule().execute(&mut conn).await?;
+        Ok(self)
     }
 
     pub async fn run(&self) {
@@ -59,6 +78,8 @@ impl Worker {
                         let name = job.name.clone();
                         let now = Instant::now();
 
+                        // Run the job in a separate task. If the job panics,
+                        // we won't crash this task.
                         let result = tokio::spawn(async move {
                             let registered_job = &worker.jobs[&name];
 
@@ -83,27 +104,31 @@ impl Worker {
                                 job.attempts += 1;
                                 job.save().execute(&mut conn).await?;
                             }
-                            Ok(Err(err)) => {
+
+                            result => {
+                                let err = match result {
+                                    Ok(Err(err)) => err.to_string(),
+                                    Err(_) => "job panicked".to_string(),
+                                    Ok(Ok(_)) => unreachable!(), // Captured above.
+                                };
+
                                 error!(
-                                    "{} job error ({:.3} ms): {:?}",
+                                    "{} job error ({:.3} ms): {}",
                                     job.name.green(),
                                     elapsed.as_secs_f64() * 1000.0,
                                     err
                                 );
 
-                                // Retry with expoential backoff.
+                                // Retry with exponential back-off.
                                 let delay =
                                     Duration::from_secs(2_i64.pow(job.attempts as u32) as u64);
 
-                                job.error = Some(err.to_string());
+                                job.error = Some(err);
                                 job.attempts += 1;
                                 job.start_after = job.created_at + delay;
                                 job.started_at = None;
 
                                 job.save().execute(&mut conn).await?;
-                            }
-                            Err(_) => {
-                                error!("worker crashed because of panic inside job, this is a bug");
                             }
                         }
                     } else {

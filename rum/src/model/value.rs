@@ -310,6 +310,7 @@ impl tokio_postgres::types::ToSql for Value {
                     return Ok(IsNull::Yes);
                 }
             }
+            Value::Null => return Ok(IsNull::Yes),
             value => return Err(Error::OrmSerializationError(value.clone()).boxed()),
         }
     }
@@ -363,7 +364,8 @@ impl ToSql for Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            _ => todo!(),
+            Value::Null => "NULL".to_string(),
+            value => todo!("to_sql not implemented for {:?}", value),
         }
     }
 }

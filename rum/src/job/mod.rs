@@ -1,11 +1,7 @@
-// pub mod error;
-// pub mod job;
-// pub mod model;
-// pub mod worker;
-
-// pub use error::Error;
-// pub use job::{Job, JobModel};
-// pub use worker::Worker;
+//! Asynchronous background job queue.
+//!
+//! Implemented using a Postgres table and a fast locking query (`FOR UPDATE SKIP LOCKED`).
+//! This implementation makes the job queue durable (does not lose jobs) and performant.
 pub mod error;
 pub mod model;
 pub mod worker;

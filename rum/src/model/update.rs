@@ -1,4 +1,6 @@
-use super::{Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue};
+use super::{
+    Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue, WhereClause,
+};
 use std::marker::PhantomData;
 
 #[derive(Debug)]
@@ -6,11 +8,23 @@ pub struct Update<T> {
     table_name: String,
     primary_key: String,
     pub placeholders: Placeholders,
-    columns: Vec<String>,
+    columns: Vec<Column>,
+    where_clause: WhereClause,
     marker: PhantomData<T>,
 }
 
 impl<T: Model> Update<T> {
+    pub fn empty() -> Self {
+        Self {
+            table_name: T::table_name(),
+            primary_key: T::primary_key(),
+            placeholders: Placeholders::new(),
+            columns: vec![],
+            where_clause: WhereClause::default(),
+            marker: PhantomData,
+        }
+    }
+
     pub fn new(model: T) -> Self {
         let columns = T::column_names();
         let values = model.values();
@@ -23,47 +37,51 @@ impl<T: Model> Update<T> {
         columns: &[impl ToColumn],
         values: &[impl ToValue],
     ) -> Self {
-        let columns = columns
-            .iter()
-            .map(|c| c.to_column().to_string())
-            .collect::<Vec<_>>();
-        let values = values.iter().map(|v| v.to_value()).collect::<Vec<_>>();
-        let mut placeholders = Placeholders::new();
-        for value in values {
-            placeholders.add(&value);
-        }
-        placeholders.add(&id.to_value());
+        let mut update = Self::empty().columns(columns, values);
 
-        Self {
-            table_name: T::table_name(),
-            primary_key: T::primary_key(),
-            placeholders,
-            columns,
-            marker: PhantomData,
+        // Add the primary key selector.
+        let id_placeholder = update.placeholders.add(&id.to_value());
+        update
+            .where_clause
+            .add(Column::name(&update.primary_key), id_placeholder);
+
+        update
+    }
+
+    pub fn columns(mut self, columns: &[impl ToColumn], values: &[impl ToValue]) -> Self {
+        for (column, value) in columns.iter().zip(values.iter()) {
+            self.columns.push(column.to_column());
+            self.placeholders.add(&value.to_value());
         }
+        self
+    }
+}
+
+impl<T: Model> From<Select<T>> for Update<T> {
+    fn from(select: Select<T>) -> Update<T> {
+        let mut update = Update::empty();
+        update.where_clause = select.where_clause;
+        update.placeholders = select.placeholders;
+
+        update
     }
 }
 
 impl<T: FromRow> ToSql for Update<T> {
     fn to_sql(&self) -> String {
-        let where_id = format!(
-            r#""{}" = ${}"#,
-            self.primary_key,
-            self.placeholders.id() - 1
-        );
         let sets = self
             .columns
             .iter()
             .enumerate()
-            .map(|(idx, column)| format!(r#"{} = ${}"#, column, idx + 1))
+            .map(|(idx, column)| format!(r#"{} = ${}"#, column.to_sql(), idx + 1))
             .collect::<Vec<_>>()
             .join(", ");
 
         format!(
-            r#"UPDATE "{}" SET {} WHERE {} RETURNING *"#,
+            r#"UPDATE "{}" SET {} {} RETURNING *"#,
             self.table_name.escape(),
             sets,
-            where_id
+            self.where_clause.to_sql(),
         )
     }
 }

@@ -1,7 +1,7 @@
 use super::{Column, ToSql, ToValue, Value};
 
 /// The WHERE clause of a SQL query.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct WhereClause {
     filter: Filter,
 }
@@ -42,7 +42,13 @@ impl ToSql for Comparison {
             }
             In((column, value)) => format!("{} = ANY({})", column.to_sql(), value.to_sql()),
             NotIn((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
-            NotEqual((column, value)) => format!("{} <> {}", column.to_sql(), value.to_sql()),
+            NotEqual((column, value)) => {
+                if value.is_null() {
+                    format!("{} IS NOT NULL", column.to_sql())
+                } else {
+                    format!("{} <> {}", column.to_sql(), value.to_sql())
+                }
+            }
             Filter(filter) => format!("({})", filter.to_sql()),
             GreaterThan((column, value)) => format!("{} > {}", column.to_sql(), value.to_sql()),
             LesserThan((column, value)) => format!("{} < {}", column.to_sql(), value.to_sql()),

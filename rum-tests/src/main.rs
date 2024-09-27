@@ -314,7 +314,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .await?;
 
-    Worker::new(vec![JobOne {}.job(), JobTwo {}.job()]).spawn();
+    Worker::new(vec![JobOne {}.job(), JobTwo {}.job()])
+        .start()
+        .await?
+        .spawn();
 
     Server::new(vec![
         StaticFiles::serve("static")?,

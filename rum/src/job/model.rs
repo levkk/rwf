@@ -1,16 +1,10 @@
 use crate::job::Error;
-use crate::model::{get_connection, get_pool, FromRow, Model, Scope, ToValue, Value};
+use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
 use time::OffsetDateTime;
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
-
 use async_trait::async_trait;
-use colored::Colorize;
-use tokio::time::{sleep, Duration};
-use tracing::{error, info, warn};
 
+/// Job entry in the database-backed job queue.
 #[derive(Clone, Debug)]
 pub struct JobModel {
     pub id: Option<i64>,
@@ -53,6 +47,13 @@ impl JobModel {
             .take_one()
             .lock()
             .skip_locked()
+    }
+
+    ///
+    pub fn reschedule() -> Scope<Self> {
+        Self::filter("completed_at", Value::Null)
+            .not("started_at", Value::Null)
+            .update_all(&[("started_at", Value::Null)])
     }
 }
 
@@ -122,20 +123,22 @@ impl Model for JobModel {
     }
 }
 
+/// Asynchronous background job.
+///
+/// Can execute arbitrary tasks in the background without blocking
+/// foreground HTTP requests.
 #[async_trait]
 pub trait Job: Sync + Send {
-    fn job_name(&self) -> &str {
-        std::any::type_name::<Self>()
-    }
-
-    fn job(self) -> JobHandler
-    where
-        Self: Sized + 'static,
-    {
-        JobHandler::new(self)
-    }
-
+    /// Execute the job.
+    ///
+    /// Implement this method with the code you want to run in the background.
+    /// Arguments are passed in using JSON.
     async fn execute(&self, args: serde_json::Value) -> Result<(), Error>;
+
+    /// Schedule this job to run in the background.
+    ///
+    /// This method schedules the job in the queue and returns immediately without
+    /// running the job.
     async fn execute_async(&self, args: serde_json::Value) -> Result<(), Error> {
         let mut conn = get_connection().await?;
         JobModel::new(self.job_name(), args)
@@ -144,13 +147,34 @@ pub trait Job: Sync + Send {
             .await?;
         Ok(())
     }
+
+    /// Name of the job. Must be globally unique.
+    ///
+    /// Currently the type name of the struct is used, so
+    /// global uniqueness requirement is satisfied. Be careful
+    /// overriding this method.
+    fn job_name(&self) -> &str {
+        std::any::type_name::<Self>()
+    }
+
+    /// Wrap the job into a boxed wrapper.
+    ///
+    /// Do not override this method.
+    fn job(self) -> JobHandler
+    where
+        Self: Sized + 'static,
+    {
+        JobHandler::new(self)
+    }
 }
 
+/// Wrapper around the concrete job implementation.
 pub struct JobHandler {
     pub job: Box<dyn Job>,
 }
 
 impl JobHandler {
+    /// Wrap the job and box it.
     pub fn new(job: impl Job + 'static) -> Self {
         Self { job: Box::new(job) }
     }

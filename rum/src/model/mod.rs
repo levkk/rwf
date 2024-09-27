@@ -429,6 +429,24 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn update_all(self, attributes: &[(impl ToColumn, impl ToValue)]) -> Self {
+        match self {
+            Query::Select(select) => {
+                let mut update = Update::<T>::from(select);
+                let columns = attributes
+                    .iter()
+                    .map(|(c, _)| c.to_column())
+                    .collect::<Vec<_>>();
+                let values = attributes
+                    .iter()
+                    .map(|(_, v)| v.to_value())
+                    .collect::<Vec<_>>();
+                Query::Update(update.columns(&columns, &values))
+            }
+            _ => self,
+        }
+    }
+
     async fn execute_internal(
         &self,
         client: &mut ConnectionGuard,
