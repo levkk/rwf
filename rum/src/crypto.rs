@@ -3,7 +3,7 @@ use aes_gcm_siv::{
     Aes128GcmSiv, Nonce,
 };
 use base64::{engine::general_purpose, Engine as _};
-use rand::{rngs::OsRng, Rng};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -130,7 +130,7 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
 
 pub fn decrypt_number(s: &str) -> Result<i64, Error> {
     let config = get_config();
-    let nonce = nonce();
+    let _nonce = nonce();
 
     let key = config.aes_key;
     let cipher = Aes128GcmSiv::new(&key);

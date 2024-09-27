@@ -20,7 +20,7 @@ impl Middleware for SecureId {
             if let Ok(decrypted) = decrypt_number(&id) {
                 let base = path.base().replace(&id, &decrypted.to_string());
 
-                let mut head = request.head_mut();
+                let head = request.head_mut();
                 head.replace_path(Path::from_parts(&base, path.query()));
 
                 return Ok(Outcome::Forward(request));

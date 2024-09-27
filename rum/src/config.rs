@@ -5,7 +5,7 @@ use std::io::IsTerminal;
 use time::Duration;
 
 use crate::controller::{AllowAll, AuthHandler, MiddlewareSet};
-use rand::{rngs::OsRng, Rng, RngCore};
+use rand::{rngs::OsRng, RngCore};
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 

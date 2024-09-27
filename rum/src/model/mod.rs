@@ -432,7 +432,7 @@ impl<T: Model> Query<T> {
     pub fn update_all(self, attributes: &[(impl ToColumn, impl ToValue)]) -> Self {
         match self {
             Query::Select(select) => {
-                let mut update = Update::<T>::from(select);
+                let update = Update::<T>::from(select);
                 let columns = attributes
                     .iter()
                     .map(|(c, _)| c.to_column())

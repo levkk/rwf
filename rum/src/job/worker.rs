@@ -2,7 +2,7 @@ use super::{Error, Job, JobHandler, JobModel};
 
 use colored::Colorize;
 use time::OffsetDateTime;
-use tokio::select;
+
 use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
@@ -10,10 +10,7 @@ use tracing::{error, info, warn};
 use crate::model::{get_connection, get_pool, Model};
 
 use std::collections::HashMap;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::{atomic::AtomicUsize, Arc};
 use std::time::Instant;
 
 #[derive(Default)]
