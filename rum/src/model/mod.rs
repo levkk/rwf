@@ -1016,17 +1016,19 @@ mod test {
     #[tokio::test]
     async fn test_fetch() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let transaction = pool.begin().await?;
+        let mut transaction = pool.begin().await?;
 
-        transaction.query("DROP TABLE users", &[]).await?;
+        transaction.client().query("DROP TABLE users", &[]).await?;
 
         transaction
+            .client()
             .query(
                 "CREATE TABLE IF NOT EXISTS users (id BIGINT, email VARCHAR, password VARCHAR);",
                 &[],
             )
             .await?;
         transaction
+            .client()
             .query(
                 "INSERT INTO users VALUES (1, 'test@test.com', 'not_encrypted');",
                 &[],
@@ -1050,9 +1052,10 @@ mod test {
     #[tokio::test]
     async fn test_explain() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let transaction = pool.begin().await?;
+        let mut transaction = pool.begin().await?;
 
         transaction
+            .client()
             .execute("CREATE TABLE IF NOT EXISTS users (id BIGINT);", &[])
             .await?;
 
@@ -1066,12 +1069,14 @@ mod test {
     async fn test_find_or_create() -> Result<(), Error> {
         let pool = Pool::new_local();
 
-        let transaction = pool.begin().await?;
+        let mut transaction = pool.begin().await?;
 
         transaction
+            .client()
             .execute("DROP TABLE IF EXISTS users", &[])
             .await?;
         transaction
+            .client()
             .execute("CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY, email VARCHAR NOT NULL, password VARCHAR NOT NULL);", &[])
             .await?;
 

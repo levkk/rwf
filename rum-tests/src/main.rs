@@ -322,20 +322,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: "5".to_string(),
         }
         .route("/base"),
-        Handler::new("/base/player", BasePlayerController {}),
-        Handler::new(
-            "/orders",
-            OrdersController {
-                // auth: AuthHandler::new(BasicAuth {
-                //     user: "test".to_string(),
-                //     password: "test".to_string(),
-                // }),
-                auth: AuthHandler::new(AllowAll {}),
-                middlware: MiddlewareSet::new(vec![MiddlewareHandler::new(
-                    RateLimiter::per_second(10),
-                )]),
-            },
-        ),
+        BasePlayerController {}.route("/base/player"),
+        OrdersController {
+            // auth: AuthHandler::new(BasicAuth {
+            //     user: "test".to_string(),
+            //     password: "test".to_string(),
+            // }),
+            auth: AuthHandler::new(AllowAll {}),
+            middlware: MiddlewareSet::new(vec![MiddlewareHandler::new(RateLimiter::per_second(
+                10,
+            ))]),
+        }
+        .route("/orders"),
     ])
     .launch("0.0.0.0:8000")
     .await?;

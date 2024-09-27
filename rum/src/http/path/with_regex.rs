@@ -1,5 +1,13 @@
+//! Path with regex is used to:
+//!
+//! 1. Route requests to a controller
+//! 2. Extract parameters from the URL
+//!
+//! Parameters are denoted by the column-name notation, e.g. `:param1`.
+
 use super::{Error, Params, Path};
 use regex::Regex;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Construct a regex for the specified path.
@@ -11,26 +19,24 @@ pub struct PathWithRegex {
 }
 
 impl PathWithRegex {
-    /// Create the path-specifid regex.
+    /// Create the path-specified regex.
     pub fn new(path: Path) -> Result<Self, Error> {
-        let mut params = vec![];
+        let mut params = HashMap::new();
         let mut i = 1;
-        let regex = path
-            .base()
-            .split("/")
-            .map(|p| {
-                if p.starts_with(":") {
-                    params.push(i);
-                    i += 1;
-                    "([a-zA-Z0-9]+)"
-                } else {
-                    p
-                }
-            })
-            .collect::<Vec<_>>();
-        let mut regex = "^".to_string() + &regex.join("/");
-        params.push(i);
-        regex.push_str("/?([a-zA-Z0-9]+)?(.*)");
+        let mut iter = path.base().split("/").peekable();
+        let mut regex = Vec::new();
+        while let Some(part) = iter.next() {
+            let re = if part.starts_with(":") {
+                params.insert(part[1..].to_owned(), i);
+                i += 1;
+                "([a-zA-Z0-9_-]+)"
+            } else {
+                part
+            };
+            regex.push(re);
+        }
+        let regex = "^".to_string() + &regex.join(r#"\/"#) + r#"(\/[a-zA-Z0-9_-]+)?"# + r#"\/?$"#;
+        params.insert("id".to_string(), i);
 
         let regex = Regex::new(&regex)?;
         Ok(Self {
@@ -60,15 +66,24 @@ impl std::ops::Deref for PathWithRegex {
 
 #[cfg(test)]
 mod test {
+    use super::*;
 
     #[test]
-    fn test_paramter() {
-        // let path = Path::parse("/api/orders/:id")
-        //     .unwrap()
-        //     .with_regex()
-        //     .unwrap();
-        // let req = Path::parse("/api/orders/123").unwrap();
-        // let param = path.parameter::<i64>(&req, 0).expect("to have a parameter");
-        // assert_eq!(param, 123);
+    fn test_paramters() {
+        let path = Path::parse("/api/orders/:name/receipt").unwrap();
+        let with_regex = PathWithRegex::new(path).unwrap();
+        println!("{}", with_regex.regex().as_str());
+
+        let url = "/api/orders/apple_bees/receipt/5";
+
+        let name = with_regex.params().parameter(url, "name");
+        assert_eq!(name, Some("apple_bees".to_string()));
+
+        let name = with_regex.params().parameter(url, "id");
+        assert_eq!(name, Some("5".to_string()));
+
+        let url = "/api/orders/hello-world/receipt/";
+        let name = with_regex.params().parameter(url, "name");
+        assert_eq!(name, Some("hello-world".to_string()));
     }
 }

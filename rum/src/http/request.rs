@@ -76,10 +76,10 @@ impl Request {
     }
 
     /// Extract a parameter from the provided path.
-    pub fn parameter<T: ToParameter>(&self, index: usize) -> Result<Option<T>, Error> {
+    pub fn parameter<T: ToParameter>(&self, name: &str) -> Result<Option<T>, Error> {
         if let Some(ref params) = self.params {
-            if let Some(parameter) = params.parameter(self.path().base(), index) {
-                return Ok(Some(T::to_parameter(parameter)?));
+            if let Some(parameter) = params.parameter(self.path().base(), name) {
+                return Ok(Some(T::to_parameter(&parameter)?));
             }
         }
 

@@ -332,8 +332,8 @@ mod test {
     #[tokio::test]
     async fn test_pool() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let mut conn = pool.get().await?;
-        let row = conn.query("SELECT 1", &[]).await?;
+        let conn = pool.get().await?;
+        let row = conn.client().query("SELECT 1", &[]).await?;
 
         assert_eq!(row.len(), 1);
 

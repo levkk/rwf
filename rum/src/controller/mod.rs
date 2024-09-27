@@ -128,7 +128,7 @@ pub trait RestController: Controller {
     /// and path.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        let parameter = request.parameter::<Self::Resource>(0);
+        let parameter = request.parameter::<Self::Resource>("id");
 
         match parameter {
             Ok(Some(id)) => match method {
@@ -180,7 +180,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        let parameter = request.parameter::<Self::Resource>(0);
+        let parameter = request.parameter::<Self::Resource>("id");
 
         match parameter {
             Ok(Some(id)) => match method {
