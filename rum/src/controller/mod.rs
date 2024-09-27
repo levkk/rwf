@@ -4,6 +4,7 @@ pub mod auth;
 pub mod error;
 pub mod middleware;
 pub mod static_files;
+pub mod util;
 
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session};
 pub use error::Error;

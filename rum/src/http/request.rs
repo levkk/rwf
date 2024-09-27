@@ -19,13 +19,13 @@ use crate::controller::Session;
 /// since the contents are behind an [`std::sync::Arc`].
 #[derive(Debug, Clone, Default)]
 pub struct Request {
+    head: Head,
     inner: Arc<Inner>,
     params: Option<Arc<Params>>,
 }
 
 #[derive(Debug, Default, Clone)]
 struct Inner {
-    head: Head,
     body: Vec<u8>,
     cookies: Cookies,
     session: Option<Session>,
@@ -46,10 +46,10 @@ impl Request {
         let cookies = head.cookies();
 
         Ok(Request {
+            head,
             params: None,
             inner: Arc::new(Inner {
                 body,
-                head,
                 session: cookies.get_session()?,
                 cookies,
                 peer: Some(peer),
@@ -72,7 +72,11 @@ impl Request {
     }
 
     pub fn head(&self) -> &Head {
-        &self.inner.head
+        &self.head
+    }
+
+    pub fn head_mut(&mut self) -> &mut Head {
+        &mut self.head
     }
 
     /// Extract a parameter from the provided path.
@@ -125,7 +129,7 @@ impl Deref for Request {
     type Target = Head;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner.head
+        &self.head
     }
 }
 

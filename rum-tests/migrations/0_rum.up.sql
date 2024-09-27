@@ -11,9 +11,16 @@ CREATE TABLE rum_jobs (
     error VARCHAR
 );
 
+-- Pending jobs
 CREATE INDEX ON rum_jobs USING btree(start_after, created_at) WHERE
     completed_at IS NULL
     AND started_at IS NULL
+    AND attempts < retries;
+
+-- Running jobs
+CREATE INDEX ON rum_jobs USING btree(start_after, created_at) WHERE
+    completed_at IS NULL
+    AND started_at IS NOT NULL
     AND attempts < retries;
 
 CREATE INDEX ON rum_jobs USING btree(name, completed_at);

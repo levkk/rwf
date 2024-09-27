@@ -34,6 +34,13 @@ impl Default for Path {
 }
 
 impl Path {
+    pub fn from_parts(base: &str, query: &HashMap<String, String>) -> Self {
+        Self {
+            base: base.to_string(),
+            query: query.clone(),
+        }
+    }
+
     /// Path URL base.
     pub fn base(&self) -> &str {
         &self.base

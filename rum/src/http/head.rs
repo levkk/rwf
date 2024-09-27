@@ -235,6 +235,10 @@ impl Head {
 
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
+
+    pub fn replace_path(&mut self, path: Path) {
+        self.path = path.clone();
+    }
 }
 
 #[cfg(test)]
