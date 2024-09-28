@@ -22,23 +22,38 @@ impl PathWithRegex {
     /// Create the path-specified regex.
     pub fn new(path: Path) -> Result<Self, Error> {
         let mut params = HashMap::new();
+        // Parameter regex groups start at 1 since the first group
+        // is the path base URL.
         let mut i = 1;
-        let mut iter = path.base().split("/").peekable();
+        let mut iter = path.base().split("/");
         let mut regex = Vec::new();
         while let Some(part) = iter.next() {
             let re = if part.starts_with(":") {
+                // Parameter name and group number.
                 params.insert(part[1..].to_owned(), i);
                 i += 1;
                 "([a-zA-Z0-9_-]+)"
             } else {
+                // Match the URL part as-is.
                 part
             };
             regex.push(re);
         }
-        let regex = "^".to_string() + &regex.join(r#"\/"#) + r#"(\/[a-zA-Z0-9_-]+)?"# + r#"\/?$"#;
+        let regex =
+            // Start of the URL
+            "^".to_string() +
+            // URL parts joined by '/'
+            &regex.join(r#"\/"#) +
+            // The :id parameter is optional
+            r#"(\/[a-zA-Z0-9_-]+)?"# +
+            // Last slash is optional
+            r#"\/?$"#;
+
+        // :id parameter
         params.insert("id".to_string(), i);
 
         let regex = Regex::new(&regex)?;
+
         Ok(Self {
             path,
             params: Arc::new(Params::new(regex, params)),
