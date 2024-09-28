@@ -37,7 +37,8 @@ impl Program {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::Tokenize;
+    use crate::view::template::{Tokenize, Value};
+    use std::collections::HashMap;
 
     #[test]
     fn test_basic_program() -> Result<(), Error> {
@@ -62,6 +63,28 @@ mod test {
         .tokenize()?;
         let ast = Program::parse(program)?;
         println!("{:?}", ast);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_secure_links() -> Result<(), Error> {
+        let program = r#"
+            <a href="/api/users/<%= encrypt_number(user.id) %>"><%= user.email %></a>"#
+            .tokenize()?;
+        let user = HashMap::from([
+            (String::from("id"), Value::Integer(25)),
+            (String::from("email"), Value::String("test@test.com".into())),
+        ]);
+
+        let mut context = Context::new();
+        context.set("user", Value::Hash(user))?;
+
+        let ast = Program::parse(program)?;
+        let result = ast.evaluate(&context)?;
+
+        // Make sure the "uuid" is there.
+        assert_eq!(result.chars().filter(|c| *c == '-').count(), 3);
 
         Ok(())
     }

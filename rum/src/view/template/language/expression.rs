@@ -226,7 +226,13 @@ impl Expression {
                     };
 
                     match next.token() {
-                        Token::RoundBracketEnd | Token::Comma => {
+                        Token::RoundBracketEnd => {
+                            args.push(Self::parse(
+                                &mut std::mem::take(&mut buffer).into_iter().peekable(),
+                            )?);
+                            break;
+                        }
+                        Token::Comma => {
                             args.push(Self::parse(
                                 &mut std::mem::take(&mut buffer).into_iter().peekable(),
                             )?);
@@ -541,6 +547,7 @@ mod test {
         let result = "<% decrypt_number(n) %>".evaluate(&context)?;
 
         assert_eq!(result.to_string(), String::from("1"));
+
         Ok(())
     }
 
