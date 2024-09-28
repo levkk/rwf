@@ -46,6 +46,8 @@ pub enum Expression {
         name: String,
         args: Vec<Expression>,
     },
+
+    Interpreter,
 }
 
 impl Expression {
@@ -92,6 +94,8 @@ impl Expression {
 
                 Ok(value.call(name, &args)?)
             }
+
+            Expression::Interpreter => Ok(Value::Interpreter),
         }
     }
 
@@ -160,7 +164,19 @@ impl Expression {
 
             token => {
                 let expr = match token {
-                    Token::Variable(name) => Self::variable(name),
+                    Token::Variable(name) => {
+                        if let Some(next) = iter.peek() {
+                            match next.token() {
+                                Token::RoundBracketStart => {
+                                    Self::function(&name, Expression::Interpreter, iter)?
+                                }
+
+                                _ => Self::variable(name),
+                            }
+                        } else {
+                            Self::variable(name)
+                        }
+                    }
                     Token::Value(value) => Self::constant(value),
                     Token::SquareBracketStart => {
                         let mut terms = vec![];
@@ -191,6 +207,51 @@ impl Expression {
         Ok(term)
     }
 
+    fn function(
+        name: &str,
+        expr: Self,
+        iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
+    ) -> Result<Self, Error> {
+        let arg = iter.peek().map(|t| t.token());
+        let args = match arg {
+            Some(Token::RoundBracketStart) => {
+                let mut buffer = vec![];
+                let mut args = vec![];
+                let _ = iter.next().ok_or(Error::Eof("function args start"));
+
+                loop {
+                    let next = match iter.next() {
+                        Some(next) => next,
+                        None => break,
+                    };
+
+                    match next.token() {
+                        Token::RoundBracketEnd | Token::Comma => {
+                            args.push(Self::parse(
+                                &mut std::mem::take(&mut buffer).into_iter().peekable(),
+                            )?);
+                        }
+                        _token => {
+                            buffer.push(next);
+                        }
+                    }
+                }
+
+                args
+            }
+
+            _ => {
+                vec![]
+            }
+        };
+
+        Ok(Expression::Function {
+            term: Box::new(expr),
+            name: name.to_string(),
+            args,
+        })
+    }
+
     fn accessor(
         mut expr: Self,
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
@@ -203,47 +264,7 @@ impl Expression {
                     let _ = iter.next().ok_or(Error::Eof("accessor dot"))?;
                     let name = iter.next().ok_or(Error::Eof("accessor name"))?;
                     match name.token() {
-                        Token::Variable(name) => {
-                            let arg = iter.peek().map(|t| t.token());
-                            let args = match arg {
-                                Some(Token::RoundBracketStart) => {
-                                    let mut buffer = vec![];
-                                    let mut args = vec![];
-                                    let _ = iter.next().ok_or(Error::Eof("function args start"));
-
-                                    loop {
-                                        let next = match iter.next() {
-                                            Some(next) => next,
-                                            None => break,
-                                        };
-
-                                        match next.token() {
-                                            Token::RoundBracketEnd | Token::Comma => {
-                                                args.push(Self::parse(
-                                                    &mut std::mem::take(&mut buffer)
-                                                        .into_iter()
-                                                        .peekable(),
-                                                )?);
-                                            }
-                                            _token => {
-                                                buffer.push(next);
-                                            }
-                                        }
-                                    }
-
-                                    args
-                                }
-
-                                _ => {
-                                    vec![]
-                                }
-                            };
-                            Expression::Function {
-                                term: Box::new(expr),
-                                name,
-                                args,
-                            }
-                        }
+                        Token::Variable(name) => Self::function(&name, expr, iter)?,
                         Token::Value(Value::Integer(n)) => Expression::Function {
                             term: Box::new(expr),
                             name: n.to_string(),
@@ -258,7 +279,7 @@ impl Expression {
         }
     }
 
-    /// Recusively parse the expression.
+    /// Recursively parse the expression.
     ///
     /// Consumes language tokens automatically.
     pub fn parse(
@@ -506,6 +527,20 @@ mod test {
         let t2 = r#"<% "where is the love" - "where is the " %>"#.evaluate_default()?;
         assert_eq!(t2, Value::String("love".into()));
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_global_function() -> Result<(), Error> {
+        let t1 = r#"<% encrypt_number(1) %>"#;
+        let result = t1.evaluate_default()?;
+
+        let mut context = Context::new();
+        context.set("n", result)?;
+
+        let result = "<% decrypt_number(n) %>".evaluate(&context)?;
+
+        assert_eq!(result.to_string(), String::from("1"));
         Ok(())
     }
 

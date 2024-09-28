@@ -164,7 +164,7 @@ impl Value {
         }
     }
 
-    pub fn call(&self, method_name: &str, _args: &[Value]) -> Result<Self, Error> {
+    pub fn call(&self, method_name: &str, args: &[Value]) -> Result<Self, Error> {
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
@@ -237,6 +237,24 @@ impl Value {
                 },
             },
 
+            Value::Interpreter => match method_name {
+                "encrypt_number" => match &args {
+                    &[Value::Integer(n)] => match crate::crypto::encrypt_number(*n) {
+                        Ok(n) => Value::String(n),
+                        Err(_) => Value::Null,
+                    },
+                    _ => Value::Null,
+                },
+                "decrypt_number" => match &args {
+                    &[Value::String(n)] => match crate::crypto::decrypt_number(&n) {
+                        Ok(n) => Value::Integer(n),
+                        Err(_) => Value::Null,
+                    },
+                    _ => Value::Null,
+                },
+                _ => return Err(Error::UnknownMethod(method_name.into())),
+            },
+
             _ => return Err(Error::UnknownMethod(method_name.into())),
         })
     }
@@ -260,6 +278,16 @@ impl Value {
         match self {
             Value::List(list) => list,
             value => vec![value],
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Value::String(s) => s.clone(),
+            Value::Integer(n) => n.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::Boolean(b) => b.to_string(),
+            value => format!("{:?}", value),
         }
     }
 }

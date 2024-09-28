@@ -709,6 +709,10 @@ pub trait Model: FromRow {
         Self::all().lock()
     }
 
+    fn reload(self) -> Query<Self> {
+        Self::find(self.id())
+    }
+
     fn to_json(&self) -> Result<serde_json::Value, Error> {
         let columns = Self::column_names();
         let values = self.values();

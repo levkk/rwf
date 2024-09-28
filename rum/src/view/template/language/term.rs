@@ -8,7 +8,7 @@ use crate::view::template::error::Error;
 pub enum Term {
     Constant(Value),
     Variable(String),
-    Function(fn() -> Value),
+    Function(String),
 }
 
 impl Term {
@@ -30,7 +30,7 @@ impl Term {
             Term::Variable(name) => context
                 .get(&name)
                 .ok_or(Error::UndefinedVariable(name.clone())),
-            Term::Function(f) => Ok(f()),
+            Term::Function(_f) => todo!("function evaluate"),
         }
     }
 }
