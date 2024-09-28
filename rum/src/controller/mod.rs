@@ -198,7 +198,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
                 _ => Ok(Response::method_not_allowed()),
             },
 
-            _ => Ok(Response::bad_request()),
+            Err(_) => Ok(Response::bad_request()),
         }
     }
 

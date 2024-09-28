@@ -10,9 +10,9 @@ impl Middleware for SecureId {
         let id = request.parameter::<String>("id");
 
         if let Ok(Some(id)) = id {
-            // Already a number, no need to decrypt.
+            // Block requests to a numeric ID.
             if id.chars().all(|c| c.is_numeric()) {
-                return Ok(Outcome::Forward(request));
+                return Ok(Outcome::Stop(Response::not_found()));
             }
 
             let path = request.path().clone();
@@ -24,6 +24,8 @@ impl Middleware for SecureId {
                 head.replace_path(Path::from_parts(&base, path.query()));
 
                 return Ok(Outcome::Forward(request));
+            } else {
+                return Ok(Outcome::Stop(Response::not_found()));
             }
         }
 

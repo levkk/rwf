@@ -3,7 +3,8 @@ use rum::model::{Model, Pool, Scope};
 use rum::view::template::{Context, Template};
 use rum::{
     controller::{
-        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, RateLimiter, StaticFiles,
+        middleware::{Middleware, RateLimiter, SecureId},
+        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, StaticFiles,
     },
     http::{Request, Response},
     job::{Job, Worker},
@@ -314,10 +315,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .await?;
 
-    Worker::new(vec![JobOne {}.job(), JobTwo {}.job()])
-        .start()
-        .await?
-        .spawn();
+    // Worker::new(vec![JobOne {}.job(), JobTwo {}.job()])
+    //     .start()
+    //     .await?
+    //     .spawn();
+    println!("number: {}", rum::crypto::encrypt_number(1).unwrap());
 
     Server::new(vec![
         StaticFiles::serve("static")?,
@@ -332,9 +334,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             //     password: "test".to_string(),
             // }),
             auth: AuthHandler::new(AllowAll {}),
-            middlware: MiddlewareSet::new(vec![MiddlewareHandler::new(RateLimiter::per_second(
-                10,
-            ))]),
+            middlware: MiddlewareSet::new(vec![
+                RateLimiter::per_second(10).middleware(),
+                SecureId {}.middleware(),
+            ]),
         }
         .route("/orders"),
     ])

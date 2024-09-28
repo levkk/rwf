@@ -6,7 +6,9 @@ pub mod rate_limiter;
 pub use rate_limiter::RateLimiter;
 
 pub mod prelude;
+
 pub mod secure_id;
+pub use secure_id::SecureId;
 
 /// The result of middleware processing a request.
 ///
@@ -28,6 +30,13 @@ pub trait Middleware: Send + Sync {
         response: Response,
     ) -> Result<Response, Error> {
         Ok(response)
+    }
+
+    fn middleware(self) -> MiddlewareHandler
+    where
+        Self: Sized + 'static,
+    {
+        MiddlewareHandler::new(self)
     }
 }
 

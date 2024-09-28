@@ -9,45 +9,34 @@ use rand::{rngs::OsRng, RngCore};
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
+/// Global configuration.
 pub struct Config {
     pub aes_key: Key<AesGcmSiv<Aes128>>, // AES-128 key used for encryption.
+    pub secure_id_key: Key<AesGcmSiv<Aes128>>,
     pub cookie_max_age: Duration,
     pub tty: bool,
     pub default_auth: AuthHandler,
     pub session_duration: Duration,
     pub default_middleware: MiddlewareSet,
-
-    /// Secret key.
-    ///
-    /// The first 128 bits are used as the AES encryption key.
-    /// The next 128 bits are used for ID obfuscation.
-    /// Remaining bits can be used for other purposes (not currently reserved).
-    pub secret_key: [u8; 512 / 8],
-}
-
-impl Config {
-    /// Get the ID mask.
-    pub fn id_mask(&self) -> &[u8] {
-        &self.secret_key[128 / 8..((128 / 8) * 2)]
-    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         // Generate a random AES key.
-        let mut secret_key = [0u8; 512 / 8];
+        let mut secret_key = [0u8; 256 / 8];
         OsRng.fill_bytes(&mut secret_key);
 
         let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
+        let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
         Self {
             aes_key,
+            secure_id_key,
             cookie_max_age: Duration::days(30),
             tty: std::io::stderr().is_terminal(),
             default_auth: AuthHandler::new(AllowAll {}),
             session_duration: Duration::days(4),
             default_middleware: MiddlewareSet::default(),
-            secret_key,
         }
     }
 }

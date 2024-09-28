@@ -66,7 +66,7 @@ impl Encrypted {
 /// ```
 /// use rum::crypto::encrypt;
 ///
-/// let ciphertext = encrypt("hello world".as_bytes()).expect("encryption failed");
+/// let ciphertext = encrypt(b"hello world").expect("encryption failed");
 /// ```
 pub fn encrypt(data: &[u8]) -> Result<String, Error> {
     let config = get_config();
@@ -98,7 +98,7 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
     let config = get_config();
     let nonce = nonce();
 
-    let key = config.aes_key;
+    let key = config.secure_id_key;
     let cipher = Aes128GcmSiv::new(&key);
     let aes_nonce = Nonce::from_slice(&nonce);
     let data = n.to_be_bytes();
@@ -117,7 +117,7 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
         .split(", ")
         .collect::<Vec<_>>();
 
-    // Split into two 40-bit numbers.
+    // Split into 4 40-bit numbers.
     let part_size = split.len() / 4;
 
     let mut uuid = Vec::new();
@@ -130,17 +130,23 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
 
 pub fn decrypt_number(s: &str) -> Result<i64, Error> {
     let config = get_config();
-    let _nonce = nonce();
 
-    let key = config.aes_key;
+    let key = config.secure_id_key;
     let cipher = Aes128GcmSiv::new(&key);
+
+    // Remove the pretty format.
     let s = s.replace("-", "");
+
+    if s.len() % 2 != 0 {
+        return Err(Error::Generic("incorrect secure id format"));
+    }
 
     let bytes = (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap_or(0))
         .collect::<Vec<_>>();
 
+    // Should contain at least the nonce.
     if bytes.len() < 12 {
         return Err(Error::Generic("incorrect secure id format"));
     }
@@ -152,6 +158,7 @@ pub fn decrypt_number(s: &str) -> Result<i64, Error> {
 
     let plaintext = cipher.decrypt(aes_nonce, ciphertext.as_ref())?;
 
+    // Should be a i64-size structure.
     if plaintext.len() != 8 {
         return Err(Error::Generic("incorrect secure id format"));
     }
