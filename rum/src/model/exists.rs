@@ -18,7 +18,7 @@ impl Model for Exists {
         unimplemented!()
     }
 
-    fn foreign_key() -> String {
+    fn foreign_key() -> &'static str {
         unimplemented!()
     }
 

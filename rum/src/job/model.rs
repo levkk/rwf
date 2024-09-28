@@ -87,8 +87,8 @@ impl Model for JobModel {
         "id"
     }
 
-    fn foreign_key() -> String {
-        "rum_job_id".to_string()
+    fn foreign_key() -> &'static str {
+        "rum_job_id"
     }
 
     fn column_names() -> &'static [&'static str] {

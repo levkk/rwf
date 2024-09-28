@@ -10,7 +10,7 @@ impl Model for Explain {
         unimplemented!()
     }
 
-    fn foreign_key() -> String {
+    fn foreign_key() -> &'static str {
         unimplemented!()
     }
 

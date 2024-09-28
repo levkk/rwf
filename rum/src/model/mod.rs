@@ -621,7 +621,7 @@ pub trait Model: FromRow {
     ///
     /// For example, if the primary key of this table is "id" and the name of the table is "users",
     /// then the foreign key is "user_id".
-    fn foreign_key() -> String;
+    fn foreign_key() -> &'static str;
 
     /// Name of the primary key column. Expected to be "id".
     fn primary_key() -> &'static str {
@@ -746,8 +746,8 @@ mod test {
             "users"
         }
 
-        fn foreign_key() -> String {
-            "user_id".into()
+        fn foreign_key() -> &'static str {
+            "user_id"
         }
 
         fn column_names() -> &'static [&'static str] {
@@ -775,8 +775,8 @@ mod test {
             "orders"
         }
 
-        fn foreign_key() -> String {
-            "order_id".into()
+        fn foreign_key() -> &'static str {
+            "order_id"
         }
 
         fn column_names() -> &'static [&'static str] {
@@ -804,8 +804,8 @@ mod test {
             "order_items"
         }
 
-        fn foreign_key() -> String {
-            "order_item_id".into()
+        fn foreign_key() -> &'static str {
+            "order_item_id"
         }
 
         fn column_names() -> &'static [&'static str] {
@@ -832,8 +832,8 @@ mod test {
             "products"
         }
 
-        fn foreign_key() -> String {
-            "product_id".into()
+        fn foreign_key() -> &'static str {
+            "product_id"
         }
 
         fn column_names() -> &'static [&'static str] {

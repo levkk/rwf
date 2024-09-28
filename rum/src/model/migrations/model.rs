@@ -34,8 +34,8 @@ impl Model for Migration {
         "rum_migrations"
     }
 
-    fn foreign_key() -> String {
-        "rum_migration_id".to_string()
+    fn foreign_key() -> &'static str {
+        "rum_migration_id"
     }
 
     fn id(&self) -> Value {

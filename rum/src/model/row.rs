@@ -16,8 +16,8 @@ impl Model for Row {
         "_id"
     }
 
-    fn foreign_key() -> String {
-        "_rum_row_id".to_string()
+    fn foreign_key() -> &'static str {
+        "_rum_row_id"
     }
 
     fn column_names() -> &'static [&'static str] {

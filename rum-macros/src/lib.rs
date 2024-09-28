@@ -81,8 +81,8 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                         #table_name
                     }
 
-                    fn foreign_key() -> String {
-                        #foreign_key.to_string()
+                    fn foreign_key() -> &'static str {
+                        #foreign_key
                     }
 
                     fn column_names() -> &'static[&'static str] {
