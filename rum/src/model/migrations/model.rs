@@ -50,12 +50,8 @@ impl Model for Migration {
         ]
     }
 
-    fn column_names() -> Vec<String> {
-        vec![
-            "version".to_string(),
-            "name".to_string(),
-            "applied_at".to_string(),
-        ]
+    fn column_names() -> &'static [&'static str] {
+        &["version", "name", "applied_at"]
     }
 }
 

@@ -91,8 +91,8 @@ impl Model for JobModel {
         "rum_job_id".to_string()
     }
 
-    fn column_names() -> Vec<String> {
-        vec![
+    fn column_names() -> &'static [&'static str] {
+        &[
             "name",
             "args",
             "created_at",
@@ -103,9 +103,6 @@ impl Model for JobModel {
             "completed_at",
             "error",
         ]
-        .into_iter()
-        .map(|s| s.to_string())
-        .collect()
     }
 
     fn values(&self) -> Vec<Value> {

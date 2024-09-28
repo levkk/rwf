@@ -22,8 +22,8 @@ impl Model for Exists {
         unimplemented!()
     }
 
-    fn column_names() -> Vec<String> {
-        vec![]
+    fn column_names() -> &'static [&'static str] {
+        &[]
     }
 
     fn values(&self) -> Vec<Value> {

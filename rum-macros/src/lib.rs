@@ -44,7 +44,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                     let ident = field.ident.clone();
 
                     quote! {
-                        String::from(stringify!(#ident)),
+                        stringify!(#ident),
                     }
                 });
 
@@ -85,8 +85,8 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                         #foreign_key.to_string()
                     }
 
-                    fn column_names() -> Vec<String> {
-                        vec![
+                    fn column_names() -> &'static[&'static str] {
+                        &[
                             #(#column_names)*
                         ]
                     }

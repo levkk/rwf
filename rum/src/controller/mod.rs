@@ -269,9 +269,9 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
         // Only accept columns we know about, ignore the rest.
         for column in Self::Model::column_names() {
-            if let Some(value) = req.get(&column) {
+            if let Some(value) = req.get(*column) {
                 let value = value.to_value();
-                columns.push(column);
+                columns.push(*column);
                 values.push(value);
             }
         }

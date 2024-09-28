@@ -601,7 +601,7 @@ pub trait Model: FromRow {
     ///
     /// If you're using the derive macro, you don't need to specify these,
     /// they will be inferred from the struct attributes.
-    fn column_names() -> Vec<String>;
+    fn column_names() -> &'static [&'static str];
 
     /// The value of the primary key (id).
     ///
@@ -715,7 +715,7 @@ pub trait Model: FromRow {
 
         let mut map = serde_json::Map::new();
         for (column, value) in columns.iter().zip(values.iter()) {
-            map.insert(column.clone(), value.clone().into());
+            map.insert(column.to_string(), value.clone().into());
         }
 
         map.insert("id".into(), self.id().into());
@@ -750,8 +750,8 @@ mod test {
             "user_id".into()
         }
 
-        fn column_names() -> Vec<String> {
-            vec!["email".to_string(), "password".to_string()]
+        fn column_names() -> &'static [&'static str] {
+            &["email", "password"]
         }
 
         fn values(&self) -> Vec<Value> {
@@ -779,8 +779,8 @@ mod test {
             "order_id".into()
         }
 
-        fn column_names() -> Vec<String> {
-            vec!["user_id".to_string(), "amount".to_string()]
+        fn column_names() -> &'static [&'static str] {
+            &["user_id", "amount"]
         }
 
         fn values(&self) -> Vec<Value> {
@@ -808,8 +808,8 @@ mod test {
             "order_item_id".into()
         }
 
-        fn column_names() -> Vec<String> {
-            vec!["order_id".to_string(), "product_id".to_string()]
+        fn column_names() -> &'static [&'static str] {
+            &["order_id", "product_id"]
         }
 
         fn values(&self) -> Vec<Value> {
@@ -836,8 +836,8 @@ mod test {
             "product_id".into()
         }
 
-        fn column_names() -> Vec<String> {
-            vec!["name".to_string()]
+        fn column_names() -> &'static [&'static str] {
+            &["name"]
         }
 
         fn values(&self) -> Vec<Value> {

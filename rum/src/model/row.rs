@@ -20,8 +20,8 @@ impl Model for Row {
         "_rum_row_id".to_string()
     }
 
-    fn column_names() -> Vec<String> {
-        vec![]
+    fn column_names() -> &'static [&'static str] {
+        &[]
     }
 
     fn values(&self) -> Vec<Value> {

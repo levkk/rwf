@@ -419,7 +419,7 @@ impl<T: Model> ToValue for T {
         let mut hash = HashMap::from([("id".to_string(), self.id().to_value()?)]);
 
         for (key, value) in columns.iter().zip(values.iter()) {
-            hash.insert(key.clone(), value.to_value()?);
+            hash.insert(key.to_string(), value.to_value()?);
         }
 
         Ok(Value::Hash(hash))
