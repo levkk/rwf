@@ -624,8 +624,8 @@ pub trait Model: FromRow {
     fn foreign_key() -> String;
 
     /// Name of the primary key column. Expected to be "id".
-    fn primary_key() -> String {
-        "id".to_string()
+    fn primary_key() -> &'static str {
+        "id"
     }
 
     /// `LIMIT 1`

@@ -26,8 +26,8 @@ impl FromRow for Migration {
 }
 
 impl Model for Migration {
-    fn primary_key() -> String {
-        "id".to_string()
+    fn primary_key() -> &'static str {
+        "id"
     }
 
     fn table_name() -> &'static str {

@@ -17,7 +17,7 @@ impl<T: Model> Update<T> {
     pub fn empty() -> Self {
         Self {
             table_name: T::table_name().to_string(),
-            primary_key: T::primary_key(),
+            primary_key: T::primary_key().to_string(),
             placeholders: Placeholders::new(),
             columns: vec![],
             where_clause: WhereClause::default(),

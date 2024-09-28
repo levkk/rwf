@@ -83,8 +83,8 @@ impl Model for JobModel {
         "rum_jobs"
     }
 
-    fn primary_key() -> String {
-        "id".to_string()
+    fn primary_key() -> &'static str {
+        "id"
     }
 
     fn foreign_key() -> String {

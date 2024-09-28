@@ -12,8 +12,8 @@ impl Model for Row {
         "_rum_rows"
     }
 
-    fn primary_key() -> String {
-        "_id".to_string()
+    fn primary_key() -> &'static str {
+        "_id"
     }
 
     fn foreign_key() -> String {
