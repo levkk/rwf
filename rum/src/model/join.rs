@@ -45,7 +45,7 @@ pub trait Association<T: Model>: Model {
         match Self::association_type() {
             // INNER JOIN "users" ON "users"."id" = "orders"."user_id"
             BelongsTo => {
-                let table_name = Self::table_name();
+                let table_name = Self::table_name().to_string();
                 let table_column = Column::new(T::table_name(), T::primary_key());
                 let foreign_column = Column::new(Self::table_name(), T::foreign_key());
                 Join {
@@ -59,7 +59,7 @@ pub trait Association<T: Model>: Model {
             // INNER JOIN "orders ON "orders"."user_id" = "users"."id"
             // HasOne is enforced by having a UNIQUE index on the foreign key.
             HasMany | HasOne => {
-                let table_name = Self::table_name();
+                let table_name = Self::table_name().to_string();
                 let table_column = Column::new(T::table_name(), Self::foreign_key());
                 let foreign_column = Column::new(Self::table_name(), Self::primary_key());
                 Join {

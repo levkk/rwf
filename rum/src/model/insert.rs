@@ -22,7 +22,7 @@ impl<T: Model> Insert<T> {
         }
 
         Self {
-            table_name: T::table_name(),
+            table_name: T::table_name().to_string(),
             placeholders,
             columns,
             marker: PhantomData,
@@ -37,7 +37,7 @@ impl<T: Model> Insert<T> {
         }
 
         Insert {
-            table_name: T::table_name(),
+            table_name: T::table_name().to_string(),
             columns: columns.iter().map(|c| c.to_column().unqualify()).collect(),
             placeholders,
             marker: PhantomData,

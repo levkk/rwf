@@ -77,8 +77,8 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
                 #[automatically_derived]
                 impl rum::model::Model for #ident {
-                    fn table_name() -> String {
-                        #table_name.to_string()
+                    fn table_name() -> &'static str {
+                        #table_name
                     }
 
                     fn foreign_key() -> String {

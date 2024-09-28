@@ -14,7 +14,7 @@ impl FromRow for Exists {
 }
 
 impl Model for Exists {
-    fn table_name() -> String {
+    fn table_name() -> &'static str {
         unimplemented!()
     }
 

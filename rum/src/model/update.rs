@@ -16,7 +16,7 @@ pub struct Update<T> {
 impl<T: Model> Update<T> {
     pub fn empty() -> Self {
         Self {
-            table_name: T::table_name(),
+            table_name: T::table_name().to_string(),
             primary_key: T::primary_key(),
             placeholders: Placeholders::new(),
             columns: vec![],

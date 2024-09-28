@@ -30,8 +30,8 @@ impl Model for Migration {
         "id".to_string()
     }
 
-    fn table_name() -> String {
-        "rum_migrations".to_string()
+    fn table_name() -> &'static str {
+        "rum_migrations"
     }
 
     fn foreign_key() -> String {

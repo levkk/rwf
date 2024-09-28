@@ -8,8 +8,8 @@ pub struct Row {
 }
 
 impl Model for Row {
-    fn table_name() -> String {
-        "_rum_rows".to_string()
+    fn table_name() -> &'static str {
+        "_rum_rows"
     }
 
     fn primary_key() -> String {

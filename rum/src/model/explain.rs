@@ -6,7 +6,7 @@ pub struct Explain {
 }
 
 impl Model for Explain {
-    fn table_name() -> String {
+    fn table_name() -> &'static str {
         unimplemented!()
     }
 

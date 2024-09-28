@@ -79,8 +79,8 @@ impl Model for JobModel {
         self.id.to_value()
     }
 
-    fn table_name() -> String {
-        "rum_jobs".to_string()
+    fn table_name() -> &'static str {
+        "rum_jobs"
     }
 
     fn primary_key() -> String {

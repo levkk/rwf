@@ -589,7 +589,7 @@ pub trait Model: FromRow {
     ///
     /// Typically this is automatically inferred based on the name of the struct,
     /// if you're using the derive macro. If not, you can specify any table name you want.
-    fn table_name() -> String;
+    fn table_name() -> &'static str;
 
     /// When joining tables, use this function to create a fully-qualified column name, e.g.
     /// instead "id", you'll get "users"."id".
@@ -742,8 +742,8 @@ mod test {
             Value::Integer(self.id)
         }
 
-        fn table_name() -> String {
-            "users".into()
+        fn table_name() -> &'static str {
+            "users"
         }
 
         fn foreign_key() -> String {
@@ -771,8 +771,8 @@ mod test {
             Value::Integer(self.id)
         }
 
-        fn table_name() -> String {
-            "orders".into()
+        fn table_name() -> &'static str {
+            "orders"
         }
 
         fn foreign_key() -> String {
@@ -800,8 +800,8 @@ mod test {
             Value::Integer(self.id)
         }
 
-        fn table_name() -> String {
-            "order_items".into()
+        fn table_name() -> &'static str {
+            "order_items"
         }
 
         fn foreign_key() -> String {
@@ -828,8 +828,8 @@ mod test {
             Value::Integer(self.id)
         }
 
-        fn table_name() -> String {
-            "products".into()
+        fn table_name() -> &'static str {
+            "products"
         }
 
         fn foreign_key() -> String {
