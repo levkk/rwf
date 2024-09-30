@@ -33,6 +33,10 @@ impl Headers {
         self.headers.remove(&name.to_lowercase())
     }
 
+    pub fn clear(&mut self) {
+        self.headers.clear();
+    }
+
     /// Convert headers to bytes (UTF-8).
     ///
     /// Used to send headers over the wire to the client as part of a response.

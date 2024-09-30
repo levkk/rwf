@@ -330,4 +330,13 @@ impl Response {
             )
             .code(429)
     }
+
+    pub fn switching_protocols(protocol: &str) -> Self {
+        let mut response = Self::default();
+        response.headers.clear();
+        response
+            .header("connection", "upgrade")
+            .header("upgrade", protocol)
+            .code(101)
+    }
 }

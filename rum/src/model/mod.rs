@@ -203,7 +203,7 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(select) => Select(select.limit(1)),
-            _ => unreachable!(),
+            _ => self,
         }
     }
 
@@ -222,7 +222,7 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(select) => Select(select.limit(n)),
-            _ => unreachable!(),
+            _ => self,
         }
     }
 
@@ -231,7 +231,7 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(_) => self.first_many(1),
-            _ => unreachable!(),
+            _ => self,
         }
     }
 
@@ -250,7 +250,7 @@ impl<T: Model> Query<T> {
                 Select(select.limit(n).order_by(order_by))
             }
 
-            _ => unreachable!(),
+            _ => self,
         }
     }
 

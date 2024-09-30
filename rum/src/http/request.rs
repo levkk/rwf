@@ -123,6 +123,15 @@ impl Request {
     pub fn session(&self) -> &Option<Session> {
         &self.inner.session
     }
+
+    pub fn upgrade_websocket(&self) -> bool {
+        self.headers()
+            .get("connection")
+            .map(|v| v.to_lowercase().contains("upgrade"))
+            == Some(true)
+            && self.headers().get("upgrade").map(|v| v.to_lowercase())
+                == Some(String::from("websocket"))
+    }
 }
 
 impl Deref for Request {

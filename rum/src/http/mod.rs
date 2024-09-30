@@ -13,6 +13,7 @@ pub mod router;
 pub mod server;
 pub mod session;
 pub mod url;
+pub mod websocket;
 
 pub use authorization::Authorization;
 pub use body::Body;
@@ -28,3 +29,4 @@ pub use router::Router;
 pub use server::Server;
 pub use session::Session;
 pub use url::urldecode;
+pub use websocket::Websocket;

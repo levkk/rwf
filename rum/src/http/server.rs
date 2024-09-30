@@ -4,7 +4,7 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, Request, Response, Router};
+use super::{Error, Handler, Request, Response, Router, Websocket};
 
 use colored::Colorize;
 
@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// HTTP server.
 pub struct Server {
@@ -70,6 +70,19 @@ impl Server {
                         return;
                     }
                 };
+
+                if request.upgrade_websocket() {
+                    debug!("upgrading {:?} to websocket", peer_addr);
+
+                    match Websocket::new(stream).handshake(request).await {
+                        Ok(websocket) => {
+                            websocket.handle().await;
+                        }
+                        Err(err) => warn!("websocket handshake failed: {:?}", err),
+                    };
+
+                    break;
+                }
 
                 let start = Instant::now();
 
