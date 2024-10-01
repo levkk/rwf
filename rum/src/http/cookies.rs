@@ -133,6 +133,7 @@ pub struct Cookie {
     domain: Option<String>,
     http_only: bool,
     secure: bool,
+    same_site: Option<String>,
 }
 
 impl Cookie {
@@ -248,6 +249,12 @@ impl std::fmt::Display for Cookie {
             write!(f, "; Domain={}", domain)?;
         }
 
+        if let Some(ref same_site) = self.same_site {
+            write!(f, "; SameSite={}", same_site)?;
+        } else {
+            write!(f, "; SameSite=Lax")?;
+        }
+
         Ok(())
     }
 }
@@ -301,6 +308,16 @@ impl CookieBuilder {
 
     pub fn secure(mut self) -> Self {
         self.cookie.secure = true;
+        self
+    }
+
+    pub fn lax(mut self) -> Self {
+        self.cookie.same_site = Some("Lax".to_string());
+        self
+    }
+
+    pub fn strict(mut self) -> Self {
+        self.cookie.same_site = Some("Strict".to_string());
         self
     }
 

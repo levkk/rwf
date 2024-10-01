@@ -4,7 +4,7 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, Request, Response, Router, Websocket};
+use super::{Error, Handler, Protocol, Request, Response, Router};
 
 use colored::Colorize;
 
@@ -12,10 +12,23 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
+
+#[derive(Debug)]
+pub enum Stream<'a> {
+    Plain(&'a mut BufReader<BufWriter<TcpStream>>),
+}
+
+impl<'a> Stream<'a> {
+    pub fn stream(&'a mut self) -> impl AsyncRead + AsyncWrite + 'a {
+        match self {
+            Stream::Plain(stream) => stream,
+        }
+    }
+}
 
 /// HTTP server.
 pub struct Server {
@@ -71,19 +84,6 @@ impl Server {
                     }
                 };
 
-                if request.upgrade_websocket() {
-                    debug!("upgrading {:?} to websocket", peer_addr);
-
-                    match Websocket::new(stream).handshake(request).await {
-                        Ok(websocket) => {
-                            websocket.handle().await;
-                        }
-                        Err(err) => warn!("websocket handshake failed: {:?}", err),
-                    };
-
-                    break;
-                }
-
                 let start = Instant::now();
 
                 match handlers.find(request.path()) {
@@ -112,6 +112,8 @@ impl Server {
                         // Log request.
                         Self::log(&request, handler.controller_name(), &response, duration);
 
+                        let websocket_upgrade = response.websocket_upgrade();
+
                         // Send reply to client.
                         match response.send(&mut stream).await {
                             Ok(_) => (),
@@ -121,6 +123,13 @@ impl Server {
                         }
 
                         let _ = stream.flush().await;
+
+                        println!("stream starting");
+
+                        match handler.handle_stream(Stream::Plain(&mut stream)).await {
+                            Ok(true) => continue,
+                            _ => break,
+                        };
                     }
 
                     None => {

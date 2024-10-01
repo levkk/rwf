@@ -83,7 +83,7 @@ impl Controller for StaticFiles {
                     return Ok(Response::not_found());
                 }
 
-                let response = Response::from_request(request)?;
+                let response = Response::new();
 
                 Ok(response.body((path, file, metadata)))
             }

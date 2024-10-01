@@ -30,6 +30,7 @@ struct Inner {
     cookies: Cookies,
     session: Option<Session>,
     peer: Option<SocketAddr>,
+    websocket_id: Option<u64>,
 }
 
 impl Request {
@@ -44,6 +45,14 @@ impl Request {
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
         let cookies = head.cookies();
+        let websocket_id = match cookies.get_private("rum_ws_id") {
+            Ok(Some(id)) => match id.value().parse() {
+                Ok(id) => Some(id),
+                Err(_) => None,
+            },
+
+            _ => None,
+        };
 
         Ok(Request {
             head,
@@ -51,8 +60,9 @@ impl Request {
             inner: Arc::new(Inner {
                 body,
                 session: cookies.get_session()?,
-                cookies,
                 peer: Some(peer),
+                websocket_id,
+                cookies,
             }),
         })
     }

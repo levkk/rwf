@@ -5,15 +5,21 @@ pub mod error;
 pub mod middleware;
 pub mod static_files;
 pub mod util;
+// pub mod websocket;
 
-pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session};
+pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, UserId};
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
+// pub use websocket::Websocket;
 
-use super::http::{Handler, Method, Request, Response, ToParameter};
+use super::http::{websocket, Handler, Method, Protocol, Request, Response, Stream, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update, Value};
 use crate::config::get_config;
+
+use std::marker::Unpin;
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use tokio::select;
 
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +51,15 @@ pub trait Controller: Sync + Send {
         Handler::new(path, self)
     }
 
+    fn protocol(&self) -> Protocol {
+        Protocol::Http1
+    }
+
+    /// Handle the TCP connection directly.
+    async fn handle_stream(&self, stream: Stream<'_>) -> Result<bool, Error> {
+        Ok(true)
+    }
+
     /// Internal function to handle the HTTP request. Do not implement this unless
     /// you're looking to do something really custom.
     async fn handle_internal(&self, request: Request) -> Result<Response, Error> {
@@ -57,7 +72,11 @@ pub trait Controller: Sync + Send {
         let outcome = self.middleware().handle_request(request).await?;
         match outcome {
             Outcome::Forward(request) => match self.handle(&request).await {
-                Ok(response) => self.middleware().handle_response(&request, response).await,
+                Ok(response) => {
+                    self.middleware()
+                        .handle_response(&request, response.from_request(&request)?)
+                        .await
+                }
                 Err(err) => Err(err),
             },
             Outcome::Stop(response) => Ok(response),
@@ -206,7 +225,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         let mut conn = get_connection().await?;
 
         let models = Self::Model::all().fetch_all(&mut conn).await?;
-        let response = match Response::from_request(request)?.json(models) {
+        let response = match Response::new().json(models) {
             Ok(response) => response,
             Err(err) => Response::internal_error(err),
         };
@@ -221,7 +240,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
             .fetch(&mut conn)
             .await
         {
-            Ok(model) => match Response::from_request(request)?.json(model) {
+            Ok(model) => match Response::new().json(model) {
                 Ok(response) => Ok(response),
                 Err(err) => Ok(Response::internal_error(err)),
             },
@@ -234,7 +253,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         let model = request.json::<Self::Model>()?;
         let mut conn = get_connection().await?;
         let model = model.create().fetch(&mut conn).await?;
-        Ok(Response::from_request(request)?.json(model)?)
+        Ok(Response::new().json(model)?)
     }
 
     async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {
@@ -249,7 +268,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 
         let mut conn = get_connection().await?;
         let model = model.save().fetch(&mut conn).await?;
-        Ok(Response::from_request(request)?.json(model)?)
+        Ok(Response::new().json(model)?)
     }
 
     async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
@@ -280,6 +299,62 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
             .fetch(&mut conn)
             .await?;
 
-        Ok(Response::from_request(request)?.json(model)?)
+        Ok(Response::new().json(model)?)
+    }
+}
+
+#[async_trait]
+pub trait Websocket: Controller {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        use base64::{engine::general_purpose, Engine as _};
+        use sha1::{Digest, Sha1};
+
+        if !request.upgrade_websocket() {
+            return Ok(Response::bad_request());
+        }
+
+        let headers = match websocket::Headers::from_http_request(request) {
+            Ok(headers) => headers,
+            Err(_) => return Ok(Response::bad_request()),
+        };
+
+        let accept = headers.key.clone() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+        let digest = Sha1::digest(accept.as_bytes());
+        let base64 = general_purpose::STANDARD.encode(digest);
+
+        Ok(Response::switching_protocols("websocket").header("sec-websocket-accept", base64))
+    }
+
+    async fn server_message(&self, user_id: &UserId) -> Result<websocket::Message, Error>;
+    async fn client_message(
+        &self,
+        user_id: &UserId,
+        message: websocket::Message,
+    ) -> Result<(), Error>;
+
+    async fn handle_stream(&self, mut stream: Stream<'_>) -> Result<bool, Error> {
+        let mut stream = stream.stream();
+        let user_id = UserId::default();
+
+        loop {
+            select! {
+                message = self.server_message(&user_id) => {
+                    let message = message?;
+                    message.send(&mut stream).await?;
+                    stream.flush().await?;
+                }
+
+                head = websocket::Header::read(&mut stream) => {
+                    let head = head?;
+                    let meta = websocket::Meta::read(&mut stream).await?;
+                    let message = websocket::Message::read(&head, &meta, &mut stream).await?;
+
+                    self.client_message(&user_id, message).await?;
+                }
+
+            }
+        }
+
+        Ok(false)
     }
 }

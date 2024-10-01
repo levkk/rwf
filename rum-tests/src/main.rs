@@ -4,9 +4,9 @@ use rum::view::template::{Context, Template};
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, StaticFiles,
+        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, StaticFiles, UserId, Websocket,
     },
-    http::{Request, Response},
+    http::{websocket, Request, Response, Stream},
     job::{Job, Worker},
     model::{migrate, rollback},
     serde::{Deserialize, Serialize},
@@ -162,6 +162,36 @@ impl Job for JobTwo {
     async fn execute(&self, args: serde_json::Value) -> Result<(), rum::job::Error> {
         println!("job two args: {:?}", args);
         Err(rum::job::Error::Unknown("random error".to_string()))
+    }
+}
+
+struct WebsocketController;
+
+#[rum::async_trait]
+impl Controller for WebsocketController {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        Websocket::handle(self, request).await
+    }
+
+    async fn handle_stream(&self, stream: Stream<'_>) -> Result<bool, Error> {
+        Websocket::handle_stream(self, stream).await
+    }
+}
+
+#[rum::async_trait]
+impl Websocket for WebsocketController {
+    async fn server_message(&self, user_id: &UserId) -> Result<websocket::Message, Error> {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
+        Ok(websocket::Message::Text("ping ping!".into()))
+    }
+
+    async fn client_message(
+        &self,
+        user_id: &UserId,
+        message: websocket::Message,
+    ) -> Result<(), Error> {
+        println!("message: {:?}", message);
+        Ok(())
     }
 }
 
@@ -323,6 +353,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::new(vec![
         StaticFiles::serve("static")?,
+        WebsocketController {}.route("/websocket"),
         BaseController {
             id: "5".to_string(),
         }

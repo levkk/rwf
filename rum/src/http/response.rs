@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{head::Version, Body, Cookies, Error, Headers, Request};
+use super::{head::Version, Body, Cookie, CookieBuilder, Cookies, Error, Headers, Request};
 use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
@@ -57,6 +57,7 @@ pub struct Response {
     version: Version,
     body: Body,
     cookies: Cookies,
+    session: Option<Session>,
 }
 
 impl Default for Response {
@@ -71,6 +72,7 @@ impl Default for Response {
             body: Body::bytes(vec![]),
             version: Version::Http1,
             cookies: Cookies::new(),
+            session: None,
         }
     }
 }
@@ -88,22 +90,26 @@ impl Response {
             body: Body::bytes(vec![]),
             version: Version::Http1,
             cookies: Cookies::new(),
+            session: None,
         }
     }
 
     /// Create a response from a request.
-    pub fn from_request(request: &Request) -> Result<Self, Error> {
-        let session = request.session().clone();
-        let mut response = Self::new();
+    pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
+        if let Some(ref session) = self.session {
+            self.cookies.add_session(&session)?;
+        } else {
+            let session = request.session();
 
-        if let Some(session) = session {
-            if !session.expired()? {
-                let session = session.renew(get_config().session_duration);
-                response.cookies().add_session(&session)?;
+            if let Some(session) = session {
+                if !session.expired() {
+                    let session = session.clone().renew(get_config().session_duration);
+                    self.cookies().add_session(&session)?;
+                }
             }
         }
 
-        Ok(response)
+        Ok(self)
     }
 
     pub fn body(mut self, body: impl Into<Body>) -> Self {
@@ -114,14 +120,6 @@ impl Response {
             .insert("content-type", self.body.mime_type().to_string());
         self
     }
-
-    // pub fn as_slice(&self) -> &[u8] {
-    //     &self.body
-    // }
-
-    // pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
-    //     std::str::from_utf8(self.as_slice())
-    // }
 
     /// Response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
@@ -226,10 +224,19 @@ impl Response {
         &mut self.cookies
     }
 
+    pub fn private_cookie(mut self, cookie: Cookie) -> Result<Self, Error> {
+        self.cookies.add_private(cookie)?;
+        Ok(self)
+    }
+
     /// Set session on the response.
     pub fn session(mut self, payload: impl Serialize) -> Result<Self, Error> {
-        self.cookies().add_session(&Session::new(payload)?)?;
+        self.session = Some(Session::new(payload)?);
         Ok(self)
+    }
+
+    pub fn websocket_upgrade(&self) -> bool {
+        self.code == 101 && self.headers.get("upgrade").map(|s| s == "websocket") == Some(true)
     }
 
     /// Default not found (404) error.
@@ -332,6 +339,7 @@ impl Response {
     }
 
     pub fn switching_protocols(protocol: &str) -> Self {
+        use rand::{thread_rng, Rng};
         let mut response = Self::default();
         response.headers.clear();
         response

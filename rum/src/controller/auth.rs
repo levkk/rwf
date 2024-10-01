@@ -114,12 +114,34 @@ impl Authentication for Token {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum UserId {
+    Guest(String),
+    Authenticated(i64),
+}
+
+impl Default for UserId {
+    fn default() -> Self {
+        use rand::{distributions::Alphanumeric, thread_rng, Rng};
+
+        UserId::Guest(
+            thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(16)
+                .map(char::from)
+                .collect::<String>(),
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Session {
     #[serde(rename = "p")]
     pub payload: serde_json::Value,
     #[serde(rename = "e")]
     pub expiration: i64,
+    #[serde(rename = "u")]
+    pub user_id: UserId,
 }
 
 impl Session {
@@ -128,6 +150,7 @@ impl Session {
             payload: serde_json::to_value(payload)?,
             expiration: (OffsetDateTime::now_utc() + get_config().session_duration)
                 .unix_timestamp(),
+            user_id: UserId::default(),
         })
     }
 
@@ -136,12 +159,12 @@ impl Session {
         self
     }
 
-    pub fn expired(&self) -> Result<bool, Error> {
+    pub fn expired(&self) -> bool {
         if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
             let now = OffsetDateTime::now_utc();
-            Ok(expiration > now)
+            expiration > now
         } else {
-            Ok(false)
+            false
         }
     }
 }
@@ -149,13 +172,10 @@ impl Session {
 #[async_trait]
 impl Authentication for Session {
     async fn authorize(&self, request: &Request) -> Result<bool, Error> {
-        if let Ok(Some(session)) = request.cookies().get_private("rum_session") {
-            return match serde_json::from_str::<Session>(session.value()) {
-                Ok(session) => Ok(!session.expired()?),
-                _ => Ok(false),
-            };
+        if let Some(session) = request.session() {
+            Ok(!session.expired())
+        } else {
+            Ok(false)
         }
-
-        Ok(false)
     }
 }

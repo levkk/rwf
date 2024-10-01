@@ -8,13 +8,13 @@ use super::Error;
 use std::marker::Unpin;
 
 #[derive(Debug, Clone)]
-struct Request {
-    key: String,
-    version: String,
+pub struct Headers {
+    pub key: String,
+    pub version: String,
 }
 
-impl Request {
-    pub fn from_http_request(request: super::Request) -> Result<Self, Error> {
+impl Headers {
+    pub fn from_http_request(request: &super::Request) -> Result<Self, Error> {
         let key = match request.headers().get("sec-websocket-key") {
             Some(key) => key,
             None => return Err(Error::MalformedRequest("missing sec-websocket-key")),
@@ -46,7 +46,7 @@ enum OpCode {
 }
 
 #[derive(Debug)]
-struct Header {
+pub struct Header {
     fin: bool,
     op_code: OpCode,
 }
@@ -94,7 +94,7 @@ impl Header {
 }
 
 #[derive(Debug)]
-struct Meta {
+pub struct Meta {
     len: usize,
     mask: Option<[u8; 4]>,
 }
@@ -181,7 +181,7 @@ impl Meta {
 }
 
 #[derive(Debug, Clone)]
-enum Message {
+pub enum Message {
     Text(String),
     Binary(Vec<u8>),
 }
@@ -261,7 +261,7 @@ where
     }
 
     pub async fn handshake(mut self, request: super::Request) -> Result<Self, Error> {
-        let request = Request::from_http_request(request)?;
+        let request = Headers::from_http_request(&request)?;
         let accept = request.key.clone() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         let digest = Sha1::digest(accept.as_bytes());
         let base64 = general_purpose::STANDARD.encode(digest);
