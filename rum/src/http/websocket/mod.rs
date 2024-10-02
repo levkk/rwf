@@ -71,6 +71,27 @@ impl DataFrame {
         self.header.is_pong()
     }
 
+    pub fn is_ping(&self) -> bool {
+        self.header.is_ping()
+    }
+
+    pub fn new_pong(ping: DataFrame) -> Self {
+        let meta = Meta {
+            len: ping.message.as_ref().map(|m| m.len()).unwrap_or(0),
+            mask: None,
+        };
+        let header = Header {
+            fin: true,
+            op_code: OpCode::Pong,
+        };
+
+        Self {
+            header,
+            meta,
+            message: ping.message,
+        }
+    }
+
     pub fn new_ping() -> Self {
         Self {
             header: Header {
@@ -152,6 +173,10 @@ impl Header {
 
     pub fn is_pong(&self) -> bool {
         self.op_code == OpCode::Pong
+    }
+
+    pub fn is_ping(&self) -> bool {
+        self.op_code == OpCode::Ping
     }
 }
 

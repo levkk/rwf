@@ -382,6 +382,9 @@ pub trait Websocket: Controller {
 
                     if frame.is_pong() {
                         continue;
+                    } else if frame.is_ping() {
+                        DataFrame::new_pong(frame).flush(&mut stream).await?;
+                        continue;
                     }
 
                     self.client_message(&user_id, frame.message()).await?;
