@@ -115,16 +115,27 @@ impl Authentication for Token {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
-pub enum UserId {
+pub enum SessionId {
     Guest(String),
     Authenticated(i64),
 }
 
-impl Default for UserId {
+impl SessionId {
+    pub fn authenticated(&self) -> bool {
+        use SessionId::*;
+
+        match self {
+            Guest(_) => false,
+            Authenticated(_) => true,
+        }
+    }
+}
+
+impl Default for SessionId {
     fn default() -> Self {
         use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
-        UserId::Guest(
+        SessionId::Guest(
             thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(16)
@@ -141,16 +152,26 @@ pub struct Session {
     #[serde(rename = "e")]
     pub expiration: i64,
     #[serde(rename = "u")]
-    pub user_id: UserId,
+    pub user_id: SessionId,
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new(serde_json::json!({})).expect("json")
+    }
 }
 
 impl Session {
+    pub fn anonymous() -> Self {
+        Self::default()
+    }
+
     pub fn new(payload: impl Serialize) -> Result<Self, Error> {
         Ok(Self {
             payload: serde_json::to_value(payload)?,
             expiration: (OffsetDateTime::now_utc() + get_config().session_duration)
                 .unix_timestamp(),
-            user_id: UserId::default(),
+            user_id: SessionId::default(),
         })
     }
 
@@ -162,10 +183,14 @@ impl Session {
     pub fn expired(&self) -> bool {
         if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
             let now = OffsetDateTime::now_utc();
-            expiration > now
+            expiration < now
         } else {
             false
         }
+    }
+
+    pub fn authenticated(&self) -> bool {
+        !self.expired() && self.user_id.authenticated()
     }
 }
 
@@ -173,7 +198,7 @@ impl Session {
 impl Authentication for Session {
     async fn authorize(&self, request: &Request) -> Result<bool, Error> {
         if let Some(session) = request.session() {
-            Ok(!session.expired())
+            Ok(session.authenticated())
         } else {
             Ok(false)
         }

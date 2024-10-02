@@ -43,7 +43,10 @@ impl Cookies {
     pub fn get_private(&self, name: &str) -> Result<Option<Cookie>, Error> {
         if let Some(cookie) = self.cookies.get(name) {
             let mut cookie = cookie.clone();
-            cookie.value = String::from_utf8(decrypt(&cookie.value)?)?;
+            cookie.value = String::from_utf8(match decrypt(&cookie.value) {
+                Ok(value) => value,
+                Err(_) => return Ok(None),
+            })?;
             Ok(Some(cookie))
         } else {
             Ok(None)
@@ -243,6 +246,8 @@ impl std::fmt::Display for Cookie {
 
         if let Some(ref path) = self.path {
             write!(f, "; Path={}", path)?;
+        } else {
+            write!(f, "; Path=/")?;
         }
 
         if let Some(ref domain) = self.domain {
@@ -253,6 +258,20 @@ impl std::fmt::Display for Cookie {
             write!(f, "; SameSite={}", same_site)?;
         } else {
             write!(f, "; SameSite=Lax")?;
+        }
+
+        if let Some(ref max_age) = self.max_age {
+            write!(f, "; Max-Age={}", max_age.whole_seconds())?;
+        }
+
+        if let Some(ref expiration) = self.expiration {
+            write!(
+                f,
+                "; Expires={}",
+                expiration
+                    .format(&time::format_description::well_known::Rfc2822)
+                    .unwrap()
+            )?;
         }
 
         Ok(())

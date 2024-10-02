@@ -4,7 +4,7 @@ use rum::view::template::{Context, Template};
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, StaticFiles, UserId, Websocket,
+        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, Websocket,
     },
     http::{websocket, Request, Response, Stream},
     job::Job,
@@ -174,7 +174,7 @@ struct WebsocketController {
     clients: Arc<
         Mutex<
             HashMap<
-                UserId,
+                SessionId,
                 (
                     Option<Receiver<websocket::Message>>,
                     Sender<websocket::Message>,
@@ -198,8 +198,8 @@ impl Controller for WebsocketController {
         Websocket::handle(self, request).await
     }
 
-    async fn handle_stream(&self, stream: Stream<'_>) -> Result<bool, Error> {
-        Websocket::handle_stream(self, stream).await
+    async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
+        Websocket::handle_stream(self, request, stream).await
     }
 }
 
@@ -207,13 +207,13 @@ impl Controller for WebsocketController {
 impl Websocket for WebsocketController {
     async fn client_message(
         &self,
-        user_id: &UserId,
+        user_id: &SessionId,
         message: websocket::Message,
     ) -> Result<(), Error> {
         println!("echo: {:?}", message);
         // send it back
         let comms = rum::comms::get_comms();
-        let sender = comms.sender(user_id);
+        let sender = comms.websocket_sender(user_id);
         let _ = sender.send(message);
         Ok(())
     }

@@ -96,6 +96,11 @@ impl Response {
 
     /// Create a response from a request.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
+        // Set an anonymous session if none is set on the request.
+        if request.session().is_none() {
+            self.session = Some(Session::anonymous());
+        }
+
         if let Some(ref session) = self.session {
             self.cookies.add_session(&session)?;
         } else {
@@ -104,7 +109,7 @@ impl Response {
             if let Some(session) = session {
                 if !session.expired() {
                     let session = session.clone().renew(get_config().session_duration);
-                    self.cookies().add_session(&session)?;
+                    self.cookies.add_session(&session)?;
                 }
             }
         }

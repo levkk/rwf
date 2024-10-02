@@ -124,9 +124,10 @@ impl Server {
 
                         let _ = stream.flush().await;
 
-                        println!("stream starting");
-
-                        match handler.handle_stream(Stream::Plain(&mut stream)).await {
+                        match handler
+                            .handle_stream(&request, Stream::Plain(&mut stream))
+                            .await
+                        {
                             Ok(true) => continue,
                             _ => break,
                         };

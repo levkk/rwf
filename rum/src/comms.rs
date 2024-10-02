@@ -1,4 +1,4 @@
-use crate::controller::auth::UserId;
+use crate::controller::auth::SessionId;
 use crate::http::websocket::Message;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -43,7 +43,7 @@ impl WebsocketComms {
 }
 
 pub struct Messages {
-    websocket: Arc<Mutex<HashMap<UserId, WebsocketComms>>>,
+    websocket: Arc<Mutex<HashMap<SessionId, WebsocketComms>>>,
 }
 
 impl Messages {
@@ -53,7 +53,15 @@ impl Messages {
         }
     }
 
-    pub fn receiver(&self, user_id: &UserId) -> Receiver<Message> {
+    pub fn websocket_disconnect(&self, user_id: &SessionId) {
+        self.websocket.lock().remove(user_id);
+    }
+
+    pub fn websocket_connected(&self, user_id: &SessionId) -> bool {
+        self.websocket.lock().get(user_id).is_some()
+    }
+
+    pub fn websocket_receiver(&self, user_id: &SessionId) -> Receiver<Message> {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(user_id.clone())
@@ -61,7 +69,7 @@ impl Messages {
         entry.receiver()
     }
 
-    pub fn sender(&self, user_id: &UserId) -> Sender<Message> {
+    pub fn websocket_sender(&self, user_id: &SessionId) -> Sender<Message> {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(user_id.clone())

@@ -29,8 +29,62 @@ impl Headers {
     }
 }
 
-struct DataFrame {
-    payload: Vec<u8>,
+#[derive(Debug)]
+pub struct DataFrame {
+    header: Header,
+    meta: Meta,
+    message: Option<Message>,
+}
+
+impl DataFrame {
+    pub async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
+        let header = Header::read(stream).await?;
+        let meta = Meta::read(stream).await?;
+        let message = Message::read(&header, &meta, stream).await?;
+
+        Ok(Self {
+            header,
+            meta,
+            message: Some(message),
+        })
+    }
+
+    pub async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
+        self.header.send(stream).await?;
+        self.meta.send(stream).await?;
+
+        if let Some(message) = self.message {
+            message.send(stream).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn flush(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
+        self.send(stream).await?;
+        stream.flush().await?;
+
+        Ok(())
+    }
+
+    pub fn is_pong(&self) -> bool {
+        self.header.is_pong()
+    }
+
+    pub fn new_ping() -> Self {
+        Self {
+            header: Header {
+                fin: true,
+                op_code: OpCode::Ping,
+            },
+            meta: Meta { len: 0, mask: None },
+            message: None,
+        }
+    }
+
+    pub fn message(self) -> Message {
+        self.message.unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -87,6 +141,17 @@ impl Header {
 
     fn text(&self) -> bool {
         self.op_code == OpCode::Text
+    }
+
+    pub fn ping() -> Self {
+        Self {
+            fin: true,
+            op_code: OpCode::Ping,
+        }
+    }
+
+    pub fn is_pong(&self) -> bool {
+        self.op_code == OpCode::Pong
     }
 }
 
@@ -174,6 +239,10 @@ impl Meta {
         }
 
         Ok(())
+    }
+
+    pub fn empty() -> Self {
+        Meta { len: 0, mask: None }
     }
 }
 

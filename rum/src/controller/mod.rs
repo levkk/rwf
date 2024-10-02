@@ -6,18 +6,22 @@ pub mod middleware;
 pub mod static_files;
 pub mod util;
 
-pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, UserId};
+pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
 
-use super::http::{websocket, Handler, Method, Protocol, Request, Response, Stream, ToParameter};
+use super::http::{
+    websocket::{self, DataFrame},
+    Handler, Method, Protocol, Request, Response, Stream, ToParameter,
+};
 use super::model::{get_connection, Model, Query, ToValue, Update, Value};
 use crate::comms::get_comms;
 use crate::config::get_config;
 
 use tokio::io::AsyncWriteExt;
 use tokio::select;
+use tokio::time::{interval, Duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +32,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Authentication is built-in and is configurable.
 #[async_trait]
+#[allow(unused_variables)]
 pub trait Controller: Sync + Send {
     /// Set the authentication mechanism for this controller.
     ///
@@ -54,7 +59,7 @@ pub trait Controller: Sync + Send {
     }
 
     /// Handle the TCP connection directly.
-    async fn handle_stream(&self, _stream: Stream<'_>) -> Result<bool, Error> {
+    async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
         Ok(true)
     }
 
@@ -67,18 +72,22 @@ pub trait Controller: Sync + Send {
             return auth.auth().denied(&request).await;
         }
 
+        let no_session = request.session().is_none();
+
         let outcome = self.middleware().handle_request(request).await?;
-        match outcome {
+        let response = match outcome {
             Outcome::Forward(request) => match self.handle(&request).await {
                 Ok(response) => {
                     self.middleware()
                         .handle_response(&request, response.from_request(&request)?)
-                        .await
+                        .await?
                 }
-                Err(err) => Err(err),
+                Err(err) => return Err(err),
             },
-            Outcome::Stop(response) => Ok(response),
-        }
+            Outcome::Stop(response) => response,
+        };
+
+        Ok(response)
     }
 
     /// Handle the request. Implement this function to define how your controller
@@ -325,18 +334,35 @@ pub trait Websocket: Controller {
 
     async fn client_message(
         &self,
-        user_id: &UserId,
+        user_id: &SessionId,
         message: websocket::Message,
     ) -> Result<(), Error>;
 
-    async fn handle_stream(&self, mut stream: Stream<'_>) -> Result<bool, Error> {
+    async fn handle_stream(
+        &self,
+        request: &Request,
+        mut stream: Stream<'_>,
+    ) -> Result<bool, Error> {
         use tokio::sync::broadcast::error::RecvError;
+        let user_id = if let Some(session) = request.session() {
+            session.user_id.clone()
+        } else {
+            SessionId::default()
+        };
+        let comms = get_comms();
         let mut stream = stream.stream();
-        let user_id = UserId::default();
-        let mut receiver = get_comms().receiver(&user_id);
+        let mut receiver = comms.websocket_receiver(&user_id);
+        let mut check = interval(Duration::from_millis(60_000));
 
         loop {
             select! {
+                _ = check.tick() => {
+                    if let Err(_) = DataFrame::new_ping().flush(&mut stream).await {
+                        comms.websocket_disconnect(&user_id);
+                        break;
+                    }
+                }
+
                 message = receiver.recv() => {
                     match message {
                         Ok(message) => {
@@ -351,12 +377,14 @@ pub trait Websocket: Controller {
                     }
                 }
 
-                head = websocket::Header::read(&mut stream) => {
-                    let head = head?;
-                    let meta = websocket::Meta::read(&mut stream).await?;
-                    let message = websocket::Message::read(&head, &meta, &mut stream).await?;
+                frame = DataFrame::read(&mut stream) => {
+                    let frame = frame?;
 
-                    self.client_message(&user_id, message).await?;
+                    if frame.is_pong() {
+                        continue;
+                    }
+
+                    self.client_message(&user_id, frame.message()).await?;
                 }
 
             }
