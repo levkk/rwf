@@ -5,16 +5,15 @@ pub mod error;
 pub mod middleware;
 pub mod static_files;
 pub mod util;
-// pub mod websocket;
 
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, UserId};
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
-// pub use websocket::Websocket;
 
 use super::http::{websocket, Handler, Method, Protocol, Request, Response, Stream, ToParameter};
 use super::model::{get_connection, Model, Query, ToValue, Update, Value};
+use crate::comms::get_comms;
 use crate::config::get_config;
 
 use std::marker::Unpin;
@@ -325,7 +324,6 @@ pub trait Websocket: Controller {
         Ok(Response::switching_protocols("websocket").header("sec-websocket-accept", base64))
     }
 
-    async fn server_message(&self, user_id: &UserId) -> Result<websocket::Message, Error>;
     async fn client_message(
         &self,
         user_id: &UserId,
@@ -333,15 +331,25 @@ pub trait Websocket: Controller {
     ) -> Result<(), Error>;
 
     async fn handle_stream(&self, mut stream: Stream<'_>) -> Result<bool, Error> {
+        use tokio::sync::broadcast::error::RecvError;
         let mut stream = stream.stream();
         let user_id = UserId::default();
+        let mut receiver = get_comms().receiver(&user_id);
 
         loop {
             select! {
-                message = self.server_message(&user_id) => {
-                    let message = message?;
-                    message.send(&mut stream).await?;
-                    stream.flush().await?;
+                message = receiver.recv() => {
+                    match message {
+                        Ok(message) => {
+                            message.send(&mut stream).await?;
+                            stream.flush().await?;
+                        }
+
+                        Err(RecvError::Closed) => break,
+
+                        // Lagging behind
+                        Err(RecvError::Lagged(_)) => continue,
+                    }
                 }
 
                 head = websocket::Header::read(&mut stream) => {

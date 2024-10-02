@@ -1,5 +1,4 @@
-use colored::Colorize;
-
+use crate::colors::MaybeColorize;
 use std::time::{Duration, Instant};
 use tracing::info;
 

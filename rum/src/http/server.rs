@@ -6,7 +6,7 @@
 //! The server is using Tokio, so it can support millions of concurrent clients.
 use super::{Error, Handler, Protocol, Request, Response, Router};
 
-use colored::Colorize;
+use crate::colors::MaybeColorize;
 
 use std::net::SocketAddr;
 use std::sync::Arc;

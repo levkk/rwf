@@ -37,7 +37,7 @@ struct DataFrame {
 }
 
 #[derive(Debug, PartialEq)]
-enum OpCode {
+pub enum OpCode {
     Continuation,
     Text,
     Binary,
@@ -245,46 +245,5 @@ impl Message {
         stream.flush().await?;
 
         Ok(())
-    }
-}
-
-pub struct Websocket<T> {
-    stream: T,
-}
-
-impl<T> Websocket<T>
-where
-    T: AsyncRead + AsyncWrite + Unpin,
-{
-    pub fn new(stream: T) -> Self {
-        Self { stream }
-    }
-
-    pub async fn handshake(mut self, request: super::Request) -> Result<Self, Error> {
-        let request = Headers::from_http_request(&request)?;
-        let accept = request.key.clone() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-        let digest = Sha1::digest(accept.as_bytes());
-        let base64 = general_purpose::STANDARD.encode(digest);
-
-        super::Response::switching_protocols("websocket")
-            .header("sec-websocket-accept", base64)
-            .send(&mut self.stream)
-            .await?;
-        self.stream.flush().await?;
-
-        Ok(self)
-    }
-
-    pub async fn handle(mut self) -> Result<(), Error> {
-        loop {
-            let header = Header::read(&mut self.stream).await?;
-            let meta = Meta::read(&mut self.stream).await?;
-            let payload = Message::read(&header, &meta, &mut self.stream).await?;
-            payload.send(&mut self.stream).await?;
-            println!(
-                "message: {:?}, meta: {:?}, header: {:?}",
-                payload, meta, header
-            );
-        }
     }
 }

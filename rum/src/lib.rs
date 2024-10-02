@@ -1,3 +1,5 @@
+pub mod colors;
+pub mod comms;
 pub mod config;
 pub mod controller;
 pub mod crypto;

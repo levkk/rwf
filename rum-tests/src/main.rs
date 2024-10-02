@@ -165,7 +165,32 @@ impl Job for JobTwo {
     }
 }
 
-struct WebsocketController;
+use parking_lot::Mutex;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::mpsc::{Receiver, Sender};
+
+struct WebsocketController {
+    clients: Arc<
+        Mutex<
+            HashMap<
+                UserId,
+                (
+                    Option<Receiver<websocket::Message>>,
+                    Sender<websocket::Message>,
+                ),
+            >,
+        >,
+    >,
+}
+
+impl WebsocketController {
+    pub fn new() -> Self {
+        WebsocketController {
+            clients: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
 
 #[rum::async_trait]
 impl Controller for WebsocketController {
@@ -180,17 +205,16 @@ impl Controller for WebsocketController {
 
 #[rum::async_trait]
 impl Websocket for WebsocketController {
-    async fn server_message(&self, user_id: &UserId) -> Result<websocket::Message, Error> {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
-        Ok(websocket::Message::Text("ping ping!".into()))
-    }
-
     async fn client_message(
         &self,
         user_id: &UserId,
         message: websocket::Message,
     ) -> Result<(), Error> {
-        println!("message: {:?}", message);
+        println!("echo: {:?}", message);
+        // send it back
+        let comms = rum::comms::get_comms();
+        let sender = comms.sender(user_id);
+        let _ = sender.send(message);
         Ok(())
     }
 }
@@ -353,7 +377,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::new(vec![
         StaticFiles::serve("static")?,
-        WebsocketController {}.route("/websocket"),
+        WebsocketController::new().route("/websocket"),
         BaseController {
             id: "5".to_string(),
         }

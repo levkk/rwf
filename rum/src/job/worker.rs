@@ -1,6 +1,6 @@
 use super::{Error, Job, JobHandler, JobModel};
 
-use colored::Colorize;
+use crate::colors::MaybeColorize;
 use time::OffsetDateTime;
 
 use tokio::sync::Notify;

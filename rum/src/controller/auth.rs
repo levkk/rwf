@@ -114,7 +114,7 @@ impl Authentication for Token {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum UserId {
     Guest(String),
     Authenticated(i64),
