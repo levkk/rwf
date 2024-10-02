@@ -4,10 +4,10 @@ use rum::view::template::{Context, Template};
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareHandler, MiddlewareSet, StaticFiles, UserId, Websocket,
+        AllowAll, AuthHandler, MiddlewareSet, StaticFiles, UserId, Websocket,
     },
     http::{websocket, Request, Response, Stream},
-    job::{Job, Worker},
+    job::Job,
     model::{migrate, rollback},
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,

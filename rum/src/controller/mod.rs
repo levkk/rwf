@@ -16,8 +16,7 @@ use super::model::{get_connection, Model, Query, ToValue, Update, Value};
 use crate::comms::get_comms;
 use crate::config::get_config;
 
-use std::marker::Unpin;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::select;
 
 use serde::{Deserialize, Serialize};
@@ -55,7 +54,7 @@ pub trait Controller: Sync + Send {
     }
 
     /// Handle the TCP connection directly.
-    async fn handle_stream(&self, stream: Stream<'_>) -> Result<bool, Error> {
+    async fn handle_stream(&self, _stream: Stream<'_>) -> Result<bool, Error> {
         Ok(true)
     }
 
@@ -220,7 +219,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         }
     }
 
-    async fn list(&self, request: &Request) -> Result<Response, Error> {
+    async fn list(&self, _request: &Request) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
         let models = Self::Model::all().fetch_all(&mut conn).await?;
@@ -232,7 +231,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         Ok(response)
     }
 
-    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
         match Self::Model::find_by(Self::Model::primary_key(), *id)

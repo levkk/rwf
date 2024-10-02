@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{head::Version, Body, Cookie, CookieBuilder, Cookies, Error, Headers, Request};
+use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
 use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
@@ -339,7 +339,6 @@ impl Response {
     }
 
     pub fn switching_protocols(protocol: &str) -> Self {
-        use rand::{thread_rng, Rng};
         let mut response = Self::default();
         response.headers.clear();
         response

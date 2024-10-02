@@ -4,7 +4,7 @@
 //! If no handler is matched, return 404 Not Found.
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
-use super::{Error, Handler, Protocol, Request, Response, Router};
+use super::{Error, Handler, Request, Response, Router};
 
 use crate::colors::MaybeColorize;
 
@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 #[derive(Debug)]
 pub enum Stream<'a> {
@@ -112,7 +112,7 @@ impl Server {
                         // Log request.
                         Self::log(&request, handler.controller_name(), &response, duration);
 
-                        let websocket_upgrade = response.websocket_upgrade();
+                        let _websocket_upgrade = response.websocket_upgrade();
 
                         // Send reply to client.
                         match response.send(&mut stream).await {

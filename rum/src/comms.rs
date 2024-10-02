@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use thiserror::Error;
+
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 static MESSAGES: Lazy<Messages> = Lazy::new(|| Messages::new());
