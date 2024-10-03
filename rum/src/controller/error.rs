@@ -14,6 +14,9 @@ pub enum Error {
     #[error("fmt error: {0}")]
     FmtError(#[from] std::fmt::Error),
 
+    #[error("comms error: {0}")]
+    CommsError(#[from] crate::comms::Error),
+
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
 }

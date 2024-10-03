@@ -8,7 +8,6 @@ pub mod http;
 pub mod job;
 pub mod logging;
 pub mod model;
-pub mod server;
 pub mod view;
 
 pub use async_trait::async_trait;

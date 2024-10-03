@@ -97,7 +97,7 @@ impl Response {
     /// Create a response from a request.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
         // Set an anonymous session if none is set on the request.
-        if request.session().is_none() {
+        if self.session.is_none() && request.session().is_none() {
             self.session = Some(Session::anonymous());
         }
 
@@ -235,9 +235,13 @@ impl Response {
     }
 
     /// Set session on the response.
-    pub fn session(mut self, payload: impl Serialize) -> Result<Self, Error> {
+    pub fn set_session(mut self, payload: impl Serialize) -> Result<Self, Error> {
         self.session = Some(Session::new(payload)?);
         Ok(self)
+    }
+
+    pub fn session(&self) -> &Option<Session> {
+        &self.session
     }
 
     pub fn websocket_upgrade(&self) -> bool {

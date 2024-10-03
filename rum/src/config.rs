@@ -18,6 +18,7 @@ pub struct Config {
     pub default_auth: AuthHandler,
     pub session_duration: Duration,
     pub default_middleware: MiddlewareSet,
+    pub cache_templates: bool,
 }
 
 impl Default for Config {
@@ -37,6 +38,7 @@ impl Default for Config {
             default_auth: AuthHandler::new(AllowAll {}),
             session_duration: Duration::days(4),
             default_middleware: MiddlewareSet::default(),
+            cache_templates: false,
         }
     }
 }

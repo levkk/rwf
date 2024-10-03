@@ -4,7 +4,7 @@
 //!
 //! This allows operations across data types, like multiplying lists by integers,
 //! or accessing hash keys.
-use super::Error;
+use super::{super::Context, Error};
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -164,7 +164,12 @@ impl Value {
         }
     }
 
-    pub fn call(&self, method_name: &str, args: &[Value]) -> Result<Self, Error> {
+    pub fn call(
+        &self,
+        method_name: &str,
+        args: &[Value],
+        _content: &Context,
+    ) -> Result<Self, Error> {
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
@@ -245,6 +250,7 @@ impl Value {
                     },
                     _ => Value::Null,
                 },
+
                 "decrypt_number" => match &args {
                     &[Value::String(n)] => match crate::crypto::decrypt_number(&n) {
                         Ok(n) => Value::Integer(n),

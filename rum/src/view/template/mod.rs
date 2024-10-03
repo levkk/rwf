@@ -35,4 +35,8 @@ impl Template {
     pub fn render(&self, context: &Context) -> Result<String, Error> {
         self.program.evaluate(context)
     }
+
+    pub fn render_default(&self) -> Result<String, Error> {
+        self.program.evaluate(&Context::default())
+    }
 }

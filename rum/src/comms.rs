@@ -5,7 +5,14 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::broadcast::{channel, Receiver, Sender};
+use thiserror::Error;
+use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("{0}")]
+    SendError(#[from] SendError<Message>),
+}
 
 static MESSAGES: Lazy<Messages> = Lazy::new(|| Messages::new());
 
@@ -13,21 +20,21 @@ pub fn get_comms() -> &'static Messages {
     &MESSAGES
 }
 
-struct WebsocketComms {
+struct Websocket {
     sender: Sender<Message>,
     receiver: Receiver<Message>,
 }
 
-impl Clone for WebsocketComms {
+impl Clone for Websocket {
     fn clone(&self) -> Self {
-        WebsocketComms {
+        Websocket {
             sender: self.sender.clone(),
             receiver: self.receiver.resubscribe(),
         }
     }
 }
 
-impl WebsocketComms {
+impl Websocket {
     fn new() -> Self {
         let (sender, receiver) = channel(1024);
         Self { sender, receiver }
@@ -40,10 +47,14 @@ impl WebsocketComms {
     fn sender(&self) -> Sender<Message> {
         self.sender.clone()
     }
+
+    pub fn send(&self, message: Message) -> Result<usize, Error> {
+        Ok(self.sender.send(message)?)
+    }
 }
 
 pub struct Messages {
-    websocket: Arc<Mutex<HashMap<SessionId, WebsocketComms>>>,
+    websocket: Arc<Mutex<HashMap<SessionId, Websocket>>>,
 }
 
 impl Messages {
@@ -53,27 +64,48 @@ impl Messages {
         }
     }
 
-    pub fn websocket_disconnect(&self, user_id: &SessionId) {
-        self.websocket.lock().remove(user_id);
+    pub fn websocket_disconnect(&self, session_id: &SessionId) {
+        self.websocket.lock().remove(session_id);
     }
 
-    pub fn websocket_connected(&self, user_id: &SessionId) -> bool {
-        self.websocket.lock().get(user_id).is_some()
+    pub fn websocket_connected(&self, session_id: &SessionId) -> bool {
+        self.websocket.lock().get(session_id).is_some()
     }
 
-    pub fn websocket_receiver(&self, user_id: &SessionId) -> Receiver<Message> {
+    pub fn websocket_receiver(&self, session_id: &SessionId) -> Receiver<Message> {
         let mut guard = self.websocket.lock();
         let entry = guard
-            .entry(user_id.clone())
-            .or_insert_with(WebsocketComms::new);
+            .entry(session_id.clone())
+            .or_insert_with(Websocket::new);
         entry.receiver()
     }
 
-    pub fn websocket_sender(&self, user_id: &SessionId) -> Sender<Message> {
+    pub fn websocket_sender(&self, session_id: &SessionId) -> WebsocketSender {
         let mut guard = self.websocket.lock();
         let entry = guard
-            .entry(user_id.clone())
-            .or_insert_with(WebsocketComms::new);
-        entry.sender()
+            .entry(session_id.clone())
+            .or_insert_with(Websocket::new);
+        WebsocketSender {
+            sender: entry.sender(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct WebsocketSender {
+    sender: Sender<Message>,
+}
+
+impl WebsocketSender {
+    pub fn send(&self, message: Message) -> Result<usize, Error> {
+        Ok(self.sender.send(message)?)
+    }
+}
+
+impl std::ops::Deref for WebsocketSender {
+    type Target = Sender<Message>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.sender
     }
 }

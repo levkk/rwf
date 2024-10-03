@@ -21,7 +21,8 @@ use crate::config::get_config;
 
 use tokio::io::AsyncWriteExt;
 use tokio::select;
-use tokio::time::{interval, Duration};
+use tokio::time::{interval, timeout, Duration};
+use tracing::debug;
 
 use serde::{Deserialize, Serialize};
 
@@ -60,7 +61,7 @@ pub trait Controller: Sync + Send {
 
     /// Handle the TCP connection directly.
     async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
-        Ok(true)
+        Ok(request.keep_alive())
     }
 
     /// Internal function to handle the HTTP request. Do not implement this unless
@@ -334,7 +335,7 @@ pub trait Websocket: Controller {
 
     async fn client_message(
         &self,
-        user_id: &SessionId,
+        session_id: &SessionId,
         message: websocket::Message,
     ) -> Result<(), Error>;
 
@@ -344,21 +345,35 @@ pub trait Websocket: Controller {
         mut stream: Stream<'_>,
     ) -> Result<bool, Error> {
         use tokio::sync::broadcast::error::RecvError;
-        let user_id = if let Some(session) = request.session() {
-            session.user_id.clone()
+        let session_id = if let Some(session) = request.session() {
+            session.session_id.clone()
         } else {
             SessionId::default()
         };
         let comms = get_comms();
         let mut stream = stream.stream();
-        let mut receiver = comms.websocket_receiver(&user_id);
-        let mut check = interval(Duration::from_millis(60_000));
+        let mut receiver = comms.websocket_receiver(&session_id);
+        let mut check = interval(Duration::from_millis(5_000));
+        let mut lost_pings = 0;
 
         loop {
             select! {
                 _ = check.tick() => {
-                    if let Err(_) = DataFrame::new_ping().flush(&mut stream).await {
-                        comms.websocket_disconnect(&user_id);
+                    debug!("checking websocket session \"{:?}\"", session_id);
+
+                    let closed = match timeout(
+                        Duration::from_millis(1000),
+                        DataFrame::new_ping().flush(&mut stream)
+                    ).await {
+                        Ok(Ok(_)) => false,
+                        _ => true,
+                    };
+
+                    lost_pings += 1;
+
+                    if closed || lost_pings > 3 {
+                        debug!("closing websocket session \"{:?}\"", session_id);
+                        comms.websocket_disconnect(&session_id);
                         break;
                     }
                 }
@@ -366,32 +381,48 @@ pub trait Websocket: Controller {
                 message = receiver.recv() => {
                     match message {
                         Ok(message) => {
-                            message.send(&mut stream).await?;
-                            stream.flush().await?;
+                            match message.send(&mut stream).await {
+                                Ok(_) => (),
+                                Err(_) => break, // Websocket conn broken.
+                            }
                         }
 
                         Err(RecvError::Closed) => break,
 
-                        // Lagging behind
+                        // Lagging behind. This is best effort
+                        // message delivery, so we are ok dropping
+                        // messages if the client can't receive them
+                        // fast enough.
                         Err(RecvError::Lagged(_)) => continue,
                     }
                 }
 
                 frame = DataFrame::read(&mut stream) => {
-                    let frame = frame?;
+                    let frame = match frame {
+                        Ok(frame) => frame,
+                        Err(_) => break,
+                    };
 
                     if frame.is_pong() {
+                        debug!("websocket session \"{:?}\" is alive", session_id);
+                        lost_pings -= 1;
                         continue;
                     } else if frame.is_ping() {
                         DataFrame::new_pong(frame).flush(&mut stream).await?;
                         continue;
                     }
 
-                    self.client_message(&user_id, frame.message()).await?;
+                    match self.client_message(&session_id, frame.message()).await {
+                        Ok(_) => (),
+                        Err(_) => break,
+                    }
                 }
 
             }
         }
+
+        debug!("closing websocket session \"{:?}\"", session_id);
+        comms.websocket_disconnect(&session_id);
 
         Ok(false)
     }

@@ -12,7 +12,7 @@ use std::iter::{Iterator, Peekable};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     // Standard `5 + 6`-style expression.
-    // It's recusive, so you can have something like `(5 + 6) / (1 - 5)`.
+    // It's recursive, so you can have something like `(5 + 6) / (1 - 5)`.
     Binary {
         left: Box<Expression>,
         op: Op,
@@ -92,7 +92,7 @@ impl Expression {
                     .map(|arg| arg.evaluate(context))
                     .collect::<Result<Vec<Value>, Error>>()?;
 
-                Ok(value.call(name, &args)?)
+                Ok(value.call(name, &args, context)?)
             }
 
             Expression::Interpreter => Ok(Value::Interpreter),
@@ -207,6 +207,8 @@ impl Expression {
         Ok(term)
     }
 
+    // TODO: Support parsing function arguments between paranthesis, e.g.:
+    // `my_function((another_func(1, 2)), "hello")`
     fn function(
         name: &str,
         expr: Self,
@@ -237,7 +239,9 @@ impl Expression {
                                 &mut std::mem::take(&mut buffer).into_iter().peekable(),
                             )?);
                         }
-                        _token => {
+
+                        // TODO: handle function calls inside function calls
+                        _ => {
                             buffer.push(next);
                         }
                     }

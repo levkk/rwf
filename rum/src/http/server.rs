@@ -105,14 +105,16 @@ impl Server {
                             }
                         };
 
+                        // Set the session on the request before we pass it down
+                        // to the stream handler.
+                        let request = request.set_session(response.session().clone());
+
                         // Calculate duration.
                         // We include the time to find the handler in the duration.
                         let duration = Instant::now() - start;
 
                         // Log request.
                         Self::log(&request, handler.controller_name(), &response, duration);
-
-                        let _websocket_upgrade = response.websocket_upgrade();
 
                         // Send reply to client.
                         match response.send(&mut stream).await {

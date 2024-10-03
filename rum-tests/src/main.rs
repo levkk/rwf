@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 use rum::model::{Model, Pool, Scope};
-use rum::view::template::{Context, Template};
+use rum::view::{
+    template::{Context, Template},
+    Templates,
+};
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
@@ -103,7 +106,12 @@ impl Controller for BasePlayerController {
 impl RestController for BasePlayerController {
     type Resource = i64;
 
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+        if let Some(session) = request.session() {
+            session
+                .websocket()
+                .send(websocket::Message::Text("controller websocket".into()))?;
+        }
         Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
     }
 
@@ -346,7 +354,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // conn.rollback().await?;
 
-    let template = Template::new("templates/test.html").await?;
+    let template = Templates::cache().await.get("templates/test.html").await?;
     let mut context = Context::default();
     context.set("title", "hello")?;
     context.set("description", "world")?;
@@ -355,7 +363,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.set("products", vec![product])?;
     let start = Instant::now();
     let result = template.render(&context)?;
-    println!("{}, elapsed: {}", result, start.elapsed().as_secs_f64());
+    println!(
+        "{}, elapsed: {}",
+        result,
+        start.elapsed().as_secs_f64() * 1000.0
+    );
 
     JobOne {}
         .execute_async(serde_json::json!({

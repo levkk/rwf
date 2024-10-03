@@ -109,7 +109,7 @@ impl DataFrame {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum OpCode {
+enum OpCode {
     Continuation,
     Text,
     Binary,
@@ -118,13 +118,13 @@ pub enum OpCode {
 }
 
 #[derive(Debug)]
-pub struct Header {
+struct Header {
     fin: bool,
     op_code: OpCode,
 }
 
 impl Header {
-    pub async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
+    async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
         let header = stream.read_u8().await?;
 
         let fin = header & 0b10000000 == 128;
@@ -142,7 +142,7 @@ impl Header {
         Ok(Self { fin, op_code })
     }
 
-    pub async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
+    async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
         let mut byte: u8 = match self.op_code {
             OpCode::Continuation => 0,
             OpCode::Text => 0x1,
@@ -164,30 +164,30 @@ impl Header {
         self.op_code == OpCode::Text
     }
 
-    pub fn ping() -> Self {
+    fn ping() -> Self {
         Self {
             fin: true,
             op_code: OpCode::Ping,
         }
     }
 
-    pub fn is_pong(&self) -> bool {
+    fn is_pong(&self) -> bool {
         self.op_code == OpCode::Pong
     }
 
-    pub fn is_ping(&self) -> bool {
+    fn is_ping(&self) -> bool {
         self.op_code == OpCode::Ping
     }
 }
 
 #[derive(Debug)]
-pub struct Meta {
+struct Meta {
     len: usize,
     mask: Option<[u8; 4]>,
 }
 
 impl Meta {
-    pub async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
+    async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
         let mask_len = stream.read_u8().await?;
         let masked = mask_len & 0b10000000 == 128;
         let len = mask_len & 0b01111111;
@@ -227,15 +227,15 @@ impl Meta {
         })
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.len
     }
 
-    pub fn mask(&self) -> &Option<[u8; 4]> {
+    fn mask(&self) -> &Option<[u8; 4]> {
         &self.mask
     }
 
-    pub async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
+    async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
         let mut buf = vec![0u8; 0];
 
         let masked = if self.mask.is_some() {
@@ -266,7 +266,7 @@ impl Meta {
         Ok(())
     }
 
-    pub fn empty() -> Self {
+    fn empty() -> Self {
         Meta { len: 0, mask: None }
     }
 }
@@ -285,14 +285,14 @@ impl Message {
         }
     }
 
-    pub fn op_code(&self) -> OpCode {
+    fn op_code(&self) -> OpCode {
         match self {
             Self::Text(_) => OpCode::Text,
             _ => OpCode::Binary,
         }
     }
 
-    pub async fn read(
+    async fn read(
         header: &Header,
         meta: &Meta,
         stream: &mut (impl AsyncRead + Unpin),

@@ -3,6 +3,7 @@
 //! Made to be easily extendable. Users need only to implement the [`crate::controller::auth::Authentication`] trait
 //! and set it on their controller.
 use super::Error;
+use crate::comms::{get_comms, WebsocketSender};
 use crate::config::get_config;
 use crate::http::{Authorization, Request, Response};
 
@@ -151,8 +152,8 @@ pub struct Session {
     pub payload: serde_json::Value,
     #[serde(rename = "e")]
     pub expiration: i64,
-    #[serde(rename = "u")]
-    pub user_id: SessionId,
+    #[serde(rename = "s")]
+    pub session_id: SessionId,
 }
 
 impl Default for Session {
@@ -171,7 +172,7 @@ impl Session {
             payload: serde_json::to_value(payload)?,
             expiration: (OffsetDateTime::now_utc() + get_config().session_duration)
                 .unix_timestamp(),
-            user_id: SessionId::default(),
+            session_id: SessionId::default(),
         })
     }
 
@@ -189,8 +190,12 @@ impl Session {
         }
     }
 
+    pub fn websocket(&self) -> WebsocketSender {
+        get_comms().websocket_sender(&self.session_id)
+    }
+
     pub fn authenticated(&self) -> bool {
-        !self.expired() && self.user_id.authenticated()
+        !self.expired() && self.session_id.authenticated()
     }
 }
 

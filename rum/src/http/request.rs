@@ -20,6 +20,7 @@ use crate::controller::Session;
 #[derive(Debug, Clone, Default)]
 pub struct Request {
     head: Head,
+    session: Option<Session>,
     inner: Arc<Inner>,
     params: Option<Arc<Params>>,
 }
@@ -28,9 +29,7 @@ pub struct Request {
 struct Inner {
     body: Vec<u8>,
     cookies: Cookies,
-    session: Option<Session>,
     peer: Option<SocketAddr>,
-    websocket_id: Option<u64>,
 }
 
 impl Request {
@@ -45,23 +44,14 @@ impl Request {
             .map_err(|_| Error::MalformedRequest("incorrect content length"))?;
 
         let cookies = head.cookies();
-        let websocket_id = match cookies.get_private("rum_ws_id") {
-            Ok(Some(id)) => match id.value().parse() {
-                Ok(id) => Some(id),
-                Err(_) => None,
-            },
-
-            _ => None,
-        };
 
         Ok(Request {
             head,
             params: None,
+            session: cookies.get_session()?,
             inner: Arc::new(Inner {
                 body,
-                session: cookies.get_session()?,
                 peer: Some(peer),
-                websocket_id,
                 cookies,
             }),
         })
@@ -131,7 +121,12 @@ impl Request {
 
     /// Request's session.
     pub fn session(&self) -> &Option<Session> {
-        &self.inner.session
+        &self.session
+    }
+
+    pub fn set_session(mut self, session: Option<Session>) -> Self {
+        self.session = session;
+        self
     }
 
     pub fn upgrade_websocket(&self) -> bool {

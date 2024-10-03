@@ -13,7 +13,7 @@ pub struct JobModel {
     pub created_at: OffsetDateTime,
     pub start_after: OffsetDateTime,
     pub started_at: Option<OffsetDateTime>,
-    pub attempts: i64,
+    pub attempts: i32,
     pub retries: i64,
     pub completed_at: Option<OffsetDateTime>,
     pub error: Option<String>,
