@@ -125,7 +125,9 @@ impl Server {
                             }
                         }
 
-                        let _ = stream.flush().await;
+                        if stream.flush().await.is_err() {
+                            break;
+                        }
 
                         if ok {
                             match handler
