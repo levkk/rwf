@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use thiserror::Error;
 use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
+use tracing::debug;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -64,7 +65,8 @@ impl Messages {
         }
     }
 
-    pub fn websocket_disconnect(&self, session_id: &SessionId) {
+    fn websocket_disconnect(&self, session_id: &SessionId) {
+        debug!("websocket session \"{:?}\" closed", session_id);
         self.websocket.lock().remove(session_id);
     }
 
@@ -72,12 +74,17 @@ impl Messages {
         self.websocket.lock().get(session_id).is_some()
     }
 
-    pub fn websocket_receiver(&self, session_id: &SessionId) -> Receiver<Message> {
+    pub fn websocket_receiver(&self, session_id: &SessionId) -> WebsocketReceiver {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(session_id.clone())
             .or_insert_with(Websocket::new);
-        entry.receiver()
+
+        WebsocketReceiver {
+            receiver: Some(entry.receiver()),
+            sender: entry.sender(),
+            session_id: session_id.clone(),
+        }
     }
 
     pub fn websocket_sender(&self, session_id: &SessionId) -> WebsocketSender {
@@ -107,5 +114,37 @@ impl std::ops::Deref for WebsocketSender {
 
     fn deref(&self) -> &Self::Target {
         &self.sender
+    }
+}
+
+#[derive(Debug)]
+pub struct WebsocketReceiver {
+    receiver: Option<Receiver<Message>>,
+    sender: Sender<Message>,
+    session_id: SessionId,
+}
+
+impl WebsocketReceiver {}
+
+impl std::ops::Deref for WebsocketReceiver {
+    type Target = Receiver<Message>;
+
+    fn deref(&self) -> &Self::Target {
+        self.receiver.as_ref().unwrap()
+    }
+}
+
+impl std::ops::DerefMut for WebsocketReceiver {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.receiver.as_mut().unwrap()
+    }
+}
+
+impl Drop for WebsocketReceiver {
+    fn drop(&mut self) {
+        drop(self.receiver.take());
+        if self.sender.receiver_count() == 1 {
+            get_comms().websocket_disconnect(&self.session_id);
+        }
     }
 }

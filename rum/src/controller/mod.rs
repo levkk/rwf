@@ -345,15 +345,18 @@ pub trait Websocket: Controller {
         mut stream: Stream<'_>,
     ) -> Result<bool, Error> {
         use tokio::sync::broadcast::error::RecvError;
+
         let session_id = if let Some(session) = request.session() {
             session.session_id.clone()
         } else {
-            SessionId::default()
+            return Err(Error::SessionMissingError);
         };
+
         let comms = get_comms();
+        let config = get_config();
         let mut stream = stream.stream();
         let mut receiver = comms.websocket_receiver(&session_id);
-        let mut check = interval(Duration::from_millis(5_000));
+        let mut check = interval(config.websocket.ping_interval.unsigned_abs());
         let mut lost_pings = 0;
 
         loop {
@@ -362,7 +365,7 @@ pub trait Websocket: Controller {
                     debug!("checking websocket session \"{:?}\"", session_id);
 
                     let closed = match timeout(
-                        Duration::from_millis(1000),
+                        config.websocket.ping_timeout.unsigned_abs(),
                         DataFrame::new_ping().flush(&mut stream)
                     ).await {
                         Ok(Ok(_)) => false,
@@ -371,9 +374,7 @@ pub trait Websocket: Controller {
 
                     lost_pings += 1;
 
-                    if closed || lost_pings > 3 {
-                        debug!("closing websocket session \"{:?}\"", session_id);
-                        comms.websocket_disconnect(&session_id);
+                    if closed || lost_pings > config.websocket.ping_disconnect_count {
                         break;
                     }
                 }
@@ -381,10 +382,7 @@ pub trait Websocket: Controller {
                 message = receiver.recv() => {
                     match message {
                         Ok(message) => {
-                            match message.send(&mut stream).await {
-                                Ok(_) => (),
-                                Err(_) => break, // Websocket conn broken.
-                            }
+                            message.send(&mut stream).await?;
                         }
 
                         Err(RecvError::Closed) => break,
@@ -398,31 +396,28 @@ pub trait Websocket: Controller {
                 }
 
                 frame = DataFrame::read(&mut stream) => {
-                    let frame = match frame {
-                        Ok(frame) => frame,
-                        Err(_) => break,
-                    };
+                    let frame = frame?;
 
                     if frame.is_pong() {
                         debug!("websocket session \"{:?}\" is alive", session_id);
                         lost_pings -= 1;
+
+                        // Protect against weird clients.
+                        if lost_pings < 0 {
+                            lost_pings = 0;
+                        }
+
                         continue;
                     } else if frame.is_ping() {
                         DataFrame::new_pong(frame).flush(&mut stream).await?;
                         continue;
                     }
 
-                    match self.client_message(&session_id, frame.message()).await {
-                        Ok(_) => (),
-                        Err(_) => break,
-                    }
+                    self.client_message(&session_id, frame.message()).await?;
                 }
 
             }
         }
-
-        debug!("closing websocket session \"{:?}\"", session_id);
-        comms.websocket_disconnect(&session_id);
 
         Ok(false)
     }

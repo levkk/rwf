@@ -32,6 +32,10 @@ impl Status {
             Code(code) => *code,
         }
     }
+
+    pub fn ok(&self) -> bool {
+        self.code() < 300
+    }
 }
 
 impl From<u16> for Status {

@@ -19,6 +19,9 @@ pub enum Error {
 
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
+
+    #[error("session is not set")]
+    SessionMissingError,
 }
 
 impl Error {

@@ -108,6 +108,7 @@ impl Server {
                         // Set the session on the request before we pass it down
                         // to the stream handler.
                         let request = request.set_session(response.session().clone());
+                        let ok = response.status().ok();
 
                         // Calculate duration.
                         // We include the time to find the handler in the duration.
@@ -126,13 +127,15 @@ impl Server {
 
                         let _ = stream.flush().await;
 
-                        match handler
-                            .handle_stream(&request, Stream::Plain(&mut stream))
-                            .await
-                        {
-                            Ok(true) => continue,
-                            _ => break,
-                        };
+                        if ok {
+                            match handler
+                                .handle_stream(&request, Stream::Plain(&mut stream))
+                                .await
+                            {
+                                Ok(true) => continue,
+                                _ => break,
+                            };
+                        }
                     }
 
                     None => {

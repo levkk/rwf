@@ -19,6 +19,23 @@ pub struct Config {
     pub session_duration: Duration,
     pub default_middleware: MiddlewareSet,
     pub cache_templates: bool,
+    pub websocket: Websocket,
+}
+
+pub struct Websocket {
+    pub ping_interval: Duration,
+    pub ping_timeout: Duration,
+    pub ping_disconnect_count: i64,
+}
+
+impl Default for Websocket {
+    fn default() -> Self {
+        Self {
+            ping_timeout: Duration::seconds(5),
+            ping_interval: Duration::seconds(60),
+            ping_disconnect_count: 3,
+        }
+    }
 }
 
 impl Default for Config {
@@ -39,6 +56,7 @@ impl Default for Config {
             session_duration: Duration::days(4),
             default_middleware: MiddlewareSet::default(),
             cache_templates: false,
+            websocket: Websocket::default(),
         }
     }
 }
