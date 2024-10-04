@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title><%= title %></title>
+
+        <style>
+            .container {
+                padding: 25px;
+                margin: 0 auto;
+            }
+
+            .center {
+                text-align: center;
+            }
+
+            ul {
+                list-style-type: none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <ul>
+                <% for item in items.reverse %>
+                <li class="center"><%= item.upcase %></li>
+                <% end %>
+            </ul>
+        </div>
+    </body>
+</html>

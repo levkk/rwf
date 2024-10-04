@@ -476,6 +476,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dynamic-templates"
+version = "0.1.0"
+dependencies = [
+ "rum",
+ "tokio",
+]
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -976,6 +984,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
+name = "orm"
+version = "0.1.0"
+
+[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1453,6 +1465,14 @@ checksum = "ce305eb0b4296696835b71df73eb912e0f1ffd2556a501fcede6e0c50349191c"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "static-files"
+version = "0.1.0"
+dependencies = [
+ "rum",
+ "tokio",
 ]
 
 [[package]]

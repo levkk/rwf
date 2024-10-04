@@ -4,7 +4,7 @@ use crate::http::Path;
 
 pub struct SecureId;
 
-#[middleware]
+#[async_trait::async_trait]
 impl Middleware for SecureId {
     async fn handle_request(&self, mut request: Request) -> Result<Outcome, Error> {
         let id = request.parameter::<String>("id");

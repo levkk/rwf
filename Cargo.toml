@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "examples/background-jobs", "examples/crud", "examples/middleware", "examples/quick-start",
+members = [ "examples/background-jobs", "examples/crud", "examples/dynamic-templates", "examples/middleware", "examples/orm", "examples/quick-start", "examples/static-files",
     "rum",
     "rum-cli",
     "rum-macros",

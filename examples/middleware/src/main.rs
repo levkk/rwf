@@ -1,6 +1,7 @@
-use rum::controller::{Middleware, MiddlewareSet, Outcome};
+
 use rum::logging::setup_logging;
 use rum::prelude::*;
+use rum::controller::middleware::prelude::*;
 use rum::Server;
 
 #[derive(Default)]

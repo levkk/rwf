@@ -229,6 +229,10 @@ impl Value {
                         Value::List(new_list)
                     }
 
+                    "reverse" | "rev" => {
+                        Value::List(list.clone().into_iter().rev().collect::<Vec<_>>())
+                    }
+
                     _ => return Err(Error::UnknownMethod(method_name.into())),
                 },
             },
@@ -390,6 +394,7 @@ impl_list!(f64);
 impl_list!(i64);
 impl_list!(&str);
 impl_list!(String);
+impl_list!(Value);
 
 impl ToValue for Value {
     fn to_value(&self) -> Result<Value, Error> {
