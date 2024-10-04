@@ -1,6 +1,6 @@
-# Rum &dash; Complete Web Framework
+# Rum &dash; Rust Web Framework
 
-Rum is a comprehensive framework for building web applications in Rust. Built using the classic MVC  pattern (model-view-controller), Rum comes standard with everything you need to easily build fast and secure web apps.
+Rum is a comprehensive framework for building web applications in Rust. Written using the classic MVC  pattern (model-view-controller), Rum comes standard with everything you need to easily build fast and secure web apps.
 
 ### Features overview
 
@@ -34,18 +34,18 @@ struct IndexController;
 
 #[rum::async_trait]
 impl Controller for IndexController {
-	async fn handle(&self, request: &Request) -> Result<Response, Error> {
-		Ok(Response::new().html("<h1>Hey Rum!</h1>"))
-	}
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        Ok(Response::new().html("<h1>Hey Rum!</h1>"))
+    }
 }
 
 #[rum::tokio::main]
 async fn main() {
-	Server::new(vec![
-		IndexController::default().route("/"),
-	])
-	.launch("0.0.0.0:8000")
-	.await
-	.expect("error shutting down server");
+    Server::new(vec![
+        IndexController::default().route("/"),
+    ])
+    .launch("0.0.0.0:8000")
+    .await
+    .expect("error shutting down server");
 }
 ```
