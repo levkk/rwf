@@ -40,6 +40,10 @@ impl Worker {
     pub async fn start(self) -> Result<Self, Error> {
         let mut conn = get_connection().await?;
         JobModel::reschedule().execute(&mut conn).await?;
+
+        // Spawn a single instance of the worker.
+        self.spawn();
+
         Ok(self)
     }
 

@@ -20,6 +20,7 @@ pub struct Config {
     pub default_middleware: MiddlewareSet,
     pub cache_templates: bool,
     pub websocket: Websocket,
+    pub log_queries: bool,
 }
 
 pub struct Websocket {
@@ -57,6 +58,7 @@ impl Default for Config {
             default_middleware: MiddlewareSet::default(),
             cache_templates: false,
             websocket: Websocket::default(),
+            log_queries: false,
         }
     }
 }

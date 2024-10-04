@@ -1,5 +1,6 @@
 pub use crate::controller::{Controller, Error, ModelController, RestController};
 pub use crate::http::{Request, Response};
+pub use crate::job::Job;
 pub use crate::model::{Model, Pool, Scope};
 pub use crate::view::Template;
 

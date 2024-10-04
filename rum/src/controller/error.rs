@@ -8,6 +8,9 @@ pub enum Error {
     #[error("database error: {0}")]
     OrmError(#[from] crate::model::Error),
 
+    #[error("job error: {0}")]
+    JobError(#[from] crate::job::Error),
+
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
 

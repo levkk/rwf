@@ -1,4 +1,6 @@
 use crate::colors::MaybeColorize;
+use crate::config::get_config;
+
 use std::time::{Duration, Instant};
 use tracing::info;
 
@@ -559,6 +561,10 @@ impl<T: Model> Query<T> {
     }
 
     fn log(&self, duration: Duration) {
+        if !get_config().log_queries {
+            return;
+        }
+
         info!(
             "{} {} ({:.3} ms) {}",
             std::any::type_name::<T>()

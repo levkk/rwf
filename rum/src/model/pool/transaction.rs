@@ -1,4 +1,5 @@
 use super::{ConnectionGuard, Error};
+use crate::config::get_config;
 
 use std::time::Instant;
 use tracing::info;
@@ -18,7 +19,9 @@ impl Transaction {
         let start = Instant::now();
         connection.query_cached("BEGIN", &[]).await?;
 
-        info!("BEGIN ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
+        if get_config().log_queries {
+            info!("BEGIN ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
+        }
 
         Ok(Self {
             connection,
@@ -35,7 +38,9 @@ impl Transaction {
         let start = Instant::now();
         self.connection.query_cached("COMMIT", &[]).await?;
 
-        info!("COMMIT ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
+        if get_config().log_queries {
+            info!("COMMIT ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
+        }
 
         Ok(())
     }
@@ -49,10 +54,12 @@ impl Transaction {
         let start = Instant::now();
         self.connection.query_cached("ROLLBACK", &[]).await?;
 
-        info!(
-            "ROLLBACK ({:.3} ms)",
-            start.elapsed().as_secs_f64() * 1000.0
-        );
+        if get_config().log_queries {
+            info!(
+                "ROLLBACK ({:.3} ms)",
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+        }
 
         Ok(())
     }
