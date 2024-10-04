@@ -204,6 +204,44 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(Context)]
+pub fn drive_context(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match input.data {
+        Data::Struct(ref data) => {
+            let ident = input.ident;
+            let fields = data.fields.iter().map(|field| {
+                let ident = &field.ident;
+
+                quote! {
+                    result[stringify!(#ident)] = context.#ident.to_value()?;
+                }
+            });
+
+            quote! {
+                #[automatically_derived]
+                impl TryFrom<#ident> for rum::view::Context {
+                    type Error = rum::view::Error;
+
+                    fn try_from(context: #ident) -> Result<Self, Self::Error> {
+                        use rum::view::template::ToValue;
+
+                        let mut result = rum::view::Context::new();
+
+                        #(#fields)*
+
+                        Ok(result)
+                    }
+                }
+            }
+            .into()
+        }
+
+        _ => panic!("macro can only be used on structs"),
+    }
+}
+
 #[proc_macro]
 pub fn error(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

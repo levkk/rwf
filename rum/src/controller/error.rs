@@ -17,6 +17,9 @@ pub enum Error {
     #[error("comms error: {0}")]
     CommsError(#[from] crate::comms::Error),
 
+    #[error("view error: {0}")]
+    ViewError(#[from] crate::view::Error),
+
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
 

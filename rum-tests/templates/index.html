@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en-US">
-	<head>
-		<meta charset="UTF-8">
-		<title>Rum</title>
-	</head>
-	<body>
-		<script>
-			const socket = new WebSocket("ws://localhost:8000/websocket");
-			socket.addEventListener("message", (event) => {
-				console.log("Websocket message:", event.data);
-			})
-		</script>
-	</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>Rum</title>
+    </head>
+    <body>
+        <script>
+            const socket = new WebSocket("ws://localhost:8000/websocket");
+            socket.addEventListener("message", (event) => {
+                console.log("Websocket message:", event.data);
+            })
+        </script>
+    </body>
 </html>

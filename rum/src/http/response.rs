@@ -105,6 +105,7 @@ impl Response {
             self.session = Some(Session::anonymous());
         }
 
+        // Session set manually on the request already.
         if let Some(ref session) = self.session {
             self.cookies.add_session(&session)?;
         } else {
@@ -114,6 +115,10 @@ impl Response {
                 if !session.expired() {
                     let session = session.clone().renew(get_config().session_duration);
                     self.cookies.add_session(&session)?;
+
+                    // Set the session on the response, so it can be
+                    // passed down in handle_stream.
+                    self.session = Some(session);
                 }
             }
         }

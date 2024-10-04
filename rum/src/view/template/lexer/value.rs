@@ -387,6 +387,7 @@ macro_rules! impl_list {
 impl_list!(f64);
 impl_list!(i64);
 impl_list!(&str);
+impl_list!(String);
 
 impl ToValue for Value {
     fn to_value(&self) -> Result<Value, Error> {

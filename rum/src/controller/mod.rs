@@ -352,6 +352,8 @@ pub trait Websocket: Controller {
             return Err(Error::SessionMissingError);
         };
 
+        debug!("new websocket connection from session \"{:?}\"", session_id);
+
         let comms = get_comms();
         let config = get_config();
         let mut stream = stream.stream();

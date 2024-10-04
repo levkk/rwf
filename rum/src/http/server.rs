@@ -105,6 +105,12 @@ impl Server {
                             }
                         };
 
+                        println!(
+                            "session: {:?}, session 2: {:?}",
+                            request.session(),
+                            response.session()
+                        );
+
                         // Set the session on the request before we pass it down
                         // to the stream handler.
                         let request = request.set_session(response.session().clone());

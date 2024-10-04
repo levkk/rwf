@@ -15,7 +15,7 @@ use rum::{
     serde::{Deserialize, Serialize},
     Controller, Error, ModelController, RestController, Server,
 };
-use rum_macros::Model;
+use rum_macros::{Context, Model};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -173,30 +173,11 @@ impl Job for JobTwo {
     }
 }
 
-use parking_lot::Mutex;
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::mpsc::{Receiver, Sender};
-
-struct WebsocketController {
-    clients: Arc<
-        Mutex<
-            HashMap<
-                SessionId,
-                (
-                    Option<Receiver<websocket::Message>>,
-                    Sender<websocket::Message>,
-                ),
-            >,
-        >,
-    >,
-}
+struct WebsocketController {}
 
 impl WebsocketController {
     pub fn new() -> Self {
-        WebsocketController {
-            clients: Arc::new(Mutex::new(HashMap::new())),
-        }
+        WebsocketController {}
     }
 }
 
@@ -224,6 +205,15 @@ impl Websocket for WebsocketController {
         let sender = comms.websocket_sender(user_id);
         let _ = sender.send(message);
         Ok(())
+    }
+}
+
+struct IndexController;
+
+#[rum::async_trait]
+impl Controller for IndexController {
+    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+        Ok(Template::cached_static("templates/index.html").await?)
     }
 }
 
@@ -354,15 +344,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // conn.rollback().await?;
 
+    #[derive(Context)]
+    struct MyContext {
+        title: String,
+        description: String,
+        vars: Vec<String>,
+        product: Product,
+        products: Vec<Product>,
+    }
+
+    let context = MyContext {
+        title: "hello".to_string(),
+        description: "world".into(),
+        vars: vec!["hello".into(), "world".into()],
+        product: product.clone(),
+        products: vec![product.clone()],
+    };
+
     let template = Templates::cache().await.get("templates/test.html").await?;
-    let mut context = Context::default();
-    context.set("title", "hello")?;
-    context.set("description", "world")?;
-    context.set("vars", vec!["hello", "world"])?;
-    context.set("product", product.clone())?;
-    context.set("products", vec![product])?;
     let start = Instant::now();
-    let result = template.render(&context)?;
+    let result = template.render(&context.try_into()?)?;
     println!(
         "{}, elapsed: {}",
         result,
@@ -389,6 +390,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::new(vec![
         StaticFiles::serve("static")?,
+        IndexController {}.route("/"),
         WebsocketController::new().route("/websocket"),
         BaseController {
             id: "5".to_string(),
