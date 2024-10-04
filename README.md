@@ -4,7 +4,7 @@ Rum is a comprehensive framework for building web applications in Rust. Written 
 
 ### Features overview
 
-- :heavy_check_mark: HTTP server
+- :heavy_check_mark: [HTTP server](examples/quick-start)
 - :heavy_check_mark: User-friendly ORM to build PostgreSQL queries easily
 - :heavy_check_mark: Dynamic templates
 - :heavy_check_mark: Authentication & built-in user sessions
