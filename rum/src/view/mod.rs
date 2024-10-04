@@ -1,6 +1,6 @@
 pub mod cache;
-pub mod template;
 pub mod prelude;
+pub mod template;
 
 pub use cache::Templates;
 pub use template::Context;

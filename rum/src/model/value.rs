@@ -23,6 +23,7 @@ pub enum Value {
     /// Floating point number, e.g. `3.14`.
     Float(f64),
     Real(f32),
+    Boolean(bool),
     /// Timestamp with time zone speficiation.
     TimestampT(OffsetDateTime),
     /// Timestamp without time zone.
@@ -278,6 +279,12 @@ impl ToValue for Option<OffsetDateTime> {
     }
 }
 
+impl ToValue for bool {
+    fn to_value(&self) -> Value {
+        Value::Boolean(*self)
+    }
+}
+
 impl tokio_postgres::types::ToSql for Value {
     fn to_sql(
         &self,
@@ -299,6 +306,7 @@ impl tokio_postgres::types::ToSql for Value {
             Value::SmallInt(integer) => integer.to_sql(ty, out),
             Value::Float(float) => float.to_sql(ty, out),
             Value::Real(float) => float.to_sql(ty, out),
+            Value::Boolean(b) => b.to_sql(ty, out),
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),

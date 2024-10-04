@@ -17,17 +17,12 @@ impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let context = IndexTemplate {
             title: "Rum templates are fun!".into(),
-            items: vec![
-                "why".into(),
-                "are".into(),
-                "you".into(),
-                "yelling".into(),
-            ],
+            items: vec!["why".into(), "are".into(), "you".into(), "yelling".into()],
         };
 
         let rendered = Template::cached("templates/index.html")
-                .await?
-                .render(&context.try_into()?)?;
+            .await?
+            .render(&context.try_into()?)?;
 
         Ok(Response::new().html(rendered))
     }

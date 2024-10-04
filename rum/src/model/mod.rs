@@ -20,6 +20,7 @@ pub mod migrations;
 pub mod order_by;
 pub mod placeholders;
 pub mod pool;
+pub mod prelude;
 pub mod row;
 pub mod select;
 pub mod update;
@@ -314,6 +315,10 @@ impl<T: Model> Query<T> {
             }
             _ => self,
         }
+    }
+
+    pub fn filter_not(self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self.not(column, value)
     }
 
     pub fn not(self, column: impl ToColumn, value: impl ToValue) -> Self {
@@ -716,6 +721,36 @@ pub trait Model: FromRow {
             .collect::<Vec<_>>();
 
         Query::Insert(Insert::from_columns(&columns, &values))
+    }
+
+    fn find_or_create_by(attributes: &[(impl ToColumn, impl ToValue)]) -> Query<Self> {
+        let columns = attributes
+            .iter()
+            .map(|(c, _)| c.to_column())
+            .collect::<Vec<_>>();
+        let values = attributes
+            .iter()
+            .map(|(_, v)| v.to_value())
+            .collect::<Vec<_>>();
+
+        let mut select = Query::<Self>::select(Self::table_name());
+
+        for (column, value) in columns.iter().zip(values.iter()) {
+            select = select.filter(column.clone(), value.clone());
+        }
+
+        let select = match select {
+            Query::Select(select) => select,
+            _ => unreachable!(),
+        };
+
+        let insert = Insert::<Self>::from_columns(&columns, &values);
+
+        Query::InsertIfNotExists {
+            select,
+            insert,
+            created: false,
+        }
     }
 
     fn lock() -> Query<Self> {
