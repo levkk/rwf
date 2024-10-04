@@ -15,7 +15,7 @@ Rum is a comprehensive framework for building web applications in Rust. Written 
 - :heavy_check_mark: Environment-specific configuration
 - :heavy_check_mark: Logging and metrics
 
-### Quick start
+## Quick start
 
 To add Rum to your stack, create a Rust binary application and add `rum_framework` to your dependencies:
 
@@ -39,7 +39,7 @@ impl Controller for IndexController {
     }
 }
 
-#[rum::tokio::main]
+#[tokio::main]
 async fn main() {
     Server::new(vec![
         IndexController::default().route("/"),
