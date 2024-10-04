@@ -51,7 +51,7 @@ impl Template {
     pub async fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
         match Self::cached(path).await {
             Ok(template) => Ok(template.try_into()?),
-            Err(_) => Ok(Response::not_found()),
+            Err(err) => Ok(Response::internal_error(err)),
         }
     }
 }

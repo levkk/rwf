@@ -26,6 +26,7 @@ macro_rules! block_end {
 pub enum Statement {
     // e.g. `<%= variable %>`
     Print(Expression),
+    PrintRaw(Expression),
     // e.g. `<html><body></body></html>`
     PrintText(String),
     // e.g. `<% if variable == 5 %>right<% else %>wrong<% end %>`
@@ -77,7 +78,12 @@ impl Statement {
 
                 Ok(result)
             }
-            Statement::Print(expression) => Ok(expression.evaluate(context)?.to_string()),
+            Statement::PrintRaw(expression) => Ok(expression.evaluate(context)?.to_string()),
+            Statement::Print(expression) => Ok(expression
+                .evaluate(context)?
+                .to_string()
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")),
             Statement::For {
                 variable,
                 list,
@@ -129,6 +135,11 @@ impl Statement {
                     let expression = Expression::parse(iter)?;
                     block_end!(iter);
                     return Ok(Statement::Print(expression));
+                }
+                Token::BlockStartPrintRaw => {
+                    let expression = Expression::parse(iter)?;
+                    block_end!(iter);
+                    return Ok(Statement::PrintRaw(expression));
                 }
                 Token::Else => {
                     block_end!(iter);

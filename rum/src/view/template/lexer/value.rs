@@ -258,6 +258,8 @@ impl Value {
                     },
                     _ => Value::Null,
                 },
+
+                "rum_head" => Value::String(include_str!("../head.html").to_string()),
                 _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 

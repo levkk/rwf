@@ -319,15 +319,18 @@ impl Response {
             .code(403)
     }
 
-    pub fn internal_error(_err: impl std::error::Error) -> Self {
+    pub fn internal_error(err: impl std::error::Error) -> Self {
         Self::new()
-            .html(
+            .html(format!(
                 "
             <h3>
                 <center>500 - Internal Server Error</center>
             </h3>
+            <br><br>
+            <center><code><pre>{:?}</pre></code></center>
             ",
-            )
+                err
+            ))
             .code(500)
     }
 

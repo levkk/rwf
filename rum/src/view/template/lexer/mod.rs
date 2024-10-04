@@ -100,6 +100,7 @@ impl<'a> Lexer<'a> {
                 '\n' => {
                     self.line += 1;
                     self.column = 1;
+                    self.buffer.push('\n');
                 }
                 '\r' => {
                     self.column -= 1;
@@ -118,6 +119,12 @@ impl<'a> Lexer<'a> {
                                 Some('=') => {
                                     self.drain_buffer();
                                     self.tokens.push(self.add_token(Token::BlockStartPrint));
+                                    self.code_block = true;
+                                }
+
+                                Some('-') => {
+                                    self.drain_buffer();
+                                    self.tokens.push(self.add_token(Token::BlockStartPrintRaw));
                                     self.code_block = true;
                                 }
 
@@ -408,7 +415,7 @@ impl<'a> Lexer<'a> {
         if !self.buffer.is_empty() {
             let s = std::mem::take(&mut self.buffer);
             if self.code_block {
-                match s.as_str() {
+                match s.trim() {
                     "if" => self.tokens.push(self.add_token(Token::If)),
                     "else" => self.tokens.push(self.add_token(Token::Else)),
                     "elsif" => self.tokens.push(self.add_token(Token::ElseIf)),

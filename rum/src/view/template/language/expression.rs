@@ -229,9 +229,11 @@ impl Expression {
 
                     match next.token() {
                         Token::RoundBracketEnd => {
-                            args.push(Self::parse(
-                                &mut std::mem::take(&mut buffer).into_iter().peekable(),
-                            )?);
+                            if !buffer.is_empty() {
+                                args.push(Self::parse(
+                                    &mut std::mem::take(&mut buffer).into_iter().peekable(),
+                                )?);
+                            }
                             break;
                         }
                         Token::Comma => {
