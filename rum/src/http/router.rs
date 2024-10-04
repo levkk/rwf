@@ -1,6 +1,8 @@
 use super::{Error, Handler, Path};
+use crate::colors::MaybeColorize;
 
 use regex::RegexSet;
+use tracing::info;
 
 pub struct Router {
     regex: RegexSet,
@@ -29,6 +31,18 @@ impl Router {
             .collect::<Vec<_>>();
         handlers.sort_by_key(|h| h.path().base().len()); // Get the most specific path (longest match).
         handlers.last().copied()
+    }
+
+    pub fn log_routes(&self) {
+        let mut handlers = self.handlers.iter().map(|s| s).collect::<Vec<_>>();
+        handlers.sort_by_key(|s| s.path().path());
+        for handler in handlers {
+            info!(
+                ">> {} => {}",
+                handler.path().path().purple(),
+                handler.controller_name().green()
+            );
+        }
     }
 }
 

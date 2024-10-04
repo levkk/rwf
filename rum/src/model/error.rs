@@ -7,7 +7,7 @@ pub enum Error {
     #[error("unknown error: {0}")]
     Unknown(String),
 
-    #[error("database error: {0}")]
+    #[error("database error: {0:?}")]
     DatabaseError(tokio_postgres::Error),
 
     #[error("query error: {0}, query: {1}")]

@@ -34,7 +34,7 @@ pub use join::{Association, AssociationType, Join, Joined, Joins};
 pub use limit::Limit;
 pub use lock::Lock;
 pub use macros::belongs_to;
-pub use migrations::{migrate, rollback};
+pub use migrations::{migrate, rollback, Migrations};
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
 pub use pool::{get_connection, get_pool, Connection, ConnectionGuard, Pool};
@@ -77,7 +77,7 @@ pub use value::{ToValue, Value};
 /// }   
 /// ```
 pub trait FromRow: Clone + Send {
-    fn from_row(row: tokio_postgres::Row) -> Self
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, Error>
     where
         Self: Sized;
 }
@@ -517,7 +517,7 @@ impl<T: Model> Query<T> {
     pub async fn explain(self, conn: &mut ConnectionGuard) -> Result<Explain, Error> {
         let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
         match query.execute_internal(conn).await?.pop() {
-            Some(explain) => Ok(Explain::from_row(explain)),
+            Some(explain) => Ok(Explain::from_row(explain)?),
             None => Err(Error::RecordNotFound),
         }
     }
@@ -535,7 +535,7 @@ impl<T: Model> Query<T> {
 
         let result = match query.execute_internal(conn).await?.pop() {
             None => Ok(0),
-            Some(exists) => Ok(Exists::from_row(exists).count),
+            Some(exists) => Ok(Exists::from_row(exists)?.count),
         };
 
         query.log(start.elapsed());
@@ -546,17 +546,16 @@ impl<T: Model> Query<T> {
     /// Execute a query and return an optional result.
     pub async fn execute(self, conn: &mut ConnectionGuard) -> Result<Vec<T>, Error> {
         let start = Instant::now();
-        let result = self
-            .execute_internal(conn)
-            .await?
-            .into_iter()
-            .map(|row| T::from_row(row))
-            .collect();
+        let mut results = vec![];
+        let rows = self.execute_internal(conn).await?;
+        for row in rows {
+            results.push(T::from_row(row)?)
+        }
         let time = start.elapsed();
 
         self.log(time);
 
-        Ok(result)
+        Ok(results)
     }
 
     fn log(&self, duration: Duration) {
@@ -700,8 +699,17 @@ pub trait Model: FromRow {
         }
     }
 
-    fn create(self) -> Query<Self> {
-        Query::Insert(Insert::new(self))
+    fn create(attributes: &[(impl ToColumn, impl ToValue)]) -> Query<Self> {
+        let columns = attributes
+            .iter()
+            .map(|(c, _)| c.to_column())
+            .collect::<Vec<_>>();
+        let values = attributes
+            .iter()
+            .map(|(_, v)| v.to_value())
+            .collect::<Vec<_>>();
+
+        Query::Insert(Insert::from_columns(&columns, &values))
     }
 
     fn lock() -> Query<Self> {

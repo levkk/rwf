@@ -1,4 +1,4 @@
-use super::{FromRow, Model, Value};
+use super::{Error, FromRow, Model, Value};
 
 #[derive(Debug, Clone)]
 pub struct Explain {
@@ -34,8 +34,8 @@ impl std::fmt::Display for Explain {
 }
 
 impl FromRow for Explain {
-    fn from_row(row: tokio_postgres::Row) -> Self {
-        let plan = row.get(0);
-        Self { plan }
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
+        let plan = row.try_get(0)?;
+        Ok(Self { plan })
     }
 }

@@ -10,6 +10,7 @@ Rum is a comprehensive framework for building web applications in Rust. Built us
 - :heavy_check_mark: Authentication & built-in user sessions
 - :heavy_check_mark: Middleware
 - :heavy_check_mark: Background jobs
+- :heavy_check_mark: Database migrations
 - :heavy_check_mark: WebSockets support
 - :heavy_check_mark: Environment-specific configuration
 - :heavy_check_mark: Logging and metrics
@@ -26,6 +27,7 @@ Building an app is then as simple as:
 
 ```rust
 use rum::prelude::*;
+use rum::http::Server;
 
 #[derive(Default)]
 struct IndexController;

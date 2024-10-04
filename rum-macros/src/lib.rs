@@ -17,7 +17,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
             let from_row_fields = data.fields.iter().map(|field| {
                 let ident = field.ident.clone();
                 quote! {
-                    #ident: row.get(stringify!(#ident)),
+                    #ident: row.try_get(stringify!(#ident))?,
                 }
             });
             let has_id = data
@@ -68,10 +68,10 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
             quote! {
                 #[automatically_derived]
                 impl rum::model::FromRow for #ident {
-                    fn from_row(row: rum::tokio_postgres::Row) -> Self {
-                        Self {
+                    fn from_row(row: rum::tokio_postgres::Row) -> Result<Self, rum::model::Error> {
+                        Ok(Self {
                             #(#from_row_fields)*
-                        }
+                        })
                     }
                 }
 
@@ -183,17 +183,17 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
             let from_row_fields = data.fields.iter().map(|field| {
                 let ident = &field.ident;
                 quote! {
-                    #ident: row.get(stringify!(#ident)),
+                    #ident: row.try_get(stringify!(#ident))?,
                 }
             });
 
             quote! {
                 #[automatically_derived]
                 impl rum::model::FromRow for #ident {
-                    fn from_row(row: rum::tokio_postgres::Row) -> Self {
-                        Self {
+                    fn from_row(row: rum::tokio_postgres::Row) -> Result<Self, rum::model::Error> {
+                        Ok(Self {
                             #(#from_row_fields)*
-                        }
+                        })
                     }
                 }
             }

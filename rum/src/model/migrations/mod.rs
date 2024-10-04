@@ -227,6 +227,10 @@ impl Migrations {
 
         Self::load().await
     }
+
+    pub async fn migrate() -> Result<Migrations, Error> {
+        Migrations::sync().await?.apply(Direction::Up).await
+    }
 }
 
 pub async fn migrate() -> Result<Migrations, Error> {

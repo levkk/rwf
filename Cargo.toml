@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
+members = [ "examples/crud", "examples/quick-start",
     "rum",
     "rum-cli",
     "rum-macros",

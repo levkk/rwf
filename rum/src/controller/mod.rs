@@ -15,7 +15,7 @@ use super::http::{
     websocket::{self, DataFrame},
     Handler, Method, Protocol, Request, Response, Stream, ToParameter,
 };
-use super::model::{get_connection, Model, Query, ToValue, Update, Value};
+use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value};
 use crate::comms::get_comms;
 use crate::config::get_config;
 
@@ -258,9 +258,23 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
     }
 
     async fn create(&self, request: &Request) -> Result<Response, Error> {
-        let model = request.json::<Self::Model>()?;
+        let model = match request.json::<Self::Model>() {
+            Ok(model) => model,
+            Err(err) => {
+                println!("{:?}", err);
+                return Ok(Response::bad_request());
+            }
+        };
+
         let mut conn = get_connection().await?;
-        let model = model.create().fetch(&mut conn).await?;
+
+        let model = Query::Insert(Insert::<Self::Model>::from_columns(
+            &Self::Model::column_names(),
+            &model.values(),
+        ))
+        .fetch(&mut conn)
+        .await?;
+
         Ok(Response::new().json(model)?)
     }
 
@@ -312,7 +326,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
 }
 
 #[async_trait]
-pub trait Websocket: Controller {
+pub trait WebsocketController: Controller {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         use base64::{engine::general_purpose, Engine as _};
         use sha1::{Digest, Sha1};

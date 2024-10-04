@@ -265,7 +265,8 @@ impl Response {
             <h3>
                 <center>404 - Not Found</center>
             </h3>
-        ",
+        "
+                .trim(),
             )
             .code(404)
     }

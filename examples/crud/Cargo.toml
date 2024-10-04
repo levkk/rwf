@@ -1,0 +1,16 @@
+[package]
+name = "crud"
+version = "0.1.0"
+edition = "2021"
+default-run = "crud"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "migrations"
+path = "bin/migrations/main.rs"
+
+[dependencies]
+rum = { path = "../../rum" }
+serde = { version = "1", features = ["derive"]}
+time = { version = "*", features = ["serde"] }
+tokio = { version = "1", features = ["full"]}

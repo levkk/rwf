@@ -1,4 +1,4 @@
-use crate::model::{FromRow, Model, ToValue, Value};
+use crate::model::{Error, FromRow, Model, ToValue, Value};
 use time::OffsetDateTime;
 
 use std::path::PathBuf;
@@ -15,13 +15,13 @@ pub struct Migration {
 }
 
 impl FromRow for Migration {
-    fn from_row(row: tokio_postgres::Row) -> Self {
-        Self {
-            id: row.get("id"),
-            version: row.get("version"),
-            name: row.get("name"),
-            applied_at: row.get("applied_at"),
-        }
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            version: row.try_get("version")?,
+            name: row.try_get("name")?,
+            applied_at: row.try_get("applied_at")?,
+        })
     }
 }
 

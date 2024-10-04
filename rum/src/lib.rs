@@ -8,11 +8,13 @@ pub mod http;
 pub mod job;
 pub mod logging;
 pub mod model;
+pub mod prelude;
 pub mod view;
 
 pub use async_trait::async_trait;
 pub use rum_macros as macros;
 pub use serde;
+pub use tokio;
 pub use tokio_postgres;
 
 pub use controller::{Controller, Error, ModelController, RestController};

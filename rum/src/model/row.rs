@@ -1,4 +1,4 @@
-use super::{FromRow, Model, Value};
+use super::{Error, FromRow, Model, Value};
 
 use std::sync::Arc;
 
@@ -34,8 +34,8 @@ impl Model for Row {
 }
 
 impl FromRow for Row {
-    fn from_row(row: tokio_postgres::Row) -> Self {
-        Self::new(row)
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
+        Ok(Self::new(row))
     }
 }
 

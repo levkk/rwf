@@ -1,4 +1,4 @@
-use super::{FromRow, Model, Value};
+use super::{Error, FromRow, Model, Value};
 
 #[derive(Debug, Clone)]
 pub struct Exists {
@@ -6,10 +6,10 @@ pub struct Exists {
 }
 
 impl FromRow for Exists {
-    fn from_row(row: tokio_postgres::Row) -> Self {
-        Self {
-            count: row.get("count"),
-        }
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
+        Ok(Self {
+            count: row.try_get("count")?,
+        })
     }
 }
 

@@ -48,7 +48,16 @@ impl Server {
 
     /// Launch the server.
     pub async fn launch(self, addr: impl ToSocketAddrs) -> Result<(), Error> {
+        info!(
+            "Starting {} {} {}",
+            "Rum".green(),
+            "HTTP".purple(),
+            "server".red()
+        );
         let listener = TcpListener::bind(addr).await?;
+
+        info!("Listening on {}", listener.local_addr().unwrap());
+        self.handlers.log_routes();
 
         loop {
             let (stream, peer_addr) = listener.accept().await?;
@@ -95,12 +104,7 @@ impl Server {
                         let response = match handler.handle_internal(request.clone()).await {
                             Ok(response) => response,
                             Err(err) => {
-                                error!(
-                                    "{} {} 500 {:?}",
-                                    handler.controller_name().green(),
-                                    request.path().path().purple(),
-                                    err
-                                );
+                                error!("{:?}", err);
                                 Response::internal_error(err)
                             }
                         };
@@ -168,8 +172,8 @@ impl Server {
     fn log(request: &Request, controller_name: &str, response: &Response, duration: Duration) {
         info!(
             "{} {} {} ({:.3} ms)",
-            controller_name.green(),
             request.path().path().purple(),
+            controller_name.green(),
             response.status().code(),
             duration.as_secs_f64() * 1000.0,
         );

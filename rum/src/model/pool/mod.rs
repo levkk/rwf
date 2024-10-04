@@ -31,7 +31,7 @@ pub async fn get_connection() -> Result<ConnectionGuard, Error> {
 }
 
 pub async fn start_transaction() -> Result<Transaction, Error> {
-    get_pool().begin().await
+    get_pool().transaction().await
 }
 
 /// Smart pointer that automatically checks in the connection
@@ -184,8 +184,9 @@ impl Pool {
     ///
     pub fn new_local() -> Self {
         let user = std::env::var("USER").unwrap_or("postgres".to_string());
+        let database = std::env::var("RUM_DATABASE").unwrap_or(user.clone());
         Self::new(
-            &format!("postgresql://{}@localhost", user),
+            &format!("postgresql://{}@localhost/{}", user, database),
             PoolConfig::local(),
         )
     }
@@ -198,10 +199,19 @@ impl Pool {
         }
     }
 
+    pub fn pool() -> Self {
+        get_pool()
+    }
+
+    pub async fn connection() -> Result<ConnectionGuard, Error> {
+        let pool = get_pool();
+        pool.get().await
+    }
+
     /// See [`Pool::transaction`]
-    pub async fn begin(&self) -> Result<Transaction, Error> {
-        let connection = self.get().await?;
-        Ok(Transaction::new(connection).await?)
+    pub async fn begin() -> Result<Transaction, Error> {
+        let pool = get_pool();
+        pool.transaction().await
     }
 
     /// Start a new transaction.
@@ -209,7 +219,8 @@ impl Pool {
     /// The transaction should be manually committed with [`Transaction::commit`]
     /// otherwise it will be automatically rolled back.
     pub async fn transaction(&self) -> Result<Transaction, Error> {
-        self.begin().await
+        let connection = self.get().await?;
+        Ok(Transaction::new(connection).await?)
     }
 
     pub async fn with_transaction<Fut, R>(
@@ -219,7 +230,7 @@ impl Pool {
     where
         Fut: Future<Output = Result<R, Error>>,
     {
-        let transaction = self.begin().await?;
+        let transaction = self.transaction().await?;
         let result = f(transaction).await?;
         Ok(result)
     }

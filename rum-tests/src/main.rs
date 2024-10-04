@@ -7,7 +7,7 @@ use rum::view::{
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, Websocket,
+        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController,
     },
     http::{websocket, Request, Response, Stream},
     job::Job,
@@ -173,27 +173,27 @@ impl Job for JobTwo {
     }
 }
 
-struct WebsocketController {}
+struct MyWebsocketController {}
 
-impl WebsocketController {
+impl MyWebsocketController {
     pub fn new() -> Self {
-        WebsocketController {}
+        MyWebsocketController {}
     }
 }
 
 #[rum::async_trait]
-impl Controller for WebsocketController {
+impl Controller for MyWebsocketController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        Websocket::handle(self, request).await
+        WebsocketController::handle(self, request).await
     }
 
     async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
-        Websocket::handle_stream(self, request, stream).await
+        WebsocketController::handle_stream(self, request, stream).await
     }
 }
 
 #[rum::async_trait]
-impl Websocket for WebsocketController {
+impl WebsocketController for MyWebsocketController {
     async fn client_message(
         &self,
         user_id: &SessionId,
@@ -391,7 +391,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::new(vec![
         StaticFiles::serve("static")?,
         IndexController {}.route("/"),
-        WebsocketController::new().route("/websocket"),
+        MyWebsocketController::new().route("/websocket"),
         BaseController {
             id: "5".to_string(),
         }

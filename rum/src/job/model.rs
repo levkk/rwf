@@ -58,19 +58,19 @@ impl JobModel {
 }
 
 impl FromRow for JobModel {
-    fn from_row(row: tokio_postgres::Row) -> Self {
-        Self {
-            id: row.get("id"),
-            name: row.get("name"),
-            args: row.get("args"),
-            created_at: row.get("created_at"),
-            start_after: row.get("start_after"),
-            started_at: row.get("started_at"),
-            attempts: row.get("attempts"),
-            retries: row.get("retries"),
-            completed_at: row.get("completed_at"),
-            error: row.get("error"),
-        }
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, crate::model::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            args: row.try_get("args")?,
+            created_at: row.try_get("created_at")?,
+            start_after: row.try_get("start_after")?,
+            started_at: row.try_get("started_at")?,
+            attempts: row.try_get("attempts")?,
+            retries: row.try_get("retries")?,
+            completed_at: row.try_get("completed_at")?,
+            error: row.try_get("error")?,
+        })
     }
 }
 
@@ -139,7 +139,7 @@ pub trait Job: Sync + Send {
     async fn execute_async(&self, args: serde_json::Value) -> Result<(), Error> {
         let mut conn = get_connection().await?;
         JobModel::new(self.job_name(), args)
-            .create()
+            .save()
             .execute(&mut conn)
             .await?;
         Ok(())
