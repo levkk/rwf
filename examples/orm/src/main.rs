@@ -1,4 +1,4 @@
-use rum::http::Server;
+#![allow(dead_code)]
 use rum::logging::setup_logging;
 use rum::prelude::*;
 
@@ -34,8 +34,8 @@ mod models {
                 ("name", task_name.to_value()),
                 ("user_id", self.id.to_value()),
             ])
-                .fetch(&mut conn)
-                .await?;
+            .fetch(&mut conn)
+            .await?;
 
             Ok(task)
         }
@@ -121,14 +121,12 @@ mod models {
     }
 }
 
-use models::{Task, User};
-
 #[derive(Default)]
 struct IndexController;
 
 #[async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         Ok(Response::new().html("<h1>Hey Rum!</h1>"))
     }
 }

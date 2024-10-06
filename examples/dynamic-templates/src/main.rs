@@ -1,7 +1,6 @@
 use rum::http::Server;
 use rum::logging::setup_logging;
 use rum::prelude::*;
-use rum::view::prelude::*;
 
 #[derive(Default)]
 struct IndexController;
@@ -14,7 +13,7 @@ struct IndexTemplate {
 
 #[async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let context = IndexTemplate {
             title: "Rum templates are fun!".into(),
             items: vec!["why".into(), "are".into(), "you".into(), "yelling".into()],

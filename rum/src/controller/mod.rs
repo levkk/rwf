@@ -19,9 +19,8 @@ use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value}
 use crate::comms::get_comms;
 use crate::config::get_config;
 
-use tokio::io::AsyncWriteExt;
 use tokio::select;
-use tokio::time::{interval, timeout, Duration};
+use tokio::time::{interval, timeout};
 use tracing::debug;
 
 use serde::{Deserialize, Serialize};

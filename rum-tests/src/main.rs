@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 use rum::model::{Model, Pool, Scope};
-use rum::view::{
-    template::{Context, Template},
-    Templates,
-};
+use rum::view::{template::Template, Templates};
 use rum::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
@@ -212,7 +209,7 @@ struct IndexController;
 
 #[rum::async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, rum::controller::Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, rum::controller::Error> {
         Ok(Template::cached_static("templates/index.html").await?)
     }
 }

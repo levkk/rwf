@@ -28,7 +28,7 @@ struct IndexController;
 
 #[async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let job = SendEmailJob {
             email: "test@test.com".into(),
             body: "Hey, this is Rum, how are you?".into(),

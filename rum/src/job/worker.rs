@@ -1,28 +1,20 @@
-use super::{Error, Job, JobHandler, JobModel};
+use super::{Error, JobHandler, JobModel};
 
 use crate::colors::MaybeColorize;
 use time::OffsetDateTime;
 
-use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
 
 use crate::model::{get_connection, get_pool, Model};
 
 use std::collections::HashMap;
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::sync::Arc;
 use std::time::Instant;
-
-#[derive(Default)]
-struct Internal {
-    shutdown: Notify,
-    instances: AtomicUsize,
-}
 
 #[derive(Clone)]
 pub struct Worker {
     jobs: Arc<HashMap<String, JobHandler>>,
-    internal: Arc<Internal>,
 }
 
 impl Worker {
@@ -33,7 +25,6 @@ impl Worker {
             .collect();
         Self {
             jobs: Arc::new(jobs),
-            internal: Arc::new(Internal::default()),
         }
     }
 

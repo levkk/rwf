@@ -7,7 +7,7 @@ struct IndexController;
 
 #[async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         Ok(Response::new().html("<h1>Hey Rum!</h1>"))
     }
 }

@@ -48,10 +48,6 @@ impl Websocket {
     fn sender(&self) -> Sender<Message> {
         self.sender.clone()
     }
-
-    pub fn send(&self, message: Message) -> Result<usize, Error> {
-        Ok(self.sender.send(message)?)
-    }
 }
 
 pub struct Messages {
