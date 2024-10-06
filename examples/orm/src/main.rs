@@ -30,7 +30,10 @@ mod models {
         pub async fn add_task(&self, task_name: &str) -> Result<Task, Error> {
             let mut conn = Pool::connection().await?;
 
-            let task = Task::create(&[("name", task_name)])
+            let task = Task::create(&[
+                ("name", task_name.to_value()),
+                ("user_id", self.id.to_value()),
+            ])
                 .fetch(&mut conn)
                 .await?;
 
