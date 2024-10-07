@@ -1878,6 +1878,7 @@ dependencies = [
  "rum",
  "serde",
  "serde_json",
+ "time",
  "tokio",
  "tracing",
 ]

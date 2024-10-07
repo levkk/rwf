@@ -1,8 +1,10 @@
+use crate::colors::MaybeColorize;
 use crate::job::Error;
 use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use async_trait::async_trait;
+use tracing::info;
 
 /// Job entry in the database-backed job queue.
 #[derive(Clone, Debug)]
@@ -33,6 +35,12 @@ impl JobModel {
             completed_at: None,
             error: None,
         }
+    }
+
+    fn new_with_delay(name: &str, args: serde_json::Value, delay: Duration) -> Self {
+        let mut job = Self::new(name, args);
+        job.start_after = OffsetDateTime::now_utc() + delay;
+        job
     }
 
     /// Fetch the next job from the queue.
@@ -149,6 +157,25 @@ pub trait Job: Sync + Send {
             .save()
             .execute(&mut conn)
             .await?;
+
+        info!("job {} scheduled to run now", self.job_name().green());
+
+        Ok(())
+    }
+
+    async fn execute_delay(&self, args: serde_json::Value, delay: Duration) -> Result<(), Error> {
+        let mut conn = get_connection().await?;
+        JobModel::new_with_delay(self.job_name(), args, delay)
+            .save()
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "job {} scheduled to run in {}s",
+            self.job_name().green(),
+            delay.whole_seconds()
+        );
+
         Ok(())
     }
 

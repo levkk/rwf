@@ -35,6 +35,24 @@ impl TryFrom<String> for Method {
     }
 }
 
+impl std::fmt::Display for Method {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Method::*;
+
+        let name = match self {
+            Get => "GET".to_string(),
+            Post => "POST".to_string(),
+            Put => "PUT".to_string(),
+            Delete => "DELETE".to_string(),
+            Head => "HEAD".to_string(),
+            Patch => "PATCH".to_string(),
+            Other(other) => other.clone(),
+        };
+
+        write!(f, "{}", name)
+    }
+}
+
 /// HTTP version, e.g. HTTP/1.1 or HTTP/2.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Version {

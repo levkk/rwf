@@ -171,7 +171,8 @@ impl Server {
 
     fn log(request: &Request, controller_name: &str, response: &Response, duration: Duration) {
         info!(
-            "{} {} {} ({:.3} ms)",
+            "{} {} {} {} ({:.3} ms)",
+            request.method().to_string().purple(),
             request.path().path().purple(),
             controller_name.green(),
             response.status().code(),

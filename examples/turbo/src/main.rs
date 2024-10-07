@@ -3,9 +3,14 @@ use rum::http::Server;
 use rum::job::{Error as JobError, Worker};
 use rum::prelude::*;
 
-use rand::Rng;
 use serde::{Deserialize, Serialize};
+use time::Duration;
 use tracing::info;
+
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 #[derive(Default)]
 struct IndexController;
@@ -13,11 +18,7 @@ struct IndexController;
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        Ok(Response::new().html(
-            Template::cached("templates/index.html")
-                .await?
-                .render_default()?,
-        ))
+        Ok(Template::cached_static("templates/index.html").await?)
     }
 }
 
@@ -41,8 +42,17 @@ struct Canvas {
     body: String,
 }
 
-#[derive(Default)]
-struct CanvasController;
+struct CanvasController {
+    counter: Arc<AtomicUsize>,
+}
+
+impl Default for CanvasController {
+    fn default() -> Self {
+        Self {
+            counter: Arc::new(AtomicUsize::new(1)),
+        }
+    }
+}
 
 impl CanvasController {
     async fn canvas(message: impl ToString) -> Result<TurboStream, Error> {
@@ -60,18 +70,18 @@ impl CanvasController {
 #[rum::async_trait]
 impl Controller for CanvasController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        let click = self.counter.fetch_add(1, Ordering::Relaxed);
+
         let args = ExpensiveJob {
             session_id: request.session_id(),
+            click,
         };
 
         ExpensiveJob::default()
-            .execute_async(serde_json::to_value(args)?)
+            .execute_delay(serde_json::to_value(args)?, Duration::seconds(2))
             .await?;
 
-        let message = format!(
-            "This was updated by Turbo, random number of the day is: {}",
-            rand::thread_rng().gen_range(0..25)
-        );
+        let message = format!("This button was clicked {} times", click,);
 
         let turbo_stream = CanvasController::canvas(message).await?;
 
@@ -82,6 +92,7 @@ impl Controller for CanvasController {
 #[derive(Clone, Default, Serialize, Deserialize)]
 struct ExpensiveJob {
     session_id: Option<SessionId>,
+    click: usize,
 }
 
 #[rum::async_trait]
@@ -90,7 +101,10 @@ impl Job for ExpensiveJob {
         let args: Self = serde_json::from_value(args)?;
 
         if let Some(ref session_id) = args.session_id {
-            let message = "I just did an expensive job.";
+            let message = format!(
+                "Button clicked {} times, delivered via WebSocket from a background job.",
+                args.click
+            );
 
             if let Ok(canvas) = CanvasController::canvas(message).await {
                 Comms::websocket(session_id).send(Message::turbo_stream(canvas))?;

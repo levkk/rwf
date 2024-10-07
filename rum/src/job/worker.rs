@@ -88,7 +88,7 @@ impl Worker {
                         match result {
                             Ok(Ok(())) => {
                                 info!(
-                                    "{} job finished ({:.3} ms)",
+                                    "job {} finished ({:.3} ms)",
                                     job.name.green(),
                                     elapsed.as_secs_f64() * 1000.0
                                 );
@@ -105,7 +105,7 @@ impl Worker {
                                 };
 
                                 error!(
-                                    "{} job error ({:.3} ms): {}",
+                                    "job {} error ({:.3} ms): {}",
                                     job.name.green(),
                                     elapsed.as_secs_f64() * 1000.0,
                                     err
