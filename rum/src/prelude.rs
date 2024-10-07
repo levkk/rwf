@@ -1,3 +1,5 @@
+pub use crate::comms::Comms;
+pub use crate::config::Config;
 pub use crate::controller::{Controller, Error, ModelController, RestController, SessionId};
 pub use crate::http::{Message, Request, Response};
 pub use crate::job::Job;

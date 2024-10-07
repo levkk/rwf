@@ -26,3 +26,4 @@ aes = "0.8"
 rand = { version = "0.8", features = ["getrandom"] }
 regex = "1"
 sha1 = "0.10"
+toml = "0.8"

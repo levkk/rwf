@@ -1,6 +1,7 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::Error;
+use crate::view::TurboStream;
 
 use std::marker::Unpin;
 
@@ -278,6 +279,10 @@ pub enum Message {
 }
 
 impl Message {
+    pub fn turbo_stream(turbo_stream: TurboStream) -> Self {
+        Message::Text(turbo_stream.render())
+    }
+
     pub fn len(&self) -> usize {
         match self {
             Self::Text(text) => text.as_bytes().len(),

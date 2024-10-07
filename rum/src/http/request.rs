@@ -11,7 +11,7 @@ use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, Head, Params, ToParameter};
-use crate::controller::Session;
+use crate::controller::{Session, SessionId};
 
 /// HTTP request.
 ///
@@ -122,6 +122,12 @@ impl Request {
     /// Request's session.
     pub fn session(&self) -> &Option<Session> {
         &self.session
+    }
+
+    pub fn session_id(&self) -> Option<SessionId> {
+        self.session
+            .as_ref()
+            .map(|session| session.session_id.clone())
     }
 
     pub fn set_session(mut self, session: Option<Session>) -> Self {

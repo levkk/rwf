@@ -39,7 +39,7 @@ impl Worker {
     }
 
     pub async fn run(&self) {
-        info!("background jobs worker started");
+        info!("Background jobs worker started");
 
         loop {
             let worker = self.clone();

@@ -172,6 +172,50 @@ fn handle_model_attrs(input: &DeriveInput, attributes: &[Attribute]) -> proc_mac
     }
 }
 
+#[proc_macro_derive(WebsocketController)]
+pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let ident = match &input.data {
+        Data::Struct(_data) => input.ident.clone(),
+
+        _ => panic!("macro can only be used on structs"),
+    };
+
+    quote! {
+       #[rum::async_trait]
+        impl rum::controller::Controller for #ident {
+            async fn handle(&self, request: &rum::http::Request) -> Result<rum::http::Response, rum::controller::Error> {
+                rum::controller::WebsocketController::handle(self, request).await
+            }
+
+            async fn handle_stream(&self, request: &rum::http::Request, stream: rum::http::Stream<'_>) -> Result<bool, rum::controller::Error> {
+                rum::controller::WebsocketController::handle_stream(self, request, stream).await
+            }
+        }
+    }.into()
+}
+
+#[proc_macro_derive(ModelController)]
+pub fn derive_model_controller(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let ident = match &input.data {
+        Data::Struct(_data) => input.ident.clone(),
+
+        _ => panic!("macro can only be used on structs"),
+    };
+
+    quote! {
+       #[rum::async_trait]
+        impl rum::controller::Controller for #ident {
+            async fn handle(&self, request: &rum::http::Request) -> Result<rum::http::Response, rum::controller::Error> {
+                rum::controller::ModelController::handle(self, request).await
+            }
+        }
+    }.into()
+}
+
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

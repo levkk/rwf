@@ -26,6 +26,9 @@ pub enum Error {
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
 
+    #[error("config error: {0}")]
+    Config(#[from] crate::config::Error),
+
     #[error("session is not set")]
     SessionMissingError,
 }

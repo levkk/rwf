@@ -2,12 +2,34 @@ use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
 use std::io::IsTerminal;
+use std::path::Path;
 use time::Duration;
 
 use crate::controller::{AllowAll, AuthHandler, MiddlewareSet};
 use rand::{rngs::OsRng, RngCore};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tokio::fs::read_to_string;
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("config: {0}")]
+    Toml(#[from] toml::de::Error),
+
+    #[error("config file not found")]
+    Io(#[from] std::io::Error),
+
+    #[error("secret key is not valid")]
+    Base64(#[from] base64::DecodeError),
+
+    #[error("secret key is incorrect length")]
+    SecretKey,
+
+    #[error("config is already loaded")]
+    ConfigLoaded,
+}
 
 /// Global configuration.
 pub struct Config {
@@ -63,6 +85,67 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    pub async fn load() -> Result<(), Error> {
+        if CONFIG.get().is_some() {
+            return Ok(());
+        }
+
+        let mut config = Config::default();
+        let config_file = ConfigFile::load("Rum.toml").await?;
+
+        let secret_key = config_file.general.secret_key()?;
+
+        let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
+        let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
+
+        config.aes_key = aes_key;
+        config.secure_id_key = secure_id_key;
+
+        if let Err(_) = CONFIG.set(config) {
+            return Err(Error::ConfigLoaded);
+        }
+
+        Ok(())
+    }
+
+    pub fn get() -> &'static Config {
+        get_config()
+    }
+}
+
 pub fn get_config() -> &'static Config {
     CONFIG.get_or_init(|| Config::default())
+}
+
+#[derive(Serialize, Deserialize)]
+struct ConfigFile {
+    general: General,
+}
+
+impl ConfigFile {
+    pub async fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
+        let file = read_to_string(path).await?;
+        let config: Self = toml::from_str(&file)?;
+
+        Ok(config)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct General {
+    secret_key: String,
+}
+
+impl General {
+    pub fn secret_key(&self) -> Result<Vec<u8>, Error> {
+        use base64::{engine::general_purpose, Engine as _};
+        let bytes = general_purpose::STANDARD.decode(&self.secret_key)?;
+
+        if bytes.len() == 256 / 8 {
+            Ok(bytes)
+        } else {
+            Err(Error::SecretKey)
+        }
+    }
 }

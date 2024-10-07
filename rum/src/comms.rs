@@ -120,7 +120,11 @@ pub struct WebsocketReceiver {
     session_id: SessionId,
 }
 
-impl WebsocketReceiver {}
+impl WebsocketReceiver {
+    pub fn session_id(&self) -> &SessionId {
+        &self.session_id
+    }
+}
 
 impl std::ops::Deref for WebsocketReceiver {
     type Target = Receiver<Message>;
@@ -142,5 +146,13 @@ impl Drop for WebsocketReceiver {
         if self.sender.receiver_count() == 1 {
             get_comms().websocket_disconnect(&self.session_id);
         }
+    }
+}
+
+pub struct Comms;
+
+impl Comms {
+    pub fn websocket(session_id: &SessionId) -> WebsocketSender {
+        get_comms().websocket_sender(session_id)
     }
 }

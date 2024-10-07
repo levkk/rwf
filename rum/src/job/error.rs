@@ -20,6 +20,9 @@ pub enum Error {
     #[error("job error: {0}")]
     Unknown(String),
 
+    #[error("comms error: {0}")]
+    CommsError(#[from] crate::comms::Error),
+
     #[error("specified cron schedule is not valid")]
     CronValueError,
 }

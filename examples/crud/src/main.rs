@@ -20,7 +20,7 @@ struct User {
     created_at: OffsetDateTime,
 }
 
-#[derive(Default)]
+#[derive(Default, rum::macros::ModelController)]
 struct UserController;
 
 /// The model controller which automatically implements
@@ -29,15 +29,6 @@ struct UserController;
 #[async_trait]
 impl ModelController for UserController {
     type Model = User;
-}
-
-/// All routes in Rum have to implement the Controller trait.
-/// We delegate this implementation to the ModelController.
-#[async_trait]
-impl Controller for UserController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        ModelController::handle(self, request).await
-    }
 }
 
 #[tokio::main]

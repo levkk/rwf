@@ -424,6 +424,7 @@ pub trait WebsocketController: Controller {
                 message = receiver.recv() => {
                     match message {
                         Ok(message) => {
+                            debug!("sending {:?} to {:?}", message, receiver.session_id());
                             message.send(&mut stream).await?;
                         }
 
