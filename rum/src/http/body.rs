@@ -23,6 +23,10 @@ impl Body {
         Self::Bytes(bytes)
     }
 
+    pub fn html(text: impl ToString) -> Self {
+        Self::Html(text.to_string())
+    }
+
     pub async fn send(
         &mut self,
         mut stream: impl AsyncWrite + Unpin,

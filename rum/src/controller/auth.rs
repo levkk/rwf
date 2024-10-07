@@ -167,6 +167,10 @@ impl Session {
         Self::default()
     }
 
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
     pub fn new(payload: impl Serialize) -> Result<Self, Error> {
         Ok(Self {
             payload: serde_json::to_value(payload)?,
@@ -174,6 +178,13 @@ impl Session {
                 .unix_timestamp(),
             session_id: SessionId::default(),
         })
+    }
+
+    pub fn new_authenticated(payload: impl Serialize, user_id: i64) -> Result<Self, Error> {
+        let mut session = Self::new(payload)?;
+        session.session_id = SessionId::Authenticated(user_id);
+
+        Ok(session)
     }
 
     pub fn renew(mut self, renew_for: Duration) -> Self {
@@ -199,13 +210,34 @@ impl Session {
     }
 }
 
+#[derive(Default)]
+pub struct SessionAuth {
+    redirect: Option<String>,
+}
+
+impl SessionAuth {
+    pub fn redirect(url: impl ToString) -> Self {
+        Self {
+            redirect: Some(url.to_string()),
+        }
+    }
+}
+
 #[async_trait]
-impl Authentication for Session {
+impl Authentication for SessionAuth {
     async fn authorize(&self, request: &Request) -> Result<bool, Error> {
         if let Some(session) = request.session() {
             Ok(session.authenticated())
         } else {
             Ok(false)
+        }
+    }
+
+    async fn denied(&self, _request: &Request) -> Result<Response, Error> {
+        if let Some(ref redirect) = self.redirect {
+            Ok(Response::new().redirect(redirect))
+        } else {
+            Ok(Response::forbidden())
         }
     }
 }

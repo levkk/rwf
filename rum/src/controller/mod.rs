@@ -352,6 +352,7 @@ pub trait ModelController: Controller {
 }
 
 #[async_trait]
+#[allow(unused_variables)]
 pub trait WebsocketController: Controller {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         use base64::{engine::general_purpose, Engine as _};
@@ -377,7 +378,13 @@ pub trait WebsocketController: Controller {
         &self,
         session_id: &SessionId,
         message: websocket::Message,
-    ) -> Result<(), Error>;
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn client_connected(&self, session_id: &SessionId) -> Result<(), Error> {
+        Ok(())
+    }
 
     async fn handle_stream(
         &self,
@@ -400,6 +407,8 @@ pub trait WebsocketController: Controller {
         let mut receiver = comms.websocket_receiver(&session_id);
         let mut check = interval(config.websocket.ping_interval.unsigned_abs());
         let mut lost_pings = 0;
+
+        self.client_connected(&session_id).await?;
 
         loop {
             select! {

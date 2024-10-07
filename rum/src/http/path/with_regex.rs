@@ -65,7 +65,7 @@ impl PathWithRegex {
             +
 
             // Last slash is optional
-            if path.base().ends_with("/") { "" } else { r#"\/?$"# };
+            if path.base().ends_with("/") { "$" } else { r#"\/?$"# };
 
         // :id parameter
         if path_type == PathType::Rest {

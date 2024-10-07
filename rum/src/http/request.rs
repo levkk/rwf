@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Cookies, Error, Head, Params, ToParameter};
+use super::{Cookies, Error, Head, Params, Response, ToParameter};
 use crate::controller::{Session, SessionId};
 
 /// HTTP request.
@@ -120,8 +120,8 @@ impl Request {
     }
 
     /// Request's session.
-    pub fn session(&self) -> &Option<Session> {
-        &self.session
+    pub fn session(&self) -> Option<&Session> {
+        self.session.as_ref()
     }
 
     pub fn session_id(&self) -> Option<SessionId> {
@@ -142,6 +142,24 @@ impl Request {
             == Some(true)
             && self.headers().get("upgrade").map(|v| v.to_lowercase())
                 == Some(String::from("websocket"))
+    }
+
+    pub fn login(&self, user_id: i64) -> Response {
+        let mut session = self
+            .session()
+            .map(|s| s.clone())
+            .unwrap_or(Session::empty());
+        session.session_id = SessionId::Authenticated(user_id);
+        Response::new().set_session(session)
+    }
+
+    pub fn logout(&self) -> Response {
+        let mut session = self
+            .session()
+            .map(|s| s.clone())
+            .unwrap_or(Session::empty());
+        session.session_id = SessionId::default();
+        Response::new().set_session(session)
     }
 }
 

@@ -87,10 +87,6 @@ impl Default for Config {
 
 impl Config {
     pub async fn load() -> Result<(), Error> {
-        if CONFIG.get().is_some() {
-            return Ok(());
-        }
-
         let mut config = Config::default();
         let config_file = ConfigFile::load("Rum.toml").await?;
 

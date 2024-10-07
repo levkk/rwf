@@ -244,11 +244,25 @@ impl Response {
         Ok(self)
     }
 
-    /// Set session on the response.
-    pub fn set_session(mut self, payload: impl Serialize) -> Result<Self, Error> {
-        self.session = Some(Session::new(payload)?);
-        Ok(self)
+    pub fn set_session(mut self, session: Session) -> Self {
+        self.session = Some(session);
+        self
     }
+
+    /// Set session on the response.
+    // pub fn set_session(mut self, payload: impl Serialize) -> Result<Self, Error> {
+    //     self.session = match self.session {
+    //         Some(session) => {
+    //             let mut new_session = Session::new(payload)?;
+    //             new_session.session_id = session.session_id;
+    //             Some(new_session)
+    //         }
+
+    //         None => Some(Session::new(payload)?),
+    //     };
+
+    //     Ok(self)
+    // }
 
     pub fn session(&self) -> &Option<Session> {
         &self.session
@@ -366,8 +380,12 @@ impl Response {
             .code(429)
     }
 
-    pub fn redirect(to: impl ToString) -> Self {
-        Self::new().header("location", to)
+    pub fn redirect(self, to: impl ToString) -> Self {
+        self.html("")
+            .header("location", to)
+            .code(302)
+            .header("content-length", 0)
+            .header("cache-control", "no-cache")
     }
 
     pub fn switching_protocols(protocol: &str) -> Self {

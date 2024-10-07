@@ -54,10 +54,12 @@ impl Server {
             "HTTP".purple(),
             "server".red()
         );
+
+        self.handlers.log_routes();
+
         let listener = TcpListener::bind(addr).await?;
 
         info!("Listening on {}", listener.local_addr().unwrap());
-        self.handlers.log_routes();
 
         loop {
             let (stream, peer_addr) = listener.accept().await?;
