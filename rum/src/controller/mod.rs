@@ -51,7 +51,14 @@ pub trait Controller: Sync + Send {
     where
         Self: Sized + 'static,
     {
-        Handler::new(path, self)
+        Handler::route(path, self)
+    }
+
+    fn wildcard(self, path: &str) -> Handler
+    where
+        Self: Sized + 'static,
+    {
+        todo!()
     }
 
     fn protocol(&self) -> Protocol {
@@ -174,6 +181,13 @@ pub trait RestController: Controller {
         }
     }
 
+    fn rest(self, path: &str) -> Handler
+    where
+        Self: Sized + 'static,
+    {
+        Handler::rest(path, self)
+    }
+
     async fn list(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::not_implemented())
     }
@@ -226,6 +240,13 @@ pub trait ModelController: Controller {
 
             Err(_) => Ok(Response::bad_request()),
         }
+    }
+
+    fn crud(self, path: &str) -> Handler
+    where
+        Self: Sized + 'static,
+    {
+        Handler::rest(path, self)
     }
 
     async fn list(&self, request: &Request) -> Result<Response, Error> {

@@ -1,5 +1,4 @@
 use rum::http::Server;
-use rum::logging::setup_logging;
 use rum::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -32,20 +31,6 @@ impl ModelController for UserController {
     type Model = User;
 }
 
-/// CRUD is based on REST, for which we also have an automatically
-/// implemented controller.
-#[async_trait]
-impl RestController for UserController {
-    // REST actions will be addressed using the primary key
-    // of the model (in our case, a 64-bit integer).
-    type Resource = i64;
-
-    // Delegate handling of REST actions to the ModelController.
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        ModelController::handle(self, request).await
-    }
-}
-
 /// All routes in Rum have to implement the Controller trait.
 /// We delegate this implementation to the ModelController.
 #[async_trait]
@@ -58,9 +43,9 @@ impl Controller for UserController {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Configure logging.
-    setup_logging();
+    Logger::init();
 
-    Server::new(vec![UserController::default().route("/api/users")])
+    Server::new(vec![UserController::default().crud("/api/users")])
         .launch("0.0.0.0:8000")
         .await?;
 

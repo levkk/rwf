@@ -19,6 +19,7 @@ pub use tokio_postgres;
 
 pub use controller::{Controller, Error, ModelController, RestController};
 pub use http::Server;
+pub use logging::Logger;
 
 use std::net::SocketAddr;
 

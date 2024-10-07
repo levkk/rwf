@@ -18,9 +18,16 @@ pub struct PathWithRegex {
     params: Arc<Params>,
 }
 
+#[derive(PartialEq)]
+pub enum PathType {
+    Rest,
+    Wildcard,
+    Route,
+}
+
 impl PathWithRegex {
     /// Create the path-specified regex.
-    pub fn new(path: Path) -> Result<Self, Error> {
+    pub(crate) fn new(path: Path, path_type: PathType) -> Result<Self, Error> {
         let mut params = HashMap::new();
         // Parameter regex groups start at 1 since the first group
         // is the path base URL.
@@ -44,13 +51,26 @@ impl PathWithRegex {
             "^".to_string() +
             // URL parts joined by '/'
             &regex.join(r#"\/"#) +
-            // The :id parameter is optional
-            r#"(\/[a-zA-Z0-9_-]+)?"# +
+
+            match path_type {
+                PathType::Rest => {
+                    // The :id parameter is optional
+                    r#"(\/[a-zA-Z0-9_-]+)?"#
+                }
+
+                PathType::Route => "",
+                PathType::Wildcard => ".*",
+            }
+
+            +
+
             // Last slash is optional
-            r#"\/?$"#;
+            if path.base().ends_with("/") { "" } else { r#"\/?$"# };
 
         // :id parameter
-        params.insert("id".to_string(), i);
+        if path_type == PathType::Rest {
+            params.insert("id".to_string(), i);
+        }
 
         let regex = Regex::new(&regex)?;
 
@@ -58,6 +78,18 @@ impl PathWithRegex {
             path,
             params: Arc::new(Params::new(regex, params)),
         })
+    }
+
+    pub(crate) fn route(path: Path) -> Result<Self, Error> {
+        Self::new(path, PathType::Route)
+    }
+
+    pub(crate) fn rest(path: Path) -> Result<Self, Error> {
+        Self::new(path, PathType::Rest)
+    }
+
+    pub(crate) fn wildcard(path: Path) -> Result<Self, Error> {
+        Self::new(path, PathType::Wildcard)
     }
 
     /// Get the params handler.

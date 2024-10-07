@@ -1,7 +1,6 @@
 use log::info;
 use rum::http::Server;
 use rum::job::{Error as JobError, Worker};
-use rum::logging::setup_logging;
 use rum::model::Migrations;
 use rum::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -42,7 +41,7 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    setup_logging();
+    Logger::init();
 
     Migrations::migrate().await?;
 

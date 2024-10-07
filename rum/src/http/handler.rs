@@ -1,4 +1,7 @@
-use super::{path::PathWithRegex, Path};
+use super::{
+    path::{PathType, PathWithRegex},
+    Path,
+};
 use crate::controller::Controller;
 
 use std::ops::Deref;
@@ -8,26 +11,31 @@ pub struct Handler {
     path: PathWithRegex,
     name: Option<String>,
     controller: Box<dyn Controller>,
-    rank: i64,
 }
 
 impl Handler {
-    pub fn new(path: &str, controller: impl Controller + 'static) -> Self {
+    pub fn new(path: &str, controller: impl Controller + 'static, path_type: PathType) -> Self {
         Self {
-            path: Path::parse(path).unwrap().with_regex().unwrap(),
+            path: Path::parse(path).unwrap().with_regex(path_type).unwrap(),
             controller: Box::new(controller),
-            rank: -20,
             name: None,
         }
     }
 
-    pub fn name(mut self, name: impl ToString) -> Self {
-        self.name = Some(name.to_string());
-        self
+    pub fn rest(path: &str, controller: impl Controller + 'static) -> Self {
+        Self::new(path, controller, PathType::Rest)
     }
 
-    pub fn rank(mut self, rank: i64) -> Self {
-        self.rank = rank;
+    pub fn wildcard(path: &str, controller: impl Controller + 'static) -> Self {
+        Self::new(path, controller, PathType::Wildcard)
+    }
+
+    pub fn route(path: &str, controller: impl Controller + 'static) -> Self {
+        Self::new(path, controller, PathType::Route)
+    }
+
+    pub fn name(mut self, name: impl ToString) -> Self {
+        self.name = Some(name.to_string());
         self
     }
 

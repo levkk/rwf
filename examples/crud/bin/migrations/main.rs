@@ -1,10 +1,10 @@
-use rum::logging::setup_logging;
+use rum::logging::Logger;
 use rum::model::{Error, Migrations};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Enable logging.
-    setup_logging();
+    Logger::init();
 
     // Run migrations.
     Migrations::migrate().await?;

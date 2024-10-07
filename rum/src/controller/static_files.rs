@@ -26,7 +26,7 @@ impl StaticFiles {
             root,
         };
 
-        Ok(Handler::new(path, statics))
+        Ok(Handler::wildcard(path, statics))
     }
 
     pub fn prefix(mut self, prefix: &str) -> Self {

@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub mod with_regex;
-pub use with_regex::PathWithRegex;
+pub use with_regex::{PathType, PathWithRegex};
 
 pub mod to_parameter;
 pub use to_parameter::ToParameter;
@@ -109,8 +109,8 @@ impl Path {
         std::path::Path::new(&self.base).to_owned()
     }
 
-    pub fn with_regex(self) -> Result<PathWithRegex, Error> {
-        PathWithRegex::new(self)
+    pub fn with_regex(self, path_type: PathType) -> Result<PathWithRegex, Error> {
+        PathWithRegex::new(self, path_type)
     }
 }
 
