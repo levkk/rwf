@@ -21,7 +21,7 @@ pub use error::Error;
 pub use handler::Handler;
 pub use head::{Head, Method};
 pub use headers::Headers;
-pub use path::{Params, Path, ToParameter};
+pub use path::{Params, Path, Query, ToParameter};
 pub use request::Request;
 pub use response::Response;
 pub use router::Router;

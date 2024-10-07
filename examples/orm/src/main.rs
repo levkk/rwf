@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 use rum::logging::setup_logging;
 use rum::model::Migrations;
 use rum::prelude::*;
@@ -10,7 +10,7 @@ mod models {
     #[derive(Clone, rum::macros::Model, Debug)]
     #[has_many(Task)]
     pub struct User {
-        pub id: Option<i64>,
+        pub id: Option<i64>, // id column is assigned by the database, new models don't have it until they are saved.
         pub email: String,
         pub created_at: OffsetDateTime,
         pub admin: bool,
@@ -32,7 +32,7 @@ mod models {
             let mut conn = Pool::connection().await?;
 
             let task = Task::create(&[
-                ("name", task_name.to_value()),
+                ("name", task_name.to_value()), // Cast Rust value to `Value`.
                 ("user_id", self.id.to_value()),
             ])
             .fetch(&mut conn)
@@ -44,16 +44,11 @@ mod models {
         pub async fn complete_all_tasks(&self) -> Result<Vec<Task>, Error> {
             let tasks = Pool::pool()
                 .with_transaction(|mut transaction| async move {
+                    // Exclusive lock on the user row, serializing updates to a row.
                     let _lock = self.tasks().lock().execute(&mut transaction).await?;
 
-                    println!(
-                        "{:#?}",
-                        self.tasks()
-                            .update_all(&[("completed_at", OffsetDateTime::now_utc())])
-                    );
-
                     let tasks = self
-                        .tasks()
+                        .incomplete_tasks()
                         .update_all(&[("completed_at", OffsetDateTime::now_utc())])
                         .fetch_all(&mut transaction)
                         .await?;
@@ -69,6 +64,7 @@ mod models {
                         .execute(&mut transaction)
                         .await?;
 
+                    // Transaction has to be committed manually or it'll be rolled back.
                     transaction.commit().await?;
 
                     Ok(tasks)
@@ -97,6 +93,14 @@ mod models {
 
         pub fn tasks(&self) -> Scope<Task> {
             Task::filter("user_id", self.id)
+        }
+
+        pub fn completed_tasks(&self) -> Scope<Task> {
+            self.tasks().not("completed_at", Value::Null)
+        }
+
+        pub fn incomplete_tasks(&self) -> Scope<Task> {
+            self.tasks().filter("completed_at", Value::Null)
         }
 
         pub fn recently_completed(&self) -> Scope<Task> {
@@ -193,10 +197,20 @@ async fn main() -> Result<(), Error> {
 
     user.complete_all_tasks().await?;
 
-    Ok(())
+    // Reload user model.
+    let user = user.reload().fetch(&mut conn).await?;
+    assert_eq!(user.completed_tasks, 3);
 
-    // let user = User::create(&[
-    //     ("email", "test@test.com".to_value()),
-    //     ("admin", false.to_value()),
-    // ]);
+    let completed_tasks_count = user.completed_tasks().count(&mut conn).await?;
+    assert_eq!(completed_tasks_count, 3);
+
+    let tasks = Task::completed_by_admins().fetch_all(&mut conn).await?;
+    assert!(tasks.is_empty());
+
+    let task = Task::first_one().fetch(&mut conn).await?;
+    let task = task.complete().await?;
+
+    assert!(task.completed_at.is_some());
+
+    Ok(())
 }

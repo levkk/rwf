@@ -202,18 +202,18 @@ pub trait RestController: Controller {
 /// The model controller extends the [`RestController`] to
 /// automatically performs CRUD actions on database models.
 #[async_trait]
-pub trait ModelController: Controller + RestController<Resource = i64> {
+pub trait ModelController: Controller {
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        let parameter = request.parameter::<Self::Resource>("id");
+        let parameter = request.parameter::<i64>("id");
 
         match parameter {
             Ok(Some(id)) => match method {
                 Method::Get => ModelController::get(self, request, &id).await,
                 Method::Put => ModelController::update(self, request, &id).await,
-                Method::Delete => self.delete(request, &id).await,
+                Method::Delete => return Ok(Response::not_found()),
                 Method::Patch => ModelController::patch(self, request, &id).await,
                 _ => Ok(Response::method_not_allowed()),
             },
@@ -228,10 +228,17 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
         }
     }
 
-    async fn list(&self, _request: &Request) -> Result<Response, Error> {
+    async fn list(&self, request: &Request) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
+        let page_size = request.query().get::<i64>("page_size").unwrap_or(25);
+        let page = request.query().get::<i64>("page").unwrap_or(1);
+        let offset = (std::cmp::min(1, page) - 1) * page_size;
 
-        let models = Self::Model::all().fetch_all(&mut conn).await?;
+        let models = Self::Model::all()
+            .limit(page_size)
+            .offset(offset)
+            .fetch_all(&mut conn)
+            .await?;
         let response = match Response::new().json(models) {
             Ok(response) => response,
             Err(err) => Response::internal_error(err),
@@ -259,8 +266,7 @@ pub trait ModelController: Controller + RestController<Resource = i64> {
     async fn create(&self, request: &Request) -> Result<Response, Error> {
         let model = match request.json::<Self::Model>() {
             Ok(model) => model,
-            Err(err) => {
-                println!("{:?}", err);
+            Err(_err) => {
                 return Ok(Response::bad_request());
             }
         };

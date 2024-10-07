@@ -81,6 +81,13 @@ impl Value {
     pub fn function(name: impl ToString) -> Self {
         Self::Function((name.to_string(), vec![]))
     }
+
+    pub fn placeholder(&self) -> bool {
+        match self {
+            Value::Placeholder(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Convert anything to a [`Value`].

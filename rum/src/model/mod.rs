@@ -219,7 +219,7 @@ impl<T: Model> Query<T> {
     /// let query = Query::<Row>::select("users").take_many(25);
     /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\" LIMIT 25");
     /// ```
-    pub fn take_many(self, n: usize) -> Self {
+    pub fn take_many(self, n: i64) -> Self {
         use Query::*;
 
         match self {
@@ -237,7 +237,7 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn first_many(self, n: usize) -> Self {
+    pub fn first_many(self, n: i64) -> Self {
         use Query::*;
 
         match self {
@@ -353,11 +353,11 @@ impl<T: Model> Query<T> {
         self.filter(column, value).take_one()
     }
 
-    pub fn limit(self, limit: usize) -> Self {
+    pub fn limit(self, limit: i64) -> Self {
         self.take_many(limit)
     }
 
-    pub fn offset(self, offset: usize) -> Self {
+    pub fn offset(self, offset: i64) -> Self {
         if let Query::Select(select) = self {
             Query::Select(select.offset(offset))
         } else {
@@ -673,7 +673,7 @@ pub trait Model: FromRow {
     }
 
     /// `LIMIT n`
-    fn take_many(n: usize) -> Query<Self> {
+    fn take_many(n: i64) -> Query<Self> {
         Query::select(Self::table_name()).take_many(n)
     }
 
@@ -683,7 +683,7 @@ pub trait Model: FromRow {
     }
 
     /// `ORDER BY id ASC LIMIT n`
-    fn first_many(n: usize) -> Query<Self> {
+    fn first_many(n: i64) -> Query<Self> {
         Query::select(Self::table_name()).first_many(n)
     }
 

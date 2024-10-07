@@ -28,6 +28,24 @@ enum Comparison {
     LesserEqualThan((Column, Value)),
 }
 
+impl Comparison {
+    fn placeholder(&self) -> bool {
+        use Comparison::*;
+
+        match self {
+            Equal((_, v)) => v.placeholder(),
+            In((_, v)) => v.placeholder(),
+            NotIn((_, v)) => v.placeholder(),
+            NotEqual((_, v)) => v.placeholder(),
+            GreaterThan((_, v)) => v.placeholder(),
+            LesserThan((_, v)) => v.placeholder(),
+            GreaterEqualThan((_, v)) => v.placeholder(),
+            LesserEqualThan((_, v)) => v.placeholder(),
+            _ => false,
+        }
+    }
+}
+
 impl ToSql for Comparison {
     fn to_sql(&self) -> String {
         use Comparison::*;
@@ -101,6 +119,10 @@ impl WhereClause {
 
     pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {
         self.filter.insert_columns()
+    }
+
+    pub fn placeholders(&self) -> usize {
+        self.filter.placeholders()
     }
 }
 
@@ -230,6 +252,22 @@ impl Filter {
             clauses,
             op: self.op,
         }
+    }
+
+    pub fn placeholders(&self) -> usize {
+        self.clauses
+            .iter()
+            .map(|op| match op {
+                Comparison::Filter(filter) => filter.placeholders(),
+                op => {
+                    if op.placeholder() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+            })
+            .sum()
     }
 
     pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {

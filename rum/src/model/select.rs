@@ -49,13 +49,13 @@ impl<T: FromRow> Select<T> {
     }
 
     /// Add a LIMIT to the query.
-    pub fn limit(mut self, limit: usize) -> Self {
+    pub fn limit(mut self, limit: i64) -> Self {
         self.limit = Limit::new(limit);
         self
     }
 
     /// Add an OFFSET.
-    pub fn offset(mut self, offset: usize) -> Self {
+    pub fn offset(mut self, offset: i64) -> Self {
         self.limit = self.limit.offset(offset);
         self
     }

@@ -53,8 +53,6 @@ impl<T: Model> Update<T> {
             self.columns.push(column.to_column());
             self.placeholders.add(&value.to_value());
         }
-        println!("my placeholders: {:?}", self.placeholders);
-        println!("my columns: {:?}", self.columns);
         self
     }
 }
@@ -71,11 +69,14 @@ impl<T: Model> From<Select<T>> for Update<T> {
 
 impl<T: FromRow> ToSql for Update<T> {
     fn to_sql(&self) -> String {
+        let where_placeholders = self.where_clause.placeholders();
         let sets = self
             .columns
             .iter()
             .enumerate()
-            .map(|(idx, column)| format!(r#"{} = ${}"#, column.to_sql(), idx + 1))
+            .map(|(idx, column)| {
+                format!(r#"{} = ${}"#, column.to_sql(), idx + where_placeholders + 1)
+            })
             .collect::<Vec<_>>()
             .join(", ");
 

@@ -22,15 +22,15 @@ impl ToSql for Limit {
 }
 
 impl Limit {
-    pub fn new(n: usize) -> Self {
+    pub fn new(n: i64) -> Self {
         Self {
-            limit: Some(n as i64),
+            limit: Some(n),
             offset: None,
         }
     }
 
-    pub fn offset(mut self, offset: usize) -> Self {
-        self.offset = Some(offset as i64);
+    pub fn offset(mut self, offset: i64) -> Self {
+        self.offset = Some(offset);
         self
     }
 }

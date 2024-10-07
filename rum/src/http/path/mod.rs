@@ -4,7 +4,6 @@
 //! a global regex to find a route handler.
 use super::{urldecode, Error};
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -17,24 +16,27 @@ pub use to_parameter::ToParameter;
 pub mod params;
 pub use params::Params;
 
+pub mod query;
+pub use query::Query;
+
 /// HTTP URL path.
 #[derive(Clone, Debug)]
 pub struct Path {
-    query: HashMap<String, String>,
+    query: Query,
     base: String,
 }
 
 impl Default for Path {
     fn default() -> Self {
         Path {
-            query: HashMap::new(),
+            query: Query::new(),
             base: "/".to_string(),
         }
     }
 }
 
 impl Path {
-    pub fn from_parts(base: &str, query: &HashMap<String, String>) -> Self {
+    pub fn from_parts(base: &str, query: &Query) -> Self {
         Self {
             base: base.to_string(),
             query: query.clone(),
@@ -51,7 +53,7 @@ impl Path {
         self.base.len()
     }
 
-    pub fn query(&self) -> &HashMap<String, String> {
+    pub fn query(&self) -> &Query {
         &self.query
     }
 
@@ -72,11 +74,11 @@ impl Path {
 
         let (base, query) = match parts.len() {
             // Path has no query.
-            1 => (path, HashMap::new()),
+            1 => (path, Query::new()),
 
             // Path has a query.
             2 => {
-                let mut query = HashMap::new();
+                let mut query = Query::new();
                 // Remove the anchor if any.
                 let without_anchor = parts[1].split("#").next().expect("path anchor");
                 let query_parts = without_anchor.split("&");
