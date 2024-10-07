@@ -36,6 +36,13 @@ impl Template {
         })
     }
 
+    pub fn from_str(template: &str) -> Result<Self, Error> {
+        Ok(Template {
+            program: Program::from_str(template)?,
+            path: PathBuf::from("/dev/null"),
+        })
+    }
+
     pub fn render(&self, context: &Context) -> Result<String, Error> {
         self.program.evaluate(context)
     }

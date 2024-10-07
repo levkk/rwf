@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <%- rum_head %>
+        <title>Turbo + Rum make a lot of fun</title>
+
+        <style>
+            .container {
+                padding: 25px;
+            }
+
+            .text-center {
+                text-align: center;
+            }
+
+            .align-center {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <!-- Send Turbo Streams over WebSockets for bonus points -->
+        <turbo-stream-source src="ws://localhost:8000/turbo-stream">
+
+        <!-- This area will be drawn with Turbo Streams -->
+        <div class="container" id="canvas">
+            <p class="text-center">Connecting to Turbo Stream ...</p>
+        </div>
+
+        <div class="container">
+            <form method="post" action="/update-canvas" class="align-center">
+                <button type="submit">Click me!</button>
+            </form>
+        </div>
+    </body>
+</html>

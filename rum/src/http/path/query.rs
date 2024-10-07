@@ -26,6 +26,17 @@ impl Query {
     }
 }
 
+impl std::fmt::Display for Query {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut params = vec![];
+        for (key, value) in &self.query {
+            params.push(format!("{}={}", key, value));
+        }
+
+        write!(f, "?{}", params.join("&"))
+    }
+}
+
 impl Deref for Query {
     type Target = HashMap<String, String>;
 

@@ -68,7 +68,18 @@ impl Expression {
     /// Evaluate the expression to a value given the context.
     pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         match self {
-            Expression::Term { term } => term.evaluate(context),
+            Expression::Term { term } => match term.evaluate(context) {
+                Ok(value) => Ok(value),
+                Err(Error::UndefinedVariable(name)) => {
+                    let value = Value::Interpreter;
+                    match value.call(term.name(), &[], context) {
+                        Ok(value) => Ok(value),
+                        Err(Error::UnknownMethod(_)) => return Err(Error::UndefinedVariable(name)),
+                        Err(err) => return Err(err),
+                    }
+                }
+                Err(err) => return Err(err),
+            },
             Expression::Binary { left, op, right } => {
                 let left = left.evaluate(context)?;
                 let right = right.evaluate(context)?;

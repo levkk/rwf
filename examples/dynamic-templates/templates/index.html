@@ -2,8 +2,14 @@
 <html>
     <head>
         <title><%= title %></title>
+        <%- rum_head %>
 
         <style>
+            body {
+                font-family: monospace;
+                font-size: 1rem;
+            }
+
             .container {
                 padding: 25px;
                 margin: 0 auto;
@@ -26,6 +32,22 @@
                 <li class="center"><%= item.upcase %></li>
                 <% end %>
             </ul>
+        </div>
+
+        <% if show %>
+        <div class="container">
+            <p class="center">You have won the random number lottery.</p>
+        </div>
+        <% end %>
+
+        <div class="container">
+            <% if planets == 1 %>
+            <p class="center">There is one other planet in our solar system that contains life.</p>
+            <% elsif planets == 2 %>
+            <p class="center">There is two other planets in our solar system that contains life.</p>
+            <% else %>
+            <p class="center">There is many other planets in our solar system that contains life.</p>
+            <% end %>
         </div>
     </body>
 </html>

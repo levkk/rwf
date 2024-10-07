@@ -253,7 +253,7 @@ pub trait ModelController: Controller {
         let mut conn = get_connection().await?;
         let page_size = request.query().get::<i64>("page_size").unwrap_or(25);
         let page = request.query().get::<i64>("page").unwrap_or(1);
-        let offset = (std::cmp::min(1, page) - 1) * page_size;
+        let offset = (std::cmp::max(1, page) - 1) * page_size;
 
         let models = Self::Model::all()
             .limit(page_size)
@@ -301,7 +301,7 @@ pub trait ModelController: Controller {
         .fetch(&mut conn)
         .await?;
 
-        Ok(Response::new().json(model)?)
+        Ok(Response::new().code(201).json(model)?)
     }
 
     async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {

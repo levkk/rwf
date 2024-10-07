@@ -1,5 +1,5 @@
 [package]
-name = "dynamic-templates"
+name = "turbo"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 rum = { path = "../../rum" }
 tokio = { version = "1", features = ["full"]}
+tracing = "*"
 rand = "0.8"

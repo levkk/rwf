@@ -6,6 +6,7 @@ use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
+use crate::view::TurboStream;
 use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
@@ -257,6 +258,11 @@ impl Response {
         self.code == 101 && self.headers.get("upgrade").map(|s| s == "websocket") == Some(true)
     }
 
+    pub fn turbo_stream(self, body: TurboStream) -> Self {
+        self.html(body.render())
+            .header("content-type", "text/vnd.turbo-stream.html")
+    }
+
     /// Default not found (404) error.
     pub fn not_found() -> Self {
         Self::new()
@@ -358,6 +364,10 @@ impl Response {
             ",
             )
             .code(429)
+    }
+
+    pub fn redirect(to: impl ToString) -> Self {
+        Self::new().header("location", to)
     }
 
     pub fn switching_protocols(protocol: &str) -> Self {

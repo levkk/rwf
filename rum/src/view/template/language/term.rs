@@ -33,6 +33,14 @@ impl Term {
             Term::Function(_f) => todo!("function evaluate"),
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Term::Variable(name) => name,
+            Term::Function(name) => name,
+            Term::Constant(_) => "",
+        }
+    }
 }
 
 impl From<Token> for Option<Term> {
