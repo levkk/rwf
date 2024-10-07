@@ -128,7 +128,7 @@ pub struct PoolConfig {
 impl PoolConfig {
     fn local() -> Self {
         Self {
-            pool_size: 1,
+            pool_size: 5,
             checkout_timeout: Duration::from_secs(1),
             idle_timeout: Duration::from_secs(3600),
         }

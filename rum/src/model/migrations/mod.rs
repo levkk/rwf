@@ -1,4 +1,5 @@
 pub mod model;
+use crate::config::get_config;
 use crate::model::{get_connection, get_pool, Model};
 use model::Migration;
 
@@ -179,7 +180,7 @@ impl Migrations {
             };
 
             if skip {
-                info!(r#"migration "{}" already {}"#, migration.name, message);
+                info!(r#"migration "{}" already {}"#, migration.name(), message);
                 continue;
             }
 
@@ -189,7 +190,7 @@ impl Migrations {
                     Direction::Up => "applying",
                     Direction::Down => "reverting",
                 },
-                migration.version
+                migration.name()
             );
 
             let path = Self::root_path()?.join(migration.path(direction));
@@ -202,13 +203,18 @@ impl Migrations {
                 .collect::<Vec<_>>();
 
             let pool = get_pool();
+            let log_queries = get_config().log_queries;
 
             // Execute the migration in a transaction.
             pool.with_transaction(|mut transaction| async move {
                 for query in queries {
                     if let Err(err) = transaction.client().query(&query, &[]).await {
-                        error!(r#"migration "{}" failed: {:?}"#, migration.name, err);
+                        error!(r#"migration "{}" failed: {:?}"#, migration.name(), err);
                         return Err(Error::MigrationError("migration failed".into()));
+                    }
+
+                    if log_queries {
+                        info!("{}", query);
                     }
                 }
                 match direction {
@@ -216,9 +222,18 @@ impl Migrations {
                     Direction::Down => migration.applied_at = None,
                 };
 
-                migration.save().execute(&mut transaction).await?;
+                let migration = migration.save().fetch(&mut transaction).await?;
 
                 transaction.commit().await?;
+
+                info!(
+                    "migration \"{}\" {}",
+                    migration.name(),
+                    match direction {
+                        Direction::Up => "applied",
+                        Direction::Down => "reverted",
+                    }
+                );
 
                 Ok(())
             })
@@ -230,6 +245,10 @@ impl Migrations {
 
     pub async fn migrate() -> Result<Migrations, Error> {
         Migrations::sync().await?.apply(Direction::Up).await
+    }
+
+    pub async fn flush() -> Result<Migrations, Error> {
+        Migrations::sync().await?.apply(Direction::Down).await
     }
 }
 

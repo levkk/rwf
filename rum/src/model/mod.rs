@@ -2,7 +2,7 @@ use crate::colors::MaybeColorize;
 use crate::config::get_config;
 
 use std::time::{Duration, Instant};
-use tracing::info;
+use tracing::{error, info};
 
 pub mod callbacks;
 pub mod column;
@@ -457,44 +457,58 @@ impl<T: Model> Query<T> {
         &self,
         client: &mut ConnectionGuard,
     ) -> Result<Vec<tokio_postgres::Row>, Error> {
-        let rows = match self {
+        let result = match self {
             Query::Select(select) => {
                 let query = self.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
-                client.query_cached(&query, &values).await?
+                client.query_cached(&query, &values).await
             }
 
-            Query::Raw(query) => client.query_cached(query, &[]).await?,
+            Query::Raw(query) => client.query_cached(query, &[]).await,
 
             Query::Update(update) => {
                 let query = self.to_sql();
                 let values = update.placeholders.values();
-                client.query_cached(&query, &values).await?
+                client.query_cached(&query, &values).await
             }
 
             Query::Insert(insert) => {
                 let query = self.to_sql();
                 let values = insert.placeholders.values();
-                client.query_cached(&query, &values).await?
+                client.query_cached(&query, &values).await
             }
 
             Query::InsertIfNotExists { select, insert, .. } => {
                 let query = select.to_sql();
                 let values = select.placeholders().values();
-                let result = client.query_cached(&query, &values).await?;
+                let result = client.query_cached(&query, &values).await;
+
+                let result = match result {
+                    Ok(result) => result,
+                    Err(err) => {
+                        self.log_error();
+                        return Err(err);
+                    }
+                };
 
                 if result.is_empty() {
                     let query = insert.to_sql();
                     let values = insert.placeholders.values();
-                    client.query_cached(&query, &values).await?
+                    client.query_cached(&query, &values).await
                 } else {
-                    result
+                    Ok(result)
                 }
             }
         };
 
-        Ok(rows)
+        match result {
+            Ok(rows) => Ok(rows),
+            Err(err) => {
+                self.log_error();
+                Err(err)
+            }
+        }
     }
 
     /// Execute the query and fetch the first row from the database.
@@ -565,6 +579,24 @@ impl<T: Model> Query<T> {
         Ok(results)
     }
 
+    fn type_name() -> String {
+        std::any::type_name::<T>()
+            .split("::")
+            .skip(1)
+            .collect::<Vec<_>>()
+            .join("::")
+    }
+
+    fn action(&self) -> &'static str {
+        match self {
+            Query::Select(_) => "load",
+            Query::Update(_) => "save",
+            Query::Raw(_) => "query",
+            Query::Insert(_) => "save",
+            Query::InsertIfNotExists { .. } => "load/create",
+        }
+    }
+
     fn log(&self, duration: Duration) {
         if !get_config().log_queries {
             return;
@@ -572,22 +604,20 @@ impl<T: Model> Query<T> {
 
         info!(
             "{} {} ({:.3} ms) {}",
-            std::any::type_name::<T>()
-                .split("::")
-                .skip(1)
-                .collect::<Vec<_>>()
-                .join("::")
-                .green(),
-            match self {
-                Query::Select(_) => "load".purple(),
-                Query::Update(_) => "save".purple(),
-                Query::Raw(_) => "query".purple(),
-                Query::Insert(_) => "save".purple(),
-                Query::InsertIfNotExists { .. } => "load/create".purple(),
-            },
+            Self::type_name().green(),
+            self.action().purple(),
             duration.as_secs_f64() * 1000.0,
             self.to_sql()
         );
+    }
+
+    fn log_error(&self) {
+        error!(
+            "{} {} {}",
+            Self::type_name().green(),
+            self.action().purple(),
+            self.to_sql()
+        )
     }
 }
 

@@ -58,7 +58,7 @@ impl Default for Config {
             default_middleware: MiddlewareSet::default(),
             cache_templates: false,
             websocket: Websocket::default(),
-            log_queries: false,
+            log_queries: std::env::var("RUM_LOG_QUERIES").is_ok(),
         }
     }
 }

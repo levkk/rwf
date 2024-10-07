@@ -67,4 +67,8 @@ impl Migration {
             }
         ))
     }
+
+    pub fn name(&self) -> String {
+        format!("{}_{}", self.version, self.name)
+    }
 }

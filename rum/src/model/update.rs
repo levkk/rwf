@@ -37,7 +37,7 @@ impl<T: Model> Update<T> {
         columns: &[impl ToColumn],
         values: &[impl ToValue],
     ) -> Self {
-        let mut update = Self::empty().columns(columns, values);
+        let mut update = Self::empty();
 
         // Add the primary key selector.
         let id_placeholder = update.placeholders.add(&id.to_value());
@@ -45,7 +45,7 @@ impl<T: Model> Update<T> {
             .where_clause
             .add(Column::name(&update.primary_key), id_placeholder);
 
-        update
+        update.columns(columns, values)
     }
 
     pub fn columns(mut self, columns: &[impl ToColumn], values: &[impl ToValue]) -> Self {
@@ -53,6 +53,8 @@ impl<T: Model> Update<T> {
             self.columns.push(column.to_column());
             self.placeholders.add(&value.to_value());
         }
+        println!("my placeholders: {:?}", self.placeholders);
+        println!("my columns: {:?}", self.columns);
         self
     }
 }

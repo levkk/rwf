@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 use rum::logging::setup_logging;
+use rum::model::Migrations;
 use rum::prelude::*;
 
 mod models {
     use rum::model::prelude::*;
     use time::{Duration, OffsetDateTime};
 
-    #[derive(Clone, rum::macros::Model)]
+    #[derive(Clone, rum::macros::Model, Debug)]
     #[has_many(Task)]
     pub struct User {
         pub id: Option<i64>,
@@ -45,6 +46,12 @@ mod models {
                 .with_transaction(|mut transaction| async move {
                     let _lock = self.tasks().lock().execute(&mut transaction).await?;
 
+                    println!(
+                        "{:#?}",
+                        self.tasks()
+                            .update_all(&[("completed_at", OffsetDateTime::now_utc())])
+                    );
+
                     let tasks = self
                         .tasks()
                         .update_all(&[("completed_at", OffsetDateTime::now_utc())])
@@ -71,7 +78,20 @@ mod models {
             Ok(tasks)
         }
 
-        pub fn admins(&self) -> Scope<Self> {
+        pub async fn make_admin(mut self) -> Result<Self, Error> {
+            self.admin = true;
+            let mut conn = Pool::connection().await?;
+            Ok(self.save().fetch(&mut conn).await?)
+        }
+
+        pub async fn remove_admin(mut self) -> Result<Self, Error> {
+            self.admin = false;
+            Pool::pool()
+                .with_connection(|mut conn| async move { self.save().fetch(&mut conn).await })
+                .await
+        }
+
+        pub fn admins() -> Scope<Self> {
             Self::filter("admin", true)
         }
 
@@ -86,7 +106,7 @@ mod models {
         }
     }
 
-    #[derive(Clone, rum::macros::Model)]
+    #[derive(Clone, rum::macros::Model, Debug)]
     #[belongs_to(User)]
     pub struct Task {
         pub id: Option<i64>,
@@ -108,7 +128,9 @@ mod models {
         }
 
         pub fn completed_or_created_by_admins() -> Scope<Self> {
-            Task::completed().or(|scope| scope.join::<User>().filter(User::column("admin"), true))
+            Task::completed()
+                .join::<User>()
+                .or(|scope| scope.filter(User::column("admin"), true))
         }
 
         pub async fn complete(mut self) -> Result<Self, Error> {
@@ -121,19 +143,57 @@ mod models {
     }
 }
 
-#[derive(Default)]
-struct IndexController;
-
-#[async_trait]
-impl Controller for IndexController {
-    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        Ok(Response::new().html("<h1>Hey Rum!</h1>"))
-    }
-}
+use models::*;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     setup_logging();
+    Migrations::flush().await?;
+    Migrations::migrate().await?;
+
+    let user = User::create_user("test@test.com").await?;
+    for i in 0..3 {
+        let name = format!("task_{}", i);
+        user.add_task(&name).await?;
+    }
+
+    // Get a connection from the pool and use it to execute some queries.
+    // Using a closure ensures the connection is returned to the pool as soon
+    // as all the queries inside the closure are complete.
+    let admins = Pool::pool()
+        .with_connection(|mut conn| async move { User::admins().count(&mut conn).await })
+        .await?;
+
+    assert_eq!(admins, 0);
+
+    // Checkout a connection from the pool manually.
+    let mut conn = Pool::connection().await?;
+
+    let (tasks, completed) = {
+        let tasks = user.tasks().count(&mut conn).await?;
+        let completed = user.recently_completed().count(&mut conn).await?;
+
+        (tasks, completed)
+    };
+
+    assert_eq!(tasks, 3);
+    assert_eq!(completed, 0);
+
+    // This will checkout an additional connection from the pool
+    // and return it immediately after the future resolves.
+    let user = user.make_admin().await?;
+
+    let created_by_admins_or_completed = Task::completed_or_created_by_admins()
+        .count(&mut conn)
+        .await?;
+
+    assert_eq!(created_by_admins_or_completed, 3);
+
+    let user = user.remove_admin().await?;
+
+    user.complete_all_tasks().await?;
+
+    Ok(())
 
     // let user = User::create(&[
     //     ("email", "test@test.com".to_value()),
