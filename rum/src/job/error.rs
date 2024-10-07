@@ -19,6 +19,9 @@ pub enum Error {
 
     #[error("job error: {0}")]
     Unknown(String),
+
+    #[error("specified cron schedule is not valid")]
+    CronValueError,
 }
 
 impl From<serde_json::Error> for Error {

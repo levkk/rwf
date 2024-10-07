@@ -55,6 +55,13 @@ impl JobModel {
             .not("started_at", Value::Null)
             .update_all(&[("started_at", Value::Null)])
     }
+
+    pub fn scheduled(&self) -> Scope<Self> {
+        Self::filter("completed_at", Value::Null)
+            .filter("start_after", self.start_after)
+            .filter("started_at", Value::Null)
+            .filter("name", &self.name)
+    }
 }
 
 impl FromRow for JobModel {
