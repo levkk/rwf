@@ -107,6 +107,21 @@ mod models {
 
             self.tasks().filter_gte("completed_at", last_24)
         }
+
+        /// Get users created recently.
+        pub fn created_recently(scope: Scope<Self>) -> Scope<Self> {
+            scope.filter_gte(
+                "created_at",
+                OffsetDateTime::now_utc() - Duration::days(1)
+            )
+        }
+
+        /// Get admins created recently.
+        pub fn new_admins() -> Scope<Self> {
+            Self::created_recently(
+                Self::admins()
+            )
+        }
     }
 
     #[derive(Clone, rum::macros::Model, Debug)]
@@ -215,6 +230,8 @@ async fn main() -> Result<(), Error> {
 
     let _users = User::filter("email", ["test@test.com", "joe@test.com"].as_slice())
         .fetch_all(&mut conn).await?;
+
+    let _recent_admins = User::new_admins().fetch_all(&mut conn).await?;
 
     Ok(())
 }

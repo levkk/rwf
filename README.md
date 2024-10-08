@@ -174,7 +174,7 @@ Basic comparison operations are supported:
 | `IN` | `filter` with a slice as the value |
 | `NOT IN` | `not` / `filter_not` with a slice as the value |
 
-For example, filtering by multiple emails:
+For example, finding records with specific emails:
 
 ```rust
 User::filter("email", ["joe@hello.com", "marry@hello.com"].as_slice())
@@ -212,17 +212,10 @@ impl User {
         )
     }
 
-    /// Get users with superpowers.
-    pub fn admins(scope: Scope<Self>) -> Scope<Self> {
-        scope.filter("admin", true)
-    }
-
     /// Get admins created recently.
     pub fn new_admins() -> Scope<Self> {
-        Self::admins(
-            Self::created_recently(
-                Self::all()
-            )
+        Self::created_recently(
+            Self::admins()
         )
     }
 }
