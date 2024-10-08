@@ -189,7 +189,7 @@ If a query is used frequently, you can add it as as scope to the model:
 ```rust
 impl User {
     /// Get all admin users.
-    pub fn admins() -> Scope<Self> {
+    pub fn admins() -> Scope<User> {
         User::all()
             .filter("admin", true)
     }
