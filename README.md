@@ -214,9 +214,7 @@ impl User {
 
     /// Get admins created recently.
     pub fn new_admins() -> Scope<User> {
-        User::created_recently(
-            User::admins()
-        )
+        User::created_recently(User::admins())
     }
 }
 ```
