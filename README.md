@@ -54,6 +54,10 @@ async fn main() {
 }
 ```
 
+### Examples
+
+See [examples](examples) for common use cases.
+
 ## Status
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, [ARCHITECTURE.md](ARCHIECTURE.md) for a tour of the code, and [ROADMAP.md](ROADMAP.md) for a non-exhaustive list of desired features.
