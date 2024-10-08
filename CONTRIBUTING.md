@@ -10,8 +10,6 @@ Before submitting a PR, please:
 
 1. Format the code with `cargo fmt`
 2. Write a test if your feature is not trivial
-3. Test your feature/bug fix by:
-  a. Compiling your code
-  b. Running code using your bug fix/feature.
+3. Test your feature/bug fix by compiling your code and running code which uses your bug fix/feature.
 
 Thank you! Happy coding.
