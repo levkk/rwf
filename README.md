@@ -273,7 +273,7 @@ let admin = user
 
 #### Updating many records
 
-Multiple records can be updated without fetching them from the database first:
+Multiple records can be updated without fetching them from the database:
 
 ```rust
 // Remove superpowers from everyone.
