@@ -169,6 +169,8 @@ Basic comparison operations are supported:
 | `<=` | `filter_lte` |
 | `>=` | `filter_gte` |
 | `!=` | `not` / `filter_not` |
+| `IN` | `filter` with a slice as the value |
+| `NOT IN` | `not` / `filter_not` with a slice as the value |
 
 #### Scopes
 
