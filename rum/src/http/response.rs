@@ -249,21 +249,6 @@ impl Response {
         self
     }
 
-    /// Set session on the response.
-    // pub fn set_session(mut self, payload: impl Serialize) -> Result<Self, Error> {
-    //     self.session = match self.session {
-    //         Some(session) => {
-    //             let mut new_session = Session::new(payload)?;
-    //             new_session.session_id = session.session_id;
-    //             Some(new_session)
-    //         }
-
-    //         None => Some(Session::new(payload)?),
-    //     };
-
-    //     Ok(self)
-    // }
-
     pub fn session(&self) -> &Option<Session> {
         &self.session
     }
