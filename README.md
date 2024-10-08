@@ -144,13 +144,15 @@ Finding a record by primary key is as simple as:
 ```rust
 use rum::prelude::*;
 
-let user = User::find(15).fetch(&mut conn).await?;
+let user = User::find(15)
+    .fetch(&mut conn).await?;
 ```
 
 If the record with `id = 15` does not exist, an error will be returned. To avoid getting an error, use `fetch_optional` or `fetch_all` instead:
 
 ```rust
-let user = User::find(15).fetch_optional(&mut conn).await?;
+let user = User::find(15)
+    .fetch_optional(&mut conn).await?;
 ```
 
 #### Updating records
