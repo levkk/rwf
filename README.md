@@ -165,6 +165,7 @@ If a query is used frequently, you can add it as as scope to the model:
 
 ```rust
 impl User {
+    /// Get all admin users.
     pub fn admins() -> Scope<Self> {
         Self::all()
             .filter("admin", true)
@@ -174,6 +175,34 @@ impl User {
 let admins = User::admins()
     .fetch_all(&mut conn)
     .await?;
+```
+
+Scopes can be chained to write complex queries easily:
+
+```rust
+impl User {
+    /// Get users created recently.
+    pub fn created_recently(scope: Scope<Self>) -> Scope<Self> {
+        scope.filter_gte(
+            "created_at",
+            OffsetDateTime::now_utc() - Duration::days(1)
+        )
+    }
+
+    /// Get users with superpowers.
+    pub fn admins(scope: Scope<Self>) -> Scope<Self> {
+        scope.filter("admin", true)
+    }
+
+    /// Get admins created recently.
+    pub fn new_admins() -> Scope<Self> {
+        Self::admins(
+            Self::created_recently(
+                Self::all()
+            )
+        )
+    }
+}
 ```
 
 #### Updating records
