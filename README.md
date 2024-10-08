@@ -285,4 +285,4 @@ User::filter("admin", true)
     .await?;
 ```
 
-This executes only one query, using the search condition of the filter in the `UPDATE` query.
+This executes only one query, using the search condition in the `UPDATE` query.
