@@ -159,6 +159,17 @@ let new_admins = User::all()
     .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1));
 ```
 
+Basic comparison operations are supported:
+
+| Operation | Function |
+|-----------|----------|
+| `=` | `filter` |
+| `<` | `filter_lt` |
+| `>` | `filter_gt` |
+| `<=` | `filter_lte` |
+| `>=` | `filter_gte` |
+| `!=` | `not` / `filter_not` |
+
 #### Scopes
 
 If a query is used frequently, you can add it as as scope to the model:
