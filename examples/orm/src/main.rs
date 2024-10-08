@@ -213,5 +213,8 @@ async fn main() -> Result<(), Error> {
 
     assert!(task.completed_at.is_some());
 
+    let _users = User::filter("email", ["test@test.com", "joe@test.com"].as_slice())
+        .fetch_all(&mut conn).await?;
+
     Ok(())
 }

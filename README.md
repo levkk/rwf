@@ -156,7 +156,9 @@ use time::Duration;
 
 let new_admins = User::all()
     .filter("admin", true)
-    .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1));
+    .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1))
+    .fetch_all(&mut conn)
+    .await?;
 ```
 
 Basic comparison operations are supported:
@@ -175,8 +177,9 @@ Basic comparison operations are supported:
 For example, filtering by multiple emails:
 
 ```rust
-User::all()
-    .filter("email", &["joe@hello.com", "marry@hello.com"]);
+User::filter("email", ["joe@hello.com", "marry@hello.com"].as_slice())
+    .fetch_all(&mut conn)
+    .await?;
 ```
 
 #### Scopes
