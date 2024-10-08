@@ -122,6 +122,11 @@ mod models {
                 Self::admins()
             )
         }
+
+        #[allow(dead_code)]
+        pub fn visible() -> Scope<User> {
+            User::all().filter("deleted_at", Value::Null)
+        }
     }
 
     #[derive(Clone, rum::macros::Model, Debug)]
@@ -238,7 +243,7 @@ async fn main() -> Result<(), Error> {
         .fetch(&mut conn)
         .await?;
 
-    let user = User::find_or_create_by(&[
+    let _user = User::find_or_create_by(&[
         ("email", "hello221212322@test.com"),
     ])
     .unique_by(&["email"])

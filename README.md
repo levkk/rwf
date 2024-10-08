@@ -250,6 +250,18 @@ impl User {
 }
 ```
 
+Implementing additional features on top of scopes is easy. For example, adding support for soft deletes can be done with one function:
+
+```rust
+impl User {
+    pub fn visible() -> Scope<User> {
+        User::all().filter("deleted_at", Value::Null)
+    }
+}
+```
+
+and instead of using `User::all()`, use `User::visible()` for all future queries.
+
 #### Updating records
 
 Updating records can be done in two ways: by saving an existing record or by using `update_all` on a scope.
