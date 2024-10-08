@@ -53,3 +53,7 @@ async fn main() {
     .expect("error shutting down server");
 }
 ```
+
+## Status
+
+Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [ARCHITECTURE.md](ARCHIECTURE.md) for a tour of the code.
