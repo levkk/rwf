@@ -1,5 +1,4 @@
 use rum::http::Server;
-use rum::logging::setup_logging;
 use rum::prelude::*;
 
 #[derive(Default)]
@@ -14,7 +13,7 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() {
-    setup_logging();
+    Logger::init();
 
     Server::new(vec![IndexController::default().route("/")])
         .launch("0.0.0.0:8000")
