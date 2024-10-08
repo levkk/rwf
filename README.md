@@ -205,7 +205,7 @@ Scopes can be chained to write complex queries easily:
 ```rust
 impl User {
     /// Get users created recently.
-    pub fn created_recently(scope: Scope<Self>) -> Scope<Self> {
+    pub fn created_recently(scope: Scope<User>) -> Scope<User> {
         scope.filter_gte(
             "created_at",
             OffsetDateTime::now_utc() - Duration::days(1)
@@ -213,9 +213,9 @@ impl User {
     }
 
     /// Get admins created recently.
-    pub fn new_admins() -> Scope<Self> {
-        Self::created_recently(
-            Self::admins()
+    pub fn new_admins() -> Scope<User> {
+        User::created_recently(
+            User::admins()
         )
     }
 }
