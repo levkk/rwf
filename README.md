@@ -147,6 +147,35 @@ let user = User::find(15)
     .fetch_optional(&mut conn).await?;
 ```
 
+##### Searching by fields
+
+Filtering on one or multiple fields is easy:
+
+```rust
+use time::Duration;
+
+let new_admins = User::all()
+    .filter("admin", true)
+    .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1));
+```
+
+#### Scopes
+
+If a query is used frequently, you can add it as as scope to the model:
+
+```rust
+impl User {
+    pub fn admins() -> Scope<Self> {
+        Self::all()
+            .filter("admin", true)
+    }
+}
+
+let admins = User::admins()
+    .fetch_all(&mut conn)
+    .await?;
+```
+
 #### Updating records
 
 Updating records can be done in two ways: by saving an existing record or by using `update_all` on a select query.
