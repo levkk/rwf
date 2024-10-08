@@ -132,7 +132,9 @@ let user = User::create(&[
 PostgreSQL allows for graceful handling of unique constraint violations. Rum's ORM supports that feature out of the box:
 
 ```rust
-let user = User::create(&[("email", "new@test.com")])
+let user = User::create(&[
+    ("email", "hello@test.com"),
+])
     .unique_by(&["email"])
     .find_or_create()
     .fetch(&mut conn)
