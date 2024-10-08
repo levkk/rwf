@@ -76,7 +76,7 @@ Rum's ORM is inspired by a healthy mix of Django and ActiveRecord. Declaring mod
 use rum::prelude::*;
 use time::OffsetDateTime;
 
-#[derive(rum::macros::Model)]
+#[derive(Clone, rum::macros::Model)]
 struct User {
     id: Option<i64>,
     email: String,
@@ -286,3 +286,38 @@ User::filter("admin", true)
 ```
 
 This executes only one query, updating records matching the filter condition.
+
+#### Joins
+
+Joins are handled by declaring relationships between models:
+
+```rust
+#[derive(Clone, rum::macros::Model)]
+#[belongs_to(User)]
+struct Order {
+    id: Option<i64>,
+    user_id: i64,
+    total_amount: f64,
+    refunded_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, rum::macros::Model)]
+#[belongs_to(Order)]
+struct Product {
+    id: Option<i64>,
+    order_id: i64,
+    name: String,
+    price: f64,
+}
+```
+
+Searching for records can now be done by joining two (or more) tables together:
+
+```rust
+// Find users that paid us at least $1.
+let paying_users = User::all()
+    .join::<Order>()
+    .filter_gte(Order::column("total_amount"), 1.0)
+    .fetch_all(&mut conn)
+    .await?;
+```
