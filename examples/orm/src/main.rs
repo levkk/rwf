@@ -235,9 +235,15 @@ async fn main() -> Result<(), Error> {
 
     let _user = User::create(&[("email", "new@test.com")])
         .unique_by(&["email"])
-        .find_or_create()
         .fetch(&mut conn)
         .await?;
+
+    let user = User::find_or_create_by(&[
+        ("email", "hello221212322@test.com"),
+    ])
+    .unique_by(&["email"])
+    .fetch(&mut conn)
+    .await?;
 
     Ok(())
 }

@@ -129,14 +129,24 @@ let user = User::create(&[
 
 ##### Handling conflicts
 
-If you are not sure if the record already exists, you can find it first, and if it doesn't exist, create it automatically:
+If you have unique indexes on a column, you may run into unique constraint violations when creating new records. To avoid them, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
 
 ```rust
 let user = User::create(&[
     ("email", "hello@test.com"),
 ])
     .unique_by(&["email"])
-    .find_or_create()
+    .fetch(&mut conn)
+    .await?;
+```
+
+If you are fairly confident the record already exists, you can avoid writing to the table by searching for that row first:
+
+```rust
+let user = User::find_or_create_by(&[
+        ("email", "hello@test.com"),
+    ])
+    .unique_by(&["email"])
     .fetch(&mut conn)
     .await?;
 ```
@@ -144,7 +154,9 @@ let user = User::create(&[
 This will issue up to two queries:
 
 1. `SELECT` to find the record, and if it doesn't exist
-2. `INSERT ... ON CONFLICT DO UPDATE` to insert a new record, and if a conflict is found, it will be resolved without returning errors
+2. `INSERT ... ON CONFLICT DO UPDATE` to insert a new record, updating it in-place if it exists
+
+If the table doesn't have unique constraints, you can still use `find_or_create_by`, except duplicate records can occur if the same query is executed concurrently from multiple places in the code.
 
 #### Finding records
 
