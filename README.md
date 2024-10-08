@@ -127,6 +127,18 @@ let user = User::create(&[
     .await?;
 ```
 
+##### Handling conflicts
+
+PostgreSQL allows for graceful handling of unique constraint violations. Rum's ORM supports that feature out of the box:
+
+```rust
+let user = User::create(&[("email", "new@test.com")])
+    .unique_by(&["email"])
+    .find_or_create()
+    .fetch(&mut conn)
+    .await?;
+```
+
 #### Finding records
 
 Rum's ORM supports many ways for fetching records, including joins, OR-queries, and `SELECT FOR UPDATE` for exclusive locks.

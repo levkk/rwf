@@ -233,5 +233,11 @@ async fn main() -> Result<(), Error> {
 
     let _recent_admins = User::new_admins().fetch_all(&mut conn).await?;
 
+    let _user = User::create(&[("email", "new@test.com")])
+        .unique_by(&["email"])
+        .find_or_create()
+        .fetch(&mut conn)
+        .await?;
+
     Ok(())
 }
