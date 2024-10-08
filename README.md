@@ -129,7 +129,7 @@ let user = User::create(&[
 
 ##### Handling conflicts
 
-PostgreSQL allows for graceful handling of unique constraint violations. Rum's ORM supports that feature out of the box:
+If you are not sure if the record already exists, you can find it first, and if it doesn't exist, create it automatically:
 
 ```rust
 let user = User::create(&[
@@ -140,6 +140,11 @@ let user = User::create(&[
     .fetch(&mut conn)
     .await?;
 ```
+
+This will issue up to two queries:
+
+1. `SELECT` to find the record, and if it doesn't exist
+2. `INSERT ... ON CONFLICT DO UPDATE` to insert a new record, and if a conflict is found, it will be resolved without returning errors
 
 #### Finding records
 
