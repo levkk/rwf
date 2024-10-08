@@ -14,7 +14,7 @@ Rum is a comprehensive framework for building web applications in Rust. Written 
 - :heavy_check_mark: Built-in [RESTful framework](examples/crud) with JSON serialization
 - :heavy_check_mark: WebSockets support
 - :heavy_check_mark: [Static files](examples/static-files) hosting
-- :heavy_check_mark: Tight integration with [Hotwired Turbo](https://github.com/hotwired/turbo) for building [backend-driven SPAs](examples/turbo) 
+- :heavy_check_mark: Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](examples/turbo) 
 - :heavy_check_mark: Environment-specific configuration
 - :heavy_check_mark: Logging and metrics
 
