@@ -40,7 +40,7 @@ pub use macros::belongs_to;
 pub use migrations::{migrate, rollback, Migrations};
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
 pub use placeholders::Placeholders;
-pub use pool::{get_connection, get_pool, Connection, ConnectionGuard, Pool};
+pub use pool::{get_connection, get_pool, start_transaction, Connection, ConnectionGuard, Pool};
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;

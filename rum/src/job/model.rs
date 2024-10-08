@@ -1,5 +1,5 @@
 use crate::colors::MaybeColorize;
-use crate::job::Error;
+use crate::job::{clock::ScheduledJob, Error};
 use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
 use time::{Duration, OffsetDateTime};
 
@@ -177,6 +177,13 @@ pub trait Job: Sync + Send {
         );
 
         Ok(())
+    }
+
+    fn schedule(self, args: serde_json::Value, schedule: &str) -> Result<ScheduledJob, Error>
+    where
+        Self: Sized + 'static,
+    {
+        ScheduledJob::new(schedule, self, args)
     }
 
     /// Name of the job. Must be globally unique.

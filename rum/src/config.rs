@@ -111,6 +111,7 @@ impl Config {
 
         config.aes_key = aes_key;
         config.secure_id_key = secure_id_key;
+        config.log_queries = config_file.general.log_queries;
 
         if let Err(_) = CONFIG.set(config) {
             return Err(Error::ConfigLoaded);
@@ -144,7 +145,10 @@ impl ConfigFile {
 
 #[derive(Serialize, Deserialize)]
 struct General {
+    #[serde(default = "General::default_secret_key")]
     secret_key: String,
+    #[serde(default = "General::default_log_queries")]
+    log_queries: bool,
 }
 
 impl General {
@@ -157,5 +161,18 @@ impl General {
         } else {
             Err(Error::SecretKey)
         }
+    }
+
+    fn default_log_queries() -> bool {
+        false
+    }
+
+    fn default_secret_key() -> String {
+        use base64::{engine::general_purpose, Engine as _};
+        use rand::Rng;
+
+        let bytes = rand::thread_rng().gen::<[u8; 256 / 8]>();
+
+        general_purpose::STANDARD.encode(&bytes)
     }
 }

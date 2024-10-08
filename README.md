@@ -9,20 +9,21 @@ Rum is a comprehensive framework for building web applications in Rust. Written 
 - :heavy_check_mark: [Dynamic templates](examples/dynamic-templates)
 - :heavy_check_mark: [Authentication](examples/auth) & built-in user sessions
 - :heavy_check_mark: [Middleware](examples/middleware)
-- :heavy_check_mark: [Background jobs](examples/background-jobs)
+- :heavy_check_mark: [Background jobs](examples/background-jobs) and [scheduled jobs](examples/scheduled-jobs)
 - :heavy_check_mark: Database migrations
 - :heavy_check_mark: Built-in [RESTful framework](examples/crud) with JSON serialization
-- :heavy_check_mark: WebSockets support
-- :heavy_check_mark: Static files hosting
+- :heavy_check_mark: WebSockets suppor
+tf- :heavy_check_mark: Static files hosting
 - :heavy_check_mark: Environment-specific configuration
 - :heavy_check_mark: Logging and metrics
 
 ## Quick start
 
-To add Rum to your stack, create a Rust binary application and add `rum_framework` to your dependencies:
+To add Rum to your stack, create a Rust binary application and add `rum` and `tokio` to your dependencies:
 
-```
-cargo add rum-framework
+```bash
+cargo add --git https://github.com/levkk/rum rum
+cargo add tokio@1 --features full
 ```
 
 Building an app is then as simple as:

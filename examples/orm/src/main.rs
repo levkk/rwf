@@ -1,5 +1,4 @@
 // #![allow(dead_code)]
-use rum::logging::setup_logging;
 use rum::model::Migrations;
 use rum::prelude::*;
 
@@ -151,7 +150,9 @@ use models::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    setup_logging();
+    Config::load().await?;
+    Logger::init();
+
     Migrations::flush().await?;
     Migrations::migrate().await?;
 

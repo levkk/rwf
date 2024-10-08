@@ -1,6 +1,6 @@
 pub mod model;
 use crate::config::get_config;
-use crate::model::{get_connection, get_pool, Model};
+use crate::model::{get_connection, get_pool, start_transaction, Model};
 use model::Migration;
 
 use super::Error;
@@ -99,10 +99,7 @@ impl Migrations {
         let path = PathBuf::from(current_dir()?.join(Path::new("migrations")));
 
         if !path.is_dir() {
-            error!(
-                r#""{}" folder does not exist, did you create the project using rum-cli?"#,
-                path.display()
-            );
+            info!(r#"No migrations available, skipping"#);
             Err(Error::MigrationError(
                 "migrations folder does not exist".into(),
             ))
@@ -119,28 +116,47 @@ impl Migrations {
     }
 
     async fn sync() -> Result<Self, Error> {
-        let root_path = Self::root_path()?;
-        let mut checks = HashMap::new();
+        let checks = if let Ok(root_path) = Self::root_path() {
+            let mut checks = HashMap::new();
 
-        let mut dir_entries = read_dir(root_path).await?;
-        while let Some(dir_entry) = dir_entries.next_entry().await? {
-            let metadata = dir_entry.metadata().await?;
-            if metadata.is_file() {
-                let file = MigrationFile::parse(
-                    dir_entry.file_name().to_str().expect("migration OsString"),
-                )?;
-                let entry = checks
-                    .entry(file.name.clone())
-                    .or_insert_with(Check::default);
-                entry.add(file);
+            let mut dir_entries = read_dir(root_path).await?;
+            while let Some(dir_entry) = dir_entries.next_entry().await? {
+                let metadata = dir_entry.metadata().await?;
+                if metadata.is_file() {
+                    let file = MigrationFile::parse(
+                        dir_entry.file_name().to_str().expect("migration OsString"),
+                    )?;
+                    let entry = checks
+                        .entry(file.name.clone())
+                        .or_insert_with(Check::default);
+                    entry.add(file);
+                }
             }
+
+            checks
+        } else {
+            HashMap::new()
+        };
+
+        let log_queries = get_config().log_queries;
+
+        let mut conn = start_transaction().await?;
+
+        // Create some necessary tables.
+        // TODO: Move jobs to an internal migration.
+        // TODO: Add support for internal migrations.
+        let queries = include_str!("bootstrap.sql")
+            .split(";")
+            .map(|q| q.trim())
+            .filter(|q| !q.is_empty());
+
+        for query in queries {
+            if log_queries {
+                info!("{}", query);
+            }
+
+            conn.client().execute(query, &[]).await?;
         }
-
-        let mut conn = get_connection().await?;
-
-        conn.client()
-            .execute(include_str!("bootstrap.sql"), &[])
-            .await?;
 
         let mut migrations = vec![];
 
@@ -163,6 +179,8 @@ impl Migrations {
         }
 
         migrations.sort_by_key(|migration| migration.version);
+
+        conn.commit().await?;
 
         Ok(Self { migrations })
     }
@@ -207,6 +225,10 @@ impl Migrations {
 
             // Execute the migration in a transaction.
             pool.with_transaction(|mut transaction| async move {
+                transaction
+                    .query_cached("SET LOCAL client_min_messages TO WARNING", &[])
+                    .await?;
+
                 for query in queries {
                     if let Err(err) = transaction.client().query(&query, &[]).await {
                         error!(r#"migration "{}" failed: {:?}"#, migration.name(), err);

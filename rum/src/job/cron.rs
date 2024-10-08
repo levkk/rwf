@@ -72,18 +72,29 @@ impl Cron {
     pub fn parse(value: &str) -> Result<Self, Error> {
         let parts = value.split(" ").collect::<Vec<_>>();
 
-        if parts.len() != 6 {
-            return Err(Error::CronValueError);
-        }
+        match parts.len() {
+            // Second is specified
+            6 => Ok(Self {
+                second: CronValue::parse(parts[0])?,
+                minute: CronValue::parse(parts[1])?,
+                hour: CronValue::parse(parts[2])?,
+                dom: CronValue::parse(parts[3])?,
+                month: CronValue::parse(parts[4])?,
+                dow: CronValue::parse(parts[5])?,
+            }),
 
-        Ok(Self {
-            second: CronValue::parse(parts[0])?,
-            minute: CronValue::parse(parts[1])?,
-            hour: CronValue::parse(parts[2])?,
-            dom: CronValue::parse(parts[3])?,
-            month: CronValue::parse(parts[4])?,
-            dow: CronValue::parse(parts[5])?,
-        })
+            // Second is omitted.
+            5 => Ok(Self {
+                second: CronValue::Exact(0),
+                minute: CronValue::parse(parts[0])?,
+                hour: CronValue::parse(parts[1])?,
+                dom: CronValue::parse(parts[2])?,
+                month: CronValue::parse(parts[3])?,
+                dow: CronValue::parse(parts[4])?,
+            }),
+
+            _ => return Err(Error::CronValueError),
+        }
     }
 
     pub fn should_run(&self, time: &OffsetDateTime) -> bool {
@@ -103,6 +114,45 @@ impl Cron {
     }
 }
 
-pub struct Schedule {
-    crons: Vec<Cron>,
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_cron_parse() {
+        let cron = Cron::parse("* * * * * *").unwrap();
+        let time = OffsetDateTime::now_utc();
+
+        // Will run on every tick of the clock.
+        assert!(cron.should_run(&time));
+
+        let cron = Cron::parse("*/5 * * * * *").unwrap();
+        let will_run = time.replace_second(25).unwrap();
+        assert!(cron.should_run(&will_run));
+
+        let will_not = will_run.replace_second(7).unwrap();
+        assert!(!cron.should_run(&will_not));
+
+        let cron = Cron::parse("5 7-8 * * * *").unwrap();
+        let will_run = will_not
+            .replace_second(5)
+            .unwrap()
+            .replace_minute(7)
+            .unwrap();
+
+        assert!(cron.should_run(&will_run));
+
+        let will_not = will_run
+            .replace_second(25)
+            .unwrap()
+            .replace_minute(8)
+            .unwrap();
+
+        assert!(!cron.should_run(&will_not));
+
+        let cron = Cron::parse("* * * * *").unwrap();
+        let time = OffsetDateTime::now_utc().replace_second(0).unwrap();
+
+        assert!(cron.should_run(&time));
+    }
 }

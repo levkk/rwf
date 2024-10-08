@@ -1,1 +1,0 @@
-DROP TABLE rum_jobs;

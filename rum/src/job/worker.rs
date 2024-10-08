@@ -1,4 +1,7 @@
-use super::{Error, JobHandler, JobModel};
+use super::{
+    clock::{Clock, ScheduledJob},
+    Error, JobHandler, JobModel,
+};
 
 use crate::colors::MaybeColorize;
 use time::OffsetDateTime;
@@ -15,6 +18,7 @@ use std::time::Instant;
 #[derive(Clone)]
 pub struct Worker {
     jobs: Arc<HashMap<String, JobHandler>>,
+    clock: Option<Clock>,
 }
 
 impl Worker {
@@ -25,7 +29,13 @@ impl Worker {
             .collect();
         Self {
             jobs: Arc::new(jobs),
+            clock: None,
         }
+    }
+
+    pub fn clock(mut self, jobs: Vec<ScheduledJob>) -> Self {
+        self.clock = Some(Clock::new(jobs));
+        self
     }
 
     pub async fn start(self) -> Result<Self, Error> {
@@ -34,6 +44,12 @@ impl Worker {
 
         // Spawn a single instance of the worker.
         self.spawn();
+
+        if let Some(clock) = self.clock.clone() {
+            tokio::spawn(async move {
+                clock.run().await;
+            });
+        }
 
         Ok(self)
     }

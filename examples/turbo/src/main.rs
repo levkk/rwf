@@ -35,8 +35,8 @@ impl WebsocketController for TurboStreamController {
     async fn client_connected(&self, session_id: &SessionId) -> Result<(), Error> {
         let message = "Turbo Stream connected via WebSocket";
 
-        if let Ok(canvas) = CanvasController::canvas(message).await {
-            Comms::websocket(session_id).send(Message::turbo_stream(canvas))?;
+        if let Ok(page) = PageController::page(message).await {
+            Comms::websocket(session_id).send(Message::turbo_stream(page))?;
         }
 
         Ok(())
@@ -45,18 +45,18 @@ impl WebsocketController for TurboStreamController {
 
 /// Draw on the page using only Turbo Streams.
 #[derive(rum::macros::Context)]
-struct Canvas {
+struct Page {
     body: String,
 }
 
-struct CanvasController {
+struct PageController {
     // This field is updated for all HTTP requests from all clients.
     // Try clicking the button from different browser windows
     // (+ incognito mode to have a different session).
     counter: Arc<AtomicUsize>,
 }
 
-impl Default for CanvasController {
+impl Default for PageController {
     fn default() -> Self {
         Self {
             counter: Arc::new(AtomicUsize::new(1)),
@@ -64,23 +64,23 @@ impl Default for CanvasController {
     }
 }
 
-impl CanvasController {
+impl PageController {
     /// Generate an HTML template and send it as a TurboStream `<turbo-stream>`
     /// HTML element.
-    async fn canvas(message: impl ToString) -> Result<TurboStream, Error> {
-        let canvas = Template::cached("templates/canvas.html").await?;
-        let body = canvas.render(
-            &Canvas {
+    async fn page(message: impl ToString) -> Result<TurboStream, Error> {
+        let page = Template::cached("templates/page.html").await?;
+        let body = page.render(
+            &Page {
                 body: message.to_string(),
             }
             .try_into()?,
         )?;
-        Ok(TurboStream::new(body).action("replace").target("canvas"))
+        Ok(TurboStream::new(body).action("replace").target("page"))
     }
 }
 
 #[rum::async_trait]
-impl Controller for CanvasController {
+impl Controller for PageController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         // Count clicks app-wide.
         let click = self.counter.fetch_add(1, Ordering::Relaxed);
@@ -98,7 +98,7 @@ impl Controller for CanvasController {
 
         let message = format!("This button was clicked {} times", click);
 
-        let turbo_stream = CanvasController::canvas(message).await?;
+        let turbo_stream = PageController::page(message).await?;
 
         // Update page via Turbo Stream response.
         Ok(Response::new().turbo_stream(turbo_stream))
@@ -126,8 +126,8 @@ impl Job for ExpensiveJob {
                 args.click
             );
 
-            if let Ok(canvas) = CanvasController::canvas(message).await {
-                Comms::websocket(session_id).send(Message::turbo_stream(canvas))?;
+            if let Ok(page) = PageController::page(message).await {
+                Comms::websocket(session_id).send(Message::turbo_stream(page))?;
             }
         }
 
@@ -143,6 +143,8 @@ async fn main() -> Result<(), Error> {
     // Configure logging.
     Logger::init();
 
+    Migrations::migrate().await?;
+
     // Start a background worker.
     Worker::new(vec![ExpensiveJob::default().job()])
         .start()
@@ -151,7 +153,7 @@ async fn main() -> Result<(), Error> {
     Server::new(vec![
         IndexController::default().route("/"),
         TurboStreamController::default().route("/turbo-stream"),
-        CanvasController::default().route("/update-canvas"),
+        PageController::default().route("/update-page"),
     ])
     .launch("0.0.0.0:8000")
     .await?;

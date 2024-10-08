@@ -8,6 +8,7 @@ pub mod error;
 pub mod model;
 pub mod worker;
 
+pub use clock::Clock;
 pub use cron::Cron;
 pub use error::Error;
 pub use model::{Job, JobHandler, JobModel};
