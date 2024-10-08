@@ -92,8 +92,6 @@ Creating new records can be done in two ways: by saving a record with no primary
 ##### Record with no primary key
 
 ```rust
-use rum::prelude::*;
-
 let user = User {
     id: None,
     email: "hello@test.com".into(),
@@ -110,8 +108,6 @@ let user = user
 ##### Creating explicitly
 
 ```rust
-use rum::prelude::*;
-
 let user = User::create(&[
     ("email", "hello@test.com".to_value()),
     ("created_at", OffsetDateTime::now_utc().to_value()),
@@ -124,8 +120,6 @@ let user = User::create(&[
 If your database schema has default values for columns, you don't have to specify them when creating records, for example:
 
 ```rust
-use rum::prelude::*;
-
 let user = User::create(&[
     ("email", "hello@test.com"),
 ])
@@ -142,8 +136,6 @@ Rum's ORM supports many ways for fetching records, including joins, OR-queries, 
 Finding a record by primary key is as simple as:
 
 ```rust
-use rum::prelude::*;
-
 let user = User::find(15)
     .fetch(&mut conn).await?;
 ```
