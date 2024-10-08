@@ -190,7 +190,7 @@ If a query is used frequently, you can add it as as scope to the model:
 impl User {
     /// Get all admin users.
     pub fn admins() -> Scope<Self> {
-        Self::all()
+        User::all()
             .filter("admin", true)
     }
 }
