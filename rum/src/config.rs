@@ -43,12 +43,25 @@ pub struct Config {
     pub cache_templates: bool,
     pub websocket: Websocket,
     pub log_queries: bool,
+    pub http: Http,
 }
 
 pub struct Websocket {
     pub ping_interval: Duration,
     pub ping_timeout: Duration,
     pub ping_disconnect_count: i64,
+}
+
+pub struct Http {
+    pub header_max_size: usize,
+}
+
+impl Default for Http {
+    fn default() -> Self {
+        Self {
+            header_max_size: 16 * 1024, // 16KB
+        }
+    }
 }
 
 impl Default for Websocket {
@@ -81,6 +94,7 @@ impl Default for Config {
             cache_templates: false,
             websocket: Websocket::default(),
             log_queries: std::env::var("RUM_LOG_QUERIES").is_ok(),
+            http: Http::default(),
         }
     }
 }

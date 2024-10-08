@@ -11,6 +11,7 @@ pub struct Handler {
     path: PathWithRegex,
     name: Option<String>,
     controller: Box<dyn Controller>,
+    rank: i64,
 }
 
 impl Handler {
@@ -19,7 +20,12 @@ impl Handler {
             path: Path::parse(path).unwrap().with_regex(path_type).unwrap(),
             controller: Box::new(controller),
             name: None,
+            rank: -20,
         }
+    }
+
+    pub fn rank(&self) -> i64 {
+        self.rank
     }
 
     pub fn rest(path: &str, controller: impl Controller + 'static) -> Self {

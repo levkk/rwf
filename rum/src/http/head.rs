@@ -5,6 +5,7 @@ use std::marker::Unpin;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Authorization, Cookies, Error, Headers, Path, Query};
+use crate::config::get_config;
 
 /// HTTP method, e.g. GET, POST, etc.
 #[derive(PartialEq, Clone, Debug, Default)]
@@ -233,9 +234,12 @@ impl Head {
     async fn read_line(mut stream: impl AsyncRead + Unpin) -> Result<String, std::io::Error> {
         let mut buf = Vec::new();
         let (mut cr, mut lf) = (false, false);
+        let mut bytes_remaining = get_config().http.header_max_size; // avoid DDoS
 
-        loop {
+        while bytes_remaining > 0 {
+            // stream should be buffered
             let b = stream.read_u8().await?;
+            bytes_remaining -= 1;
 
             if b == '\r' as u8 {
                 cr = true;

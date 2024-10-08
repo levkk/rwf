@@ -29,7 +29,18 @@ impl Router {
             .filter(|(i, _h)| matches.matched(*i))
             .map(|(_i, h)| h)
             .collect::<Vec<_>>();
-        handlers.sort_by_key(|h| h.path().base().len()); // Get the most specific path (longest match).
+        handlers.sort_by(|a, b| {
+            let a_len = a.path().base().len();
+            let b_len = b.path().base().len();
+            let a_rank = a.rank();
+            let b_rank = b.rank();
+
+            if a_rank == b_rank {
+                a_len.cmp(&b_len)
+            } else {
+                a_rank.cmp(&b_rank)
+            }
+        }); // Get the most specific path (longest match).
         handlers.last().copied()
     }
 
