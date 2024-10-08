@@ -14,5 +14,5 @@ The code base is split into several modules, described below.
 | [http::websocket](run/src/http/websocket) | Support for WebSockets. Implemented from the [MDN spec](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers). |
 | [job](rum/src/job) | Background jobs, including scheduled jobs, clock, worker. |
 | [model](rum/src/model) | The ORM. Based on a mix between Django and ActiveRecord. |
-| [model/pool](rum/src/model/pool) | Database connection pooling. |
-| [model/migrations](rum/src/model/migrations) | Support for database schema versioning (migrations). |
+| [model::pool](rum/src/model/pool) | Database connection pooling. |
+| [model::migrations](rum/src/model/migrations) | Support for database schema versioning (migrations). |
