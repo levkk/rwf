@@ -132,3 +132,27 @@ let user = User::create(&[
     .fetch(&mut conn)
     .await?;
 ```
+
+#### Finding records
+
+Rum's ORM supports many ways for fetching records, including joins, OR-queries, and `SELECT FOR UPDATE` for exclusive locks.
+
+##### Find by primary key
+
+Finding a record by primary key is as simple as:
+
+```rust
+use rum::prelude::*;
+
+let user = User::find(15).fetch(&mut conn).await?;
+```
+
+If the record with `id = 15` does not exist, an error will be returned. To avoid getting an error, use `fetch_optional` or `fetch_all` instead:
+
+```rust
+let user = User::find(15).fetch_optional(&mut conn).await?;
+```
+
+#### Updating records
+
+Updating records can be done in two ways: by saving an existing record or by using `update_all` on a select query.
