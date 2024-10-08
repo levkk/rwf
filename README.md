@@ -221,4 +221,33 @@ impl User {
 
 #### Updating records
 
-Updating records can be done in two ways: by saving an existing record or by using `update_all` on a select query.
+Updating records can be done in two ways: by saving an existing record or by using `update_all` on a scope.
+
+##### Updating existing records
+
+Updating an existing record can be done by mutating fields on a record and calling `save`:
+
+```rust
+let mut user = User::find(15)
+    .fetch(&mut conn)
+    .await?;
+
+user.admin = true;
+
+let admin = user
+    .save()
+    .fetch(&mut conn)
+    .await?;
+```
+
+#### Updating many records
+
+```rust
+// Remove superpowers from everyone.
+User::filter("admin", true)
+    .update_all(&[
+        ("admin", false)
+    ])
+    .execute(&mut conn)
+    .await?;
+```
