@@ -58,7 +58,7 @@ async fn main() {
 
 See [examples](examples) for common use cases.
 
-## :construction_worker: Status
+## Status :construction:
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
 
