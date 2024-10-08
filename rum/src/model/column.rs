@@ -1,10 +1,11 @@
-use super::{Escape, ToSql};
+use super::{Escape, ToSql, ToValue, Value};
 
 /// PostgreSQL table column.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Column {
     table_name: String,
     column_name: String,
+    as_value: Option<Box<Value>>,
 }
 
 impl std::fmt::Display for Column {
@@ -15,13 +16,20 @@ impl std::fmt::Display for Column {
 
 impl ToSql for Column {
     fn to_sql(&self) -> String {
+        let as_value = if let Some(ref as_value) = self.as_value {
+            format!("{} AS ", as_value.to_sql())
+        } else {
+            "".to_string()
+        };
+
         if self.table_name.is_empty() {
-            format!(r#""{}""#, self.column_name.escape())
+            format!(r#"{}"{}""#, as_value, self.column_name.escape())
         } else {
             format!(
-                r#""{}"."{}""#,
+                r#"{}"{}"."{}""#,
+                as_value,
                 self.table_name.escape(),
-                self.column_name.escape()
+                self.column_name.escape(),
             )
         }
     }
@@ -36,6 +44,7 @@ impl Column {
         Self {
             table_name: table_name.to_string(),
             column_name: column_name.to_string(),
+            as_value: None,
         }
     }
 
@@ -61,13 +70,30 @@ impl Column {
         self.table_name.clear();
         self
     }
+
+    pub fn as_value(mut self, value: impl ToValue) -> Self {
+        self.as_value = Some(Box::new(value.to_value()));
+        self
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Columns {
     columns: Vec<Column>,
     table_name: Option<String>,
     exists: bool,
+    all: bool,
+}
+
+impl Default for Columns {
+    fn default() -> Self {
+        Self {
+            columns: vec![],
+            table_name: None,
+            exists: false,
+            all: true,
+        }
+    }
 }
 
 impl Columns {
@@ -80,24 +106,36 @@ impl Columns {
         self.exists = true;
         self
     }
+
+    pub fn all(mut self) -> Self {
+        self.all = true;
+        self
+    }
+
+    pub fn add_column(mut self, column: impl ToColumn) -> Self {
+        self.columns.push(column.to_column());
+        self
+    }
 }
 
 impl ToSql for Columns {
     fn to_sql(&self) -> String {
         if self.exists {
             "COUNT(*) AS count".into()
-        } else if self.columns.is_empty() {
-            if let Some(ref table_name) = self.table_name {
-                format!(r#""{}".*"#, table_name)
-            } else {
-                "*".to_string()
-            }
         } else {
-            self.columns
-                .iter()
-                .map(|column| column.to_sql())
-                .collect::<Vec<_>>()
-                .join(", ")
+            let mut columns = if self.columns.is_empty() || self.all {
+                if let Some(ref table_name) = self.table_name {
+                    vec![format!(r#""{}".*"#, table_name)]
+                } else {
+                    vec!["*".to_string()]
+                }
+            } else {
+                vec![]
+            };
+
+            columns.extend(self.columns.iter().map(|column| column.to_sql()));
+
+            columns.join(", ")
         }
     }
 }

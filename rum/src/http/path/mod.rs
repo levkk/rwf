@@ -123,7 +123,7 @@ mod test {
         let path = "/hello?foo=bar&hello%3Dworld";
         let path = Path::parse(path).unwrap();
         assert_eq!(path.path(), "/hello");
-        assert_eq!(path.query().get("foo"), Some(&"bar".to_string()));
+        assert_eq!(path.query().get("foo"), Some("bar".to_string()));
     }
 
     #[test]
@@ -135,7 +135,7 @@ mod test {
     fn test_regex() {
         let path = Path::parse("/api/orders/:id")
             .unwrap()
-            .with_regex()
+            .with_regex(PathType::Wildcard)
             .unwrap();
         let regex = path.regex();
         assert!(regex.find("/api/orders/1").is_some());

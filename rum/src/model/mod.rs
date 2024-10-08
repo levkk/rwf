@@ -426,11 +426,22 @@ impl<T: Model> Query<T> {
                 let (columns, values) = select.insert_columns();
                 let insert = Insert::from_columns(&columns, &values);
                 Query::InsertIfNotExists {
-                    select,
+                    select: select.limit(1),
                     insert,
                     created: false,
                 }
             }
+            _ => self,
+        }
+    }
+
+    pub fn column(self, column: impl ToColumn) -> Self {
+        match self {
+            Query::Select(select) => {
+                let select = select.select_additional(column);
+                Query::Select(select)
+            }
+
             _ => self,
         }
     }
@@ -448,6 +459,25 @@ impl<T: Model> Query<T> {
                     .map(|(_, v)| v.to_value())
                     .collect::<Vec<_>>();
                 Query::Update(update.columns(&columns, &values))
+            }
+            _ => self,
+        }
+    }
+
+    pub fn unique_by(self, columns: &[impl ToColumn]) -> Self {
+        match self {
+            Query::Insert(insert) => Query::Insert(insert.unique_by(columns)),
+            Query::InsertIfNotExists {
+                select,
+                insert,
+                created,
+            } => {
+                let insert = insert.unique_by(columns);
+                Query::InsertIfNotExists {
+                    select,
+                    insert,
+                    created,
+                }
             }
             _ => self,
         }
@@ -951,53 +981,53 @@ mod test {
     }
 
     impl FromRow for User {
-        fn from_row(row: Row) -> Self {
+        fn from_row(row: Row) -> Result<Self, Error> {
             let id: i64 = row.get("id");
             let email: String = row.get("email");
             let password: String = row.get("password");
 
-            User {
+            Ok(User {
                 id,
                 email,
                 password,
-            }
+            })
         }
     }
 
     impl FromRow for Order {
-        fn from_row(row: Row) -> Self {
+        fn from_row(row: Row) -> Result<Self, Error> {
             let id: i64 = row.get("id");
             let user_id: i64 = row.get("user_id");
             let amount: f64 = row.get("amount");
 
-            Order {
+            Ok(Order {
                 id,
                 user_id,
                 amount,
-            }
+            })
         }
     }
 
     impl FromRow for OrderItem {
-        fn from_row(row: Row) -> Self {
+        fn from_row(row: Row) -> Result<Self, Error> {
             let id: i64 = row.get("id");
             let order_id: i64 = row.get("order_id");
             let product_id: i64 = row.get("product_id");
 
-            OrderItem {
+            Ok(OrderItem {
                 id,
                 order_id,
                 product_id,
-            }
+            })
         }
     }
 
     impl FromRow for Product {
-        fn from_row(row: Row) -> Self {
+        fn from_row(row: Row) -> Result<Self, Error> {
             let id: i64 = row.get("id");
             let name: String = row.get("name");
 
-            Product { id, name }
+            Ok(Product { id, name })
         }
     }
 
@@ -1116,9 +1146,12 @@ mod test {
     #[tokio::test]
     async fn test_fetch() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let mut transaction = pool.begin().await?;
+        let mut transaction = pool.transaction().await?;
 
-        transaction.client().query("DROP TABLE users", &[]).await?;
+        transaction
+            .client()
+            .query("DROP TABLE users CASCADE", &[])
+            .await?;
 
         transaction
             .client()
@@ -1152,7 +1185,7 @@ mod test {
     #[tokio::test]
     async fn test_explain() -> Result<(), Error> {
         let pool = Pool::new_local();
-        let mut transaction = pool.begin().await?;
+        let mut transaction = pool.transaction().await?;
 
         transaction
             .client()
@@ -1169,11 +1202,11 @@ mod test {
     async fn test_find_or_create() -> Result<(), Error> {
         let pool = Pool::new_local();
 
-        let mut transaction = pool.begin().await?;
+        let mut transaction = pool.transaction().await?;
 
         transaction
             .client()
-            .execute("DROP TABLE IF EXISTS users", &[])
+            .execute("DROP TABLE IF EXISTS users CASCADE", &[])
             .await?;
         transaction
             .client()
@@ -1187,12 +1220,32 @@ mod test {
         let sql = query.to_sql();
         assert_eq!(
             sql,
-            r#"SELECT * FROM "users" WHERE "users"."email" = $1 AND "users"."password" = $2; INSERT INTO "users" ("email", "password") VALUES ($1, $2) RETURNING *;"#
+            r#"SELECT * FROM "users" WHERE "users"."email" = $1 AND "users"."password" = $2 LIMIT 1; INSERT INTO "users" ("email", "password") VALUES ($1, $2) RETURNING *;"#
         );
 
         query.fetch(&mut transaction).await?;
 
         Ok(())
+    }
+
+    #[test]
+    fn test_unique_by() {
+        let query = User::create(&[("email", "test@test.com")])
+            .unique_by(&["email"])
+            .to_sql();
+        assert_eq!(
+            query,
+            r#"INSERT INTO "users" ("email") VALUES ($1) ON CONFLICT ("email") DO UPDATE SET "email" = EXCLUDED."email" RETURNING *"#
+        );
+
+        let query = User::filter("email", "test@test.com")
+            .find_or_create()
+            .unique_by(&["email"])
+            .to_sql();
+        assert_eq!(
+            query,
+            r#"SELECT * FROM "users" WHERE "users"."email" = $1 LIMIT 1; INSERT INTO "users" ("email") VALUES ($1) ON CONFLICT ("email") DO UPDATE SET "email" = EXCLUDED."email" RETURNING *;"#
+        );
     }
 
     // #[test]

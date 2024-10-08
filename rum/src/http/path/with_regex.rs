@@ -118,7 +118,7 @@ mod test {
     #[test]
     fn test_paramters() {
         let path = Path::parse("/api/orders/:name/receipt").unwrap();
-        let with_regex = PathWithRegex::new(path).unwrap();
+        let with_regex = PathWithRegex::route(path).unwrap();
         let params = with_regex.params();
 
         let url = "/api/orders/apple_bees/receipt/5";

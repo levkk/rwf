@@ -6,6 +6,7 @@ pub mod crypto;
 pub mod error;
 pub mod http;
 pub mod job;
+pub mod lock;
 pub mod logging;
 pub mod model;
 pub mod prelude;

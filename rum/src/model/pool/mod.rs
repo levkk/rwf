@@ -348,6 +348,12 @@ mod test {
 
         assert_eq!(row.len(), 1);
 
+        let mut consume = vec![];
+
+        for _ in 0..4 {
+            consume.push(pool.get().await);
+        }
+
         assert!(pool.get().await.is_err());
 
         drop(conn);

@@ -84,8 +84,8 @@ mod test {
     #[tokio::test]
     async fn test_find() {
         let handler = Router::new(vec![
-            Handler::new("/api/orders", OrdersControler {}),
-            Handler::new("/api/users", UsersController {}),
+            OrdersControler {}.route("/api/orders"),
+            UsersController {}.route("/api/users"),
         ])
         .expect("to compile");
 

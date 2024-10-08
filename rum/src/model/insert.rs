@@ -7,6 +7,8 @@ pub struct Insert<T> {
     columns: Vec<Column>,
     pub placeholders: Placeholders,
     marker: PhantomData<T>,
+    no_conflict: bool,
+    unique_by: Vec<Column>,
 }
 
 impl<T: Model> Insert<T> {
@@ -26,6 +28,8 @@ impl<T: Model> Insert<T> {
             placeholders,
             columns,
             marker: PhantomData,
+            no_conflict: false,
+            unique_by: vec![],
         }
     }
 
@@ -41,7 +45,19 @@ impl<T: Model> Insert<T> {
             columns: columns.iter().map(|c| c.to_column().unqualify()).collect(),
             placeholders,
             marker: PhantomData,
+            no_conflict: false,
+            unique_by: vec![],
         }
+    }
+
+    pub fn no_conflict(mut self) -> Self {
+        self.no_conflict = true;
+        self
+    }
+
+    pub fn unique_by(mut self, columns: &[impl ToColumn]) -> Self {
+        self.unique_by = columns.iter().map(|c| c.to_column()).collect();
+        self
     }
 }
 
@@ -60,11 +76,37 @@ impl<T: FromRow> ToSql for Insert<T> {
             .map(|(i, _)| format!("${}", i + 1))
             .collect::<Vec<_>>()
             .join(", ");
+
+        let no_conflict = if self.no_conflict {
+            "ON CONFLICT DO NOTHING ".to_string()
+        } else if !self.unique_by.is_empty() {
+            let columns = self
+                .unique_by
+                .clone()
+                .into_iter()
+                .map(|c| c.unqualify())
+                .collect::<Vec<_>>();
+            let on_conflict = columns
+                .iter()
+                .map(|c| c.to_sql())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let update = columns
+                .iter()
+                .map(|c| format!("{} = EXCLUDED.{}", c.to_sql(), c.to_sql()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("ON CONFLICT ({}) DO UPDATE SET {} ", on_conflict, update)
+        } else {
+            "".to_string()
+        };
+
         format!(
-            r#"INSERT INTO "{}" ({}) VALUES ({}) RETURNING *"#,
+            r#"INSERT INTO "{}" ({}) VALUES ({}) {}RETURNING *"#,
             self.table_name.escape(),
             columns,
-            placeholders
+            placeholders,
+            no_conflict,
         )
     }
 }

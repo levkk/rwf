@@ -226,6 +226,11 @@ impl<T: FromRow> Select<T> {
         select.placeholders = self.placeholders.clone();
         select
     }
+
+    pub fn select_additional(mut self, column: impl ToColumn) -> Self {
+        self.columns = self.columns.add_column(column);
+        self
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {

@@ -324,7 +324,7 @@ mod test {
         )?
         .evaluate(&Context::default())?;
 
-        assert_eq!(result, "<p>1. 1</p><p>2. 2</p><p>3. 3</p>");
+        assert_eq!(result, "\n<p>1. 1</p>\n\n<p>2. 2</p>\n\n<p>3. 3</p>\n");
 
         Ok(())
     }
