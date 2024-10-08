@@ -9,7 +9,7 @@ The code base is split into several modules, described below.
 | Module | Description |
 | -------|-------------|
 | [controller](rum/src/controller) | Controllers, including the standard HTTP `Controller`, RESTful API, and WebSockets. |
-| [controller::middleware](rum/src/middleware) | Support for injecting middleware into the HTTP request/response lifecycle. |
+| [controller::middleware](rum/src/controller/middleware) | Support for injecting middleware into the HTTP request/response lifecycle. |
 | [http](rum/src/http) | Support for HTTP/1.1. Handles URLs, queries, parameters, body, request, response, etc. |
 | [http::websocket](run/src/http/websocket) | Support for WebSockets. Implemented from the [MDN spec](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers). |
 | [job](rum/src/job) | Background jobs, including scheduled jobs, clock, worker. |
