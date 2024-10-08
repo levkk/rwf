@@ -172,6 +172,13 @@ Basic comparison operations are supported:
 | `IN` | `filter` with a slice as the value |
 | `NOT IN` | `not` / `filter_not` with a slice as the value |
 
+For example, filtering by multiple emails:
+
+```rust
+User::all()
+    .filter("email", &["joe@hello.com", "marry@hello.com"]);
+```
+
 #### Scopes
 
 If a query is used frequently, you can add it as as scope to the model:
