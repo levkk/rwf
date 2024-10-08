@@ -61,3 +61,74 @@ See [examples](examples) for common use cases.
 ## Status
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
+
+## Features
+
+### HTTP server
+
+Rum's built-in HTTP server is asynchronous and supports millions of connections.
+
+### The ORM
+
+Rum's ORM is inspired by a healthy mix of Django and ActiveRecord. Declaring models is as simple as:
+
+```rust
+use rum::prelude::*;
+use time::OffsetDateTime;
+
+#[derive(rum::macros::Model)]
+struct User {
+    id: Option<i64>,
+    email: String,
+    created_at: OffsetDateTime,
+    admin: bool,
+}
+```
+
+#### Creating records
+
+Creating new records can be done in two ways: by saving a record with no primary key or by explicitly using `Model::create`.
+
+##### Record with no primary key
+
+```rust
+use rum::prelude::*;
+
+let user = User {
+    id: None,
+    email: "hello@test.com".into(),
+    created_at: OffsetDateTime::now_utc(),
+    admin: false,
+};
+
+let user = user
+    .save()
+    .fetch(&mut conn)
+    .await?;
+```
+
+##### Creating explicitly
+
+```rust
+use rum::prelude::*;
+
+let user = User::create(&[
+    ("email", "hello@test.com".to_value()),
+    ("created_at", OffsetDateTime::now_utc().to_value()),
+    ("admin", false.to_value())
+])
+    .fetch(&mut conn)
+    .await?;
+```
+
+If your database schema has default values for columns, you don't have to specify them when creating records, for example:
+
+```rust
+use rum::prelude::*;
+
+let user = User::create(&[
+    ("email", "hello@test.com"),
+])
+    .fetch(&mut conn)
+    .await?;
+```

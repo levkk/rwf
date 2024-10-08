@@ -16,3 +16,7 @@ The code base is split into several modules, described below.
 | [model](rum/src/model) | The ORM. Based on a mix between Django and ActiveRecord. |
 | [model::pool](rum/src/model/pool) | Database connection pooling. |
 | [model::migrations](rum/src/model/migrations) | Support for database schema versioning (migrations). |
+| [view](rum/src/view) | Templates inspired by Rails' ERB language. |
+| [view::template](rum/src/view/template) | Template language parser and executor. |
+| [view::turbo](rum/src/view/turbo) | Integration with Hotwired Turbo. |
+| [rum::crypto](rum/src/crypto.rs) | Helpers to encrypt/decrypt data using AES-128. |
