@@ -250,7 +250,7 @@ impl User {
 }
 ```
 
-Implementing additional features on top of scopes is easy. For example, adding support for soft deletes can be done with one function:
+Implementing additional features on top of scopes is easy. For example, adding support for soft deletes can be done with just one function:
 
 ```rust
 impl User {
