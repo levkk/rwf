@@ -1,5 +1,4 @@
 use rum::controller::middleware::prelude::*;
-use rum::logging::setup_logging;
 use rum::prelude::*;
 use rum::Server;
 
@@ -36,7 +35,7 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    setup_logging();
+    Logger::init();
 
     Server::new(vec![IndexController {
         middleware: MiddlewareSet::new(vec![BlockBadHeader::default().middleware()]),
