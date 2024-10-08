@@ -273,7 +273,7 @@ let admin = user
 
 #### Updating many records
 
-Multiple records can be updated based by searching for records first:
+Multiple records can be updated without fetching them from the database first:
 
 ```rust
 // Remove superpowers from everyone.
@@ -285,4 +285,4 @@ User::filter("admin", true)
     .await?;
 ```
 
-This executes only one query, using the search condition in the `UPDATE` query.
+This executes only one query, updating records matching the filter condition.
