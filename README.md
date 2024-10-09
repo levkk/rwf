@@ -127,6 +127,14 @@ let user = User::create(&[
     .await?;
 ```
 
+##### Rust to Postgres type conversion
+
+Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation, `rum::model::Value`, explicitly by calling `ToValue::to_value`:
+
+```rust
+let pg_value = 1_i64.to_value();
+```
+
 ##### Handling conflicts
 
 If your table has a unique index, you may run into unique constraint violations when creating records. To avoid that, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
@@ -223,28 +231,6 @@ For example, finding records with specific emails:
 User::filter("email", ["joe@hello.com", "marry@hello.com"].as_slice())
     .fetch_all(&mut conn)
     .await?;
-```
-
-Rust types are converted to Postgres types automatically. If multiple Rust types are used in a single function call, e.g. in a slice, convert them to an internal representation explicitly using `rum::model::Value::to_value`, for example:
-
-```rust
-let values = [
-    2_i64.to_value(),
-    "Is this duck typing?".to_value(),
-    String::new("No, it's just Rust traits").to_value(),
-];
-
-User::filter("email", &values)
-    .fetch_all(&mut conn).await?;
-```
-
-which will produce this query:
-
-```sql
-SELECT * FROM users
-WHERE email = ANY(
-    '{1, 2, ''Is this duck typing?'', ''No, it''s just Rust traits'''
-);
 ```
 
 
