@@ -512,6 +512,8 @@ Rum has its own template language, heavily inspired (if not shameless copied) fr
 
 ### Quick example
 
+If you've written Rails before, you'll find this syntax familiar:
+
 ```erb
 <p><%= text %></p>
 
