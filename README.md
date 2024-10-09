@@ -1003,6 +1003,14 @@ The scheduler runs every second. If a job is available, it will fetch all availa
 
 Since Rum uses Postgres to store jobs, the job queue is durable (does not lose jobs) and saves the results of all job runs to a table, which will come in handy when inevitably some job does something you didn't expect.
 
+### Spawning multiple workers
+
+You can spawn as many workers as you think is reasonable for your application. Concurrency is controlled via Postgres, so a particular job shouldn't run on more than one worker at a time.
+
+### Queue guarantees
+
+The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design - if a job runs more than once, the end result is the same.
+
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.
