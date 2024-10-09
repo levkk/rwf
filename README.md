@@ -567,9 +567,7 @@ Sometimes a query is too complicated to be written with an ORM. Rum provides a s
 ```rust
 let users = User::find_by_sql(
     "SELECT * FROM users WHERE email LIKE 'hello%' AND created_at < $1",
-    &[
-        OffsetDateTime::now_utc().to_value(),
-    ]
+    &[OffsetDateTime::now_utc().to_value(),]
 )
     .fetch_all(&mut conn)
     .await?;
@@ -628,14 +626,15 @@ Templates can be rendered directly from a Rust string:
 #[derive(rum::macros::Context)]
 struct Index {
     first_name: String,
+    user_id: i64,
 }
 
-let template = Template::from_str("<p>Ahoy there, <%= first_name %>!</p>")?;
-let context = Index { first_name: "Josh".into() };
+let template = Template::from_str("<p>Ahoy there, <%= first_name %>! (id: <%= user_id %></p>")?;
+let context = Index { first_name: "Josh".into(), user_id: 1 };
 
 let result = template.render(context.try_into()?)?;
 
-assert_eq!(result, "<p>Ahoy there, Josh!</p>");
+assert_eq!(result, "<p>Ahoy there, Josh! (id: 1)</p>");
 ```
 
 Templates can be placed in files anywhere the Rust program can access them:
@@ -644,6 +643,8 @@ Templates can be placed in files anywhere the Rust program can access them:
 let template = Template::cached("templates/index.html").await?;
 let result = template.render(context.try_into()?)?;
 ```
+
+`templates/index.html` is a path relative to current wording directory (`$PWD`).
 
 Templates don't have to be HTML, and can be used to render any kind of files, e.g. plain text, CSS, JavaScript, etc.
 
@@ -684,14 +685,17 @@ The caching behavior is controlled via configuration and requires no code modifi
 cache_templates = true
 ```
 
-See [Configuration](#configuration) for more details on how to configure Rum apps.
+See [Configuration](#configuration) for more details on how to configure template behavior.
 
+## Authentication & sessions
+
+Rum has a customizable authentication and authorization system. Each HTTP request can be checked against some conditions, e.g. a header, cookie value, and authorized to access controllers. If authorization fails, a default response, like a redirect or a `403 - Forbidden` can be returned.
 
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.
 
-### Rum.toml
+### `Rum.toml`
 
 Rum.toml is a configuration file using the TOML configuration language.
 

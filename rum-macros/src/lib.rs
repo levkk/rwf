@@ -120,7 +120,7 @@ fn handle_model_attrs(input: &DeriveInput, attributes: &[Attribute]) -> proc_mac
     let rels = attributes
         .iter()
         .filter(|attr| {
-            ["belongs_to", "has_many"].contains(
+            ["belongs_to", "has_many", "table_name"].contains(
                 &attr
                     .meta
                     .path()
