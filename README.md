@@ -721,6 +721,7 @@ impl ProtectedController {
     }
 }
 
+#[rum::async_trait]
 impl Controller for ProtectedController {
     /// Specify the authentication handler for this controller.
     fn auth(&self) -> &AuthHandler {
@@ -737,7 +738,27 @@ When a browser opens a page served by this controller, a user/password prompt wi
 
 #### Session authentication
 
-To authenticate requests, Rum implements its own session control. The session is stored as an encrypted cookie and read on each request. If the session is expired, access is denied. Arbitrary date can be stored in the session, e.g. user email, unique identifier, etc.
+Rum implements its own user sessions. They are stored in a cookie, and encrypted with AES-128. The user can't see or modify the contents of the cookie, so arbitrary data can be stored in it to identify the user securely.
+
+To enable session authentication, specify the `SessionAuth` handler in the controller:
+
+```rust
+use rum::controller::auth::SessionAuth;
+
+impl ProtectedController {
+    fn new() -> ProtectedController {
+        Self {
+            auth: AuthHandler::new(SessionAuth::redirect("/login"))
+        }
+    }
+}
+```
+
+When users visit a page served by this controller, they will be redirected to `/login` URL if they don't have a session or if their session has expired.
+
+##### Session validity
+
+By default, sessions are valid for 4 days. This setting is [configurable](#configuration). If a user requests a page with a valid session, Rum will automatically renew the session for another session validity period; this ensures your active users don't get logged out.
 
 ## Configuration
 
