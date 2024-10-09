@@ -359,7 +359,7 @@ let user = user
 transaction.commit().await?;
 ```
 
-This will produce multiple queries and execute them inside a transaction:
+This will use execute the update inside a transaction, while blocking other queries (including `SELECT`s) until the transaction completes.
 
 ```sql
 BEGIN;
