@@ -370,9 +370,21 @@ COMMIT;
 
 #### Joins
 
+Joins in Rum come standard and require a couple annotations on the models to indicate their relationships:
+
 ```rust
 #[derive(Clone, rum::macros::Model)]
+#[has_many(Order)]
+struct User {
+    id: Option<i64>,
+    email: String,
+    created_at: OffsetDateTime,
+    admin: bool,
+}
+
+#[derive(Clone, rum::macros::Model)]
 #[belongs_to(User)]
+#[has_many(Product)]
 struct Order {
     id: Option<i64>,
     user_id: i64,
@@ -401,6 +413,81 @@ let paying_users = User::all()
     .await?;
 ```
 
+Since columns in multiple tables can have the same name, e.g. `id`, `name`, etc, Rum can disambiguate them by including the table name in the column selection:
+
+```rust
+let column = Order::column("name");
+assert_eq!(column.to_sql(), r#""products"."name""#);
+```
+
+#### Nested joins
+
+Joins against models not immediately related to a model are possible by using nested joins:
+
+```rust
+let users_that_like_apples = User::all()
+    .join::<Order>()
+    .filter_gte(Order::column("total_amount"), 25.0)
+    .join_nested(Order::join::<Product>())
+    .filter(Product::column("name"), "apples")
+    .fetch_all(&mut conn)
+    .await?;
+```
+
+This will produce the following query:
+
+```sql
+SELECT "users".* FROM "users"
+INNER JOIN "orders" ON "orders"."user_id" = "users"."id"
+INNER JOIN "products" ON "products"."order_id" = "orders"."id"
+WHERE "orders"."total_amount" >= 25.0 AND
+"products"."name" = 'apples';
+```
+
+##### Ordering & limits
+
+Fetching records in a particular order can be easily done with:
+
+```rust
+let ascending = Order::all()
+    .order("total_amount") // ORDER BY total_amount
+    .fetch_all(&mut conn)
+    .await?;
+
+let descending = Order:all()
+    .order(("total_amount", "DESC")) // ORDER BY total_amount DESC
+    .fetch_all(&mut order)
+    .await?;
+```
+
+If joining multiple tables, it's best to disambiguate the ordering column, which is often present in all tables, e.g.:
+
+```rust
+let users = User::all()
+    .join::<Order>()
+    .order(("total_amount", "DESC"))
+    .order((User::column("created_at"), "DESC"))
+    .limit(25)
+    .fetch_all(&mut conn)
+    .await?;
+```
+
+Adding a limit to a query prevents fetching too many records at once. Limiting and paginating results can be done with `LIMIT` & `OFFSET`, for example:
+
+```rust
+let users = User::all()
+    .order("id")
+    .limit(25)
+    .offset(25)
+    .fetch_all(&mut conn)
+    .await?;
+```
+
+will produce the following query:
+
+```sql
+SELECT * FROM users ORDER BY id LIMIT 25 OFFSET 25
+```
 
 ##### SQL injection
 
@@ -418,3 +505,5 @@ will produce a syntax error:
 ```
 ERROR:  column users."; DROP TABLE users;" does not exist
 ```
+
+## Dynamic templates

@@ -179,7 +179,9 @@ mod models {
         pub fn recently_created(mut self) -> Self {
             self.scope = self
                 .scope
-                .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1));
+                .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1))
+                .limit(25)
+                .offset(1);
             self
         }
 
