@@ -656,12 +656,11 @@ let users = User::all()
     .await?;
 
 let template = Template::from_str(
-    "<ul>
-        <% for user in users %>
-            <li><%= user.email %></li>
-        <% end %>
-    </ul>
-    ")?;
+"<ul>
+    <% for user in users %>
+        <li><%= user.email %></li>
+    <% end %>
+</ul>")?;
 
 #[derive(rum::macros::Context)]
 struct Context {
