@@ -786,6 +786,18 @@ impl Controller for LoginController {
 
 You can safely store the primary key of your users table in the session since the session is encrypted. The browser can't see this value, only the Rum server can.
 
+##### Logging out users
+
+Users are automatically logged out after a period of inactivity (configurable, see [session validity](#session-validity)). Alternatively, you can call the `logout` method on the request
+and return the response:
+
+```rust
+async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    let response = request.logout();
+    Ok(response)
+}
+```
+
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.
