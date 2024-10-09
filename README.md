@@ -1093,6 +1093,8 @@ impl ModelController for UsersController {
 The model needs to be serializable into and from JSON, so make sure to derive the appropriate serde traits:
 
 ```rust
+use serde::{Serialize, Deserialize};
+
 #[derive(Clone, rust::macros::Model, Serialize, Deserialize)]
 struct User {
     id: Option<i64>,
@@ -1115,16 +1117,17 @@ async fn main() {
 }
 ```
 
-The `rest` path will automatically implement the following:
+The `rest` method will automatically implement the following:
 
 | Path | Method | Description |
 |------|--------|-------------|
 | `/api/users` | GET | List all users. Supports pagination, e.g. `?page_size=25&page=1`. Default page size is 25.|
 | `/api/users/:id` | GET | Fetch a user by primary key. |
-| `/api/users`| POST | Create a new user. All fields not marked optional not having serde-specified defaults are required. |
+| `/api/users`| POST | Create a new user. All fields not marked optional or not having serde-specified defaults are required. |
 | `/api/users/:id` | PUT | Update a user. Same requirement for fields as the create method above. |
 | `/api/users/:id` | PATCH | Update a user. Only the fields that have changed can be supplied. |
 
+TODO: add support for DELETE.
 
 ## Configuration
 
