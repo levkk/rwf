@@ -546,4 +546,4 @@ If you've written Rails before, you'll find this syntax familiar:
 | `<% else %>` | Else block. |
 | `<% for item in list %>` | For loop. |
 | `<% end %>` | Indicates the end of an if statement or for loop. |
-| `+` / `-` / `*` / `/`, `=`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
+| `+`, `-`, `*`, `/`, `=`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
