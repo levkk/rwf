@@ -760,6 +760,30 @@ When users visit a page served by this controller, they will be redirected to `/
 
 By default, sessions are valid for 4 days. This setting is [configurable](#configuration). If a user requests a page with a valid session, Rum will automatically renew the session for another session validity period; this ensures your active users don't get logged out.
 
+##### Anonymous sessions
+
+All requests to a Rum server are provided with a session. If the user is not logged in, the session is anonymous. This ensures that all requests are authenticated to a browser, which enables features like WebSockets and request tracking. Anonymous sessions are not allowed to access controllers protected by session authentication.
+
+##### Logging in users
+
+To login a user, call the `login` method on the request:
+
+```rust
+struct LoginController;
+
+#[rum::async_trait]
+impl Controller for LoginController {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        let user_id = 1234; // You can get this from the database, if you have a users table, for example.
+        let response = request.login(user_id);
+
+        Ok(response)
+    }
+}
+```
+
+You can safely store the primary key of your users table in the session since it's encrypted. The browser can't see this value, only the Rum server can.
+
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.
