@@ -270,7 +270,7 @@ let admins = User::admins()
     .await?;
 ```
 
-Scopes can be chained to write complex queries easily:
+Every time the scope is used, the same query will be executed. Scopes can be chained to write complex queries easily:
 
 ```rust
 impl User {
@@ -302,6 +302,7 @@ let mut user = User::find(15)
     .fetch(&mut conn)
     .await?;
 
+// Give superpowers to this user.
 user.admin = true;
 
 let admin = user
@@ -309,6 +310,15 @@ let admin = user
     .fetch(&mut conn)
     .await?;
 ```
+
+This will produce the following query:
+
+```sql
+UPDATE users SET email = $1, created_at = $2, admin = $3 WHERE id = $4
+```
+
+updating all columns based on the values in the Rust struct.
+
 
 #### Updating many records
 
@@ -325,6 +335,38 @@ User::filter("admin", true)
 ```
 
 This executes only one query, updating records matching the filter condition.
+
+#### Concurrent updates
+
+If a record is updated simultaneously from multiple places, one update operation may overwrite another. To prevent this, an exclusive lock can be placed on a record:
+
+```rust
+let mut transaction = Pool::begin().await?;
+
+let user = User::find(15)
+    .lock()
+    .fetch(&mut transaction)
+    .await?;
+
+user.admin = true;
+user.email = "admin@hello.com".into();
+
+let user = user
+    .save()
+    .fetch(&mut transaction)
+    .await?;
+
+transaction.commit().await?;
+```
+
+This will produce multiple queries and execute them inside a transaction:
+
+```sql
+BEGIN;
+SELECT * FROM users WHERE id = 15 FOR UPDATE;
+UPDATE users SET email = 'admin@hello.com', admin = true WHERE id = 15;
+COMMIT;
+```
 
 #### Joins
 
