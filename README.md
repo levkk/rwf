@@ -925,11 +925,11 @@ impl Job for SendEmail {
 }
 ```
 
-Background jobs allow for arbitrary arguments, encoded with JSON, and stored in the database.
+Background jobs support arbitrary arguments, which are encoded with JSON, and stored in the database.
 
 ### Running jobs
 
-Running a job is as simple as scheduling it asynchronously via:
+Running a job is as simple as scheduling it asynchronously with:
 
 ```rust
 let job = SendEmail {
@@ -944,7 +944,7 @@ job
 
 ### Spawning workers
 
-Workers are processes (threads really) that listen for background jobs and execute them. Since we use Tokio, the worker can be launched in the same process as the web server, but doesn't have to be:
+Workers are processes (Tokio tasks really) that listen for background jobs and execute them. Since we use Tokio, the worker can be launched in the same process as the web server, but doesn't have to be:
 
 ```rust
 use rum::job::Worker;
@@ -974,19 +974,16 @@ let daily_email = SendEmail {
     body: "I'm running 5 minutes late, the bus is delayed again.".into(),
 };
 
-let scheduled_job = SendEmail::default().schedule(
-    serde_json::to_value(&daily_email)?,
-    "0 0 9 * * *",
-);
+let scheduled_job = SendEmail::default()
+    .schedule(
+        serde_json::to_value(&daily_email)?,
+        "0 0 9 * * *",
+    );
 
-Worker::new(vec![
-    SendEmail::default().job(),
-])
-.clock(vec![
-    scheduled_job,
-])
-.start()
-.await?;
+Worker::new(vec![SendEmail::default().job(),])
+    .clock(vec![scheduled_job,])
+    .start()
+    .await?;
 ```
 
 See [scheduled jobs](examples/scheduled-jobs) for a complete example.
@@ -997,15 +994,16 @@ The cron accepts the standard Unix cron format. Up to second precision is allowe
 
 #### Clock ticks
 
-The scheduler runs every second. If a job is available, it will fetch all available jobs from then queue and run them sequentially. Once the queue is empty, it will go back to polling the queue once a second.
+The scheduler runs every second. If a job is available, it will execute it and immediately (without waiting for the next tick) fetch the next available job from then queue. If no more jobs are available, the scheduler will go back to polling the queue once a second.
 
 #### Durability
 
-Since Rum uses Postgres to store jobs, the job queue is durable (does not lose jobs) and saves the results of all job runs to a table, which will come in handy when inevitably some job does something you didn't expect.
+Since Rum uses Postgres to store jobs, the job queue is durable &dash; it does not lose jobs &dash; and saves the results of all job runs to a table, which comes in handy when some job does something you didn't expect.
 
 ### Spawning multiple workers
 
-You can spawn as many workers as you think is reasonable for your application. Concurrency is controlled via Postgres, so a particular job shouldn't run on more than one worker at a time.
+You can spawn as many workers as you think is reasonable for your application. Concurrency is controlled via Postgres, so a particular job won
+t run on more than one worker at a time.
 
 To spawn multiple workers inside the same Rust process, call `spawn()` after calling `start()`, for example:
 
@@ -1022,7 +1020,111 @@ will spawn 4 worker instances. Each instance will run in its own Tokio task.
 
 ### Queue guarantees
 
-The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design - if a job runs more than once, the end result is the same.
+The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design &dash; if a job runs more than once, the end result should be the same.
+
+## Database migrations
+
+Rum has built-in migrations for managing the schema of your database in a controlled manner. Migrations are applied sequentially, and each migration is executed inside a transaction for atomicity.
+
+### Writing migrations
+
+Currently Rum doesn't have a CLI (yet) to generate migrations, but creating one is easy. Migrations are SQL files which contain queries. To add a migration, create the a folder called `migrations` and place in it two files:
+
+- the "up" migration
+- the "down" migration
+
+The up migration makes the desired changes to your schema, while the down migration reverts those changes. All migrations should be revertible, in case of a problem.
+
+#### Naming convention
+
+Both the up and down migration files should follow this naming convention:
+
+```
+VERSION_NAME.(up|down).sql
+```
+
+where `VERSION` is any number, `NAME` is the name of the migration (underscores and hyphens allowed), and `(up|down)` is the type of the migration (up or down).
+
+For example, a migration to add the users table could be named `1_users_model.up.sql` while the migration to revert it would be `1_users_model.down.sql`. The `VERSION` number should be unique. Migrations are sorted by `VERSION` before being executed, so all your migrations should be versioned in ascending order of some integer. The current time in seconds is a great choice (`date +%s` in your terminal).
+
+### Running migrations
+
+In your Cargo project, you can create a binary target, e.g. `src/bin/migrations/main.rs` with:
+
+```rust
+use rum::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    Logger::init();
+
+    Migrations::migrate()
+        .await
+        .expect("migrations failed");
+}
+```
+
+and execute it, for example:
+
+```
+cargo run --bin migrations
+```
+
+See the [ORM example](examples/orm) for a complete example.
+
+## RESTful framework
+
+Rum comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) pattern.
+
+### Adding REST controllers
+
+To add a REST controller to your Rum app, your controller needs to implement the `ModelController` trait:
+
+```rust
+#[derive(rum::macros::ModelController)]
+struct UsersController;
+
+#[async_trait]
+impl ModelController for UsersController {
+    type Model = User;
+}
+```
+
+The model needs to be serializable into and from JSON, so make sure to derive the appropriate serde traits:
+
+```rust
+#[derive(Clone, rust::macros::Model, Serialize, Deserialize)]
+struct User {
+    id: Option<i64>,
+    email: String,
+    created_at: OffsetDateTime,
+    admin: bool,
+}
+```
+
+Adding the controller to the server is then simple:
+
+```rust
+#[tokio::main]
+async fn main() {
+    Server::new(vec![
+        UsersController::default().rest("/api/users"),
+    ])
+    .launch("0.0.0.0:8000")
+    .expect("failed to shut down server");
+}
+```
+
+The `rest` path will automatically implement the following:
+
+| Path | Method | Description |
+|------|--------|-------------|
+| `/api/users` | GET | List all users. Supports pagination, e.g. `?page_size=25&page=1`. Default page size is 25.|
+| `/api/users/:id` | GET | Fetch a user by primary key. |
+| `/api/users`| POST | Create a new user. All fields not marked optional not having serde-specified defaults are required. |
+| `/api/users/:id` | PUT | Update a user. Same requirement for fields as the create method above. |
+| `/api/users/:id` | PATCH | Update a user. Only the fields that have changed can be supplied. |
+
 
 ## Configuration
 
