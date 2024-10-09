@@ -1007,6 +1007,19 @@ Since Rum uses Postgres to store jobs, the job queue is durable (does not lose j
 
 You can spawn as many workers as you think is reasonable for your application. Concurrency is controlled via Postgres, so a particular job shouldn't run on more than one worker at a time.
 
+To spawn multiple workers inside the same Rust process, call `spawn()` after calling `start()`, for example:
+
+```rust
+Worker::new(vec![])
+    .start()
+    .await?
+    .spawn()
+    .spawn()
+    .spawn();
+```
+
+will spawn 4 worker instances. Each instance will run in its own Tokio task.
+
 ### Queue guarantees
 
 The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design - if a job runs more than once, the end result is the same.
