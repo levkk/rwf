@@ -513,9 +513,7 @@ Rum has its own template language, heavily inspired (if not shameless copied) fr
 ### Quick example
 
 ```erb
-<p>
-    <%= text %>
-</p>
+<p><%= text %></p>
 
 <ul>
 <% for item in list %>
@@ -528,8 +526,8 @@ Rum has its own template language, heavily inspired (if not shameless copied) fr
 </script>
 
 <% if truthy_value %>
-<p>Now you see me</p>
+    <p>Now you see me</p>
 <% else %>
-<p>Now you don't</p>
+    <p>Now you don't</p>
 <% end %>
 ```
