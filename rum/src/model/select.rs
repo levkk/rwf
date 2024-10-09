@@ -17,7 +17,7 @@ enum Op {
     LesserEqualThan,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Select<T: FromRow + ?Sized> {
     pub table_name: String,
     pub primary_key: String,

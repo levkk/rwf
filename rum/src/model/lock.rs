@@ -1,6 +1,6 @@
 use super::ToSql;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Lock {
     lock: bool,
     skip_locked: bool,

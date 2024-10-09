@@ -1,6 +1,6 @@
 use super::ToSql;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Limit {
     limit: Option<i64>,
     offset: Option<i64>,

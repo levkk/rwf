@@ -3,7 +3,7 @@ use super::{
 };
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Update<T> {
     table_name: String,
     primary_key: String,

@@ -4,7 +4,7 @@ pub use crate::controller::{Controller, Error, ModelController, RestController, 
 pub use crate::http::{Message, Request, Response};
 pub use crate::job::Job;
 pub use crate::logging::Logger;
-pub use crate::model::{Migrations, Model, Pool, Scope};
+pub use crate::model::{Migrations, Model, Pool, Scope, ToSql};
 pub use crate::view::{Template, TurboStream};
 
 pub use async_trait::async_trait;

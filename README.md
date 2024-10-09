@@ -129,7 +129,7 @@ let user = User::create(&[
 
 ##### Rust to Postgres type conversion
 
-Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation, `rum::model::Value`, explicitly by calling `ToValue::to_value`:
+Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation explicitly (`rum::model::Value`), by calling `ToValue::to_value` method:
 
 ```rust
 let pg_value = 1_i64.to_value();
@@ -198,9 +198,15 @@ This executes the following query:
 SELECT * FROM users WHERE id = 15;
 ```
 
-##### Searching by fields
+##### Primary key requirement
 
-Filtering on one or multiple fields:
+Unlike ActiveRecord, Rum's ORM requires all models to have a primary key. Without a primary key, operations like joins, updates, and deletes become inefficient and difficult.
+
+Rum currently defaults the the `id` column as the primary key. Customizing the primary key is on the roadmap, including allowing compound keys.
+
+##### Searching by multiple columns
+
+Filtering on one or multiple columns:
 
 ```rust
 use time::Duration;
@@ -208,8 +214,15 @@ use time::Duration;
 let new_admins = User::all()
     .filter("admin", true)
     .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1))
+    .filter_lte("created_at", OffsetDateTime::now_utc())
     .fetch_all(&mut conn)
     .await?;
+```
+
+which produces the following query:
+
+```sql
+SELECT * FROM users WHERE admin = $1 AND created_at >= $2 AND created_at <= $3
 ```
 
 Basic comparison operations on most data types are supported:
@@ -225,18 +238,23 @@ Basic comparison operations on most data types are supported:
 | `IN` | `filter` with a slice as the value |
 | `NOT IN` | `not` / `filter_not` with a slice as the value |
 
-For example, finding records with specific emails:
+For example, finding records by filtering on multiple values:
 
 ```rust
-User::filter("email", ["joe@hello.com", "marry@hello.com"].as_slice())
+User::not("email", ["joe@hello.com", "marry@hello.com"].as_slice())
     .fetch_all(&mut conn)
     .await?;
 ```
 
+which would produce the following query:
+
+```sql
+SELECT * FROM users WHERE email NOT IN ('joe@hello.com', 'marry@hello.com');
+```
 
 #### Scopes
 
-If a query is used frequently, you can add it as as scope to the model:
+If a query is used frequently, you can add it as a scope to the model:
 
 ```rust
 impl User {
@@ -310,8 +328,6 @@ This executes only one query, updating records matching the filter condition.
 
 #### Joins
 
-
-
 ```rust
 #[derive(Clone, rum::macros::Model)]
 #[belongs_to(User)]
@@ -341,4 +357,22 @@ let paying_users = User::all()
     .filter_gte(Order::column("total_amount"), 1.0)
     .fetch_all(&mut conn)
     .await?;
+```
+
+
+##### SQL injection
+
+Rum uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
+
+```rust
+User::all()
+    .filter("\"; DROP TABLE users;\"", true)
+    .execute(&mut conn)
+    .await?;
+```
+
+will produce a syntax error:
+
+```
+ERROR:  column users."; DROP TABLE users;" does not exist
 ```

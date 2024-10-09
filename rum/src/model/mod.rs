@@ -139,7 +139,7 @@ pub trait ToSql {
 }
 
 /// The ORM query builder. All queries are constructed using this enum.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Query<T: FromRow + ?Sized = Row> {
     Select(Select<T>),
     Update(Update<T>),

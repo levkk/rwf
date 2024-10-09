@@ -77,7 +77,7 @@ impl Column {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Columns {
     columns: Vec<Column>,
     table_name: Option<String>,

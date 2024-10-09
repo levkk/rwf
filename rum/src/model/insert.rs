@@ -1,7 +1,7 @@
 use super::{Column, Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue};
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Insert<T> {
     table_name: String,
     columns: Vec<Column>,

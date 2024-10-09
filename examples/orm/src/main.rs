@@ -110,17 +110,12 @@ mod models {
 
         /// Get users created recently.
         pub fn created_recently(scope: Scope<Self>) -> Scope<Self> {
-            scope.filter_gte(
-                "created_at",
-                OffsetDateTime::now_utc() - Duration::days(1)
-            )
+            scope.filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1))
         }
 
         /// Get admins created recently.
         pub fn new_admins() -> Scope<Self> {
-            Self::created_recently(
-                Self::admins()
-            )
+            Self::created_recently(Self::admins())
         }
 
         #[allow(dead_code)]
@@ -162,6 +157,34 @@ mod models {
             let mut conn = Pool::connection().await?;
 
             Ok(self.save().fetch(&mut conn).await?)
+        }
+    }
+
+    /// Write your own ORM.
+    #[derive(Clone)]
+    pub struct UserOrm {
+        scope: Scope<User>,
+    }
+
+    impl UserOrm {
+        pub fn all() -> Self {
+            UserOrm { scope: User::all() }
+        }
+
+        pub fn admins(mut self) -> Self {
+            self.scope = self.scope.filter("admin", true);
+            self
+        }
+
+        pub fn recently_created(mut self) -> Self {
+            self.scope = self
+                .scope
+                .filter_gte("created_at", OffsetDateTime::now_utc() - Duration::days(1));
+            self
+        }
+
+        pub fn build(self) -> Scope<User> {
+            self.scope
         }
     }
 }
@@ -234,7 +257,8 @@ async fn main() -> Result<(), Error> {
     assert!(task.completed_at.is_some());
 
     let _users = User::filter("email", ["test@test.com", "joe@test.com"].as_slice())
-        .fetch_all(&mut conn).await?;
+        .fetch_all(&mut conn)
+        .await?;
 
     let _recent_admins = User::new_admins().fetch_all(&mut conn).await?;
 
@@ -243,12 +267,19 @@ async fn main() -> Result<(), Error> {
         .fetch(&mut conn)
         .await?;
 
-    let _user = User::find_or_create_by(&[
-        ("email", "hello221212322@test.com"),
-    ])
-    .unique_by(&["email"])
-    .fetch(&mut conn)
-    .await?;
+    let _user = User::find_or_create_by(&[("email", "hello221212322@test.com")])
+        .unique_by(&["email"])
+        .fetch(&mut conn)
+        .await?;
+
+    User::all().filter("\"; DROP TABLE users;\"", true).to_sql();
+
+    let _users = UserOrm::all()
+        .admins()
+        .recently_created()
+        .build()
+        .fetch_all(&mut conn)
+        .await?;
 
     Ok(())
 }
