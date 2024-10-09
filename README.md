@@ -62,7 +62,9 @@ See [examples](examples) for common use cases.
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
 
-# Features
+## Features
+
+Just like Django or Rails, Rum comes standard with most features needed to build modern web apps. A non-exhaustive list is below, with new features added with every commit.
 
 ## HTTP server
 
