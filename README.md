@@ -62,13 +62,13 @@ See [examples](examples) for common use cases.
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
 
-## Features
+# Features
 
-### HTTP server
+## HTTP server
 
-Rum's built-in HTTP server is asynchronous and supports millions of connections.
+Rum has a built-in asynchronous HTTP server which supports millions of concurrent connections.
 
-### The ORM
+## The ORM
 
 Rum's ORM is inspired by a healthy mix of Django and ActiveRecord. Declaring models is as simple as:
 
@@ -1148,9 +1148,13 @@ $ curl localhost:8000/api/users -d '{"email": "test@test.com"}' -w '\n'
 
 Serde allows full control over how fields are serialized and deserialized, including rewriting, renaming, and skipping fields entirely. See [Serde documentation](https://serde.rs/field-attrs.html) for more details.
 
-## Writing your own REST controller
+### Writing your own REST controller
 
 You can write your own REST controller by implementing the `RestController` trait. See [the code](rum/src/controller/mod.rs) for details.
+
+## WebSockets
+
+Rum supports WebSockets out of the box. A WebSockets controller is just another controller which implements the `WebsocketController` trait. 
 
 ## Configuration
 
