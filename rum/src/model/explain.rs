@@ -29,7 +29,7 @@ impl Model for Explain {
 
 impl std::fmt::Display for Explain {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.plan)
+        write!(f, "{}", self.plan.trim())
     }
 }
 

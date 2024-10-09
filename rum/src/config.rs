@@ -112,6 +112,7 @@ impl Config {
         config.aes_key = aes_key;
         config.secure_id_key = secure_id_key;
         config.log_queries = config_file.general.log_queries;
+        config.cache_templates = config_file.general.cache_templates;
 
         if let Err(_) = CONFIG.set(config) {
             return Err(Error::ConfigLoaded);
@@ -149,6 +150,8 @@ struct General {
     secret_key: String,
     #[serde(default = "General::default_log_queries")]
     log_queries: bool,
+    #[serde(default = "General::default_cache_templates")]
+    cache_templates: bool,
 }
 
 impl General {
@@ -174,5 +177,9 @@ impl General {
         let bytes = rand::thread_rng().gen::<[u8; 256 / 8]>();
 
         general_purpose::STANDARD.encode(&bytes)
+    }
+
+    fn default_cache_templates() -> bool {
+        false
     }
 }

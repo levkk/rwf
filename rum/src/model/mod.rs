@@ -149,7 +149,10 @@ pub enum Query<T: FromRow + ?Sized = Row> {
         insert: Insert<T>,
         created: bool,
     },
-    Raw(String),
+    Raw {
+        query: String,
+        placeholders: Placeholders,
+    },
 }
 
 impl<T: FromRow> ToSql for Query<T> {
@@ -158,7 +161,7 @@ impl<T: FromRow> ToSql for Query<T> {
 
         match self {
             Select(select) => select.to_sql(),
-            Raw(query) => query.clone(),
+            Raw { query, .. } => query.clone(),
             Update(update) => update.to_sql(),
             Insert(insert) => insert.to_sql(),
             InsertIfNotExists { select, insert, .. } => {
@@ -495,7 +498,13 @@ impl<T: Model> Query<T> {
                 client.query_cached(&query, &values).await
             }
 
-            Query::Raw(query) => client.query_cached(query, &[]).await,
+            Query::Raw {
+                query,
+                placeholders,
+            } => {
+                let values = placeholders.values();
+                client.query_cached(query, &values).await
+            }
 
             Query::Update(update) => {
                 let query = self.to_sql();
@@ -566,7 +575,18 @@ impl<T: Model> Query<T> {
     ///
     /// Take the actual query, prepend `EXPLAIN` and execute.
     pub async fn explain(self, conn: &mut ConnectionGuard) -> Result<Explain, Error> {
-        let query = Query::<Explain>::Raw(format!("EXPLAIN {}", self.to_sql()));
+        let query = format!("EXPLAIN {}", self.to_sql());
+        let placeholders = match self {
+            Query::Select(select) => select.placeholders,
+            Query::Update(update) => update.placeholders,
+            Query::Insert(insert) => insert.placeholders,
+            _ => todo!("explain"),
+        };
+
+        let query = Query::<Explain>::Raw {
+            query,
+            placeholders,
+        };
         match query.execute_internal(conn).await?.pop() {
             Some(explain) => Ok(Explain::from_row(explain)?),
             None => Err(Error::RecordNotFound),
@@ -621,7 +641,7 @@ impl<T: Model> Query<T> {
         match self {
             Query::Select(_) => "load",
             Query::Update(_) => "save",
-            Query::Raw(_) => "query",
+            Query::Raw { .. } => "query",
             Query::Insert(_) => "save",
             Query::InsertIfNotExists { .. } => "load/create",
         }
@@ -743,7 +763,10 @@ pub trait Model: FromRow {
 
     /// Whatever you want.
     fn find_by_sql(query: impl ToString) -> Query<Self> {
-        Query::Raw(query.to_string())
+        Query::Raw {
+            query: query.to_string(),
+            placeholders: Placeholders::new(),
+        }
     }
 
     fn order(order: impl ToOrderBy) -> Query<Self> {

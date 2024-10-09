@@ -489,6 +489,45 @@ will produce the following query:
 SELECT * FROM users ORDER BY id LIMIT 25 OFFSET 25
 ```
 
+##### Counting rows
+
+Counting rows can be done by calling `count` instead of `fetch`, for example:
+
+```rust
+let users_count = User::all()
+    .filter("email", Value::Null)
+    .count(&mut conn)
+    .await?;
+
+assert_eq!(users_count, 0);
+```
+
+##### Show the queries
+
+If you want to see what queries Rum is building underneath, you can enable query logging in the [configuration](#configuration) or call `to_sql` on the scope to output the query string, for example:
+
+```rust
+let query = User::all().to_sql();
+assert_eq!(query, "SELECT * FROM \"users\"");
+```
+
+##### Explain
+
+Getting the query plan for a query instead of running it can be done by calling `explain` instead of `fetch`:
+
+```rust
+let query_plan = User::all()
+    .filter_lte("created_at", OffsetDateTime::now_utc())
+    .limit(25)
+    .explain(&mut conn)
+    .await?;
+
+println!("{}", query_plan);
+// Filter: (created_at <= '2024-10-09 10:23:31.561024-07'::timestamp with time zone)
+```
+
+If explaining update/insert queries, make sure to do so inside a transaction (and rolling it back when done) to avoid writing data to tables.
+
 ##### SQL injection
 
 Rum uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
@@ -552,13 +591,7 @@ Rum's templates syntax is very small and simple:
 
 ### Rendering templates
 
-Templates can be fetched from files or directly from a Rust string. For example, if you have an `templates` folder with the file `index.html` containing:
-
-```html
-<p>Ahoy there, <%= first_name %>!</p>
-```
-
-you can render it in Rust with:
+Templates can be rendered directly from a Rust string:
 
 ```rust
 #[derive(rum::macros::Context)]
@@ -566,9 +599,49 @@ struct Index {
     first_name: String,
 }
 
-let template = Template::cached("templates/index.html").await?;
+let template = Template::from_str("<p>Ahoy there, <%= first_name %>!</p>")?;
 let context = Index { first_name: "Josh".into() };
-let string = template.render(context.try_into()?)?;
 
-assert_eq!(string, "<p>Ahoy there, Josn!</p>");
+let result = template.render(context.try_into()?)?;
+
+assert_eq!(result, "<p>Ahoy there, Josh!</p>");
+```
+
+Templates can be placed in files anywhere the Rust program can access them:
+
+```rust
+let template = Template::cached("templates/index.html").await?;
+let result = template.render(context.try_into()?)?;
+```
+
+Templates don't have to be HTML, and can be used to render any kind of files, e.g. plain text, CSS, JavaScript, etc.
+
+### Caching templates
+
+Reading templates from disk is usually quick, but compiling them can take some time. In development, they are compiled every time they are fetched, which allows to iterate on their contents quickly, while in production they are cached in memory for performance.
+
+The caching behavior is controlled via configuration and requires no code modifications:
+
+```toml
+[general]
+cache_templates = true
+```
+
+See [Configuration][#configuration] for more details on how to configure Rum apps.
+
+
+## Configuration
+
+Configuring Rum apps can be done via environment variables or a TOML configuration file.
+
+### Rum.toml
+
+Rum.toml is a configuration file using the TOML configuration language.
+
+#### Example
+
+```toml
+[general]
+log_queries = true
+cache_templates = false
 ```

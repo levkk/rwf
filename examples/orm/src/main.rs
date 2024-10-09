@@ -283,5 +283,12 @@ async fn main() -> Result<(), Error> {
         .fetch_all(&mut conn)
         .await?;
 
+    let query_plan = User::all()
+        .filter_lte("created_at", OffsetDateTime::now_utc())
+        .limit(25)
+        .explain(&mut conn)
+        .await?;
+    println!("{}", query_plan);
+
     Ok(())
 }
