@@ -776,6 +776,7 @@ impl Controller for LoginController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let user_id = 1234; // You can get this from the database,
                             // if you have a users table, for example.
+
         let response = request.login(user_id);
 
         Ok(response)
@@ -783,7 +784,7 @@ impl Controller for LoginController {
 }
 ```
 
-You can safely store the primary key of your users table in the session since it's encrypted. The browser can't see this value, only the Rum server can.
+You can safely store the primary key of your users table in the session since the session is encrypted. The browser can't see this value, only the Rum server can.
 
 ## Configuration
 
