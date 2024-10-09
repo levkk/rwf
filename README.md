@@ -549,3 +549,26 @@ Rum's templates syntax is very small and simple:
 | `<% for item in list %>` | For loop. |
 | `<% end %>` | Indicates the end of an if statement or for loop. |
 | `+`, `-`, `*`, `/`, `==`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
+
+### Rendering templates
+
+Templates can be fetched from files or directly from a Rust string. For example, if you have an `templates` folder with the file `index.html` containing:
+
+```html
+<p>Ahoy there, <%= first_name %>!</p>
+```
+
+you can render it in Rust with:
+
+```rust
+#[derive(rum::macros::Context)]
+struct Index {
+    first_name: String,
+}
+
+let template = Template::cached("templates/index.html").await?;
+let context = Index { first_name: "Josh".into() };
+let string = template.render(context.try_into()?)?;
+
+assert_eq!(string, "<p>Ahoy there, Josn!</p>");
+```
