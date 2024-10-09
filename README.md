@@ -1097,9 +1097,17 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Clone, rust::macros::Model, Serialize, Deserialize)]
 struct User {
+    // Hide this field entirely from the API.
+    #[serde(skip_deserializing)]
     id: Option<i64>,
+
+    // The only required field at the API.
     email: String,
+
+    #[serde(with = "time::serde::iso8601", default = "OffsetDateTime::now_utc")]
     created_at: OffsetDateTime,
+
+    #[serde(default="bool::default")]
     admin: bool,
 }
 ```
@@ -1127,7 +1135,22 @@ The `rest` method will automatically implement the following:
 | `/api/users/:id` | PUT | Update a user. Same requirement for fields as the create method above. |
 | `/api/users/:id` | PATCH | Update a user. Only the fields that have changed can be supplied. |
 
-TODO: add support for DELETE.
+
+You can test this with cURL:
+
+```
+$ curl localhost:8000/api/users -d '{"email": "test@test.com"}' -w '\n'
+
+{"email":"test@test.com","created_at":"+002024-10-09T22:59:10.693321000Z","admin":false}
+```
+
+### Customizing serialization
+
+Serde allows full control over how fields are serialized and deserialized, including rewriting, renaming, and skipping fields entirely. See [Serde documentation](https://serde.rs/field-attrs.html) for more details.
+
+## Writing your own REST controller
+
+You can write your own REST controller by implementing the `RestController` trait. See [the code](rum/src/controller/mod.rs) for details.
 
 ## Configuration
 
