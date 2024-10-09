@@ -897,6 +897,73 @@ Middleware is evaluated in the order it's added to the middleware set. The middl
 
 To modify responses, implement the `handle_response` method on the `Middleware` trait. See the included [request rate limiter](rum/src/controller/middleware/rate_limiter.rs) middleware for complete example.
 
+## Background jobs
+
+Rum comes with its own background jobs queue, workers, and scheduler (also known as clock). The jobs queue is based on Postgres, and uses `SELECT .. FOR UPDATE SKIP LOCKED`, which is an efficient mechanism introduced in recent versions of the database server.
+
+### Creating background jobs
+
+Just like with all previous features, Rum uses the Rust trait system to define background jobs:
+
+```rust
+use serde::{Serialize, Deserialize};
+use rum::job::{Job, Error as JobError};
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+struct SendEmail {
+    email: String,
+    body: String,
+}
+
+#[rum::async_trait]
+impl Job for SendEmail {
+    async fn execute(&self, args: serde_json::Value) -> Result<(), JobError> {
+        // Send an email using Sendgrid or sendmail!
+        let args: SendEmail = serde_json::from_value(args)?;
+        println!("Sending {} to {}", args.email, args.body);
+    }
+}
+```
+
+Background jobs allow for arbitrary arguments, encoded with JSON, and stored in the database.
+
+### Running jobs
+
+Running a job is as simple as scheduling it asynchronously via:
+
+```rust
+let job = SendEmail {
+    email: "test@hello.com".into(),
+    body: "How are you today?".into(),
+};
+
+job
+    .execute_async(serde_json::to_value(&job)?)
+    .await?;
+```
+
+### Spawning workers
+
+Workers are processes (threads really) that listen for background jobs and execute them. Since we use Tokio, the worker can be launched in the same process as the web server, but doesn't have to be:
+
+```rust
+use rum::job::Worker;
+use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() -> Result<(), JobError> {
+    Worker::new(vec![
+        SendEmail::default().job(),
+    ])
+    .start()
+    .await?;
+
+    sleep(Duration::MAX).await;
+}
+```
+
+By extension, the Rum job queue is durable (does not lose jobs) and saves the results of all job runs to a table, which will come in handy when inevitably some job does something you didn't expect.
+
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.
