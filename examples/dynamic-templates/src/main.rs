@@ -29,12 +29,10 @@ impl Controller for IndexController {
             items: vec!["why".into(), "are".into(), "you".into(), "yelling".into()],
             show: rand::thread_rng().gen::<bool>(),
             planets: rand::thread_rng().gen_range(1..=3),
-            users: vec![
-                User {
-                    id: Some(1),
-                    email: "hello@test.com".into(),
-                }
-            ],
+            users: vec![User {
+                id: Some(1),
+                email: "hello@test.com".into(),
+            }],
         };
 
         let rendered = Template::cached("templates/index.html")

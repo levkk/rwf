@@ -34,8 +34,6 @@ impl Placeholders {
 
 impl From<Vec<Value>> for Placeholders {
     fn from(values: Vec<Value>) -> Self {
-        Placeholders {
-            values
-        }
+        Placeholders { values }
     }
 }

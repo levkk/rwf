@@ -798,6 +798,34 @@ async fn handle(&self, request: &Request) -> Result<Response, Error> {
 }
 ```
 
+#### Implementing your own authentication
+
+Rum authentication is fully customizable. You can implement your own authentication mechanism by implementing the `Authentication` trait:
+
+```rust
+use rum::controller::auth::Authentication;
+
+struct NoWorkSundays;
+
+#[rum::async_trait]
+impl Authentication for NoWorkSundays {
+    /// Return true if request is allowed, false to deny it.
+    async fn authorize(&self, request: &Request) -> Result<bool, Error> {
+        let now = OffsetDateTime::now_utc();
+
+        let bypass = request.headers().get("X-I-Need-To-Work-Today").is_some();
+
+        // Allow access on all days except Sunday.
+        Ok(now.day() != 0 || bypass)
+    }
+
+    /// Optional access denied response.
+    async fn denied(&self) -> Result<Response, Error> {
+        Ok(Response::redirect("https://www.nps.gov"))
+    }
+}
+```
+
 ## Configuration
 
 Configuring Rum apps can be done via environment variables or a TOML configuration file.

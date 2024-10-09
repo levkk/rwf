@@ -765,7 +765,11 @@ pub trait Model: FromRow {
     fn find_by_sql(query: impl ToString, values: &[Value]) -> Query<Self> {
         Query::Raw {
             query: query.to_string(),
-            placeholders: values.iter().map(|v| v.to_value()).collect::<Vec<_>>().into(),
+            placeholders: values
+                .iter()
+                .map(|v| v.to_value())
+                .collect::<Vec<_>>()
+                .into(),
         }
     }
 
