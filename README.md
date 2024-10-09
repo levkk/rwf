@@ -186,7 +186,7 @@ let user = User::find(15)
 
 This executes the following query:
 
-```postgresql
+```sql
 SELECT * FROM users WHERE id = 15;
 ```
 
@@ -240,8 +240,11 @@ User::filter("email", &values)
 
 which will produce this query:
 
-```posgresql
-SELECT * FROM users WHERE email = ANY('{1, 2, ''Is this duck typing?'', ''No, it''s just Rust traits''');
+```sql
+SELECT * FROM users
+WHERE email = ANY(
+    '{1, 2, ''Is this duck typing?'', ''No, it''s just Rust traits'''
+);
 ```
 
 
