@@ -689,7 +689,55 @@ See [Configuration](#configuration) for more details on how to configure templat
 
 ## Authentication & sessions
 
-Rum has a customizable authentication and authorization system. Each HTTP request can be checked against some conditions, e.g. a header, cookie value, and authorized to access controllers. If authorization fails, a default response, like a redirect or a `403 - Forbidden` can be returned.
+Rum has a customizable authentication and authorization system. All HTTP requests can be checked against some conditions, e.g. a header, cookie value, and authorized to access controllers. If authorization fails, a default response, like a redirect or a `403 - Forbidden` can be returned.
+
+### Included authentication
+
+Rum comes with three authentication mechanisms:
+
+1. Basic HTTP authentication
+2. Token-based authentication (incl. bearer tokens)
+3. Session authentication
+
+#### Enabling authentication
+
+The default behavior for all controllers is to allow all requests. To enable authentication, implement the `auth` method when defining a controller:
+
+```rust
+use rum::controller::auth::{BasicAuth, AuthHandler}
+
+struct ProtectedController {
+    auth: AuthHandler,
+}
+
+impl ProtectedController {
+    fn new() -> ProtectedController {
+        Self {
+            auth: AuthHandler::new(BasicAuth {
+                user: "admin".to_string(),
+                password: "super-secret".to_string(),
+            })
+        }
+    }
+}
+
+impl Controller for ProtectedController {
+    /// Specify the authentication handler for this controller.
+    fn auth(&self) -> &AuthHandler {
+        &self.auth
+    }
+
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
+        Ok(Response::new().text("Welcome to the protected area!"));
+    }
+}
+```
+
+When a browser opens a page served by this controller, a user/password prompt will have to be filled to see the protected page.
+
+#### Session authentication
+
+To authenticate requests, Rum implements its own session control. The session is stored as an encrypted cookie and read on each request. If the session is expired, access is denied. Arbitrary date can be stored in the session, e.g. user email, unique identifier, etc.
 
 ## Configuration
 
