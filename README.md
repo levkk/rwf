@@ -58,7 +58,7 @@ async fn main() {
 
 See [examples](examples) for common use cases.
 
-## Status :construction:
+## :construction: Status :construction:
 
 Rum is in early development and not ready for production. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
 
@@ -87,9 +87,9 @@ struct User {
 
 #### Creating records
 
-Creating new records can be done in two ways: by saving a record with no primary key or by explicitly using `Model::create`.
+Creating new records can be done in two ways: by saving a record with an empty primary key or by explicitly using `Model::create` method.
 
-##### Record with no primary key
+##### Record with empty primary key
 
 ```rust
 let user = User {
@@ -105,7 +105,7 @@ let user = user
     .await?;
 ```
 
-##### Creating explicitly
+##### Creating records explicitly
 
 ```rust
 let user = User::create(&[
@@ -129,7 +129,7 @@ let user = User::create(&[
 
 ##### Handling conflicts
 
-If you have unique indexes on a column, you may run into unique constraint violations when creating new records. To avoid them, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
+If your table has a unique index, you may run into unique constraint violations when creating records. To avoid that, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
 
 ```rust
 let user = User::create(&[
@@ -140,7 +140,7 @@ let user = User::create(&[
     .await?;
 ```
 
-If you are fairly confident the record already exists, you can avoid writing to the table by searching for that row first:
+If you are reasonably confident the record already exists, you can avoid writing to the table by searching for it first:
 
 ```rust
 let user = User::find_or_create_by(&[
@@ -151,20 +151,26 @@ let user = User::find_or_create_by(&[
     .await?;
 ```
 
-This will issue up to two queries:
+This will execute up to two queries:
 
 1. `SELECT` to find the record, and if it doesn't exist
 2. `INSERT ... ON CONFLICT DO UPDATE` to insert a new record, updating it in-place if it exists
 
-If the table doesn't have unique constraints, you can still use `find_or_create_by`, except duplicate records can occur if the same query is executed concurrently from multiple places in the code.
+If the table doesn't have unique constraints, you can still use `find_or_create_by`, except duplicate records can be created if the same query is executed more than once:
+
+```rust
+let user = User::find_or_create_by(&[("email", "hello@test.com")])
+    .fetch(&mut conn)
+    .await?;
+```
 
 #### Finding records
 
-Rum's ORM supports many ways for fetching records, including joins, OR-queries, and `SELECT FOR UPDATE` for exclusive locks.
+Rum's ORM supports many ways for fetching records, including searching by any column, joining tables, OR-ing multiple conditions together, and row-level locking.
 
 ##### Find by primary key
 
-Finding a record by primary key is as simple as:
+Find a record by primary key:
 
 ```rust
 let user = User::find(15)
@@ -178,9 +184,15 @@ let user = User::find(15)
     .fetch_optional(&mut conn).await?;
 ```
 
+This executes the following query:
+
+```postgresql
+SELECT * FROM users WHERE id = 15;
+```
+
 ##### Searching by fields
 
-Filtering on one or multiple fields is easy:
+Filtering on one or multiple fields:
 
 ```rust
 use time::Duration;
@@ -192,7 +204,7 @@ let new_admins = User::all()
     .await?;
 ```
 
-Basic comparison operations are supported:
+Basic comparison operations on most data types are supported:
 
 | Operation | Function |
 |-----------|----------|
@@ -212,6 +224,26 @@ User::filter("email", ["joe@hello.com", "marry@hello.com"].as_slice())
     .fetch_all(&mut conn)
     .await?;
 ```
+
+Rust types are converted to Postgres types automatically. If multiple Rust types are used in a single function call, e.g. in a slice, convert them to an internal representation explicitly using `rum::model::Value::to_value`, for example:
+
+```rust
+let values = [
+    2_i64.to_value(),
+    "Is this duck typing?".to_value(),
+    String::new("No, it's just Rust traits").to_value(),
+];
+
+User::filter("email", &values)
+    .fetch_all(&mut conn).await?;
+```
+
+which will produce this query:
+
+```posgresql
+SELECT * FROM users WHERE email = ANY('{1, 2, ''Is this duck typing?'', ''No, it''s just Rust traits''');
+```
+
 
 #### Scopes
 
@@ -289,7 +321,7 @@ This executes only one query, updating records matching the filter condition.
 
 #### Joins
 
-Joins are handled by declaring relationships between models:
+
 
 ```rust
 #[derive(Clone, rum::macros::Model)]
