@@ -507,3 +507,29 @@ ERROR:  column users."; DROP TABLE users;" does not exist
 ```
 
 ## Dynamic templates
+
+Rum has its own template language, heavily inspired (if not shameless copied) from Rails' ERB. The syntax is pretty small and simple.
+
+### Quick example
+
+```erb
+<p>
+    <%= text %>
+</p>
+
+<ul>
+<% for item in list %>
+    <li><%= item.lower %><li>
+<% end %>
+<ul>
+
+<script>
+<%- no_user_inputs_allowed_code %>
+</script>
+
+<% if truthy_value %>
+<p>Now you see me</p>
+<% else %>
+<p>Now you don't</p>
+<% end %>
+```
