@@ -612,6 +612,7 @@ Rum's templates syntax is very small and simple:
 | `<%` | Code block start. |
 | `%>` | Code block end. |
 | `<%=` | Print the following expression value (don't forget to close the code block). |
+| `<%-` | Print expression without escaping "dangerous" HTML characters. |
 | `<% if expression %>` | If block which evaluates the expression for truthiness. |
 | `<% elsif expression %>`| Else if block, works just like the if block. |
 | `<% else %>` | Else block. |
@@ -683,7 +684,7 @@ The caching behavior is controlled via configuration and requires no code modifi
 cache_templates = true
 ```
 
-See [Configuration][#configuration] for more details on how to configure Rum apps.
+See [Configuration](#configuration) for more details on how to configure Rum apps.
 
 
 ## Configuration
