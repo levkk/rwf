@@ -528,6 +528,21 @@ println!("{}", query_plan);
 
 If explaining update/insert queries, make sure to do so inside a transaction (and rolling it back when done) to avoid writing data to tables.
 
+##### Fetching related models
+
+To avoid N+1 queries, Rum provides a way to fetch related models in a single query, for example:
+
+```rust
+let users = User::all()
+    .limit(25)
+    .fetch_all(&mut conn)
+    .await?;
+
+let users_orders = User::related::<Order>(&users)
+    .fetch_all(&mut conn)
+    .await?;
+```
+
 ##### SQL injection
 
 Rum uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
@@ -543,6 +558,21 @@ will produce a syntax error:
 
 ```
 ERROR:  column users."; DROP TABLE users;" does not exist
+```
+
+##### Bypassing the ORM
+
+Sometimes a query is too complicated to be written with an ORM. Rum provides a simple "break glass" functionality to pass in arbitrary queries and map them to a model:
+
+```rust
+let users = User::find_by_sql(
+    "SELECT * FROM users WHERE email LIKE 'hello%' AND created_at < $1",
+    &[
+        OffsetDateTime::now_utc().to_value(),
+    ]
+)
+    .fetch_all(&mut conn)
+    .await?;
 ```
 
 ## Dynamic templates
@@ -615,6 +645,33 @@ let result = template.render(context.try_into()?)?;
 ```
 
 Templates don't have to be HTML, and can be used to render any kind of files, e.g. plain text, CSS, JavaScript, etc.
+
+### Passing values to templates
+
+Rum's templates support many data types, e.g. strings, integers, lists, hashes, and even models. For example, a list of users can be passed directly into a template:
+
+```rust
+let users = User::all()
+    .fetch_all(&mut conn)
+    .await?;
+
+let template = Template::from_str(
+    "<ul>
+        <% for user in users %>
+            <li><%= user.email %></li>
+        <% end %>
+    </ul>
+    ")?;
+
+#[derive(rum::macros::Context)]
+struct Context {
+    users: Vec<User>,
+}
+
+let context = Context { users };
+
+let rendered = template.render(&context.try_into()?)?;
+```
 
 ### Caching templates
 

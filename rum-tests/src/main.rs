@@ -326,7 +326,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(count, 1);
 
-    let raw = User::find_by_sql("SELECT * FROM users LIMIT 1")
+    let raw = User::find_by_sql("SELECT * FROM users LIMIT 1", &[])
         .fetch(&mut conn)
         .await?;
     assert_eq!(raw.id, Some(2));

@@ -290,5 +290,14 @@ async fn main() -> Result<(), Error> {
         .await?;
     println!("{}", query_plan);
 
+    let users = User::find_by_sql(
+        "SELECT * FROM users WHERE created_at < NOW() AND email = $1",
+        &["test@test.com".to_value()],
+    )
+    .fetch_all(&mut conn)
+    .await?;
+
+    let _tasks = User::related::<Task>(&users).fetch_all(&mut conn).await?;
+
     Ok(())
 }

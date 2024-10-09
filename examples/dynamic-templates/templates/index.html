@@ -49,5 +49,11 @@
             <p class="center">There is many other planets in our solar system that contains life.</p>
             <% end %>
         </div>
+
+        <div class="container">
+            <% for user in users %>
+            <p class="center"><%= user.id %> &dash; <%= user.email %></p>
+            <% end %>
+        </div>
     </body>
 </html>

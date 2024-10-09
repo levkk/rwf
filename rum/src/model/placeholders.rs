@@ -31,3 +31,11 @@ impl Placeholders {
         self.values().len() as i32 + 1
     }
 }
+
+impl From<Vec<Value>> for Placeholders {
+    fn from(values: Vec<Value>) -> Self {
+        Placeholders {
+            values
+        }
+    }
+}

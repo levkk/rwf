@@ -259,7 +259,7 @@ pub fn drive_context(input: TokenStream) -> TokenStream {
                 let ident = &field.ident;
 
                 quote! {
-                    result[stringify!(#ident)] = context.#ident.to_value()?;
+                    result[stringify!(#ident)] = rum::view::template::ToValue::to_value(&context.#ident)?;
                 }
             });
 
@@ -269,8 +269,6 @@ pub fn drive_context(input: TokenStream) -> TokenStream {
                     type Error = rum::view::Error;
 
                     fn try_from(context: #ident) -> Result<Self, Self::Error> {
-                        use rum::view::template::ToValue;
-
                         let mut result = rum::view::Context::new();
 
                         #(#fields)*
