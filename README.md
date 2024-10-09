@@ -800,7 +800,7 @@ async fn handle(&self, request: &Request) -> Result<Response, Error> {
 
 #### Implementing your own authentication
 
-Rum authentication is fully customizable. You can implement your own authentication mechanism by implementing the `Authentication` trait:
+Rum authentication is fully customizable. You can design your own authentication mechanism by implementing the `Authentication` trait:
 
 ```rust
 use rum::controller::auth::Authentication;
@@ -820,6 +820,7 @@ impl Authentication for NoWorkSundays {
     }
 
     /// Optional access denied response.
+    /// The default is 403 - Forbidden.
     async fn denied(&self) -> Result<Response, Error> {
         Ok(Response::redirect("https://www.nps.gov"))
     }
