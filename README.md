@@ -538,11 +538,12 @@ If you've written Rails before, you'll find this syntax familiar:
 
 | Operator | Description |
 |----------|-------------|
-| `<%` | Code block start |
-| `%>` | Code block end |
-| `<%=` | Print the following expression value (don't forget to close the code block) |
-| `<% if expression %>` | If block which evaluates the expression for truthiness |
-| `<% elsif expression %>`| Else if block, works just like the if block |
-| `<% else %>` | Else block |
-| `<% for item in list %>` | For loop |
+| `<%` | Code block start. |
+| `%>` | Code block end. |
+| `<%=` | Print the following expression value (don't forget to close the code block). |
+| `<% if expression %>` | If block which evaluates the expression for truthiness. |
+| `<% elsif expression %>`| Else if block, works just like the if block. |
+| `<% else %>` | Else block. |
+| `<% for item in list %>` | For loop. |
 | `<% end %>` | Indicates the end of an if statement or for loop. |
+| `+` / `-` / `*` / `/`, `=`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
