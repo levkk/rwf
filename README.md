@@ -774,7 +774,8 @@ struct LoginController;
 #[rum::async_trait]
 impl Controller for LoginController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        let user_id = 1234; // You can get this from the database, if you have a users table, for example.
+        let user_id = 1234; // You can get this from the database,
+                            // if you have a users table, for example.
         let response = request.login(user_id);
 
         Ok(response)
