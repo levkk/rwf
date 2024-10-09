@@ -87,11 +87,11 @@ struct User {
 }
 ```
 
-#### Creating records
+### Creating records
 
 Creating new records can be done in two ways: by saving a record with an empty primary key or by explicitly using `Model::create` method.
 
-##### Record with empty primary key
+#### Record with empty primary key
 
 ```rust
 let user = User {
@@ -107,7 +107,7 @@ let user = user
     .await?;
 ```
 
-##### Creating records explicitly
+#### Creating records explicitly
 
 ```rust
 let user = User::create(&[
@@ -129,7 +129,7 @@ let user = User::create(&[
     .await?;
 ```
 
-##### Rust to Postgres type conversion
+#### Rust to Postgres type conversion
 
 Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation explicitly (`rum::model::Value`), by calling `ToValue::to_value` method:
 
@@ -137,7 +137,7 @@ Rust types are converted to Postgres values automatically. If multiple Rust type
 let pg_value = 1_i64.to_value();
 ```
 
-##### Handling conflicts
+#### Handling conflicts
 
 If your table has a unique index, you may run into unique constraint violations when creating records. To avoid that, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
 
@@ -174,11 +174,11 @@ let user = User::find_or_create_by(&[("email", "hello@test.com")])
     .await?;
 ```
 
-#### Finding records
+### Finding records
 
 Rum's ORM supports many ways for fetching records, including searching by any column, joining tables, OR-ing multiple conditions together, and row-level locking.
 
-##### Find by primary key
+#### Find by primary key
 
 Find a record by primary key:
 
@@ -200,13 +200,13 @@ This executes the following query:
 SELECT * FROM users WHERE id = 15;
 ```
 
-##### Primary key requirement
+#### Primary key requirement
 
 Unlike ActiveRecord, Rum's ORM requires all models to have a primary key. Without a primary key, operations like joins, updates, and deletes become inefficient and difficult.
 
 Rum currently defaults the the `id` column as the primary key. Customizing the primary key is on the roadmap, including allowing compound keys.
 
-##### Searching by multiple columns
+#### Searching by multiple columns
 
 Filtering on one or multiple columns:
 
@@ -254,7 +254,7 @@ which would produce the following query:
 SELECT * FROM users WHERE email NOT IN ('joe@hello.com', 'marry@hello.com');
 ```
 
-#### Scopes
+### Scopes
 
 If a query is used frequently, you can add it as a scope to the model:
 
@@ -291,11 +291,11 @@ impl User {
 }
 ```
 
-#### Updating records
+### Updating records
 
 Updating records can be done in two ways: by saving an existing record or by using `update_all` on a scope.
 
-##### Updating existing records
+#### Updating existing records
 
 Updating an existing record can be done by mutating fields on a record and calling `save`:
 
@@ -322,7 +322,7 @@ UPDATE users SET email = $1, created_at = $2, admin = $3 WHERE id = $4
 updating all columns based on the values in the Rust struct.
 
 
-#### Updating many records
+### Updating many records
 
 Multiple records can be updated without fetching them from the database:
 
@@ -338,7 +338,7 @@ User::filter("admin", true)
 
 This executes only one query, updating records matching the filter condition.
 
-#### Concurrent updates
+### Concurrent updates
 
 If a record is updated simultaneously from multiple places, one update operation may overwrite another. To prevent this, an exclusive lock can be placed on a record:
 
@@ -370,7 +370,7 @@ UPDATE users SET email = 'admin@hello.com', admin = true WHERE id = 15;
 COMMIT;
 ```
 
-#### Joins
+### Joins
 
 Joins in Rum come standard and require a couple annotations on the models to indicate their relationships:
 
@@ -422,7 +422,7 @@ let column = Order::column("name");
 assert_eq!(column.to_sql(), r#""products"."name""#);
 ```
 
-#### Nested joins
+### Nested joins
 
 Joins against models not immediately related to a model are possible by using nested joins:
 
@@ -446,7 +446,7 @@ WHERE "orders"."total_amount" >= 25.0 AND
 "products"."name" = 'apples';
 ```
 
-##### Ordering & limits
+#### Ordering & limits
 
 Fetching records in a particular order can be easily done with:
 
@@ -491,7 +491,7 @@ will produce the following query:
 SELECT * FROM users ORDER BY id LIMIT 25 OFFSET 25
 ```
 
-##### Counting rows
+#### Counting rows
 
 Counting rows can be done by calling `count` instead of `fetch`, for example:
 
@@ -504,7 +504,7 @@ let users_count = User::all()
 assert_eq!(users_count, 0);
 ```
 
-##### Show the queries
+#### Show the queries
 
 If you want to see what queries Rum is building underneath, you can enable query logging in the [configuration](#configuration) or call `to_sql` on the scope to output the query string, for example:
 
@@ -513,7 +513,7 @@ let query = User::all().to_sql();
 assert_eq!(query, "SELECT * FROM \"users\"");
 ```
 
-##### Explain
+#### Explain
 
 Getting the query plan for a query instead of running it can be done by calling `explain` instead of `fetch`:
 
@@ -530,7 +530,7 @@ println!("{}", query_plan);
 
 If explaining update/insert queries, make sure to do so inside a transaction (and rolling it back when done) to avoid writing data to tables.
 
-##### Fetching related models
+#### Fetching related models
 
 To avoid N+1 queries, Rum provides a way to fetch related models in a single query, for example:
 
@@ -545,7 +545,7 @@ let users_orders = User::related::<Order>(&users)
     .await?;
 ```
 
-##### SQL injection
+#### SQL injection
 
 Rum uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
 
@@ -562,7 +562,7 @@ will produce a syntax error:
 ERROR:  column users."; DROP TABLE users;" does not exist
 ```
 
-##### Bypassing the ORM
+#### Bypassing the ORM
 
 Sometimes a query is too complicated to be written with an ORM. Rum provides a simple "break glass" functionality to pass in arbitrary queries and map them to a model:
 
