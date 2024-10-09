@@ -508,18 +508,18 @@ ERROR:  column users."; DROP TABLE users;" does not exist
 
 ## Dynamic templates
 
-Rum has its own template language, heavily inspired (if not shamelessly copied) from Rails' ERB. The syntax is pretty small and simple.
+Rum has its own template language, heavily inspired (if not shamelessly copied) from Rails' ERB.
 
 ### Quick example
 
-If you've written Rails before, you'll find this syntax familiar:
+If you've used Rails before, you'll find this syntax familiar:
 
 ```erb
 <p><%= text %></p>
 
 <ul>
 <% for item in list %>
-    <li><%= item.lower %><li>
+    <li><%= item.upcase %><li>
 <% end %>
 <ul>
 
@@ -527,7 +527,7 @@ If you've written Rails before, you'll find this syntax familiar:
 <%- no_user_inputs_allowed_code %>
 </script>
 
-<% if truthy_value %>
+<% if value == "on" %>
     <p>Now you see me</p>
 <% else %>
     <p>Now you don't</p>
@@ -536,7 +536,9 @@ If you've written Rails before, you'll find this syntax familiar:
 
 ### Operations
 
-| Operator | Description |
+Rum's templates syntax is very small and simple:
+
+| Operation | Description |
 |----------|-------------|
 | `<%` | Code block start. |
 | `%>` | Code block end. |
@@ -546,4 +548,4 @@ If you've written Rails before, you'll find this syntax familiar:
 | `<% else %>` | Else block. |
 | `<% for item in list %>` | For loop. |
 | `<% end %>` | Indicates the end of an if statement or for loop. |
-| `+`, `-`, `*`, `/`, `=`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
+| `+`, `-`, `*`, `/`, `==`, `%` | Addition, subtraction, multiplication, division, equality, modulo. |
