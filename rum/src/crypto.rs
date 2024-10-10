@@ -184,5 +184,9 @@ mod test {
         let encrypted = encrypt_number(n).unwrap();
         let decrypted = decrypt_number(&encrypted).unwrap();
         assert_eq!(n, decrypted);
+
+        let bad_input = "sdf";
+        let result = decrypt_number(&bad_input);
+        assert!(result.is_err());
     }
 }

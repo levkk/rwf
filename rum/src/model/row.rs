@@ -60,7 +60,7 @@ mod test {
 
     #[test]
     fn test_random_query() {
-        let query = Row::find_by_sql("SELECT 1");
+        let query = Row::find_by_sql("SELECT 1", &[]);
         assert_eq!(query.to_sql(), "SELECT 1");
 
         let query = Query::<Row>::select("users");
