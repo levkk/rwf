@@ -58,10 +58,6 @@ async fn main() {
 
 See [examples](examples) for common use cases.
 
-## :construction: Status :construction:
-
-Rum is in early development and not ready for production. Many features including this README are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
-
 ## Documentation
 
 * [ORM & database migrations](examples/orm/README.md)
@@ -72,31 +68,6 @@ Rum is in early development and not ready for production. Many features includin
   * [Scheduled jobs](examples/scheduled-jobs/README.md)
 * [REST Framework](examples/rest/README.md)
 
+## :construction: Status :construction:
 
-## Features
-
-Just like Django or Rails, Rum comes standard with most features needed to build modern web apps. A non-exhaustive list is below, with new features added with every commit.
-
-## HTTP server
-
-Rum has a built-in asynchronous HTTP server which supports millions of concurrent connections.
-
-## WebSockets
-
-Rum supports WebSockets out of the box. A WebSockets controller is just another controller which implements the `WebsocketController` trait. 
-
-## Configuration
-
-Configuring Rum apps can be done via environment variables or a TOML configuration file.
-
-### `Rum.toml`
-
-Rum.toml is a configuration file using the TOML configuration language.
-
-#### Example
-
-```toml
-[general]
-log_queries = true
-cache_templates = false
-```
+Rum is in early development and not ready for production. Many features including this README are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
