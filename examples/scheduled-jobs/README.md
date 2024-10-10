@@ -30,3 +30,7 @@ The cron accepts the standard Unix cron format. Up to second precision is allowe
 ## Clock ticks
 
 The scheduler runs every second. If a job is available, it will execute it and immediately (without waiting for the next tick) fetch the next available job from then queue. If no more jobs are available, the scheduler will go back to polling the queue once a second.
+
+## Timezone
+
+The clock runs on the UTC timezone (+00:00 / GMT).
