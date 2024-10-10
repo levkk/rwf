@@ -64,12 +64,8 @@ Rum is in early development and not ready for production. Many features includin
 
 ## Documentation
 
-Each Rum's feature is documented separately:
-
-| Feature | Documentation |
-|---------|--------------:|
-| HTTP Server | TODO |
-| The ORM | [Documentation](examples/orm/README.md) |
+* HTTP Server
+* [The ORM](examples/orm/README.md)
 
 
 ## Features
