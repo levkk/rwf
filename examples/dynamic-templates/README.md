@@ -128,6 +128,7 @@ Each template data type supports its own operations.
 #### Float
 
 | Operation | Description | Example |
+|-----------|-------------|---------|
 | `abs` | Get the absolute value (non-negative) | `<%= -25.0.abs %>` |
 | `ceil` | Ceil the floating point to the nearest integer | `<% if 25.5.ceil == 26 %>` |
 | `floor` | Floor the floating point to the nearest integer | `<% if 25.5.ceil == 25 %>` |
