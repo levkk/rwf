@@ -110,5 +110,3 @@ The caching behavior is controlled via configuration and requires no code modifi
 [general]
 cache_templates = true
 ```
-
-See [Configuration](#configuration) for more details on how to configure template behavior.
