@@ -6,7 +6,7 @@ This documentation is incomplete. Please feel free to add stuff if you wish.
 
 ## Modules
 
-Rum is split into different modules and source code files. We can't all be like antirez. Modules are documented below, in no particular order.
+Rum is split into different modules and source code files. Modules are documented below, in no particular order.
 
 ### `controller`
 
@@ -51,7 +51,7 @@ Dynamic templates &dash; - our own implementation of basically Rails' ERB.
 
 ### `crypto`
 
-Encrypt/decrypt stuff easily with AES-128. No, we [don't want 256 instead](https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit). Happy to include more ciphers though if people don't trust the US government.
+Encrypt/decrypt stuff easily with AES-128. I think that [should be enough](https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit)but happy to include other ciphers.
 
 ### `comms`
 
