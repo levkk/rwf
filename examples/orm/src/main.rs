@@ -1,12 +1,12 @@
 // #![allow(dead_code)]
-use rum::model::Migrations;
-use rum::prelude::*;
+use rwf::model::Migrations;
+use rwf::prelude::*;
 
 mod models {
-    use rum::model::prelude::*;
+    use rwf::model::prelude::*;
     use time::{Duration, OffsetDateTime};
 
-    #[derive(Clone, rum::macros::Model, Debug)]
+    #[derive(Clone, rwf::macros::Model, Debug)]
     #[has_many(Task)]
     pub struct User {
         pub id: Option<i64>, // id column is assigned by the database, new models don't have it until they are saved.
@@ -124,7 +124,7 @@ mod models {
         }
     }
 
-    #[derive(Clone, rum::macros::Model, Debug)]
+    #[derive(Clone, rwf::macros::Model, Debug)]
     #[belongs_to(User)]
     pub struct Task {
         pub id: Option<i64>,

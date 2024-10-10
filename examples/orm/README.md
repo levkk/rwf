@@ -1,13 +1,13 @@
 
 # The ORM
 
-Rum's ORM is inspired by a healthy mix of Django and ActiveRecord. Declaring models is as simple as:
+Rwf's ORM is inspired by a healthy mix of Django and ActiveRecord. Declaring models is as simple as:
 
 ```rust
-use rum::prelude::*;
+use rwf::prelude::*;
 use time::OffsetDateTime;
 
-#[derive(Clone, rum::macros::Model)]
+#[derive(Clone, rwf::macros::Model)]
 struct User {
     id: Option<i64>,
     email: String,
@@ -18,7 +18,7 @@ struct User {
 
 ### PostgreSQL table name
 
-Rum uses `snake_case` notation for table names and infers them automatically from the model structs. For example, the `User` model will have the `users` (automatically pluralized) PostgreSQL table. This is configurable through the `rum::model::Model` trait.
+Rwf uses `snake_case` notation for table names and infers them automatically from the model structs. For example, the `User` model will have the `users` (automatically pluralized) PostgreSQL table. This is configurable through the `rwf::model::Model` trait.
 
 ## Creating records
 
@@ -64,7 +64,7 @@ let user = User::create(&[
 
 ### Rust to Postgres type conversion
 
-Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation explicitly (`rum::model::Value`), by calling `ToValue::to_value` method:
+Rust types are converted to Postgres values automatically. If multiple Rust types are used in a single value, e.g. a slice, which the Rust compiler does not allow, the values can be converted to an internal representation explicitly (`rwf::model::Value`), by calling `ToValue::to_value` method:
 
 ```rust
 let pg_value = 1_i64.to_value();
@@ -72,7 +72,7 @@ let pg_value = 1_i64.to_value();
 
 ### Handling conflicts
 
-If your table has a unique index, you may run into unique constraint violations when creating records. To avoid that, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rum's ORM supports out of the box:
+If your table has a unique index, you may run into unique constraint violations when creating records. To avoid that, you can use PostgreSQL's `ON CONFLICT DO UPDATE` feature, which Rwf's ORM supports out of the box:
 
 ```rust
 let user = User::create(&[
@@ -109,7 +109,7 @@ let user = User::find_or_create_by(&[("email", "hello@test.com")])
 
 ## Finding records
 
-Rum's ORM supports many ways for fetching records, including searching by any column, joining tables, OR-ing multiple conditions together, and row-level locking.
+Rwf's ORM supports many ways for fetching records, including searching by any column, joining tables, OR-ing multiple conditions together, and row-level locking.
 
 ### Find by primary key
 
@@ -135,9 +135,9 @@ SELECT * FROM users WHERE id = 15;
 
 #### Primary key requirement
 
-Unlike ActiveRecord, Rum's ORM requires all models to have a primary key. Without a primary key, operations like joins, updates, and deletes become inefficient and difficult.
+Unlike ActiveRecord, Rwf's ORM requires all models to have a primary key. Without a primary key, operations like joins, updates, and deletes become inefficient and difficult.
 
-Rum currently defaults to the `id` column as the primary key. The primary key can be customized through the `rum::model::Model` trait. Support for compound keys is on the roadmap.
+Rwf currently defaults to the `id` column as the primary key. The primary key can be customized through the `rwf::model::Model` trait. Support for compound keys is on the roadmap.
 
 ### Searching by multiple columns
 
@@ -305,10 +305,10 @@ COMMIT;
 
 ## Joins
 
-Joins in Rum come standard and require a couple annotations on the models to indicate their relationships:
+Joins in Rwf come standard and require a couple annotations on the models to indicate their relationships:
 
 ```rust
-#[derive(Clone, rum::macros::Model)]
+#[derive(Clone, rwf::macros::Model)]
 #[has_many(Order)]
 struct User {
     id: Option<i64>,
@@ -317,7 +317,7 @@ struct User {
     admin: bool,
 }
 
-#[derive(Clone, rum::macros::Model)]
+#[derive(Clone, rwf::macros::Model)]
 #[belongs_to(User)]
 #[has_many(Product)]
 struct Order {
@@ -327,7 +327,7 @@ struct Order {
     refunded_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, rum::macros::Model)]
+#[derive(Clone, rwf::macros::Model)]
 #[belongs_to(Order)]
 struct Product {
     id: Option<i64>,
@@ -348,7 +348,7 @@ let paying_users = User::all()
     .await?;
 ```
 
-Since columns in multiple tables can have the same name, e.g. `id`, `name`, etc, Rum can disambiguate them by including the table name in the column selection:
+Since columns in multiple tables can have the same name, e.g. `id`, `name`, etc, Rwf can disambiguate them by including the table name in the column selection:
 
 ```rust
 let column = Order::column("name");
@@ -439,7 +439,7 @@ assert_eq!(users_count, 0);
 
 ### Show the queries
 
-If you want to see what queries Rum is building underneath, you can enable query logging in the [configuration](https://github.com/levkk/rum/blob/main/README.md#configuration) or call `to_sql` on the scope to output the query string, for example:
+If you want to see what queries Rwf is building underneath, you can enable query logging in the [configuration](https://github.com/levkk/rwf/blob/main/README.md#configuration) or call `to_sql` on the scope to output the query string, for example:
 
 ```rust
 let query = User::all().to_sql();
@@ -465,7 +465,7 @@ If explaining update/insert queries, make sure to do so inside a transaction (an
 
 ### Fetching related models
 
-To avoid N+1 queries, Rum provides a way to fetch related models in a single query, for example:
+To avoid N+1 queries, Rwf provides a way to fetch related models in a single query, for example:
 
 ```rust
 let users = User::all()
@@ -480,7 +480,7 @@ let users_orders = User::related::<Order>(&users)
 
 ### SQL injection
 
-Rum uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
+Rwf uses prepared statements with placeholders and sends the values to the database separately. This prevents most SQL injection attacks. User inputs like column names are escaped, for example:
 
 ```rust
 User::all()
@@ -497,7 +497,7 @@ ERROR:  column users."; DROP TABLE users;" does not exist
 
 ### Bypassing the ORM
 
-Sometimes a query is too complicated to be written with an ORM. Rum provides a simple "break glass" functionality to pass in arbitrary queries and map them to a model:
+Sometimes a query is too complicated to be written with an ORM. Rwf provides a simple "break glass" functionality to pass in arbitrary queries and map them to a model:
 
 ```rust
 let users = User::find_by_sql(
@@ -510,11 +510,11 @@ let users = User::find_by_sql(
 
 ## Database migrations
 
-Rum has built-in migrations for managing the schema of your database in a controlled manner. Migrations are applied sequentially, and each migration is executed inside a transaction for atomicity.
+Rwf has built-in migrations for managing the schema of your database in a controlled manner. Migrations are applied sequentially, and each migration is executed inside a transaction for atomicity.
 
 ### Writing migrations
 
-Currently Rum doesn't have a CLI (yet) to generate migrations, but creating one is easy. Migrations are SQL files which contain queries. To add a migration, create the a folder called `migrations` and place in it two files:
+Currently Rwf doesn't have a CLI (yet) to generate migrations, but creating one is easy. Migrations are SQL files which contain queries. To add a migration, create the a folder called `migrations` and place in it two files:
 
 - the "up" migration
 - the "down" migration
@@ -538,7 +538,7 @@ For example, a migration to add the users table could be named `1_users_model.up
 In your Cargo project, you can create a binary target, e.g. `src/bin/migrate/main.rs` with:
 
 ```rust
-use rum::prelude::*;
+use rwf::prelude::*;
 
 #[tokio::main]
 async fn main() {

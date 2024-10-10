@@ -10,7 +10,7 @@ name = "migrations"
 path = "bin/migrations/main.rs"
 
 [dependencies]
-rum = { path = "../../rum" }
+rwf = { path = "../../rwf" }
 serde = { version = "1", features = ["derive"]}
 time = { version = "*", features = ["serde"] }
 tokio = { version = "1", features = ["full"]}

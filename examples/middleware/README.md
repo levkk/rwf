@@ -1,7 +1,7 @@
 
 # Middleware
 
-Rum's middleware is inspired by Django's middleware system and allows to rewrite requests, responses, and to intercept requests to controllers entirely.
+Rwf's middleware is inspired by Django's middleware system and allows to rewrite requests, responses, and to intercept requests to controllers entirely.
 
 ## Writing middleware
 
@@ -9,12 +9,12 @@ Writing your middleware is simple and requires only implementing the `Middleware
 
 
 ```rust
-use rum::controller::middleware::prelude::*;
+use rwf::controller::middleware::prelude::*;
 
 #[derive(Default)]
 struct OnlyLinuxBrowsers;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Middleware for OnlyLinuxBrowsers {
     async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
         if let Some(header) = request.headers().get("user-agent") {
@@ -50,7 +50,7 @@ impl WindowsController {
     }
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for WindowsController {
     fn middleware(&self) -> &MiddlewareSet {
         &self.middlware
@@ -64,4 +64,4 @@ Middleware is evaluated in the order it's added to the middleware set. The middl
 
 ## Modifying responses
 
-To modify responses, implement the `handle_response` method on the `Middleware` trait. See the included [request rate limiter](rum/src/controller/middleware/rate_limiter.rs) middleware for complete example.
+To modify responses, implement the `handle_response` method on the `Middleware` trait. See the included [request rate limiter](rwf/src/controller/middleware/rate_limiter.rs) middleware for complete example.

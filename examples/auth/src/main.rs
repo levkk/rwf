@@ -1,7 +1,7 @@
-use rum::http::Server;
-use rum::prelude::*;
+use rwf::http::Server;
+use rwf::prelude::*;
 
-use rum::controller::auth::{AuthHandler, BasicAuth, SessionAuth};
+use rwf::controller::auth::{AuthHandler, BasicAuth, SessionAuth};
 
 struct BasicAuthController {
     auth: AuthHandler,

@@ -160,7 +160,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "auth"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "tokio",
 ]
 
@@ -222,7 +222,7 @@ name = "background-jobs"
 version = "0.1.0"
 dependencies = [
  "log",
- "rum",
+ "rwf",
  "serde",
  "serde_json",
  "tokio",
@@ -478,7 +478,7 @@ name = "dynamic-templates"
 version = "0.1.0"
 dependencies = [
  "rand",
- "rum",
+ "rwf",
  "tokio",
 ]
 
@@ -889,7 +889,7 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 name = "middleware"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "tokio",
 ]
 
@@ -986,7 +986,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 name = "orm"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "time",
  "tokio",
 ]
@@ -1190,7 +1190,7 @@ dependencies = [
 name = "quick-start"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "tokio",
 ]
 
@@ -1290,70 +1290,11 @@ checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 name = "rest"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "serde",
  "serde_json",
  "time",
  "tokio",
-]
-
-[[package]]
-name = "rum"
-version = "0.1.0"
-dependencies = [
- "aes",
- "aes-gcm-siv",
- "async-trait",
- "base64 0.22.1",
- "bytes",
- "colored",
- "once_cell",
- "parking_lot",
- "rand",
- "regex",
- "rum-macros",
- "serde",
- "serde_json",
- "sha1",
- "thiserror",
- "time",
- "tokio",
- "tokio-postgres",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "rum-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "rum",
-]
-
-[[package]]
-name = "rum-macros"
-version = "0.1.0"
-dependencies = [
- "pluralizer",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rum-tests"
-version = "0.1.0"
-dependencies = [
- "console-subscriber",
- "parking_lot",
- "rum",
- "rum-macros",
- "serde",
- "serde_json",
- "tokio",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -1369,6 +1310,65 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
 
 [[package]]
+name = "rwf"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "aes-gcm-siv",
+ "async-trait",
+ "base64 0.22.1",
+ "bytes",
+ "colored",
+ "once_cell",
+ "parking_lot",
+ "rand",
+ "regex",
+ "rwf-macros",
+ "serde",
+ "serde_json",
+ "sha1",
+ "thiserror",
+ "time",
+ "tokio",
+ "tokio-postgres",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rwf-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rwf",
+]
+
+[[package]]
+name = "rwf-macros"
+version = "0.1.0"
+dependencies = [
+ "pluralizer",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "rwf-tests"
+version = "0.1.0"
+dependencies = [
+ "console-subscriber",
+ "parking_lot",
+ "rwf",
+ "rwf-macros",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1378,7 +1378,7 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 name = "scheduled-jobs"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "serde",
  "serde_json",
  "tokio",
@@ -1506,7 +1506,7 @@ dependencies = [
 name = "static-files"
 version = "0.1.0"
 dependencies = [
- "rum",
+ "rwf",
  "tokio",
 ]
 
@@ -1894,7 +1894,7 @@ name = "turbo"
 version = "0.1.0"
 dependencies = [
  "rand",
- "rum",
+ "rwf",
  "serde",
  "serde_json",
  "time",

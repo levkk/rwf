@@ -18,7 +18,7 @@ Thank you! Happy coding.
 
 ### Usability over micro-optimizations
 
-Rum prioritizes user ergonomics over _bleeding_ edge runtime performance. Rust already runs at native speed (think x86/ARM instructions, not an interpreter with a slow GC), and most code will fetch bytes from the network, so a few allocations and clones aren't going to make a difference. When designing APIs, please prioritize making them easy to use. Concretely, if lifetimes are giving you grief, just clone the struct.
+Rwf prioritizes user ergonomics over _bleeding_ edge runtime performance. Rust already runs at native speed (think x86/ARM instructions, not an interpreter with a slow GC), and most code will fetch bytes from the network, so a few allocations and clones aren't going to make a difference. When designing APIs, please prioritize making them easy to use. Concretely, if lifetimes are giving you grief, just clone the struct.
 
 Functions should accept the most inputs possible, for example:
 

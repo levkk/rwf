@@ -1,0 +1,16 @@
+[package]
+name = "rwf-tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rwf = { path = "../rwf" }
+rwf-macros = { path = "../rwf-macros" }
+tokio = { version = "1", features = ["net", "fs", "rt-multi-thread"] }
+tracing-subscriber = "*"
+console-subscriber = "*"
+serde_json = "1"
+serde = "*"
+parking_lot = "*"

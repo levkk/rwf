@@ -1,11 +1,11 @@
-use rum::controller::middleware::prelude::*;
-use rum::prelude::*;
-use rum::Server;
+use rwf::controller::middleware::prelude::*;
+use rwf::prelude::*;
+use rwf::Server;
 
 #[derive(Default)]
 struct BlockBadHeader;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Middleware for BlockBadHeader {
     async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
         if let Some(value) = request.headers().get("x-user-id") {
@@ -22,7 +22,7 @@ struct IndexController {
     middleware: MiddlewareSet,
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for IndexController {
     fn middleware(&self) -> &MiddlewareSet {
         &self.middleware

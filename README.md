@@ -1,6 +1,6 @@
-# Rum &dash; Rust Web Framework
+# Rwf &dash; Rust Web Framework
 
-Rum is a comprehensive framework for building web applications in Rust. Written using the classic MVC  pattern (model-view-controller), Rum comes standard with everything you need to easily build fast and secure web apps.
+Rwf is a comprehensive framework for building web applications in Rust. Written using the classic MVC  pattern (model-view-controller), Rwf comes standard with everything you need to easily build fast and secure web apps.
 
 ### Features overview
 
@@ -20,26 +20,26 @@ Rum is a comprehensive framework for building web applications in Rust. Written 
 
 ## Quick start
 
-To add Rum to your stack, create a Rust binary application and add `rum` and `tokio` to your dependencies:
+To add Rwf to your stack, create a Rust binary application and add `rwf` and `tokio` to your dependencies:
 
 ```bash
-cargo add --git https://github.com/levkk/rum rum
+cargo add --git https://github.com/levkk/rwf rwf
 cargo add tokio@1 --features full
 ```
 
 Building an app is then as simple as:
 
 ```rust
-use rum::prelude::*;
-use rum::http::Server;
+use rwf::prelude::*;
+use rwf::http::Server;
 
 #[derive(Default)]
 struct IndexController;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::new().html("<h1>Hey Rum!</h1>"))
+        Ok(Response::new().html("<h1>Hey Rwf!</h1>"))
     }
 }
 
@@ -70,4 +70,4 @@ See [examples](examples) for common use cases.
 
 ## :construction: Status :construction:
 
-Rum is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
+Rwf is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.

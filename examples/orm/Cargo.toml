@@ -7,6 +7,6 @@ default-run = "orm"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rum = { path = "../../rum" }
+rwf = { path = "../../rwf" }
 tokio = { version = "1", features = ["full"]}
 time = "0.3"

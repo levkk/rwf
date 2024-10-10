@@ -1,6 +1,6 @@
 # Features roadmap
 
-Rum is brand new, but web development is ancient. Many features are missing or are incomplete.
+Rwf is brand new, but web development is ancient. Many features are missing or are incomplete.
 
 ## ORM
 

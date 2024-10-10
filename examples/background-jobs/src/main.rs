@@ -1,8 +1,8 @@
 use log::info;
-use rum::http::Server;
-use rum::job::{Error as JobError, Worker};
-use rum::model::Migrations;
-use rum::prelude::*;
+use rwf::http::Server;
+use rwf::job::{Error as JobError, Worker};
+use rwf::model::Migrations;
+use rwf::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -11,7 +11,7 @@ struct SendEmailJob {
     body: String,
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Job for SendEmailJob {
     async fn execute(&self, args: serde_json::Value) -> Result<(), JobError> {
         let email: Self = serde_json::from_value(args)?;

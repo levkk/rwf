@@ -1,11 +1,11 @@
-use rum::controller::middleware::{prelude::*, SecureId};
-use rum::prelude::*;
+use rwf::controller::middleware::{prelude::*, SecureId};
+use rwf::prelude::*;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-#[derive(Clone, Serialize, Deserialize, rum::macros::Model)]
+#[derive(Clone, Serialize, Deserialize, rwf::macros::Model)]
 pub struct User {
-    #[serde(with = "rum::controller::ser::secure_id", default, skip_deserializing)]
+    #[serde(with = "rwf::controller::ser::secure_id", default, skip_deserializing)]
     id: Option<i64>,
 
     email: String,
@@ -26,7 +26,7 @@ impl SecureUserController {
     }
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for SecureUserController {
     fn middleware(&self) -> &MiddlewareSet {
         &self.middleware

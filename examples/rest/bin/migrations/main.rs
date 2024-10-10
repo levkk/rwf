@@ -1,5 +1,5 @@
-use rum::logging::Logger;
-use rum::model::{Error, Migrations};
+use rwf::logging::Logger;
+use rwf::model::{Error, Migrations};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

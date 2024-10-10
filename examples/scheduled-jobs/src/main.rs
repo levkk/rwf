@@ -1,13 +1,13 @@
-use rum::http::Server;
-use rum::job::{Error as JobError, Job, Worker};
-use rum::prelude::*;
+use rwf::http::Server;
+use rwf::job::{Error as JobError, Job, Worker};
+use rwf::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 struct MyJob;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Job for MyJob {
     async fn execute(&self, _args: serde_json::Value) -> Result<(), JobError> {
         Ok(())

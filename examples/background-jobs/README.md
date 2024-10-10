@@ -1,15 +1,15 @@
 
 # Background jobs
 
-Rum comes with its own background jobs queue, workers, and scheduler (also known as clock). The jobs queue is based on Postgres, and uses `SELECT .. FOR UPDATE SKIP LOCKED`, which is an efficient mechanism introduced in recent versions of the database server.
+Rwf comes with its own background jobs queue, workers, and scheduler (also known as clock). The jobs queue is based on Postgres, and uses `SELECT .. FOR UPDATE SKIP LOCKED`, which is an efficient mechanism introduced in recent versions of the database server.
 
 ## Creating background jobs
 
-Just like with all previous features, Rum uses the Rust trait system to define background jobs:
+Just like with all previous features, Rwf uses the Rust trait system to define background jobs:
 
 ```rust
 use serde::{Serialize, Deserialize};
-use rum::job::{Job, Error as JobError};
+use rwf::job::{Job, Error as JobError};
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 struct SendEmail {
@@ -17,7 +17,7 @@ struct SendEmail {
     body: String,
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Job for SendEmail {
     async fn execute(&self, args: serde_json::Value) -> Result<(), JobError> {
         // Send an email using Sendgrid or sendmail!
@@ -49,7 +49,7 @@ job
 Workers are processes (Tokio tasks really) that listen for background jobs and execute them. Since we use Tokio, the worker can be launched in the same process as the web server, but doesn't have to be:
 
 ```rust
-use rum::job::Worker;
+use rwf::job::Worker;
 use tokio::time::{sleep, Duration};
 
 #[tokio::main]
@@ -66,7 +66,7 @@ async fn main() -> Result<(), JobError> {
 
 ## Durability
 
-Since Rum uses Postgres to store jobs, the job queue is durable &dash; it does not lose jobs &dash; and saves the results of all job runs to a table, which comes in handy when some job does something you didn't expect.
+Since Rwf uses Postgres to store jobs, the job queue is durable &dash; it does not lose jobs &dash; and saves the results of all job runs to a table, which comes in handy when some job does something you didn't expect.
 
 ## Spawning multiple workers
 
@@ -88,4 +88,4 @@ will spawn 4 worker instances. Each instance will run in its own Tokio task.
 
 ## Queue guarantees
 
-The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design &dash; if a job runs more than once, the end result should be the same.
+The Rwf job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design &dash; if a job runs more than once, the end result should be the same.

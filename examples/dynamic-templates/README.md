@@ -1,7 +1,7 @@
 
 # Dynamic templates
 
-Rum has its own template language, heavily inspired (if not shamelessly copied) from Rails' ERB.
+Rwf has its own template language, heavily inspired (if not shamelessly copied) from Rails' ERB.
 
 ## Quick example
 
@@ -29,7 +29,7 @@ If you've used Rails before, you'll find this syntax familiar:
 
 ## Operations
 
-Rum's templates syntax is very small and simple:
+Rwf's templates syntax is very small and simple:
 
 | Operation | Description |
 |----------|-------------|
@@ -49,7 +49,7 @@ Rum's templates syntax is very small and simple:
 Templates can be rendered directly from a Rust string:
 
 ```rust
-#[derive(rum::macros::Context)]
+#[derive(rwf::macros::Context)]
 struct Index {
     first_name: String,
     user_id: i64,
@@ -76,7 +76,7 @@ Templates don't have to be HTML, and can be used to render any kind of files, e.
 
 ## Passing values to templates
 
-Rum's templates support many data types, e.g. strings, integers, lists, hashes, and even models. For example, a list of users can be passed directly into a template:
+Rwf's templates support many data types, e.g. strings, integers, lists, hashes, and even models. For example, a list of users can be passed directly into a template:
 
 ```rust
 let users = User::all()
@@ -90,7 +90,7 @@ let template = Template::from_str(
     <% end %>
 </ul>")?;
 
-#[derive(rum::macros::Context)]
+#[derive(rwf::macros::Context)]
 struct Context {
     users: Vec<User>,
 }
@@ -164,13 +164,13 @@ Each template data type supports its own operations.
 
 #### Globals
 
-Rum's templates have global functions which can be executed in any template and context.
+Rwf's templates have global functions which can be executed in any template and context.
 
 | Function | Description | Example |
 |-----------|-------------|---------|
 | `encrypt_number` | Encrypt an integer using the secure id algorithm (AES-128) | `<%= encrypt_number(25) %>` |
 | `decrypt_number` | Decrypt an integer encrypted with `encrypt_number` | `<%= decrypt_number(encrypted) %>` |
-| `rum_head` | Print the included `<head>` elements that make Rum-powered frontends work, e.g. Turbo | `<head><%- rum_head %></head>` |
+| `rwf_head` | Print the included `<head>` elements that make Rwf-powered frontends work, e.g. Turbo | `<head><%- rwf_head %></head>` |
 
 ## Caching templates
 

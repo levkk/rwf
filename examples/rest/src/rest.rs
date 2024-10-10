@@ -1,12 +1,12 @@
-use rum::prelude::*;
+use rwf::prelude::*;
 
-#[derive(rum::macros::RestController, Default)]
+#[derive(rwf::macros::RestController, Default)]
 pub struct MyController;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl RestController for MyController {
     type Resource = i64; // Use integers as the resource identifiers.
-                         // Can be any other data type that implements `rum::controller::ToParameter` trait.
+                         // Can be any other data type that implements `rwf::controller::ToParameter` trait.
 
     /// GET /
     async fn list(&self, _request: &Request) -> Result<Response, Error> {

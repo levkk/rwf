@@ -2,4 +2,4 @@
 secret_key = "TRtZ2Ww4EeY3xfA82Bo9bNCQbkLiUZmiDO6wOE0W0qw="
 
 [database]
-name = "rum_rest"
+name = "rwf_rest"

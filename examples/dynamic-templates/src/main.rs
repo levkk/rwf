@@ -1,9 +1,9 @@
-use rum::http::Server;
-use rum::prelude::*;
+use rwf::http::Server;
+use rwf::prelude::*;
 
 use rand::Rng;
 
-#[derive(Clone, rum::macros::Model)]
+#[derive(Clone, rwf::macros::Model)]
 struct User {
     id: Option<i64>,
     email: String,
@@ -12,7 +12,7 @@ struct User {
 #[derive(Default)]
 struct IndexController;
 
-#[derive(rum::macros::Context)]
+#[derive(rwf::macros::Context)]
 struct IndexTemplate {
     title: String,
     items: Vec<String>,

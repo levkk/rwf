@@ -1,5 +1,5 @@
-use rum::http::Server;
-use rum::prelude::*;
+use rwf::http::Server;
+use rwf::prelude::*;
 use serde::{Deserialize, Serialize};
 
 mod secure;
@@ -9,7 +9,7 @@ mod rest;
 use rest::MyController;
 
 /// The user model.
-#[derive(Clone, rum::macros::Model, Serialize, Deserialize)]
+#[derive(Clone, rwf::macros::Model, Serialize, Deserialize)]
 struct User {
     // Ignore the "id" column in API requests,
     // the database assigns primary keys.
@@ -26,7 +26,7 @@ struct User {
     created_at: OffsetDateTime,
 }
 
-#[derive(Default, rum::macros::ModelController)]
+#[derive(Default, rwf::macros::ModelController)]
 struct UserController;
 
 /// The model controller which automatically implements

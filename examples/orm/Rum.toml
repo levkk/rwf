@@ -2,4 +2,4 @@
 log_queries = true
 
 [database]
-name = "rum_orm"
+name = "rwf_orm"

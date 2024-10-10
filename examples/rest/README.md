@@ -1,7 +1,7 @@
 
 # REST framework
 
-Rum comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) operations.
+Rwf comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) operations.
 
 ## Adding REST controllers
 
@@ -9,10 +9,10 @@ There are two ways to add a REST controller to your app: implementing the `RestC
 
 ### `ModelController`
 
-The `ModelController` trait works with Rum's ORM models and automatically (de)serializes API inputs/outputs and fetches and updates database records.
+The `ModelController` trait works with Rwf's ORM models and automatically (de)serializes API inputs/outputs and fetches and updates database records.
 
 ```rust
-#[derive(rum::macros::ModelController)]
+#[derive(rwf::macros::ModelController)]
 struct UsersController;
 
 #[async_trait]
@@ -92,13 +92,13 @@ The `RestController` handles incoming requests and routes them based on the path
 The methods for each default to return a `501 - Not Implemented` response, so if you want to support some or all of them, you'll need to implement those trait methods:
 
 ```rust
-#[derive(rum::macros::RestController, Default)]
+#[derive(rwf::macros::RestController, Default)]
 struct MyController;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl RestController for MyController {
     type Resource = i64; // Use integers as the resource identifiers.
-                         // Can be any other data type that implements `rum::controller::ToParameter` trait.
+                         // Can be any other data type that implements `rwf::controller::ToParameter` trait.
 
     /// GET /
     async fn list(&self, _request: &Request) -> Result<Response, Error> {

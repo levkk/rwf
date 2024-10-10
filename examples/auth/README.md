@@ -1,11 +1,11 @@
 
 # Authentication & sessions
 
-Rum has a customizable authentication and authorization system. All HTTP requests can be checked against some conditions, e.g. a header or a cookie value, and allowed access to a controller. If authorization fails, a default HTTP response, like a redirect or a `403 - Forbidden` can be returned.
+Rwf has a customizable authentication and authorization system. All HTTP requests can be checked against some conditions, e.g. a header or a cookie value, and allowed access to a controller. If authorization fails, a default HTTP response, like a redirect or a `403 - Forbidden` can be returned.
 
 ## Included authentication
 
-Rum comes with three built-in authentication mechanisms:
+Rwf comes with three built-in authentication mechanisms:
 
 1. Basic HTTP authentication
 2. Token-based authentication (incl. bearer tokens)
@@ -16,7 +16,7 @@ Rum comes with three built-in authentication mechanisms:
 The default behavior for all controllers is to allow all requests. To enable authentication, implement the `auth` method when defining a controller:
 
 ```rust
-use rum::controller::auth::{BasicAuth, AuthHandler}
+use rwf::controller::auth::{BasicAuth, AuthHandler}
 
 struct ProtectedController {
     auth: AuthHandler,
@@ -33,7 +33,7 @@ impl ProtectedController {
     }
 }
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for ProtectedController {
     /// Specify the authentication handler for this controller.
     fn auth(&self) -> &AuthHandler {
@@ -50,12 +50,12 @@ When a browser opens a page served by this controller, a user/password prompt wi
 
 ### Session authentication
 
-Rum implements its own user sessions. They are stored in a cookie, and encrypted with AES-128. The user can't see or modify the contents of the cookie, so arbitrary data can be stored in it to identify the user securely.
+Rwf implements its own user sessions. They are stored in a cookie, and encrypted with AES-128. The user can't see or modify the contents of the cookie, so arbitrary data can be stored in it to identify the user securely.
 
 To enable session authentication, specify the `SessionAuth` handler in the controller:
 
 ```rust
-use rum::controller::auth::SessionAuth;
+use rwf::controller::auth::SessionAuth;
 
 impl ProtectedController {
     fn new() -> ProtectedController {
@@ -70,11 +70,11 @@ When users visit a page served by this controller, they will be redirected to `/
 
 #### Session validity
 
-By default, sessions are valid for 4 days. This setting is [configurable](#configuration). If a user requests a page with a valid session, Rum will automatically renew the session for another session validity period; this ensures your active users don't get logged out.
+By default, sessions are valid for 4 days. This setting is [configurable](#configuration). If a user requests a page with a valid session, Rwf will automatically renew the session for another session validity period; this ensures your active users don't get logged out.
 
 #### Anonymous sessions
 
-All requests to a Rum server are provided with a session. If the user is not logged in, the session is anonymous. This ensures that all requests are authenticated to a browser, which enables features like WebSockets and request tracking. Anonymous sessions are not allowed to access controllers protected by session authentication.
+All requests to a Rwf server are provided with a session. If the user is not logged in, the session is anonymous. This ensures that all requests are authenticated to a browser, which enables features like WebSockets and request tracking. Anonymous sessions are not allowed to access controllers protected by session authentication.
 
 #### Logging in users
 
@@ -83,7 +83,7 @@ To login a user, call the `login` method on the request:
 ```rust
 struct LoginController;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Controller for LoginController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let user_id = 1234; // You can get this from the database,
@@ -96,7 +96,7 @@ impl Controller for LoginController {
 }
 ```
 
-You can safely store the primary key of your users table in the session since the session is encrypted. The browser can't see this value, only the Rum server can.
+You can safely store the primary key of your users table in the session since the session is encrypted. The browser can't see this value, only the Rwf server can.
 
 #### Logging out users
 
@@ -112,15 +112,15 @@ async fn handle(&self, request: &Request) -> Result<Response, Error> {
 
 ### Implementing your own authentication
 
-Rum authentication is fully customizable. You can design your own authentication mechanism by implementing the `Authentication` trait:
+Rwf authentication is fully customizable. You can design your own authentication mechanism by implementing the `Authentication` trait:
 
 ```rust
-use rum::controller::auth::Authentication;
+use rwf::controller::auth::Authentication;
 
 #[derive(Default)]
 struct NoWorkSundays;
 
-#[rum::async_trait]
+#[rwf::async_trait]
 impl Authentication for NoWorkSundays {
     /// Return true if request is allowed, false to deny it.
     async fn authorize(&self, request: &Request) -> Result<bool, Error> {
