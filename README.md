@@ -67,6 +67,7 @@ Rum is in early development and not ready for production. Many features includin
 * HTTP Server
 * [The ORM](examples/orm/README.md)
 * [Dynamic templates](examples/dynamic-templates/README.md)
+* [Authentication & sessions](examples/auth/README.md)
 * [Middleware](examples/middleware/README.md)
 
 
