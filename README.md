@@ -54,22 +54,23 @@ async fn main() {
 }
 ```
 
-### Examples
+## Examples
 
 See [examples](examples) for common use cases.
-
-### Documentation
-
-Each Rum's feature is documented separately:
-
-| Feature | Documentation | Status |
-|---------|---------------|--------|
-| HTTP Server | TODO | In development |
-| The ORM | [Documentation](examples/orm/README.md) | In preview |
 
 ## :construction: Status :construction:
 
 Rum is in early development and not ready for production. Many features including this README are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
+
+## Documentation
+
+Each Rum's feature is documented separately:
+
+| Feature | Documentation |
+|---------|--------------:|
+| HTTP Server | TODO |
+| The ORM | [Documentation](examples/orm/README.md) |
+
 
 ## Features
 
