@@ -435,7 +435,7 @@ assert_eq!(users_count, 0);
 
 ### Show the queries
 
-If you want to see what queries Rum is building underneath, you can enable query logging in the [configuration](#configuration) or call `to_sql` on the scope to output the query string, for example:
+If you want to see what queries Rum is building underneath, you can enable query logging in the [configuration](https://github.com/levkk/rum/blob/main/README.md#configuration) or call `to_sql` on the scope to output the query string, for example:
 
 ```rust
 let query = User::all().to_sql();
