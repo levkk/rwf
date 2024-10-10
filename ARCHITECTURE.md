@@ -2,21 +2,57 @@
 
 Rum is built on top of the now ancient [Model-View-Controller (MVC)](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) architecture. In my experience, this is the only arch that has survived the test of time and scales into millions of lines of code.
 
+This documentation is incomplete. Please feel free to add stuff if you wish.
+
 ## Modules
 
-The code base is split into several modules, described below.
+Rum is split into different modules and source code files. We can't all be like antirez. Modules are documented below, in no particular order.
 
-| Module | Description |
-| -------|-------------|
-| [controller](rum/src/controller) | Controllers, including the standard HTTP `Controller`, RESTful API, and WebSockets. |
-| [controller::middleware](rum/src/controller/middleware) | Support for injecting middleware into the HTTP request/response lifecycle. |
-| [http](rum/src/http) | Support for HTTP/1.1. Handles URLs, queries, parameters, body, request, response, etc. |
-| [http::websocket](run/src/http/websocket) | Support for WebSockets. Implemented from the [MDN spec](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers). |
-| [job](rum/src/job) | Background jobs, including scheduled jobs, clock, worker. |
-| [model](rum/src/model) | The ORM. Based on a mix between Django and ActiveRecord. |
-| [model::pool](rum/src/model/pool) | Database connection pooling. |
-| [model::migrations](rum/src/model/migrations) | Support for database schema versioning (migrations). |
-| [view](rum/src/view) | Templates inspired by Rails' ERB language. |
-| [view::template](rum/src/view/template) | Template language parser and executor. |
-| [view::turbo](rum/src/view/turbo) | Integration with Hotwired Turbo. |
-| [rum::crypto](rum/src/crypto.rs) | Helpers to encrypt/decrypt data using AES-128. |
+### `controller`
+
+The "C" in MVC, the controller module handles code which is responsible for handling HTTP requests from clients. Three (3) traits are of most interest:
+
+`rum::controller::Controller`
+
+This trait is required for all controllers wishing to be served by the HTTP server. It only has one required method (`handle`) and every other method is optional and already implemented with defaults. All methods can be overridden, making it very customizable.
+
+`rum::controller::RestController`
+
+This trait implements the REST framework, specifically the `handle` method of the `Controller` trait, and splits incoming requests into the 6 REST verbs.
+
+`rum::controller::ModelController`
+
+Same as above, except it also implements all 6 REST verbs using the `Model` type specified. It links directly into the ORM and reads, creates, updates, and deletes the desired records.
+
+`rum::controller::WebsocketController`
+
+Implements the HTTP -> WebSocket protocol upgrade and communication.
+
+#### `controller::middleware`
+
+This module implements controller middleware. Pretty self-explanatory as soon as you read `mod.rs`.
+
+
+### `http`
+
+HTTP server and request routing to controllers.
+
+### `job`
+
+Background and scheduled jobs.
+
+### `model`
+
+The ORM and connection pool.
+
+### `view`
+
+Dynamic templates &dash; - our own implementation of basically Rails' ERB.
+
+### `crypto`
+
+Encrypt/decrypt stuff easily with AES-128. No, we [don't want 256 instead](https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit). Happy to include more ciphers though if people don't trust the US government.
+
+### `comms`
+
+Communication between HTTP clients, via Websockets & Tokio `broadcast` module. Helps to connect one part of Rum with another. In early development still, I'm thinking we could add a lot more things here, e.g. Django-like signals / Rails-like callbacks.

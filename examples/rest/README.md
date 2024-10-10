@@ -1,5 +1,5 @@
 
-# RESTful framework
+# REST framework
 
 Rum comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) operations.
 
@@ -80,10 +80,11 @@ $ curl localhost:8000/api/users -d '{"email": "test@test.com"}' -w '\n'
 
 ### `RestController`
 
-The `RestController` parses incoming requests and splits them based on the path and the request method to one of the 5 RESTful methods:
+The `RestController` handles incoming requests and routes them based on the path and the request method to one of the six RESTful methods:
 
 - `list` resources
 - `get` a resource
+- `create` a resource
 - `update` a resource
 - `patch` a resource
 - `delete` a resource
@@ -131,7 +132,7 @@ Server::new(vec![
 ])
 ```
 
-The `rest` method will create the paths to serve all 5 REST verbs, just like the `ModelController` except the verbs are implemented manually.
+The `rest` method will create the paths to serve all six REST verbs, just like the `ModelController` except the verbs are implemented manually.
 
 ## Customizing serialization
 
