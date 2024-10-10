@@ -69,6 +69,8 @@ Rum is in early development and not ready for production. Many features includin
 * [Dynamic templates](examples/dynamic-templates/README.md)
 * [Authentication & sessions](examples/auth/README.md)
 * [Middleware](examples/middleware/README.md)
+* [Background jobs](examples/background-jobs/README.md)
+  * [Scheduled jobs](examples/scheduled-jobs/README.md)
 
 
 ## Features
@@ -78,133 +80,6 @@ Just like Django or Rails, Rum comes standard with most features needed to build
 ## HTTP server
 
 Rum has a built-in asynchronous HTTP server which supports millions of concurrent connections.
-
-
-
-## Background jobs
-
-Rum comes with its own background jobs queue, workers, and scheduler (also known as clock). The jobs queue is based on Postgres, and uses `SELECT .. FOR UPDATE SKIP LOCKED`, which is an efficient mechanism introduced in recent versions of the database server.
-
-### Creating background jobs
-
-Just like with all previous features, Rum uses the Rust trait system to define background jobs:
-
-```rust
-use serde::{Serialize, Deserialize};
-use rum::job::{Job, Error as JobError};
-
-#[derive(Clone, Serialize, Deserialize, Default)]
-struct SendEmail {
-    email: String,
-    body: String,
-}
-
-#[rum::async_trait]
-impl Job for SendEmail {
-    async fn execute(&self, args: serde_json::Value) -> Result<(), JobError> {
-        // Send an email using Sendgrid or sendmail!
-        let args: SendEmail = serde_json::from_value(args)?;
-        println!("Sending {} to {}", args.email, args.body);
-    }
-}
-```
-
-Background jobs support arbitrary arguments, which are encoded with JSON, and stored in the database.
-
-### Running jobs
-
-Running a job is as simple as scheduling it asynchronously with:
-
-```rust
-let job = SendEmail {
-    email: "test@hello.com".into(),
-    body: "How are you today?".into(),
-};
-
-job
-    .execute_async(serde_json::to_value(&job)?)
-    .await?;
-```
-
-### Spawning workers
-
-Workers are processes (Tokio tasks really) that listen for background jobs and execute them. Since we use Tokio, the worker can be launched in the same process as the web server, but doesn't have to be:
-
-```rust
-use rum::job::Worker;
-use tokio::time::{sleep, Duration};
-
-#[tokio::main]
-async fn main() -> Result<(), JobError> {
-    Worker::new(vec![
-        SendEmail::default().job(),
-    ])
-    .start()
-    .await?;
-
-    sleep(Duration::MAX).await;
-}
-```
-
-See the [background jobs](examples/background-jobs) for a complete example.
-
-### Scheduled jobs
-
-Scheduled jobs are background jobs that run automatically based on a schedule, typically defined in the form of a cron:
-
-```rust
-let daily_email = SendEmail {
-    email: "boss@hello.com".into(),
-    body: "I'm running 5 minutes late, the bus is delayed again.".into(),
-};
-
-let scheduled_job = SendEmail::default()
-    .schedule(
-        serde_json::to_value(&daily_email)?,
-        "0 0 9 * * *",
-    );
-
-Worker::new(vec![SendEmail::default().job(),])
-    .clock(vec![scheduled_job,])
-    .start()
-    .await?;
-```
-
-See [scheduled jobs](examples/scheduled-jobs) for a complete example.
-
-#### Cron format
-
-The cron accepts the standard Unix cron format. Up to second precision is allowed (6 stars for every second), with 5 being the minimum (every minute). Non-standard extensions, like `@yearly` are not currently supported, but a PR is welcome.
-
-#### Clock ticks
-
-The scheduler runs every second. If a job is available, it will execute it and immediately (without waiting for the next tick) fetch the next available job from then queue. If no more jobs are available, the scheduler will go back to polling the queue once a second.
-
-#### Durability
-
-Since Rum uses Postgres to store jobs, the job queue is durable &dash; it does not lose jobs &dash; and saves the results of all job runs to a table, which comes in handy when some job does something you didn't expect.
-
-### Spawning multiple workers
-
-You can spawn as many workers as you think is reasonable for your application. Concurrency is controlled via Postgres, so a particular job won
-t run on more than one worker at a time.
-
-To spawn multiple workers inside the same Rust process, call `spawn()` after calling `start()`, for example:
-
-```rust
-Worker::new(vec![])
-    .start()
-    .await?
-    .spawn()
-    .spawn()
-    .spawn();
-```
-
-will spawn 4 worker instances. Each instance will run in its own Tokio task.
-
-### Queue guarantees
-
-The Rum job queue has at-least once execution guarantee. This means the queue will attempt to run all jobs at least one time. Since we are using Postgres, jobs do not get lost. That being said, there is no guarantee of a job running more than once, so make sure to write jobs that are idempotent by design &dash; if a job runs more than once, the end result should be the same.
 
 ## Database migrations
 
