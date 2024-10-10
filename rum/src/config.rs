@@ -2,14 +2,14 @@ use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
 use std::io::IsTerminal;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use time::Duration;
 
 use crate::controller::{AllowAll, AuthHandler, MiddlewareSet};
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
+use std::fs::read_to_string;
 use thiserror::Error;
-use tokio::fs::read_to_string;
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
@@ -33,6 +33,7 @@ pub enum Error {
 
 /// Global configuration.
 pub struct Config {
+    path: Option<PathBuf>,
     pub aes_key: Key<AesGcmSiv<Aes128>>, // AES-128 key used for encryption.
     pub secure_id_key: Key<AesGcmSiv<Aes128>>,
     pub cookie_max_age: Duration,
@@ -84,6 +85,7 @@ impl Default for Config {
         let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
         Self {
+            path: None,
             aes_key,
             secure_id_key,
             cookie_max_age: Duration::days(30),
@@ -100,25 +102,22 @@ impl Default for Config {
 }
 
 impl Config {
-    pub async fn load() -> Result<(), Error> {
+    pub fn load() -> Result<Config, Error> {
         let mut config = Config::default();
-        let config_file = ConfigFile::load("Rum.toml").await?;
+        let config_file = ConfigFile::load("Rum.toml")?;
 
         let secret_key = config_file.general.secret_key()?;
 
         let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
         let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
+        config.path = Some(PathBuf::from("Rum.toml"));
         config.aes_key = aes_key;
         config.secure_id_key = secure_id_key;
         config.log_queries = config_file.general.log_queries;
         config.cache_templates = config_file.general.cache_templates;
 
-        if let Err(_) = CONFIG.set(config) {
-            return Err(Error::ConfigLoaded);
-        }
-
-        Ok(())
+        Ok(config)
     }
 
     pub fn get() -> &'static Config {
@@ -127,7 +126,7 @@ impl Config {
 }
 
 pub fn get_config() -> &'static Config {
-    CONFIG.get_or_init(|| Config::default())
+    CONFIG.get_or_init(|| Config::load().unwrap_or_default())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -136,8 +135,8 @@ struct ConfigFile {
 }
 
 impl ConfigFile {
-    pub async fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
-        let file = read_to_string(path).await?;
+    pub fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
+        let file = read_to_string(path)?;
         let config: Self = toml::from_str(&file)?;
 
         Ok(config)

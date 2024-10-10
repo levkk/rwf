@@ -195,7 +195,6 @@ use models::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    Config::load().await?;
     Logger::init();
 
     Migrations::flush().await?;

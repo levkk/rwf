@@ -87,7 +87,6 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    Config::load().await?;
     Logger::init();
 
     Server::new(vec![

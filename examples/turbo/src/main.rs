@@ -137,9 +137,6 @@ impl Job for ExpensiveJob {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Load Rum config file.
-    Config::load().await?;
-
     // Configure logging.
     Logger::init();
 
