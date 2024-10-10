@@ -1172,7 +1172,7 @@ mod test {
 
     #[tokio::test]
     async fn test_fetch() -> Result<(), Error> {
-        let pool = Pool::new_local();
+        let pool = Pool::from_env();
         let mut transaction = pool.transaction().await?;
 
         transaction
@@ -1211,7 +1211,7 @@ mod test {
 
     #[tokio::test]
     async fn test_explain() -> Result<(), Error> {
-        let pool = Pool::new_local();
+        let pool = Pool::from_env();
         let mut transaction = pool.transaction().await?;
 
         transaction
@@ -1227,7 +1227,7 @@ mod test {
 
     #[tokio::test]
     async fn test_find_or_create() -> Result<(), Error> {
-        let pool = Pool::new_local();
+        let pool = Pool::from_env();
 
         let mut transaction = pool.transaction().await?;
 

@@ -326,6 +326,13 @@ impl Response {
     }
 
     pub fn internal_error(err: impl std::error::Error) -> Self {
+        // TODO:
+        // #[cfg(debug_asertions)]
+        // let err = format!("{:?}", err);
+
+        // #[cfg(not(debug_asertions))]
+        // let err = "".to_string();
+
         Self::new()
             .html(format!(
                 "
@@ -333,7 +340,7 @@ impl Response {
                 <center>500 - Internal Server Error</center>
             </h3>
             <br><br>
-            <center><code><pre>{:?}</pre></code></center>
+            <center><code style=\"padding: 25px;\">{:?}</code></center>
             ",
                 err
             ))

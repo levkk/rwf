@@ -58,6 +58,7 @@ impl Worker {
         info!("Background jobs worker started");
 
         loop {
+            let start = Instant::now();
             let worker = self.clone();
             let run_result = tokio::spawn(async move {
                 let pool = get_pool();
@@ -143,7 +144,8 @@ impl Worker {
                         warn!("worker received unknown job: \"{}\"", job.name);
                     }
                 } else {
-                    sleep(Duration::from_millis(1000)).await;
+                    let sleep_for = Duration::from_millis(1000).saturating_sub(start.elapsed());
+                    sleep(sleep_for).await;
                 }
 
                 Ok::<(), Error>(())

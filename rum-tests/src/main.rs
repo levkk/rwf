@@ -228,7 +228,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     rollback().await?;
     migrate().await?;
 
-    let pool = Pool::new_local();
+    let pool = Pool::from_env();
     let mut conn = pool.get().await?;
 
     conn.client()

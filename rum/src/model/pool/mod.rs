@@ -12,6 +12,8 @@ use std::time::Instant;
 
 use once_cell::sync::OnceCell;
 
+use crate::config::get_config;
+
 pub mod connection;
 pub mod transaction;
 
@@ -23,7 +25,7 @@ pub use transaction::Transaction;
 static POOL: OnceCell<Pool> = OnceCell::new();
 
 pub fn get_pool() -> Pool {
-    POOL.get_or_init(|| Pool::new_local()).clone()
+    POOL.get_or_init(|| Pool::from_env()).clone()
 }
 
 pub async fn get_connection() -> Result<ConnectionGuard, Error> {
@@ -182,13 +184,9 @@ impl Pool {
     ///
     /// * `pool_size` - Maximum number of connections.
     ///
-    pub fn new_local() -> Self {
-        let user = std::env::var("USER").unwrap_or("postgres".to_string());
-        let database = std::env::var("RUM_DATABASE").unwrap_or(user.clone());
-        Self::new(
-            &format!("postgresql://{}@localhost/{}", user, database),
-            PoolConfig::local(),
-        )
+    pub fn from_env() -> Self {
+        let database_url = get_config().database.database_url();
+        Self::new(&database_url, PoolConfig::local())
     }
 
     /// Get a connection from the pool or wait until one is available.
@@ -342,7 +340,7 @@ mod test {
 
     #[tokio::test]
     async fn test_pool() -> Result<(), Error> {
-        let pool = Pool::new_local();
+        let pool = Pool::from_env();
         let conn = pool.get().await?;
         let row = conn.client().query("SELECT 1", &[]).await?;
 

@@ -535,7 +535,7 @@ For example, a migration to add the users table could be named `1_users_model.up
 
 ### Running migrations
 
-In your Cargo project, you can create a binary target, e.g. `src/bin/migrations/main.rs` with:
+In your Cargo project, you can create a binary target, e.g. `src/bin/migrate/main.rs` with:
 
 ```rust
 use rum::prelude::*;
@@ -553,7 +553,5 @@ async fn main() {
 and execute it, for example:
 
 ```
-cargo run --bin migrations
+cargo run --bin migrate
 ```
-
-See the [ORM example](examples/orm) for a complete example.

@@ -1,6 +1,7 @@
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
+use std::env::var;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use time::Duration;
@@ -45,6 +46,7 @@ pub struct Config {
     pub websocket: Websocket,
     pub log_queries: bool,
     pub http: Http,
+    pub database: Database,
 }
 
 pub struct Websocket {
@@ -55,6 +57,57 @@ pub struct Websocket {
 
 pub struct Http {
     pub header_max_size: usize,
+}
+
+pub struct Database {
+    pub url: Option<String>,
+    pub name: String,
+    pub user: String,
+}
+
+impl Database {
+    pub fn database_url(&self) -> String {
+        if let Some(url) = &self.url {
+            return url.clone();
+        } else {
+            format!("postgresql://{}@localhost/{}", self.user, self.name)
+        }
+    }
+
+    fn from_config_file(&mut self, file: &DatabaseConfig) {
+        if let Some(url) = &file.url {
+            self.url = Some(url.clone());
+        }
+
+        if let Some(name) = &file.name {
+            self.name = name.clone();
+        }
+
+        if let Some(user) = &file.user {
+            self.user = user.clone();
+        }
+    }
+}
+
+impl Default for Database {
+    fn default() -> Self {
+        let url = match var("RUM_DATABASE_URL") {
+            Ok(url) => Some(url),
+            Err(_) => None,
+        };
+
+        let user = match var("RUM_DATABASE_USER") {
+            Ok(user) => user,
+            Err(_) => var("USER").unwrap_or("postgres".into()),
+        };
+
+        let name = match var("RUM_DATABASE") {
+            Ok(database) => database,
+            Err(_) => user.clone(),
+        };
+
+        Self { url, user, name }
+    }
 }
 
 impl Default for Http {
@@ -95,8 +148,9 @@ impl Default for Config {
             default_middleware: MiddlewareSet::default(),
             cache_templates: false,
             websocket: Websocket::default(),
-            log_queries: std::env::var("RUM_LOG_QUERIES").is_ok(),
+            log_queries: var("RUM_LOG_QUERIES").is_ok(),
             http: Http::default(),
+            database: Database::default(),
         }
     }
 }
@@ -116,6 +170,9 @@ impl Config {
         config.secure_id_key = secure_id_key;
         config.log_queries = config_file.general.log_queries;
         config.cache_templates = config_file.general.cache_templates;
+        config
+            .database
+            .from_config_file(&config_file.database.unwrap_or_default());
 
         Ok(config)
     }
@@ -132,6 +189,7 @@ pub fn get_config() -> &'static Config {
 #[derive(Serialize, Deserialize)]
 struct ConfigFile {
     general: General,
+    database: Option<DatabaseConfig>,
 }
 
 impl ConfigFile {
@@ -181,4 +239,11 @@ impl General {
     fn default_cache_templates() -> bool {
         false
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+struct DatabaseConfig {
+    url: Option<String>,
+    name: Option<String>,
+    user: Option<String>,
 }
