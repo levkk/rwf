@@ -16,6 +16,10 @@ struct User {
 }
 ```
 
+### PostgreSQL table name
+
+Rum uses `snake_case` notation for table names and infers them automatically from the model structs. For example, the `User` model will have the `users` (automatically pluralized) PostgreSQL table. This is configurable through the `rum::model::Model` trait.
+
 ## Creating records
 
 Creating new records can be done in two ways: by saving a record with an empty primary key or by explicitly using `Model::create` method.
