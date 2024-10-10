@@ -123,6 +123,16 @@ impl RestController for MyController {
 }
 ```
 
+Adding this controller to the server is then possible with:
+
+```rust
+Server::new(vec![
+    MyController::default().rest("/api/rest")
+])
+```
+
+The `rest` method will create the paths to serve all 5 REST verbs, just like the `ModelController` except the verbs are implemented manually.
+
 ## Customizing serialization
 
 Serde allows full control over how fields are serialized and deserialized, including rewriting, renaming, and skipping fields entirely. See [Serde documentation](https://serde.rs/field-attrs.html) for more details.
