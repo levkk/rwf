@@ -35,7 +35,7 @@ impl Controller for IndexController {
             }],
         };
 
-        let rendered = Template::cached("templates/index.html")
+        let rendered = Template::load("templates/index.html")
             .await?
             .render(&context.try_into()?)?;
 

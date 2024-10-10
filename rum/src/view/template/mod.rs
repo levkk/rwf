@@ -55,6 +55,10 @@ impl Template {
         Templates::cache().await.get(path).await
     }
 
+    pub async fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
+        Templates::cache().await.get(path).await
+    }
+
     pub async fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
         match Self::cached(path).await {
             Ok(template) => Ok(template.try_into()?),

@@ -133,11 +133,11 @@ This executes the following query:
 SELECT * FROM users WHERE id = 15;
 ```
 
-### Primary key requirement
+#### Primary key requirement
 
 Unlike ActiveRecord, Rum's ORM requires all models to have a primary key. Without a primary key, operations like joins, updates, and deletes become inefficient and difficult.
 
-Rum currently defaults the the `id` column as the primary key. Customizing the primary key is on the roadmap, including allowing compound keys.
+Rum currently defaults to the `id` column as the primary key. The primary key can be customized through the `rum::model::Model` trait. Support for compound keys is on the roadmap.
 
 ### Searching by multiple columns
 

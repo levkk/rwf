@@ -1,8 +1,6 @@
 use crate::config::get_config;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
-use tracing::info;
-
 pub struct Logger;
 
 impl Logger {
