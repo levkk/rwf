@@ -21,8 +21,6 @@ Worker::new(vec![SendEmail::default().job(),])
     .await?;
 ```
 
-See [scheduled jobs](examples/scheduled-jobs) for a complete example.
-
 ## Cron format
 
 The cron accepts the standard Unix cron format. Up to second precision is allowed (6 stars for every second), with 5 being the minimum (every minute). Non-standard extensions, like `@yearly` are not currently supported, but a PR is welcome.

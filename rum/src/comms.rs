@@ -92,6 +92,17 @@ impl Messages {
             sender: entry.sender(),
         }
     }
+
+    pub fn websocket_broadcast(&self, session_id: &SessionId) -> Broadcast {
+        let guard = self.websocket.lock();
+        let entries = guard
+            .iter()
+            .filter(|(id, _)| *session_id != **id)
+            .map(|(_, websocket)| websocket.clone())
+            .collect::<Vec<_>>();
+
+        Broadcast { everyone: entries }
+    }
 }
 
 #[derive(Debug)]
@@ -149,10 +160,28 @@ impl Drop for WebsocketReceiver {
     }
 }
 
+pub struct Broadcast {
+    everyone: Vec<Websocket>,
+}
+
+impl Broadcast {
+    pub fn send(&self, message: Message) -> Result<(), Error> {
+        for socket in &self.everyone {
+            socket.sender.send(message.clone())?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Comms;
 
 impl Comms {
     pub fn websocket(session_id: &SessionId) -> WebsocketSender {
         get_comms().websocket_sender(session_id)
+    }
+
+    pub fn broadcast(session_id: &SessionId) -> Broadcast {
+        get_comms().websocket_broadcast(session_id)
     }
 }
