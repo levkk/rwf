@@ -23,7 +23,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 To add Rwf to your stack, create a Rust binary application and add `rwf` and `tokio` to your dependencies:
 
 ```bash
-cargo add --git https://github.com/levkk/rwf rwf
+cargo add rwf
 cargo add tokio@1 --features full
 ```
 
