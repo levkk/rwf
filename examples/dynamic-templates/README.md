@@ -109,8 +109,8 @@ Multiple Rust data types are supported out of the box and each data type comes w
 | Integer | `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` |
 | Float | `f32`, `f64` |
 | String | `String`, `&str` |
-| List | | `Vec` with any Rust data type, including the ORM's models |
-| Hash | `HashMap` of any Rust data type |
+| List | `Vec` with any Rust data type, including the ORM's models |
+| Hash | `HashMap` of any Rust data type, including the ORM's models |
 
 ### Operations
 
@@ -148,9 +148,29 @@ Each template data type supports its own operations.
 | Operation | Description | Example |
 |-----------|-------------|---------|
 | `enumerate` | Convert the list to a list of tuples, with the index and the value | `<% for item in list.enumerate  %> <%= item.0 %> <%= item.1 %> <% end %>` |
-| `reverse` | `rev` | Create a new list by reading the list in reverse order (end to beginning) | `<% for item in list.rev %>` |
+| `reverse`, `rev` | Create a new list by reading the list in reverse order (end to beginning) | `<% for item in list.rev %>` |
 | `list.index` | Access the `index` element (starting at 0) | `<%= list.5 %>` |
 
+
+#### Hash
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `keys` | Convert the hash to a list of its keys | `<% for key in hash.keys  %> <%= key %> <% end %>` |
+| `values` | | Convert the hash to a list of its values | `<% for value in hash.values  %> <%= value %> <% end %>` |
+| `iter` | Convert the hash to a list of tuples, with the key and the value | `<% for pair in hash.iter  %> <%= pair.0 %> : <%= pair.1 %> <% end %>` |
+| `hash.key` | Access the `key` element  | `<%= user.email %>` |
+
+
+#### Globals
+
+Rum's templates have global functions which can be executed in any template and context.
+
+| Function | Description | Example |
+|-----------|-------------|---------|
+| `encrypt_number` | Encrypt an integer using the secure id algorithm (AES-128) | `<%= encrypt_number(25) %>` |
+| `decrypt_number` | Decrypt an integer encrypted with `encrypt_number` | `<%= decrypt_number(encrypted) %>` |
+| `rum_head` | Print the included `<head>` elements that make Rum-powered frontends work, e.g. Turbo | `<head><%- rum_head %></head>` |
 
 ## Caching templates
 

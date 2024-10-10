@@ -240,6 +240,9 @@ impl Value {
             Value::Hash(hash) => match method_name {
                 "keys" => Value::List(hash.keys().map(|k| Value::String(k.clone())).collect()),
                 "values" => Value::List(hash.values().cloned().collect()),
+                "iter" => Value::List(hash.keys().cloned().into_iter().zip(hash.values().cloned())
+                    .map(|(k, v)| Value::List(vec![Value::String(k), v]))
+                    .collect::<Vec<_>>()),
                 key => match hash.get(key) {
                     Some(value) => value.clone(),
                     None => Value::Null,
