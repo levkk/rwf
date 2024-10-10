@@ -62,10 +62,10 @@ See [examples](examples) for common use cases.
 
 Each Rum's feature is documented separately:
 
-| Feature | Documentation |
-|---------|---------------|
-| HTTP Server | TODO |
-| The ORM | #[Documentation](examples/orm/README.md) |
+| Feature | Documentation | Status |
+|---------|---------------|--------|
+| HTTP Server | TODO | In development |
+| The ORM | [Documentation](examples/orm/README.md) | In preview |
 
 ## :construction: Status :construction:
 
