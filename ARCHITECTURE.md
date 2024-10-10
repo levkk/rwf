@@ -51,7 +51,7 @@ Dynamic templates &dash; - our own implementation of basically Rails' ERB.
 
 ### `crypto`
 
-Encrypt/decrypt stuff easily with AES-128. I think that [should be enough](https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit)but happy to include other ciphers.
+Encrypt/decrypt stuff easily with AES-128. I think that [should be enough](https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit) but happy to include other ciphers.
 
 ### `comms`
 
