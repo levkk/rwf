@@ -122,7 +122,7 @@ Each template data type supports its own operations.
 |-----------|-------------|---------|
 | `abs` | Get the absolute value (non-negative) | `<%= 25.abs %>` |
 | `to_string`, `to_s` | Convert the number to a string | `<% if 25.to_s == "25" %>` |
-| `to_f` | `to_float` | Convert the number to a floating point number | `<% if 25.to_f == 25.0 %>` |
+| `to_f`, `to_float` | Convert the number to a floating point number | `<% if 25.to_f == 25.0 %>` |
 | `times` | Create a list of numbers enumerated from 0 to the number | `<% for i in 25.times %>` |
 
 #### Float
@@ -134,6 +134,23 @@ Each template data type supports its own operations.
 | `floor` | Floor the floating point to the nearest integer | `<% if 25.5.ceil == 25 %>` |
 | `round` | Round the floating point to the nearest integer | `<% if 25.5.ceil == 26 %>` |
 | `to_string`, `to_s` | Convert the floating point to a string representation. | `<%= 25.5.to_s %>` |
+
+#### String
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `to_uppercase`, `upcase` | Convert the string to UPPERCASE | `<%= "hello".upcase %>` |
+| `to_lowercase`, `downcase` | Convert the string to lowercase | `<%= "BYE".downcase %>` |
+| `trim` | Trim new lines and spaces from both ends of the string | `<%= " hello ".trim %>` |
+
+#### List
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `enumerate` | Convert the list to a list of tuples, with the index and the value | `<% for item in list.enumerate  %> <%= item.0 %> <%= item.1 %> <% end %>` |
+| `reverse` | `rev` | Create a new list by reading the list in reverse order (end to beginning) | `<% for item in list.rev %>` |
+| `list.index` | Access the `index` element (starting at 0) | `<%= list.5 %>` |
+
 
 ## Caching templates
 
