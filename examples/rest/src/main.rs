@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 mod secure;
 use secure::SecureUserController;
 
+mod rest;
+use rest::MyController;
+
 /// The user model.
 #[derive(Clone, rum::macros::Model, Serialize, Deserialize)]
 struct User {
@@ -42,6 +45,7 @@ async fn main() -> Result<(), Error> {
     Server::new(vec![
         UserController::default().crud("/api/users"),
         SecureUserController::new().crud("/api/users/secure"),
+        MyController::default().rest("/api/rest"),
     ])
     .launch("0.0.0.0:8000")
     .await?;

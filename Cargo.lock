@@ -1292,6 +1292,7 @@ version = "0.1.0"
 dependencies = [
  "rum",
  "serde",
+ "serde_json",
  "time",
  "tokio",
 ]

@@ -216,6 +216,26 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+#[proc_macro_derive(RestController)]
+pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let ident = match &input.data {
+        Data::Struct(_data) => input.ident.clone(),
+
+        _ => panic!("macro can only be used on structs"),
+    };
+
+    quote! {
+       #[rum::async_trait]
+        impl rum::controller::Controller for #ident {
+            async fn handle(&self, request: &rum::http::Request) -> Result<rum::http::Response, rum::controller::Error> {
+                rum::controller::RestController::handle(self, request).await
+            }
+        }
+    }.into()
+}
+
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

@@ -1,11 +1,15 @@
 
 # RESTful framework
 
-Rum comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) pattern.
+Rum comes with a REST framework (just like Django REST Framework) built-in. Serialization is automatically done with JSON (using `serde_json`) and the API follows the standard CRUD (create, read, update, destroy) operations.
 
 ## Adding REST controllers
 
-To add a REST controller to your Rum app, your controller needs to implement the `ModelController` trait:
+There are two ways to add a REST controller to your app: implementing the `RestController` trait manually for each supported method, or implementing the `ModelController` trait.
+
+### `ModelController`
+
+The `ModelController` trait works with Rum's ORM models and automatically (de)serializes API inputs/outputs and fetches and updates database records.
 
 ```rust
 #[derive(rum::macros::ModelController)]
@@ -52,7 +56,7 @@ async fn main() {
 }
 ```
 
-The `crud` method will automatically implement the following:
+The `crud` method will automatically implement the following routes:
 
 | Path | Method | Description |
 |------|--------|-------------|
@@ -63,18 +67,62 @@ The `crud` method will automatically implement the following:
 | `/api/users/:id` | PATCH | Update a user. Only the fields that have changed can be supplied. |
 
 
-You can test this with cURL:
+The DELETE method is not implemented yet, see [ROADMAP](/ROADMAP.md).
+
+### Testing
+
+You can test this with cURL (or your favorite API test client, e.g. Postman):
 
 ```
 $ curl localhost:8000/api/users -d '{"email": "test@test.com"}' -w '\n'
+{"id":1, email":"test@test.com","created_at":"+002024-10-09T22:59:10.693321000Z","admin":false}
+```
 
-{"email":"test@test.com","created_at":"+002024-10-09T22:59:10.693321000Z","admin":false}
+### `RestController`
+
+The `RestController` parses incoming requests and splits them based on the path and the request method to one of the 5 RESTful methods:
+
+- `list` resources
+- `get` a resource
+- `update` a resource
+- `patch` a resource
+- `delete` a resource
+
+The methods for each default to return a `501 - Not Implemented` response, so if you want to support some or all of them, you'll need to implement those trait methods:
+
+```rust
+#[derive(rum::macros::RestController, Default)]
+struct MyController;
+
+#[rum::async_trait]
+impl RestController for MyController {
+    type Resource = i64; // Use integers as the resource identifiers.
+                         // Can be any other data type that implements `rum::controller::ToParameter` trait.
+
+    /// GET /
+    async fn list(&self, _request: &Request) -> Result<Response, Error> {
+        let result = serde_json::json!([
+            {"id": 5, "email": "test@test.com"},
+            {"id": 7, "email": "hello@test.com"},
+        ]);
+
+        Ok(Response::new().json(result)?)
+    }
+
+    /// GET /:id
+    async fn get(&self, _request: &Request, id: &Self::Resource) -> Result<Response, Error> {
+        let result = serde_json::json!({
+            "id": *id,
+            "email": "guest@test.com",
+        });
+
+        Ok(Response::new().json(result)?)
+    }
+
+    // All other methods will return HTTP 501.
+}
 ```
 
 ## Customizing serialization
 
 Serde allows full control over how fields are serialized and deserialized, including rewriting, renaming, and skipping fields entirely. See [Serde documentation](https://serde.rs/field-attrs.html) for more details.
-
-## Writing your own REST controller
-
-You can write your own REST controller by implementing the `RestController` trait. See [the code](/rum/src/controller/mod.rs) for details.
