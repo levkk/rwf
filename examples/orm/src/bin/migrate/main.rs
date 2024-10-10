@@ -2,9 +2,7 @@ use rum::prelude::*;
 
 #[tokio::main]
 async fn main() {
-	Logger::init();
+    Logger::init();
 
-	Migrations::migrate()
-		.await
-		.expect("migrations failed");
+    Migrations::migrate().await.expect("migrations failed");
 }

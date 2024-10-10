@@ -2,6 +2,9 @@ use rum::http::Server;
 use rum::prelude::*;
 use serde::{Deserialize, Serialize};
 
+mod secure;
+use secure::SecureUserController;
+
 /// The user model.
 #[derive(Clone, rum::macros::Model, Serialize, Deserialize)]
 struct User {
@@ -36,9 +39,12 @@ async fn main() -> Result<(), Error> {
     // Configure logging.
     Logger::init();
 
-    Server::new(vec![UserController::default().crud("/api/users")])
-        .launch("0.0.0.0:8000")
-        .await?;
+    Server::new(vec![
+        UserController::default().crud("/api/users"),
+        SecureUserController::new().crud("/api/users/secure"),
+    ])
+    .launch("0.0.0.0:8000")
+    .await?;
 
     Ok(())
 }

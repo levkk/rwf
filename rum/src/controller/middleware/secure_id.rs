@@ -2,7 +2,18 @@ use crate::controller::middleware::prelude::*;
 use crate::crypto::decrypt_number;
 use crate::http::Path;
 
-pub struct SecureId;
+pub struct SecureId {
+    /// Block requests that use plain text identifiers.
+    pub block_unencrypted: bool,
+}
+
+impl Default for SecureId {
+    fn default() -> Self {
+        Self {
+            block_unencrypted: true,
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl Middleware for SecureId {
@@ -11,7 +22,7 @@ impl Middleware for SecureId {
 
         if let Ok(Some(id)) = id {
             // Block requests to a numeric ID.
-            if id.chars().all(|c| c.is_numeric()) {
+            if self.block_unencrypted && id.chars().all(|c| c.is_numeric()) {
                 return Ok(Outcome::Stop(Response::not_found()));
             }
 

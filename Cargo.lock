@@ -433,16 +433,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
-name = "crud"
-version = "0.1.0"
-dependencies = [
- "rum",
- "serde",
- "time",
- "tokio",
-]
-
-[[package]]
 name = "crypto-common"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1295,6 +1285,16 @@ name = "regex-syntax"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
+
+[[package]]
+name = "rest"
+version = "0.1.0"
+dependencies = [
+ "rum",
+ "serde",
+ "time",
+ "tokio",
+]
 
 [[package]]
 name = "rum"

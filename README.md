@@ -1120,14 +1120,14 @@ Adding the controller to the server is then simple:
 #[tokio::main]
 async fn main() {
     Server::new(vec![
-        UsersController::default().rest("/api/users"),
+        UsersController::default().crud("/api/users"),
     ])
     .launch("0.0.0.0:8000")
     .expect("failed to shut down server");
 }
 ```
 
-The `rest` method will automatically implement the following:
+The `crud` method will automatically implement the following:
 
 | Path | Method | Description |
 |------|--------|-------------|

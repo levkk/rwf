@@ -3,6 +3,7 @@ use async_trait::async_trait;
 pub mod auth;
 pub mod error;
 pub mod middleware;
+pub mod ser;
 pub mod static_files;
 pub mod util;
 
@@ -287,7 +288,8 @@ pub trait ModelController: Controller {
     async fn create(&self, request: &Request) -> Result<Response, Error> {
         let model = match request.json::<Self::Model>() {
             Ok(model) => model,
-            Err(_err) => {
+            Err(err) => {
+                println!("ser err: {:?}", err);
                 return Ok(Response::bad_request());
             }
         };

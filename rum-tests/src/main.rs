@@ -402,7 +402,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             auth: AuthHandler::new(AllowAll {}),
             middlware: MiddlewareSet::new(vec![
                 RateLimiter::per_second(10).middleware(),
-                SecureId {}.middleware(),
+                SecureId::default().middleware(),
             ]),
         }
         .route("/orders"),
