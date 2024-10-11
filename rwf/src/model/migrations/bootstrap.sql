@@ -21,15 +21,15 @@ CREATE TABLE IF NOT EXISTS rwf_jobs (
 );
 
 -- Pending jobs
-CREATE INDEX IF NOT EXISTS rum_jobs_pending_idx ON rum_jobs USING btree(start_after, created_at) WHERE
+CREATE INDEX IF NOT EXISTS rwf_jobs_pending_idx ON rwf_jobs USING btree(start_after, created_at) WHERE
     completed_at IS NULL
     AND started_at IS NULL
     AND attempts < retries;
 
 -- Running jobs
-CREATE INDEX IF NOT EXISTS rum_jobs_runnin_idx ON rum_jobs USING btree(start_after, created_at) WHERE
+CREATE INDEX IF NOT EXISTS rwf_jobs_runnin_idx ON rwf_jobs USING btree(start_after, created_at) WHERE
     completed_at IS NULL
     AND started_at IS NOT NULL
     AND attempts < retries;
 
-CREATE INDEX IF NOT EXISTS rum_jobs_name_completed_at_idx ON rum_jobs USING btree(name, completed_at);
+CREATE INDEX IF NOT EXISTS rwf_jobs_name_completed_at_idx ON rwf_jobs USING btree(name, completed_at);

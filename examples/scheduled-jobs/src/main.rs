@@ -18,6 +18,8 @@ impl Job for MyJob {
 async fn main() -> Result<(), Error> {
     Logger::init();
 
+    Migrations::migrate().await?;
+
     Worker::new(vec![MyJob::default().job()])
         .clock(vec![
             MyJob::default().schedule(serde_json::Value::Null, "*/5 * * * * *")?
