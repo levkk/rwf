@@ -1,13 +1,13 @@
 SET LOCAL client_min_messages TO WARNING;
 
-CREATE TABLE IF NOT EXISTS rum_migrations (
+CREATE TABLE IF NOT EXISTS rwf_migrations (
 	id BIGSERIAL PRIMARY KEY,
 	version BIGINT NOT NULL,
 	name VARCHAR UNIQUE NOT NULL,
 	applied_at TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS rum_jobs (
+CREATE TABLE IF NOT EXISTS rwf_jobs (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
     args JSONB NOT NULL DEFAULT '{}'::jsonb,
