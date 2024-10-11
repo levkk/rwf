@@ -3,6 +3,9 @@ use rwf::http::Server;
 use rwf::job::{Error as JobError, Worker};
 use rwf::prelude::*;
 
+mod controllers;
+mod models;
+
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
@@ -151,6 +154,7 @@ async fn main() -> Result<(), Error> {
         IndexController::default().route("/"),
         TurboStreamController::default().route("/turbo-stream"),
         PageController::default().route("/update-page"),
+        controllers::signup::SignupController::new().route("/signup"),
     ])
     .launch("0.0.0.0:8000")
     .await?;

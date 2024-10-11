@@ -80,15 +80,18 @@ impl Expression {
                 }
                 Err(err) => return Err(err),
             },
+
             Expression::Binary { left, op, right } => {
                 let left = left.evaluate(context)?;
                 let right = right.evaluate(context)?;
                 op.evaluate_binary(&left, &right)
             }
+
             Expression::Unary { op, operand } => {
                 let operand = operand.evaluate(context)?;
                 op.evaluate_unary(&operand)
             }
+
             Expression::List { terms } => {
                 let mut list = vec![];
                 for term in terms {
@@ -96,6 +99,7 @@ impl Expression {
                 }
                 Ok(Value::List(list))
             }
+
             Expression::Function { term, name, args } => {
                 let value = term.evaluate(context)?;
                 let args = args
@@ -218,7 +222,7 @@ impl Expression {
         Ok(term)
     }
 
-    // TODO: Support parsing function arguments between paranthesis, e.g.:
+    // TODO: Support parsing function arguments between parenthesis, e.g.:
     // `my_function((another_func(1, 2)), "hello")`
     fn function(
         name: &str,

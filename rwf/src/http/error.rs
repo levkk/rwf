@@ -25,6 +25,18 @@ pub enum Error {
 
     #[error("{0}")]
     Time(time::error::ComponentRange),
+
+    #[error("parameter is missing")]
+    MissingParameter,
+}
+
+impl Error {
+    pub fn code(&self) -> u16 {
+        match self {
+            Self::MissingParameter => 400,
+            _ => 500,
+        }
+    }
 }
 
 impl From<crate::controller::Error> for Error {

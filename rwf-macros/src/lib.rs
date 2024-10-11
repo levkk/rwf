@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Meta};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Meta, Type};
 
 use quote::quote;
 
@@ -255,6 +255,59 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
                 #[automatically_derived]
                 impl rwf::model::FromRow for #ident {
                     fn from_row(row: rwf::tokio_postgres::Row) -> Result<Self, rwf::model::Error> {
+                        Ok(Self {
+                            #(#from_row_fields)*
+                        })
+                    }
+                }
+            }
+            .into()
+        }
+
+        _ => panic!("macro can only be used on structs"),
+    }
+}
+
+#[proc_macro_derive(Form)]
+pub fn derive_form(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match input.data {
+        Data::Struct(ref data) => {
+            let ident = input.ident;
+
+            let from_row_fields = data.fields.iter().map(|field| {
+                let ident = &field.ident;
+
+                let optional = match &field.ty {
+                    Type::Path(path) => {
+                        let optional = &path
+                            .path
+                            .segments
+                            .iter()
+                            .next()
+                            .map(|segment| segment.ident == "Option");
+                        optional.unwrap_or(false)
+                    }
+
+                    _ => false,
+                };
+
+                if optional {
+                    quote! {
+                        #ident: form_data.get(stringify!(#ident)),
+                    }
+                } else {
+                    quote! {
+                        #ident: form_data.get_required(stringify!(#ident))?,
+                    }
+                }
+            });
+
+            quote! {
+                #[automatically_derived]
+                impl rwf::http::FromFormData for #ident {
+                    fn from_form_data(form_data: &rwf::http::FormData) -> Result<Self, rwf::http::Error> {
                         Ok(Self {
                             #(#from_row_fields)*
                         })

@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{Cookies, Error, Head, Params, Response, ToParameter};
+use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
 use crate::controller::{Session, SessionId};
 
 /// HTTP request.
@@ -102,10 +102,18 @@ impl Request {
         self.json()
     }
 
-    /// Request's body as HTML.
+    /// Request's body as a UTF-8 string.
     /// UTF-8 encoding is assumed, and all incompatible characters are dropped.
-    pub fn html(&self) -> String {
+    pub fn string(&self) -> String {
         String::from_utf8_lossy(self.body()).to_string()
+    }
+
+    pub fn form_data(&self) -> Result<FormData, Error> {
+        FormData::from_request(self)
+    }
+
+    pub fn form<T: FromFormData>(&self) -> Result<T, Error> {
+        T::from_form_data(&self.form_data()?)
     }
 
     /// Request's body deserialized from JSON into a particular Rust type.

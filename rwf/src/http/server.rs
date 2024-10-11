@@ -5,6 +5,7 @@
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
 use super::{Error, Handler, Request, Response, Router};
+use crate::controller::Error as ControllerError;
 
 use crate::colors::MaybeColorize;
 
@@ -107,7 +108,14 @@ impl Server {
                             Ok(response) => response,
                             Err(err) => {
                                 error!("{:?}", err);
-                                Response::internal_error(err)
+                                match err {
+                                    ControllerError::HttpError(err) => match err.code() {
+                                        400 => Response::bad_request(),
+                                        _ => Response::internal_error(err),
+                                    },
+
+                                    err => Response::internal_error(err),
+                                }
                             }
                         };
 

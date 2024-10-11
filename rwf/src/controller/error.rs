@@ -1,3 +1,4 @@
+use crate::http::Error as HttpError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -26,6 +27,9 @@ pub enum Error {
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
 
+    #[error("http error")]
+    HttpError(Box<HttpError>),
+
     #[error("config error: {0}")]
     Config(#[from] crate::config::Error),
 
@@ -42,6 +46,6 @@ impl Error {
 
 impl From<crate::http::Error> for Error {
     fn from(error: crate::http::Error) -> Self {
-        Error::new(Box::new(error))
+        Error::HttpError(Box::new(error))
     }
 }

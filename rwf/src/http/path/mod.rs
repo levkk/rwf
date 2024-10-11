@@ -2,7 +2,7 @@
 //!
 //! Paths are parsed for each incoming request and compared against
 //! a global regex to find a route handler.
-use super::{urldecode, Error};
+use super::Error;
 
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -77,27 +77,7 @@ impl Path {
             1 => (path, Query::new()),
 
             // Path has a query.
-            2 => {
-                let mut query = Query::new();
-                // Remove the anchor if any.
-                let without_anchor = parts[1].split("#").next().expect("path anchor");
-                let query_parts = without_anchor.split("&");
-                for part in query_parts {
-                    let key_value = part.split("=").collect::<Vec<_>>();
-
-                    if key_value.len() > 2 {
-                        continue;
-                    }
-
-                    // Decode any URL-encoded values back into UTF-8.
-                    let key = urldecode(&key_value.first().expect("path query key"));
-                    let value = urldecode(&key_value.last().unwrap_or(&"")); // ?key=&value=two
-
-                    query.insert(key, value);
-                }
-
-                (parts[0].to_owned(), query)
-            }
+            2 => (parts[0].to_owned(), Query::parse(parts[1])),
 
             _ => return Err(Error::MalformedRequest("path has malformed query")),
         };

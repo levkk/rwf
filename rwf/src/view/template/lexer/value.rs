@@ -8,8 +8,13 @@ use super::{super::Context, Error};
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+use tokio::runtime::Handle;
+use tokio::task;
 
 use crate::model::Model;
+use crate::view::template::Template;
 
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
@@ -168,7 +173,7 @@ impl Value {
         &self,
         method_name: &str,
         args: &[Value],
-        _content: &Context,
+        context: &Context,
     ) -> Result<Self, Error> {
         Ok(match self {
             Value::Integer(value) => match method_name {
@@ -272,6 +277,26 @@ impl Value {
                 },
 
                 "rwf_head" => Value::String(include_str!("../head.html").to_string()),
+
+                "render" => match &args {
+                    &[Value::String(n)] => {
+                        // TODO: in prod, we expect templates to be cached
+                        // so this should return immediately without blocking the runtime.
+                        // Either way, this is super ugly, and we should refactor to maybe make
+                        // templates async.
+                        task::block_in_place(move || {
+                            let runtime = Handle::current();
+                            let template = runtime.block_on(async { Template::load(n).await });
+
+                            match template {
+                                Ok(template) => Ok(Value::String(template.render(context)?)),
+                                Err(_) => Err(Error::TemplateDoesNotExist(PathBuf::from(n))),
+                            }
+                        })?
+                    }
+
+                    _ => Value::Null,
+                },
                 _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 
