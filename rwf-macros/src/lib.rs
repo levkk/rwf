@@ -220,42 +220,42 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
 pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let overrides = input.attrs
+    let overrides = input
+        .attrs
         .iter()
         .map(|attr| {
             let name = &attr
-                    .meta
-                    .path()
-                    .segments
-                    .first()
-                    .expect("segment")
-                    .ident
-                    .to_string();
+                .meta
+                .path()
+                .segments
+                .first()
+                .expect("segment")
+                .ident
+                .to_string();
 
             match name.as_str() {
-                "auth" => {
-                    match &attr.meta {
-                        Meta::List(list) => {
-                            let path = list.path.segments.first();
+                "auth" => match &attr.meta {
+                    Meta::List(list) => {
+                        let path = list.path.segments.first();
 
-                            if let Some(path) = path {
-                                quote! {
-                                    fn auth(&self) -> &rwf::controller::AuthHandler {
-                                        &self.#path
-                                    }
+                        if let Some(path) = path {
+                            quote! {
+                                fn auth(&self) -> &rwf::controller::AuthHandler {
+                                    &self.#path
                                 }
-                            } else {
-                                quote!{}
                             }
+                        } else {
+                            quote! {}
                         }
-
-                        _ => quote!{}
                     }
-                }
 
-                _ => quote! {}
+                    _ => quote! {},
+                },
+
+                _ => quote! {},
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),

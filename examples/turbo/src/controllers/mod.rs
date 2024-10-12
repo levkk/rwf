@@ -1,2 +1,2 @@
-pub mod signup;
 pub mod chat;
+pub mod signup;
