@@ -210,7 +210,7 @@ struct IndexController;
 #[rwf::async_trait]
 impl Controller for IndexController {
     async fn handle(&self, _request: &Request) -> Result<Response, rwf::controller::Error> {
-        Ok(Template::cached_static("templates/index.html").await?)
+        Ok(Template::cached_static("templates/index.html")?)
     }
 }
 
@@ -358,7 +358,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         products: vec![product.clone()],
     };
 
-    let template = Templates::cache().await.get("templates/test.html").await?;
+    let template = Templates::cache().get("templates/test.html")?;
     let start = Instant::now();
     let result = template.render(&context.try_into()?)?;
     println!(

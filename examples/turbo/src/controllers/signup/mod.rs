@@ -40,9 +40,8 @@ impl Controller for SignupController {
 #[rwf::async_trait]
 impl PageController for SignupController {
     async fn get(&self, _request: &Request) -> Result<Response, Error> {
-        let rendered = Template::load("templates/signup.html")
-            .await?
-            .render(HashMap::from([("title", "Test")]))?;
+        let rendered =
+            Template::load("templates/signup.html")?.render(HashMap::from([("title", "Test")]))?;
 
         Ok(Response::new().html(rendered))
     }

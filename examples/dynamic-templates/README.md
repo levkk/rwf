@@ -66,7 +66,7 @@ assert_eq!(result, "<p>Ahoy there, Josh! (id: 1)</p>");
 Templates can be placed in files anywhere the Rust program can access them:
 
 ```rust
-let template = Template::load("templates/index.html").await?;
+let template = Template::load("templates/index.html")?;
 let result = template.render(context.try_into()?)?;
 ```
 

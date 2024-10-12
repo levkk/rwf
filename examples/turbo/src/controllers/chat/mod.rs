@@ -19,9 +19,7 @@ impl ChatController {
 #[rwf::async_trait]
 impl PageController for ChatController {
     async fn get(&self, _request: &Request) -> Result<Response, Error> {
-        let rendered = Template::load("templates/chat.html")
-            .await?
-            .render([("title", "Rwf chat")])?;
+        let rendered = Template::load("templates/chat.html")?.render([("title", "Rwf chat")])?;
 
         Ok(Response::new().html(rendered))
     }

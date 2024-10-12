@@ -81,7 +81,7 @@ struct IndexController;
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        Ok(Template::cached_static("templates/index.html").await?)
+        Ok(Template::cached_static("templates/index.html")?)
     }
 }
 

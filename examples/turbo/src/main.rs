@@ -26,7 +26,7 @@ struct IndexContext {
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        let rendered = Template::load("templates/index.html").await?.render(
+        let rendered = Template::load("templates/index.html")?.render(
             &IndexContext {
                 title: "Rum + Turbo = Fun".into(),
             }
@@ -84,7 +84,7 @@ impl PageController {
     /// Generate an HTML template and send it as a TurboStream `<turbo-stream>`
     /// HTML element.
     async fn page(message: impl ToString) -> Result<TurboStream, Error> {
-        let page = Template::cached("templates/page.html").await?;
+        let page = Template::cached("templates/page.html")?;
         let body = page.render(
             &Page {
                 body: message.to_string(),

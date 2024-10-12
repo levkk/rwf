@@ -14,9 +14,6 @@ use language::Program;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs::read_to_string;
-use tokio::runtime::Handle;
-use tokio::task;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
