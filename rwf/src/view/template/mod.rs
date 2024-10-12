@@ -26,8 +26,8 @@ pub struct Template {
 }
 
 impl Template {
-    pub async fn new(path: impl AsRef<Path> + std::marker::Copy) -> Result<Self, Error> {
-        let text = match read_to_string(path).await {
+    pub fn new(path: impl AsRef<Path> + std::marker::Copy) -> Result<Self, Error> {
+        let text = match std::fs::read_to_string(path) {
             Ok(text) => text,
             Err(_) => return Err(Error::TemplateDoesNotExist(path.as_ref().to_owned())),
         };
@@ -55,29 +55,16 @@ impl Template {
         self.program.evaluate(&Context::default())
     }
 
-    pub async fn cached(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
-        Templates::cache().await.get(path).await
+    pub fn cached(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
+        Templates::cache().get(path)
     }
 
-    pub async fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
-        Templates::cache().await.get(path).await
+    pub fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
+        Self::cached(path)
     }
 
-    pub fn load_sync(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
-        // TODO: in prod, we expect templates to be cached
-        // so this should return immediately without blocking the runtime.
-        // Either way, this is super ugly, and we should refactor to maybe make
-        // templates async.
-        task::block_in_place(move || {
-            let runtime = Handle::current();
-            let template = runtime.block_on(async { Template::load(path).await });
-
-            template
-        })
-    }
-
-    pub async fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
-        match Self::cached(path).await {
+    pub fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
+        match Self::cached(path) {
             Ok(template) => Ok(template.try_into()?),
             Err(err) => Ok(Response::internal_error(err)),
         }

@@ -64,7 +64,7 @@ impl Statement {
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
             Statement::Render(path) => {
-                let template = Template::load_sync(&path)?;
+                let template = Template::load(&path)?;
                 template.render(context)
             }
             Statement::PrintText(text) => Ok(text.clone()),

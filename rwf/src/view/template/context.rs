@@ -40,7 +40,7 @@ impl TryFrom<&Context> for Context {
 
 macro_rules! impl_string {
     ($ty:ty) => {
-       impl TryFrom<$ty> for Context {
+        impl TryFrom<$ty> for Context {
             type Error = Error;
 
             fn try_from(values: $ty) -> Result<Context, Self::Error> {
@@ -52,12 +52,12 @@ macro_rules! impl_string {
                 Ok(Context { values: result })
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_integer {
     ($ty:ty) => {
-       impl TryFrom<$ty> for Context {
+        impl TryFrom<$ty> for Context {
             type Error = Error;
 
             fn try_from(values: $ty) -> Result<Context, Self::Error> {
@@ -69,7 +69,7 @@ macro_rules! impl_integer {
                 Ok(Context { values: result })
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_impl_integer {
@@ -130,7 +130,6 @@ impl_impl_integer!(u64);
 impl_impl_integer!(u32);
 impl_impl_integer!(u16);
 impl_impl_integer!(u8);
-
 
 // impl TryFrom<HashMap<String, String>> for Context {
 //     type Error = Error;

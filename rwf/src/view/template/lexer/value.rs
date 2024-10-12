@@ -276,7 +276,7 @@ impl Value {
 
                 "render" => match &args {
                     &[Value::String(n)] => {
-                        let template = Template::load_sync(n)?;
+                        let template = Template::load(n)?;
                         Value::String(template.render(context)?)
                     }
 

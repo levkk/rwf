@@ -47,6 +47,13 @@ pub trait Authentication: Sync + Send {
     async fn denied(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::forbidden())
     }
+
+    fn handler(self) -> AuthHandler
+    where
+        Self: Sized + 'static,
+    {
+        AuthHandler::new(self)
+    }
 }
 
 /// Allow all requests.
