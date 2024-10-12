@@ -216,6 +216,65 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+#[proc_macro_derive(PageController, attributes(auth))]
+pub fn derive_page_controller(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let overrides = input.attrs
+        .iter()
+        .map(|attr| {
+            let name = &attr
+                    .meta
+                    .path()
+                    .segments
+                    .first()
+                    .expect("segment")
+                    .ident
+                    .to_string();
+
+            match name.as_str() {
+                "auth" => {
+                    match &attr.meta {
+                        Meta::List(list) => {
+                            let path = list.path.segments.first();
+
+                            if let Some(path) = path {
+                                quote! {
+                                    fn auth(&self) -> &rwf::controller::AuthHandler {
+                                        &self.#path
+                                    }
+                                }
+                            } else {
+                                quote!{}
+                            }
+                        }
+
+                        _ => quote!{}
+                    }
+                }
+
+                _ => quote! {}
+            }
+        }).collect::<Vec<_>>();
+
+    let ident = match &input.data {
+        Data::Struct(_data) => input.ident.clone(),
+
+        _ => panic!("macro can only be used on structs"),
+    };
+
+    quote! {
+       #[rwf::async_trait]
+        impl rwf::controller::Controller for #ident {
+            #(#overrides)*
+
+            async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
+                rwf::controller::PageController::handle(self, request).await
+            }
+        }
+    }.into()
+}
+
 #[proc_macro_derive(RestController)]
 pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

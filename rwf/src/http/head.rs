@@ -189,6 +189,14 @@ impl Head {
         &self.method
     }
 
+    pub fn post(&self) -> bool {
+        self.method() == &Method::Post
+    }
+
+    pub fn get(&self) -> bool {
+        self.method() == &Method::Get
+    }
+
     /// The size of the request body in bytes.
     pub fn content_length(&self) -> Option<usize> {
         if let Some(cl) = self.headers.get("content-length") {

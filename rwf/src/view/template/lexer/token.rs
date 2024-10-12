@@ -21,6 +21,7 @@ pub enum Token {
     BlockStart,
     BlockStartPrint,
     BlockStartPrintRaw,
+    BlockStartRender,
     BlockEnd,
     // BlockSign,
     Print,

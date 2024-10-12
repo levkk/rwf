@@ -108,6 +108,24 @@ pub trait Controller: Sync + Send {
     }
 }
 
+#[async_trait]
+#[allow(unused_variables)]
+pub trait PageController: Controller {
+    async fn get(&self, request: &Request) -> Result<Response, Error>;
+    async fn post(&self, request: &Request) -> Result<Response, Error> {
+        Ok(Response::method_not_allowed())
+    }
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        if request.get() {
+            PageController::get(self, request).await
+        } else if request.post() {
+            PageController::post(self, request).await
+        } else {
+            Ok(Response::method_not_allowed())
+        }
+    }
+}
+
 /// REST, aka CRUD, controller.
 ///
 /// This controller will split incoming requests based on the REST specification and route

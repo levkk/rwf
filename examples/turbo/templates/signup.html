@@ -1,4 +1,12 @@
-<div class="container">
-	<label>Signup</label>
-	<input name="name" type="text" required>
+<%% "templates/header.html" %>
+
+<div>
+	<form method="post" action="/signup">
+		<label>Signup</label>
+		<input name="name" type="text" required>
+
+		<button type="submit">Signup</button>
+	</form>
 </div>
+
+<%% "templates/footer.html" %>

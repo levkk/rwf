@@ -128,6 +128,12 @@ impl<'a> Lexer<'a> {
                                     self.code_block = true;
                                 }
 
+                                Some('%') => {
+                                    self.drain_buffer();
+                                    self.tokens.push(self.add_token(Token::BlockStartRender));
+                                    self.code_block = true;
+                                }
+
                                 // `<%` (code block start)
                                 Some(c) => {
                                     self.drain_buffer();

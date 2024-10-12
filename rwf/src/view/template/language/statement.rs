@@ -1,8 +1,11 @@
 use super::{
+    super::Template,
     super::{Context, Error, Token, TokenWithContext, Tokenize, Value},
     Expression, Term,
 };
 use std::iter::{Iterator, Peekable};
+
+use std::path::PathBuf;
 
 macro_rules! expect {
     ($got:expr, $expected:expr) => {
@@ -48,6 +51,8 @@ pub enum Statement {
         list: Expression,
         body: Vec<Statement>,
     },
+
+    Render(PathBuf),
 }
 
 impl Statement {
@@ -58,6 +63,10 @@ impl Statement {
 
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
+            Statement::Render(path) => {
+                let template = Template::load_sync(&path)?;
+                template.render(context)
+            }
             Statement::PrintText(text) => Ok(text.clone()),
             Statement::If {
                 expression,
@@ -66,7 +75,17 @@ impl Statement {
                 ..
             } => {
                 let mut result = String::new();
-                if expression.evaluate(&context)?.truthy() {
+                let truthy = match expression.evaluate(&context) {
+                    Ok(result) => result.truthy(),
+                    Err(Error::UndefinedVariable(name)) => match expression {
+                        Expression::Term { .. } => false,
+                        _ => return Err(Error::UndefinedVariable(name)),
+                    },
+
+                    Err(err) => return Err(err),
+                };
+
+                if truthy {
                     for statement in if_body {
                         result.push_str(&statement.evaluate(&context)?);
                     }
@@ -140,6 +159,17 @@ impl Statement {
                     let expression = Expression::parse(iter)?;
                     block_end!(iter);
                     return Ok(Statement::PrintRaw(expression));
+                }
+                Token::BlockStartRender => {
+                    let path = iter.next().ok_or(Error::Eof("block start render"))?;
+                    block_end!(iter);
+
+                    match path.token() {
+                        Token::Value(Value::String(path)) => {
+                            return Ok(Statement::Render(PathBuf::from(path)))
+                        }
+                        _ => return Err(Error::Syntax(path)),
+                    }
                 }
                 Token::Else => {
                     block_end!(iter);

@@ -18,10 +18,22 @@ use std::sync::{
 #[derive(Default)]
 struct IndexController;
 
+#[derive(rwf::macros::Context)]
+struct IndexContext {
+    title: String,
+}
+
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        Ok(Template::cached_static("templates/index.html").await?)
+        let rendered = Template::load("templates/index.html").await?.render(
+            &IndexContext {
+                title: "Rum + Turbo = Fun".into(),
+            }
+            .try_into()?,
+        )?;
+
+        Ok(Response::new().html(rendered))
     }
 }
 
@@ -50,6 +62,7 @@ impl WebsocketController for TurboStreamController {
 #[derive(rwf::macros::Context)]
 struct Page {
     body: String,
+    title: String,
 }
 
 struct PageController {
@@ -75,6 +88,7 @@ impl PageController {
         let body = page.render(
             &Page {
                 body: message.to_string(),
+                title: "Rum + Turbo = Fun".into(),
             }
             .try_into()?,
         )?;
@@ -155,6 +169,7 @@ async fn main() -> Result<(), Error> {
         TurboStreamController::default().route("/turbo-stream"),
         PageController::default().route("/update-page"),
         controllers::signup::SignupController::new().route("/signup"),
+        controllers::chat::ChatController::new().route("/chat"),
     ])
     .launch("0.0.0.0:8000")
     .await?;

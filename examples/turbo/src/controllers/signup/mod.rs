@@ -5,6 +5,8 @@ use rwf::prelude::*;
 
 use crate::models::User;
 
+use std::collections::HashMap;
+
 mod form;
 mod middleware;
 
@@ -31,6 +33,21 @@ impl Controller for SignupController {
     }
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        PageController::handle(self, request).await
+    }
+}
+
+#[rwf::async_trait]
+impl PageController for SignupController {
+    async fn get(&self, _request: &Request) -> Result<Response, Error> {
+        let rendered = Template::load("templates/signup.html")
+            .await?
+            .render(HashMap::from([("title", "Test")]))?;
+
+        Ok(Response::new().html(rendered))
+    }
+
+    async fn post(&self, request: &Request) -> Result<Response, Error> {
         let form = request.form::<SignupForm>()?;
 
         // Browsers set an empty field
@@ -47,6 +64,6 @@ impl Controller for SignupController {
             })
             .await?;
 
-        Ok(request.login(user.id.unwrap()))
+        Ok(request.login(user.id.unwrap()).redirect("/chat"))
     }
 }

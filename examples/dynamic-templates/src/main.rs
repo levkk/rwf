@@ -37,7 +37,7 @@ impl Controller for IndexController {
 
         let rendered = Template::load("templates/index.html")
             .await?
-            .render(&context.try_into()?)?;
+            .render(context)?;
 
         Ok(Response::new().html(rendered))
     }

@@ -15,6 +15,8 @@ use language::Program;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::read_to_string;
+use tokio::runtime::Handle;
+use tokio::task;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
@@ -43,8 +45,10 @@ impl Template {
         })
     }
 
-    pub fn render(&self, context: &Context) -> Result<String, Error> {
-        self.program.evaluate(context)
+    pub fn render(&self, context: impl TryInto<Context, Error = Error>) -> Result<String, Error> {
+        let context: Context = context.try_into()?;
+
+        self.program.evaluate(&context)
     }
 
     pub fn render_default(&self) -> Result<String, Error> {
@@ -57,6 +61,19 @@ impl Template {
 
     pub async fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
         Templates::cache().await.get(path).await
+    }
+
+    pub fn load_sync(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
+        // TODO: in prod, we expect templates to be cached
+        // so this should return immediately without blocking the runtime.
+        // Either way, this is super ugly, and we should refactor to maybe make
+        // templates async.
+        task::block_in_place(move || {
+            let runtime = Handle::current();
+            let template = runtime.block_on(async { Template::load(path).await });
+
+            template
+        })
     }
 
     pub async fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {

@@ -1,41 +1,19 @@
-<!DOCTYPE html>
-<html lang="en-US">
-    <head>
-        <%- rwf_head %>
-        <title>Turbo + Rum make a lot of fun</title>
+<%- render("templates/header.html") %>
 
-        <style>
-            .container {
-                padding: 25px;
-            }
+<!-- Send Turbo Streams over WebSockets for bonus points -->
+<turbo-stream-source src="ws://localhost:8000/turbo-stream"></turbo-stream-source>
 
-            .text-center {
-                text-align: center;
-            }
+<%% "templates/signup.html" %>
 
-            .align-center {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-        </style>
-    </head>
+<!-- This area will be drawn with Turbo Streams -->
+<div id="page">
+    <p class="text-center">Connecting to WebSocket, one moment...</p>
+</div>
 
-    <body>
-        <!-- Send Turbo Streams over WebSockets for bonus points -->
-        <turbo-stream-source src="ws://localhost:8000/turbo-stream">
+<div>
+    <form method="post" action="/update-page" class="align-center">
+        <button type="submit">Click me!</button>
+    </form>
+</div>
 
-        <%- render("templates/signup.html") %>
-
-        <!-- This area will be drawn with Turbo Streams -->
-        <div class="container" id="page">
-            <p class="text-center">Connecting to WebSocket, one moment...</p>
-        </div>
-
-        <div class="container">
-            <form method="post" action="/update-page" class="align-center">
-                <button type="submit">Click me!</button>
-            </form>
-        </div>
-    </body>
-</html>
+<%% "templates/footer.html" %>
