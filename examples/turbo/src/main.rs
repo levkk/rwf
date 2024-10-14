@@ -38,6 +38,7 @@ async fn main() -> Result<(), Error> {
         route!("/" => IndexController),
         route!("/turbo-stream" => TurboStreamController),
         route!("/signup" => SignupController),
+        route!("/logout" => LogoutController),
         route!("/chat" => ChatController),
         route!("/chat/typing" => TypingController),
         StaticFiles::serve("static")?,

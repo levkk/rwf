@@ -56,3 +56,13 @@ impl PageController for SignupController {
         Ok(request.login(user.id.unwrap()).redirect("/chat"))
     }
 }
+
+#[derive(Default)]
+pub struct LogoutController;
+
+#[rwf::async_trait]
+impl Controller for LogoutController {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        Ok(request.logout().redirect("/signup"))
+    }
+}
