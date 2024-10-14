@@ -110,3 +110,7 @@ let form = request.form::<SignupForm>()?;
 This will automatically extract the `email`, `password` and `password2` fields from the request FormData and map them to the struct. If any of the fields are missing or are of the wrong type, a `400 - Bad Request` will be returned automatically. 
 
 If you're in the HTML-over-the-wire camp, `PageController` and `Controller` will handle the vast majority of your use cases. However, if you prefer to build your frontends in JavaScript, Rwf comes with a couple more controllers that will come in handy.
+
+## More examples
+
+See [Rwf + Turbo](/examples/turbo) for a complete example of building a Single Page Application with Rwf, Turbo, Stimulus and WebSockets.
