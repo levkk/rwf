@@ -7,6 +7,8 @@ use tokio::task::spawn;
 use tokio_postgres::tls::NoTls;
 use tokio_postgres::{types::ToSql, Client, Row, Statement};
 
+use tracing::info;
+
 use std::collections::HashMap;
 
 use std::sync::{
@@ -41,6 +43,9 @@ impl Connection {
     ///
     pub async fn new(database_url: &str) -> Result<Self, Error> {
         let (client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
+
+        info!("New connection to PostgreSQL created");
+
         let bad = AtomicBool::new(false);
         let shutdown = Notify::new();
 
@@ -126,5 +131,6 @@ impl Connection {
 impl Drop for Connection {
     fn drop(&mut self) {
         self.shutdown();
+        info!("Connection to PostgreSQL closed");
     }
 }

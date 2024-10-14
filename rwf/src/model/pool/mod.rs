@@ -301,11 +301,9 @@ impl Pool {
         }
 
         self.checkin_notify.notify_one();
-
-        // TODO: run this in a separate tokio task.
-        self.maintenance();
     }
 
+    #[allow(dead_code)]
     fn maintenance(&self) {
         let now = Instant::now();
         let mut inner = self.inner.lock();
