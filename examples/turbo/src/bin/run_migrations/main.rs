@@ -12,5 +12,7 @@ async fn main() {
             "flush" => Migrations::flush().await.expect("flush failed"),
             _ => Migrations::migrate().await.expect("migrations failed"),
         };
+    } else {
+        Migrations::migrate().await.expect("migrations failed");
     }
 }
