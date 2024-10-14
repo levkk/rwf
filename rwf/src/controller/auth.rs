@@ -137,6 +137,13 @@ impl SessionId {
             Authenticated(_) => true,
         }
     }
+
+    pub fn user_id(&self) -> Option<i64> {
+        match self {
+            SessionId::Authenticated(id) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 impl Default for SessionId {

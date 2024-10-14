@@ -2,7 +2,7 @@ pub mod token;
 pub mod value;
 
 pub use token::Token;
-pub use value::{ToValue, Value};
+pub use value::{ToTemplateValue, Value};
 
 use super::Error;
 

@@ -42,6 +42,8 @@ pub fn urldecode(s: &str) -> String {
                 }
             }
 
+            '+' => result.push(' '),
+
             c => result.push(c),
         }
     }

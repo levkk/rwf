@@ -257,8 +257,13 @@ impl Response {
         self.code == 101 && self.headers.get("upgrade").map(|s| s == "websocket") == Some(true)
     }
 
-    pub fn turbo_stream(self, body: TurboStream) -> Self {
-        self.html(body.render())
+    pub fn turbo_stream(self, body: &[TurboStream]) -> Self {
+        let body = body
+            .iter()
+            .map(|b| b.clone().render())
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.html(body)
             .header("content-type", "text/vnd.turbo-stream.html")
     }
 

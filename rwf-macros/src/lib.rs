@@ -327,6 +327,40 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(TemplateValue)]
+pub fn derive_template_value(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match input.data {
+        Data::Struct(ref data) => {
+            let ident = input.ident;
+
+            let fields = data.fields.iter().map(|field| {
+                let ident = &field.ident;
+                quote! {
+                    hash.insert(stringify!(#ident).to_string(), self.#ident.to_template_value()?);
+                }
+            });
+
+            quote! {
+                #[automatically_derived]
+                impl rwf::view::ToTemplateValue for #ident {
+                    fn to_template_value(&self) -> Result<rwf::view::Value, rwf::view::Error> {
+                        let mut hash = std::collections::HashMap::new();
+
+                        #(#fields)*
+
+                        Ok(rwf::view::Value::Hash(hash))
+                    }
+                }
+            }
+            .into()
+        }
+
+        _ => panic!("macro can only be used on structs"),
+    }
+}
+
 #[proc_macro_derive(Form)]
 pub fn derive_form(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -391,7 +425,7 @@ pub fn drive_context(input: TokenStream) -> TokenStream {
                 let ident = &field.ident;
 
                 quote! {
-                    result[stringify!(#ident)] = rwf::view::template::ToValue::to_value(&context.#ident)?;
+                    result[stringify!(#ident)] = rwf::view::template::ToTemplateValue::to_template_value(&context.#ident)?;
                 }
             });
 

@@ -1,4 +1,4 @@
-use crate::view::template::{Error, ToValue, Value};
+use crate::view::template::{Error, ToTemplateValue, Value};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
@@ -16,17 +16,16 @@ impl Context {
         self.values.get(key).cloned()
     }
 
-    pub fn set(&mut self, key: &str, value: impl ToValue) -> Result<&mut Self, Error> {
-        self.values.insert(key.to_string(), value.to_value()?);
+    pub fn set(&mut self, key: &str, value: impl ToTemplateValue) -> Result<&mut Self, Error> {
+        self.values
+            .insert(key.to_string(), value.to_template_value()?);
         Ok(self)
     }
 }
 
-impl TryFrom<HashMap<String, Value>> for Context {
-    type Error = Error;
-
-    fn try_from(values: HashMap<String, Value>) -> Result<Context, Self::Error> {
-        Ok(Context { values })
+impl ToTemplateValue for Context {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        Ok(Value::Hash(self.values.clone()))
     }
 }
 
@@ -38,7 +37,7 @@ impl TryFrom<&Context> for Context {
     }
 }
 
-macro_rules! impl_string {
+macro_rules! impl_type {
     ($ty:ty) => {
         impl TryFrom<$ty> for Context {
             type Error = Error;
@@ -46,7 +45,7 @@ macro_rules! impl_string {
             fn try_from(values: $ty) -> Result<Context, Self::Error> {
                 let mut result = HashMap::<String, Value>::new();
                 for (key, value) in values {
-                    result.insert(key.to_string(), Value::String(value.to_string()));
+                    result.insert(key.to_string(), value.to_template_value()?);
                 }
 
                 Ok(Context { values: result })
@@ -55,120 +54,40 @@ macro_rules! impl_string {
     };
 }
 
-macro_rules! impl_integer {
+macro_rules! impl_impl_type {
     ($ty:ty) => {
-        impl TryFrom<$ty> for Context {
-            type Error = Error;
-
-            fn try_from(values: $ty) -> Result<Context, Self::Error> {
-                let mut result = HashMap::<String, Value>::new();
-                for (key, value) in values {
-                    result.insert(key.to_string(), Value::Integer(value as i64));
-                }
-
-                Ok(Context { values: result })
-            }
-        }
-    };
-}
-
-macro_rules! impl_impl_integer {
-    ($ty:ty) => {
-        impl_integer!(HashMap<String, $ty>);
-        impl_integer!(HashMap<&str, $ty>);
-        impl_integer!(Vec<(&str, $ty)>);
-        impl_integer!([(&str, $ty); 1]);
-        impl_integer!([(&str, $ty); 2]);
-        impl_integer!([(&str, $ty); 3]);
-        impl_integer!([(&str, $ty); 4]);
-        impl_integer!([(&str, $ty); 5]);
-        impl_integer!([(&str, $ty); 6]);
-        impl_integer!([(&str, $ty); 7]);
-        impl_integer!([(&str, $ty); 8]);
-        impl_integer!([(&str, $ty); 9]);
-        impl_integer!([(&str, $ty); 10]);
-        impl_integer!([(&str, $ty); 11]);
-        impl_integer!([(&str, $ty); 12]);
+        impl_type!(HashMap<String, $ty>);
+        impl_type!(HashMap<&str, $ty>);
+        impl_type!(Vec<(&str, $ty)>);
+        impl_type!([(&str, $ty); 1]);
+        impl_type!([(&str, $ty); 2]);
+        impl_type!([(&str, $ty); 3]);
+        impl_type!([(&str, $ty); 4]);
+        impl_type!([(&str, $ty); 5]);
+        impl_type!([(&str, $ty); 6]);
+        impl_type!([(&str, $ty); 7]);
+        impl_type!([(&str, $ty); 8]);
+        impl_type!([(&str, $ty); 9]);
+        impl_type!([(&str, $ty); 10]);
+        impl_type!([(&str, $ty); 11]);
+        impl_type!([(&str, $ty); 12]);
     }
 }
 
-impl_string!(HashMap<String, String>);
-impl_string!(HashMap<&str, &str>);
-impl_string!(Vec<(&str, &str)>);
-impl_string!([(&str, &str); 1]);
-impl_string!([(&str, &str); 2]);
-impl_string!([(&str, &str); 3]);
-impl_string!([(&str, &str); 4]);
-impl_string!([(&str, &str); 5]);
-impl_string!([(&str, &str); 6]);
-impl_string!([(&str, &str); 7]);
-impl_string!([(&str, &str); 8]);
-impl_string!([(&str, &str); 9]);
-impl_string!([(&str, &str); 10]);
-impl_string!([(&str, &str); 11]);
-impl_string!([(&str, &str); 12]);
-
-impl_string!([(&str, String); 1]);
-impl_string!([(&str, String); 2]);
-impl_string!([(&str, String); 3]);
-impl_string!([(&str, String); 4]);
-impl_string!([(&str, String); 5]);
-impl_string!([(&str, String); 6]);
-impl_string!([(&str, String); 7]);
-impl_string!([(&str, String); 8]);
-impl_string!([(&str, String); 9]);
-impl_string!([(&str, String); 10]);
-impl_string!([(&str, String); 11]);
-impl_string!([(&str, String); 12]);
-
-impl_impl_integer!(i64);
-impl_impl_integer!(i32);
-impl_impl_integer!(i16);
-impl_impl_integer!(i8);
-
-impl_impl_integer!(u64);
-impl_impl_integer!(u32);
-impl_impl_integer!(u16);
-impl_impl_integer!(u8);
-
-// impl TryFrom<HashMap<String, String>> for Context {
-//     type Error = Error;
-
-//     fn try_from(values: HashMap<String, String>) -> Result<Context, Self::Error> {
-//         let mut result = HashMap::<String, Value>::new();
-//         for (key, value) in values {
-//             result.insert(key, Value::String(value));
-//         }
-
-//         Ok(Context { values: result })
-//     }
-// }
-
-// impl TryFrom<HashMap<&str, &str>> for Context {
-//     type Error = Error;
-
-//     fn try_from(values: HashMap<&str, &str>) -> Result<Context, Self::Error> {
-//         let mut result = HashMap::<String, Value>::new();
-//         for (key, value) in values {
-//             result.insert(key.to_string(), Value::String(value.to_string()));
-//         }
-
-//         Ok(Context { values: result })
-//     }
-// }
-
-// impl TryFrom<Vec<(&str, &str)>> for Context {
-//     type Error = Error;
-
-//     fn try_from(values: Vec<(&str, &str)>) -> Result<Context, Self::Error> {
-//         let mut result = HashMap::<String, Value>::new();
-//         for (key, value) in values {
-//             result.insert(key.to_string(), Value::String(value.to_string()));
-//         }
-
-//         Ok(Context { values: result })
-//     }
-// }
+impl_impl_type!(i64);
+impl_impl_type!(i32);
+impl_impl_type!(i16);
+impl_impl_type!(i8);
+impl_impl_type!(u64);
+impl_impl_type!(u32);
+impl_impl_type!(u16);
+impl_impl_type!(u8);
+impl_impl_type!(Value);
+impl_impl_type!(String);
+impl_impl_type!(&str);
+impl_impl_type!(f32);
+impl_impl_type!(f64);
+impl_impl_type!(time::OffsetDateTime);
 
 impl Index<&str> for Context {
     type Output = Value;
@@ -196,7 +115,7 @@ mod test {
     #[test]
     fn test_context_index() {
         let mut context = Context::default();
-        context["test"] = "value".to_value().expect("to_value");
+        context["test"] = "value".to_template_value().expect("to_template_value");
 
         assert_eq!(context["test"], Value::String("value".to_string()));
     }

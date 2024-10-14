@@ -1,10 +1,12 @@
 //! Chat message.
+use super::User;
 use time::OffsetDateTime;
 
 #[derive(Clone, rwf::macros::Model)]
+#[belongs_to(User)]
 pub struct ChatMessage {
-    id: Option<i64>,
-    user_id: i64,
-    body: String,
-    created_at: OffsetDateTime,
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub body: String,
+    pub created_at: OffsetDateTime,
 }

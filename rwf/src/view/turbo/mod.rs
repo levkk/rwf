@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 
 use super::{Context, Template};
-use crate::view::template::lexer::value::ToValue;
+use crate::view::template::lexer::value::ToTemplateValue;
 
 static TEMPLATE: Lazy<Template> =
     Lazy::new(|| Template::from_str(include_str!("stream.html")).unwrap());
@@ -16,9 +16,9 @@ pub struct TurboStream {
 impl From<TurboStream> for Context {
     fn from(stream: TurboStream) -> Context {
         let mut context = Context::new();
-        context["action"] = stream.action.to_value().unwrap();
-        context["template"] = stream.template.to_value().unwrap();
-        context["target"] = stream.target.to_value().unwrap();
+        context["action"] = stream.action.to_template_value().unwrap();
+        context["template"] = stream.template.to_template_value().unwrap();
+        context["target"] = stream.target.to_template_value().unwrap();
 
         context
     }
@@ -46,5 +46,27 @@ impl TurboStream {
     pub fn render(self) -> String {
         let context: Context = self.into();
         TEMPLATE.render(&context).unwrap()
+    }
+}
+
+pub struct TurboStreams {
+    streams: Vec<TurboStream>,
+}
+
+impl TurboStreams {
+    pub fn new() -> Self {
+        Self { streams: vec![] }
+    }
+
+    pub fn add(&mut self, stream: TurboStream) {
+        self.streams.push(stream);
+    }
+
+    pub fn render(self) -> String {
+        let mut results = vec![];
+        for stream in self.streams {
+            results.push(stream.render());
+        }
+        results.join("\n")
     }
 }

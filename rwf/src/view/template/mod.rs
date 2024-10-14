@@ -5,7 +5,7 @@ pub mod lexer;
 
 pub use context::Context;
 pub use error::Error;
-pub use lexer::{Lexer, ToValue, Token, TokenWithContext, Tokenize, Value};
+pub use lexer::{Lexer, ToTemplateValue, Token, TokenWithContext, Tokenize, Value};
 
 use crate::http::Response;
 use crate::view::Templates;

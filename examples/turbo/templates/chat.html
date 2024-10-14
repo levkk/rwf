@@ -1,5 +1,24 @@
 <%% "templates/header.html" %>
 
-<h2>Chat</h2>
+<turbo-stream-source src="ws://localhost:8000/turbo-stream"></turbo-stream-source>
+
+<div class="container py-5">
+    <div id="messages">
+        <% for message in messages %>
+            <%% "templates/chat_message.html" %>
+        <% end %>
+    </div>
+    <div class="row">
+        <div class="col-lg-3"><!-- spacing --></div>
+        <div class="col-lg-6 col-12">
+        </div>
+    </div>
+    <div class="row mt-5">
+        <div class="col-lg-3"><!-- spacing --></div>
+        <div class="col-lg-6 col-12">
+            <%% "templates/chat_form.html" %>
+        </div>
+    </div>
+</div>
 
 <%% "templates/footer.html" %>

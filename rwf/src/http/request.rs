@@ -138,6 +138,17 @@ impl Request {
             .map(|session| session.session_id.clone())
     }
 
+    pub fn user_id(&self) -> Option<i64> {
+        if let Some(session_id) = self.session_id() {
+            match session_id {
+                SessionId::Authenticated(id) => Some(id),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn set_session(mut self, session: Option<Session>) -> Self {
         self.session = session;
         self

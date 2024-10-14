@@ -28,4 +28,7 @@ pub enum Error {
 
     #[error("serialization error")]
     SerializationError,
+
+    #[error("time format error: {0}")]
+    TimeFormatError(#[from] time::error::Format),
 }

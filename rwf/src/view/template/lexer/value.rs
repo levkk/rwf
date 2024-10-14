@@ -322,26 +322,26 @@ impl Value {
     }
 }
 
-pub trait ToValue: Clone {
-    fn to_value(&self) -> Result<Value, Error>;
+pub trait ToTemplateValue: Clone {
+    fn to_template_value(&self) -> Result<Value, Error>;
 }
 
-impl ToValue for String {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for String {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::String(self.clone()))
     }
 }
 
-impl ToValue for &str {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for &str {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::String(self.to_string()))
     }
 }
 
 macro_rules! impl_integer {
     ($ty:ty) => {
-        impl ToValue for $ty {
-            fn to_value(&self) -> Result<Value, Error> {
+        impl ToTemplateValue for $ty {
+            fn to_template_value(&self) -> Result<Value, Error> {
                 Ok(Value::Integer(*self as i64))
             }
         }
@@ -357,50 +357,47 @@ impl_integer!(u32);
 impl_integer!(u16);
 impl_integer!(u8);
 
-impl ToValue for Option<i64> {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for time::OffsetDateTime {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        let fmt = time::format_description::well_known::Rfc2822;
+        Ok(Value::String(self.format(&fmt)?))
+    }
+}
+
+impl ToTemplateValue for Option<i64> {
+    fn to_template_value(&self) -> Result<Value, Error> {
         match self {
-            Some(i) => i.to_value(),
+            Some(i) => i.to_template_value(),
             None => Ok(Value::Null),
         }
     }
 }
 
-impl ToValue for f64 {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for f64 {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::Float(*self))
     }
 }
 
-impl ToValue for f32 {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for f32 {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::Float(*self as f64))
     }
 }
 
-impl ToValue for bool {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for bool {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::Boolean(*self))
     }
 }
 
 macro_rules! impl_list {
     ($ty:ty) => {
-        impl ToValue for Vec<$ty> {
-            fn to_value(&self) -> Result<Value, Error> {
+        impl ToTemplateValue for &[$ty] {
+            fn to_template_value(&self) -> Result<Value, Error> {
                 let mut values = vec![];
                 for v in self.iter() {
-                    values.push(v.to_value()?);
-                }
-                Ok(Value::List(values))
-            }
-        }
-
-        impl ToValue for &[$ty] {
-            fn to_value(&self) -> Result<Value, Error> {
-                let mut values = vec![];
-                for v in self.iter() {
-                    values.push(v.to_value()?);
+                    values.push(v.to_template_value()?);
                 }
                 Ok(Value::List(values))
             }
@@ -414,8 +411,8 @@ impl_list!(&str);
 impl_list!(String);
 impl_list!(Value);
 
-impl ToValue for Value {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for Value {
+    fn to_template_value(&self) -> Result<Value, Error> {
         Ok(self.clone())
     }
 }
@@ -450,25 +447,29 @@ impl TryInto<serde_json::Value> for Value {
     }
 }
 
-impl ToValue for crate::model::Value {
-    fn to_value(&self) -> Result<Value, Error> {
+impl ToTemplateValue for crate::model::Value {
+    fn to_template_value(&self) -> Result<Value, Error> {
         use crate::model::Value as ModelValue;
         use std::ops::Deref;
         match self {
-            ModelValue::Integer(i) => i.to_value(),
-            ModelValue::Float(f) => f.to_value(),
-            ModelValue::String(s) => s.to_value(),
+            ModelValue::Integer(i) => i.to_template_value(),
+            ModelValue::Float(f) => f.to_template_value(),
+            ModelValue::String(s) => s.to_template_value(),
             ModelValue::Optional(v) => match v.deref() {
-                Some(v) => v.to_value(),
+                Some(v) => v.to_template_value(),
                 None => Ok(Value::Null),
             },
+            ModelValue::TimestampT(timestamp) => {
+                use time::format_description::well_known::Rfc2822;
+                timestamp.format(&Rfc2822)?.to_template_value()
+            }
             value => todo!("model value {:?} to template value", value),
         }
     }
 }
 
-impl<T: Model> ToValue for T {
-    fn to_value(&self) -> Result<Value, Error> {
+impl<T: Model> ToTemplateValue for T {
+    fn to_template_value(&self) -> Result<Value, Error> {
         let columns = T::column_names();
         let values = self.values();
 
@@ -476,22 +477,24 @@ impl<T: Model> ToValue for T {
             return Err(Error::SerializationError);
         }
 
-        let mut hash = HashMap::from([("id".to_string(), self.id().to_value()?)]);
+        let mut hash = HashMap::from([("id".to_string(), self.id().to_template_value()?)]);
 
         for (key, value) in columns.iter().zip(values.iter()) {
-            hash.insert(key.to_string(), value.to_value()?);
+            hash.insert(key.to_string(), value.to_template_value()?);
         }
 
         Ok(Value::Hash(hash))
     }
 }
 
-impl<T: Model> ToValue for Vec<T> {
-    fn to_value(&self) -> Result<Value, Error> {
+impl<T: ToTemplateValue> ToTemplateValue for Vec<T> {
+    fn to_template_value(&self) -> Result<Value, Error> {
         let mut list = vec![];
-        for v in self.iter() {
-            list.push(v.to_value()?);
+
+        for value in self.iter() {
+            list.push(value.to_template_value()?);
         }
+
         Ok(Value::List(list))
     }
 }

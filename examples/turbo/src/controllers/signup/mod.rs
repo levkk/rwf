@@ -56,10 +56,12 @@ impl PageController for SignupController {
 
         let user = Pool::pool()
             .with_transaction(|mut transaction| async move {
-                User::find_or_create_by(&[("name", form.name)])
+                let users = User::find_or_create_by(&[("name", form.name)])
                     .unique_by(&["name"])
                     .fetch(&mut transaction)
-                    .await
+                    .await?;
+                transaction.commit().await?;
+                Ok(users)
             })
             .await?;
 

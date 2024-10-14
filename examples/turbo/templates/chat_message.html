@@ -1,0 +1,24 @@
+<div class="row mb-3">
+    <% if message.mine %>
+    <div class="col-lg-4 col-2"><!-- spacing --></div>
+    <% else %>
+    <div class="col-lg-3"><!-- spacing --></div>
+    <% end %>
+    <div class="col-lg-5 col-10">
+        <% if message.mine %>
+        <div class="card bg-primary px-2 pt-2 pb-1">
+        <% else %>
+        <div class="card bg-secondary px-2 pt-2 pb-1">
+        <% end %>
+            <div class="card-title">
+                <div class="d-flex justify-content-between">
+                    <h6 class="fw-semibold"><%= message.user.name %></h6>
+                    <p><small><%= message.message.created_at %></small></p>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <p class="mb-2"><%= message.message.body %></p>
+            </div>
+        </div>
+    </div>
+</div>
