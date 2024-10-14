@@ -1,13 +1,16 @@
-<form method="post" action="/chat" id="form">
+<form method="post" action="/chat" id="form" data-controller="form">
     <div class="mb-3">
-        <textarea name="body" type="text" class="form-control" required placeholder="Post message as <%= user.name %>"></textarea>
+        <textarea
+            name="body"
+            type="text"
+            class="form-control"
+            required
+            placeholder="Post message as <%= user.name %>"
+            data-action="keyup->form#typingStart"
+        ></textarea>
     </div>
 
     <div class="d-flex justify-content-end">
         <button class="btn btn-primary" type="submit">Post message</button>
     </div>
 </form>
-
-<script>
-window.scrollTo(0, document.body.scrollHeight);
-</script>

@@ -8,6 +8,9 @@ use rwf::prelude::*;
 mod form;
 use form::MessageForm;
 
+pub mod typing;
+use typing::TypingState;
+
 #[derive(Clone, rwf::macros::TemplateValue)]
 struct UserMessage {
     user: User,
@@ -28,13 +31,15 @@ pub struct ChatController {
     auth: AuthHandler,
 }
 
-impl ChatController {
-    pub fn new() -> Self {
+impl Default for ChatController {
+    fn default() -> Self {
         Self {
             auth: SessionAuth::redirect("/signup").handler(),
         }
     }
+}
 
+impl ChatController {
     fn chat_message(user: &User, message: &ChatMessage, mine: bool) -> Result<TurboStream, Error> {
         let chat_message = Template::load("templates/chat_message.html")?;
         let rendered = chat_message.render([(
@@ -51,15 +56,6 @@ impl ChatController {
             .action("append")
             .target("messages"))
     }
-
-    // fn typing(user: &User, action: &str) -> Result<TurboStream, Error> {
-    //     let typing = Template::load("templates/typing.html")?;
-    //     let rendered = typing.render([("user", user.clone().to_template_value()?)])?;
-
-    //     Ok(TurboStream::new(rendered)
-    //         .action(action)
-    //         .target(format!("typing-{}", user.id.unwrap())))
-    // }
 }
 
 #[rwf::async_trait]
@@ -67,11 +63,7 @@ impl PageController for ChatController {
     async fn get(&self, request: &Request) -> Result<Response, Error> {
         let mut conn = Pool::connection().await?;
 
-        let user = if let Some(id) = request.user_id() {
-            User::find(id).fetch(&mut conn).await?
-        } else {
-            return Ok(Response::new().redirect("/signup"));
-        };
+        let user = User::find(request.user_id()?).fetch(&mut conn).await?;
 
         let users = User::all().fetch_all(&mut conn).await?;
         let messages = User::related::<ChatMessage>(&users)
@@ -111,11 +103,7 @@ impl PageController for ChatController {
 
         let mut conn = Pool::connection().await?;
 
-        let user = if let Some(user_id) = request.user_id() {
-            User::find(user_id).fetch(&mut conn).await?
-        } else {
-            return Ok(Response::new().redirect("/signup"));
-        };
+        let user = User::find(request.user_id()?).fetch(&mut conn).await?;
 
         let message =
             ChatMessage::create(&[("body", form.body.to_value()), ("user_id", user.id())])
@@ -129,7 +117,7 @@ impl PageController for ChatController {
             broadcast.send(Message::Text(message))?;
 
             // let typing = Self::typing(&user, "remove")?;
-            // broadcast.send(Message::Text(typing.render()))?;
+            broadcast.send(TypingState { typing: false }.render(&user)?)?;
         }
 
         // Display the message for the user.

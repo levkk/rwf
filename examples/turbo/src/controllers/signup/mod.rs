@@ -5,8 +5,6 @@ use rwf::prelude::*;
 
 use crate::models::User;
 
-use std::collections::HashMap;
-
 mod form;
 mod middleware;
 
@@ -14,12 +12,14 @@ use form::SignupForm;
 use middleware::LoggedInCheck;
 
 /// Handle user signup.
+#[derive(rwf::macros::PageController)]
+#[middleware(middleware)]
 pub struct SignupController {
     middleware: MiddlewareSet,
 }
 
-impl SignupController {
-    pub fn new() -> SignupController {
+impl Default for SignupController {
+    fn default() -> SignupController {
         SignupController {
             middleware: MiddlewareSet::new(vec![LoggedInCheck::default().middleware()]),
         }
@@ -27,21 +27,9 @@ impl SignupController {
 }
 
 #[rwf::async_trait]
-impl Controller for SignupController {
-    fn middleware(&self) -> &MiddlewareSet {
-        &self.middleware
-    }
-
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        PageController::handle(self, request).await
-    }
-}
-
-#[rwf::async_trait]
 impl PageController for SignupController {
     async fn get(&self, _request: &Request) -> Result<Response, Error> {
-        let rendered =
-            Template::load("templates/signup.html")?.render(HashMap::from([("title", "Test")]))?;
+        let rendered = Template::load("templates/signup.html")?.render([("title", "Test")])?;
 
         Ok(Response::new().html(rendered))
     }

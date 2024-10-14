@@ -1,7 +1,10 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Meta, Type};
+use syn::{
+    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, Meta, Token,
+    Type,
+};
 
 use quote::quote;
 
@@ -172,9 +175,10 @@ fn handle_model_attrs(input: &DeriveInput, attributes: &[Attribute]) -> proc_mac
     }
 }
 
-#[proc_macro_derive(WebsocketController)]
+#[proc_macro_derive(WebsocketController, attributes(auth, middleware))]
 pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let overrides = handle_overrides(&input.attrs);
 
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),
@@ -185,6 +189,8 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     quote! {
        #[rwf::async_trait]
         impl rwf::controller::Controller for #ident {
+            #overrides
+
             async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
                 rwf::controller::WebsocketController::handle(self, request).await
             }
@@ -196,9 +202,10 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(ModelController)]
+#[proc_macro_derive(ModelController, attributes(auth, middleware))]
 pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let overrides = handle_overrides(&input.attrs);
 
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),
@@ -209,6 +216,8 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     quote! {
        #[rwf::async_trait]
         impl rwf::controller::Controller for #ident {
+            #overrides
+
             async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
                 rwf::controller::ModelController::handle(self, request).await
             }
@@ -216,12 +225,8 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(PageController, attributes(auth))]
-pub fn derive_page_controller(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let overrides = input
-        .attrs
+fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
+    let overrides = attributes
         .iter()
         .map(|attr| {
             let name = &attr
@@ -252,10 +257,38 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
                     _ => quote! {},
                 },
 
+                "middleware" => match &attr.meta {
+                    Meta::List(list) => {
+                        let path = list.path.segments.first();
+
+                        if let Some(path) = path {
+                            quote! {
+                                fn middleware(&self) -> &rwf::controller::MiddlewareSet {
+                                    &self.#path
+                                }
+                            }
+                        } else {
+                            quote! {}
+                        }
+                    }
+
+                    _ => quote! {},
+                },
+
                 _ => quote! {},
             }
         })
         .collect::<Vec<_>>();
+
+    quote! {
+        #(#overrides)*
+    }
+}
+
+#[proc_macro_derive(PageController, attributes(auth, middleware))]
+pub fn derive_page_controller(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let overrides = handle_overrides(&input.attrs);
 
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),
@@ -266,7 +299,7 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     quote! {
        #[rwf::async_trait]
         impl rwf::controller::Controller for #ident {
-            #(#overrides)*
+            #overrides
 
             async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
                 rwf::controller::PageController::handle(self, request).await
@@ -275,9 +308,10 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(RestController)]
+#[proc_macro_derive(RestController, attributes(auth, middleware))]
 pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let overrides = handle_overrides(&input.attrs);
 
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),
@@ -288,6 +322,8 @@ pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     quote! {
        #[rwf::async_trait]
         impl rwf::controller::Controller for #ident {
+            #overrides
+
             async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
                 rwf::controller::RestController::handle(self, request).await
             }
@@ -456,6 +492,20 @@ pub fn error(input: TokenStream) -> TokenStream {
 
     quote! {
         return Err(rwf::controller::Error::new(#input));
+    }
+    .into()
+}
+
+#[proc_macro]
+pub fn route(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
+    let mut iter = input.into_iter();
+
+    let route = iter.next().unwrap();
+    let controller = iter.next().unwrap();
+
+    quote! {
+        #controller::default().route(#route)
     }
     .into()
 }

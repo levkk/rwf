@@ -1,13 +1,16 @@
 use tokio::sync::Notify;
 use tokio::task::spawn;
-use tokio::time::{timeout, Duration};
+use tokio::time::{sleep, timeout, Duration};
 
 use parking_lot::Mutex;
 
 use std::collections::VecDeque;
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::Instant;
 
 use once_cell::sync::OnceCell;
@@ -127,16 +130,6 @@ pub struct PoolConfig {
     pub idle_timeout: Duration,
 }
 
-impl PoolConfig {
-    fn local() -> Self {
-        Self {
-            pool_size: 5,
-            checkout_timeout: Duration::from_secs(1),
-            idle_timeout: Duration::from_secs(3600),
-        }
-    }
-}
-
 impl Default for PoolConfig {
     fn default() -> Self {
         Self {
@@ -148,12 +141,31 @@ impl Default for PoolConfig {
 }
 
 /// Connection pool that automatically manages connections.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Pool {
     inner: Arc<Mutex<PoolInner>>,
     checkin_notify: Arc<Notify>,
     database_url: String,
     config: PoolConfig,
+    shutdown: Arc<Notify>,
+    ref_count: Arc<AtomicUsize>,
+}
+
+impl Clone for Pool {
+    fn clone(&self) -> Self {
+        let clone = Self {
+            inner: self.inner.clone(),
+            checkin_notify: self.checkin_notify.clone(),
+            database_url: self.database_url.clone(),
+            config: self.config.clone(),
+            shutdown: self.shutdown.clone(),
+            ref_count: self.ref_count.clone(),
+        };
+
+        self.ref_count.fetch_add(1, Ordering::SeqCst);
+
+        clone
+    }
 }
 
 impl Pool {
@@ -165,7 +177,7 @@ impl Pool {
     /// * `pool_config` - Pool configuration options.
     ///
     pub fn new(database_url: &str, config: PoolConfig) -> Self {
-        Self {
+        let pool = Self {
             inner: Arc::new(Mutex::new(PoolInner {
                 connections: VecDeque::new(),
                 expected: 0,
@@ -173,7 +185,19 @@ impl Pool {
             checkin_notify: Arc::new(Notify::new()),
             database_url: database_url.to_string(),
             config,
-        }
+            shutdown: Arc::new(Notify::new()),
+            ref_count: Arc::new(AtomicUsize::new(1)),
+        };
+
+        let maintenance = pool.clone();
+        tokio::spawn(async move {
+            loop {
+                maintenance.maintenance();
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+
+        pool
     }
 
     /// Create new connection pool to a local Postgres instance.
@@ -185,15 +209,26 @@ impl Pool {
     /// * `pool_size` - Maximum number of connections.
     ///
     pub fn from_env() -> Self {
-        let database_url = get_config().database.database_url();
-        Self::new(&database_url, PoolConfig::local())
+        let config = get_config().database.clone();
+        let database_url = config.database_url();
+        Self::new(
+            &database_url,
+            PoolConfig {
+                pool_size: config.pool_size,
+                idle_timeout: config.idle_timeout.unsigned_abs(),
+                checkout_timeout: config.checkout_timeout.unsigned_abs(),
+            },
+        )
     }
 
     /// Get a connection from the pool or wait until one is available.
     pub async fn get(&self) -> Result<ConnectionGuard, Error> {
         match timeout(self.config.checkout_timeout, self.get_internal()).await {
             Ok(result) => result,
-            Err(_) => Err(Error::PoolTimeout),
+            Err(_) => {
+                // self.inner.lock().expected -= 1;
+                Err(Error::PoolTimeout)
+            }
         }
     }
 
@@ -328,6 +363,16 @@ impl Pool {
                 tracing::error!("auto rollback failed: {:?}", err);
                 self.checkin(connection, true)
             }
+        }
+    }
+}
+
+impl Drop for Pool {
+    fn drop(&mut self) {
+        let ref_count = self.ref_count.fetch_sub(1, Ordering::SeqCst);
+
+        if ref_count == 1 {
+            self.shutdown.notify_one();
         }
     }
 }

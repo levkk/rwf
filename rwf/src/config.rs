@@ -59,10 +59,14 @@ pub struct Http {
     pub header_max_size: usize,
 }
 
+#[derive(Clone)]
 pub struct Database {
     pub url: Option<String>,
     pub name: String,
     pub user: String,
+    pub pool_size: usize,
+    pub idle_timeout: Duration,
+    pub checkout_timeout: Duration,
 }
 
 impl Database {
@@ -86,6 +90,9 @@ impl Database {
         if let Some(user) = &file.user {
             self.user = user.clone();
         }
+
+        self.idle_timeout = Duration::seconds(file.idle_timeout as i64);
+        self.checkout_timeout = Duration::seconds(file.checkout_timeout as i64);
     }
 }
 
@@ -106,7 +113,14 @@ impl Default for Database {
             Err(_) => user.clone(),
         };
 
-        Self { url, user, name }
+        Self {
+            url,
+            user,
+            name,
+            pool_size: 10,
+            idle_timeout: Duration::hours(1),
+            checkout_timeout: Duration::seconds(5),
+        }
     }
 }
 
@@ -246,4 +260,18 @@ struct DatabaseConfig {
     url: Option<String>,
     name: Option<String>,
     user: Option<String>,
+    #[serde(default = "DatabaseConfig::default_idle_timeout")]
+    idle_timeout: usize,
+    #[serde(default = "DatabaseConfig::default_checkout_timeout")]
+    checkout_timeout: usize,
+}
+
+impl DatabaseConfig {
+    fn default_idle_timeout() -> usize {
+        3600
+    }
+
+    fn default_checkout_timeout() -> usize {
+        5
+    }
 }

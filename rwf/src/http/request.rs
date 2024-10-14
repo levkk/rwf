@@ -138,14 +138,14 @@ impl Request {
             .map(|session| session.session_id.clone())
     }
 
-    pub fn user_id(&self) -> Option<i64> {
+    pub fn user_id(&self) -> Result<i64, Error> {
         if let Some(session_id) = self.session_id() {
             match session_id {
-                SessionId::Authenticated(id) => Some(id),
-                _ => None,
+                SessionId::Authenticated(id) => Ok(id),
+                _ => Err(Error::MalformedRequest("session is not logged in")),
             }
         } else {
-            None
+            Err(Error::MalformedRequest("session is not logged in"))
         }
     }
 
