@@ -14,4 +14,5 @@ pub use async_trait::async_trait;
 pub use time::OffsetDateTime;
 pub use tokio;
 
+pub use macros::{crud, rest, route};
 pub use rwf_macros as macros;

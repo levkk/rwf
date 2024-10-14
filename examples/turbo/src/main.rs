@@ -1,6 +1,5 @@
 use rwf::controller::{StaticFiles, WebsocketController};
 use rwf::http::Server;
-use rwf::macros::route;
 use rwf::prelude::*;
 
 mod controllers;

@@ -36,7 +36,7 @@ use rwf::http::Server;
 #[derive(Default)]
 struct IndexController;
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::new().html("<h1>Hey Rwf!</h1>"))
@@ -46,11 +46,11 @@ impl Controller for IndexController {
 #[tokio::main]
 async fn main() {
     Server::new(vec![
-        IndexController::default().route("/"),
+        route!("/" => IndexController),
     ])
     .launch("0.0.0.0:8000")
     .await
-    .expect("error shutting down server");
+    .unwrap();
 }
 ```
 
