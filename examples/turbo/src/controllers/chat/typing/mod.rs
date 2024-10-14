@@ -6,11 +6,6 @@ use crate::models::User;
 #[derive(Default)]
 pub struct TypingController;
 
-#[derive(Serialize, Deserialize)]
-pub struct TypingState {
-    pub typing: bool,
-}
-
 #[rwf::async_trait]
 impl Controller for TypingController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
@@ -34,6 +29,11 @@ impl Controller for TypingController {
             Ok(Response::new().redirect("/signup"))
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TypingState {
+    pub typing: bool,
 }
 
 impl TypingState {

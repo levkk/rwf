@@ -6,16 +6,21 @@ export default class extends Controller {
     }
 
     typingStart() {
+      if (this.startedTyping) {
         clearTimeout(this.typingStartTimeout);
+      } else {
+        this.startedTyping = true;
+      }
 
-        this.typingStartTimeout = setTimeout(() => {
-            this.typing(true);
+      this.typingStartTimeout = setTimeout(() => {
+        this.typing(true);
 
-            clearTimeout(this.typingStopTimeout);
-            this.typingStopTimeout = setTimeout(() => {
-                this.typing(false)
-            }, 3000)
-        }, 300);
+        clearTimeout(this.typingStopTimeout);
+        this.typingStopTimeout = setTimeout(() => {
+          this.typing(false)
+          this.startedTyping = false;
+        }, 3000)
+      }, 300);
     }
 
     typing(typing) {

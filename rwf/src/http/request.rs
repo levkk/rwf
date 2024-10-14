@@ -169,7 +169,7 @@ impl Request {
             .map(|s| s.clone())
             .unwrap_or(Session::empty());
         session.session_id = SessionId::Authenticated(user_id);
-        Response::new().set_session(session)
+        Response::new().set_session(session).html("")
     }
 
     pub fn logout(&self) -> Response {
@@ -178,7 +178,7 @@ impl Request {
             .map(|s| s.clone())
             .unwrap_or(Session::empty());
         session.session_id = SessionId::default();
-        Response::new().set_session(session)
+        Response::new().set_session(session).html("")
     }
 }
 
