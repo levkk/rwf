@@ -19,7 +19,7 @@ pub struct SecureUserController {
 }
 
 impl SecureUserController {
-    pub fn new() -> SecureUserController {
+    pub fn default() -> SecureUserController {
         SecureUserController {
             middleware: MiddlewareSet::new(vec![SecureId::default().middleware()]),
         }

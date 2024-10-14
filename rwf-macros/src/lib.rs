@@ -510,6 +510,34 @@ pub fn route(input: TokenStream) -> TokenStream {
     .into()
 }
 
+#[proc_macro]
+pub fn crud(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
+    let mut iter = input.into_iter();
+
+    let route = iter.next().unwrap();
+    let controller = iter.next().unwrap();
+
+    quote! {
+        #controller::default().crud(#route)
+    }
+    .into()
+}
+
+#[proc_macro]
+pub fn rest(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
+    let mut iter = input.into_iter();
+
+    let route = iter.next().unwrap();
+    let controller = iter.next().unwrap();
+
+    quote! {
+        #controller::default().rest(#route)
+    }
+    .into()
+}
+
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 

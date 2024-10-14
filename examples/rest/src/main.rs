@@ -1,4 +1,5 @@
 use rwf::http::Server;
+use rwf::macros::{crud, rest};
 use rwf::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -43,9 +44,9 @@ async fn main() -> Result<(), Error> {
     Logger::init();
 
     Server::new(vec![
-        UserController::default().crud("/api/users"),
-        SecureUserController::new().crud("/api/users/secure"),
-        MyController::default().rest("/api/rest"),
+        crud!("/api/users" => UserController),
+        crud!("/api/users/secure" => SecureUserController),
+        rest!("/api/rest" => MyController),
     ])
     .launch("0.0.0.0:8000")
     .await?;
