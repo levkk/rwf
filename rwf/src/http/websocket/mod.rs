@@ -245,8 +245,6 @@ impl Meta {
             0b00000000
         };
 
-        let _u16_max = u16::MAX as usize;
-
         let _len = if self.len <= 125 {
             buf.push(self.len as u8 | masked);
         } else if self.len < u16::MAX as usize {

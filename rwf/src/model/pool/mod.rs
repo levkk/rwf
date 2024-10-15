@@ -391,7 +391,7 @@ mod test {
 
         let mut consume = vec![];
 
-        for _ in 0..4 {
+        for _ in 0..9 {
             consume.push(pool.get().await);
         }
 
