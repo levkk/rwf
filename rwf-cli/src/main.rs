@@ -1,27 +1,48 @@
-// #[derive(Subcommand, Debug)]
-// // enum Migration {
-// //     Add {
-// //         #[arg(long, short)]
-// //         name: String,
-// //     }
-// // }
+use clap::{Args, Parser, Subcommand};
+use rwf::logging::Logger;
 
-// #[derive(Debug, Subcommand)]
-// enum Command {
-//     Migrate {
-//         name: String,
-//     }
-// }
+mod migrate;
 
-// #[derive(Parser, Debug)]
-// #[command(version, about, long_about = None)]
-// struct Args {
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    subcommands: Subcommands,
+}
 
-//     command: Command,
-// }
+#[derive(Subcommand, Debug)]
+enum Subcommands {
+    Migrate(MigrateSubcommand),
+}
 
-// fn main() {
-//     let args = Args::parse();
-// }
+#[derive(Args, Debug)]
+struct MigrateSubcommand {
+    #[command(subcommand)]
+    command: Migrate,
+}
 
-fn main() {}
+/// Manage migrations.
+#[derive(Subcommand, Debug)]
+enum Migrate {
+    /// Run migrations.
+    Run {
+        #[arg(long, help = "Run migrations up to this version")]
+        version: Option<i64>,
+    },
+
+    /// Re-create your database from migrations.
+    /// WARNING: this deletes all data.
+    Flush,
+
+    /// Revert migrations
+    Revert {
+        #[arg(long, help = "Revert to this migration version")]
+        version: i64,
+    },
+}
+
+#[tokio::main]
+async fn main() {
+    Logger::init();
+    let args = Cli::parse();
+}

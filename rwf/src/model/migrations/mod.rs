@@ -23,7 +23,7 @@ static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("([0-9]+)_([a-zA-Z0-9_]+).(up|down).sql").expect("migration regex"));
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub(crate) enum Direction {
+pub enum Direction {
     Up,
     Down,
 }
@@ -115,7 +115,7 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
-    async fn sync() -> Result<Self, Error> {
+    pub async fn sync() -> Result<Self, Error> {
         let checks = if let Ok(root_path) = Self::root_path() {
             let mut checks = HashMap::new();
 
@@ -185,13 +185,21 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
-    async fn apply(self, direction: Direction) -> Result<Self, Error> {
+    pub async fn apply(self, direction: Direction, version: Option<i64>) -> Result<Self, Error> {
         let migrations = match direction {
             Direction::Up => self.migrations.into_iter().collect::<Vec<_>>(),
             Direction::Down => self.migrations.into_iter().rev().collect::<Vec<_>>(),
         };
 
+        let mut stop = false;
+
         for mut migration in migrations {
+            if stop {
+                break;
+            }
+
+            stop = Some(migration.version) == version;
+
             let (skip, message) = match direction {
                 Direction::Up => (migration.applied_at.is_some(), "applied"),
                 Direction::Down => (migration.applied_at.is_none(), "reverted"),
@@ -266,20 +274,20 @@ impl Migrations {
     }
 
     pub async fn migrate() -> Result<Migrations, Error> {
-        Migrations::sync().await?.apply(Direction::Up).await
+        Migrations::sync().await?.apply(Direction::Up, None).await
     }
 
     pub async fn flush() -> Result<Migrations, Error> {
-        Migrations::sync().await?.apply(Direction::Down).await
+        Migrations::sync().await?.apply(Direction::Down, None).await
     }
 }
 
 pub async fn migrate() -> Result<Migrations, Error> {
-    Migrations::sync().await?.apply(Direction::Up).await
+    Migrations::sync().await?.apply(Direction::Up, None).await
 }
 
 pub async fn rollback() -> Result<Migrations, Error> {
-    Migrations::sync().await?.apply(Direction::Down).await
+    Migrations::sync().await?.apply(Direction::Down, None).await
 }
 
 #[cfg(test)]
