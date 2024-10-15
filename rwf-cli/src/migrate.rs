@@ -1,4 +1,10 @@
 use rwf::model::migrations::{Direction, Migrations};
+use std::path::Path;
+use time::OffsetDateTime;
+
+use tokio::fs::{create_dir, File};
+
+use crate::logging::created;
 
 pub async fn migrate(version: Option<i64>) {
     let migrations = Migrations::sync().await.expect("failed to sync migrations");
@@ -21,4 +27,24 @@ pub async fn revert(version: Option<i64>) {
         .apply(Direction::Down, version)
         .await
         .expect("failed to apply migrations");
+}
+
+pub async fn add(name: &str) {
+    let version = OffsetDateTime::now_utc().unix_timestamp_nanos();
+    let path = Path::new("migrations");
+
+    if !path.exists() {
+        create_dir(&path)
+            .await
+            .expect("cannot create migrations directory");
+        created(format!("created \"migrations\" directory"));
+    }
+
+    for suffix in ["up", "down"] {
+        let name = path.join(format!("{}_{}.{}.sql", version, name, suffix));
+        File::create(&name)
+            .await
+            .expect("failed to create migration file");
+        created(format!("\"{}\"", name.display()));
+    }
 }

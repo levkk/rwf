@@ -1,6 +1,16 @@
 [workspace]
 resolver = "2"
-members = [ "examples/auth", "examples/background-jobs", "examples/rest", "examples/dynamic-templates", "examples/middleware", "examples/orm", "examples/quick-start", "examples/scheduled-jobs", "examples/static-files", "examples/turbo",
+members = [
+    "examples/auth",
+    "examples/background-jobs",
+    "examples/rest",
+    "examples/dynamic-templates",
+    "examples/middleware",
+    "examples/orm",
+    "examples/quick-start",
+    "examples/scheduled-jobs",
+    "examples/static-files",
+    "examples/turbo",
     "rwf",
     "rwf-cli",
     "rwf-macros",

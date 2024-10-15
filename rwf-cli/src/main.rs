@@ -1,7 +1,11 @@
 use clap::{Args, Parser, Subcommand};
 use rwf::logging::Logger;
 
+use std::path::Path;
+
+mod logging;
 mod migrate;
+mod setup;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -13,6 +17,9 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Subcommands {
     Migrate(MigrateSubcommand),
+
+    /// Setup the project for Rwf
+    Setup,
 }
 
 #[derive(Args, Debug)]
@@ -46,12 +53,24 @@ enum Migrate {
         #[arg(long, help = "Revert to this migration version")]
         version: Option<i64>,
     },
+
+    /// Add a new migration
+    Add {
+        #[arg(long, short, help = "Migration name", default_value = "unnamed")]
+        name: String,
+    },
 }
 
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUM_LOG_QUERIES", "1");
     Logger::init();
+
+    if !check_root() {
+        eprintln!("{}", "rwf-cli must run from the root of a cargo project",);
+        std::process::exit(1);
+    }
+
     let args = Cli::parse();
 
     match args.subcommands {
@@ -66,6 +85,13 @@ async fn main() {
                     log::info!("Aborting");
                 }
             }
+            Migrate::Add { name } => migrate::add(&name).await,
         },
+
+        Subcommands::Setup => setup::setup().await,
     }
+}
+
+fn check_root() -> bool {
+    Path::new("Cargo.toml").exists()
 }
