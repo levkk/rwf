@@ -2,6 +2,7 @@ use rwf::model::migrations::{Direction, Migrations};
 use std::path::Path;
 use time::OffsetDateTime;
 
+use regex::Regex;
 use tokio::fs::{create_dir, File};
 
 use crate::logging::created;
@@ -30,6 +31,8 @@ pub async fn revert(version: Option<i64>) {
 }
 
 pub async fn add(name: &str) {
+    let regex = Regex::new("[^a-zA-Z0-9_]").unwrap();
+    let name = regex.replace_all(name, "_");
     let version = OffsetDateTime::now_utc().unix_timestamp_nanos();
     let path = Path::new("migrations");
 

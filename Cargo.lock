@@ -1367,10 +1367,11 @@ dependencies = [
 
 [[package]]
 name = "rwf-cli"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "clap",
  "log",
+ "regex",
  "rwf 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time",
  "tokio",
