@@ -32,17 +32,40 @@ enum Migrate {
 
     /// Re-create your database from migrations.
     /// WARNING: this deletes all data.
-    Flush,
+    Flush {
+        #[arg(
+            long,
+            help = "Confirm you want your database destroyed",
+            default_value = "false"
+        )]
+        yes: bool,
+    },
 
     /// Revert migrations
     Revert {
         #[arg(long, help = "Revert to this migration version")]
-        version: i64,
+        version: Option<i64>,
     },
 }
 
 #[tokio::main]
 async fn main() {
+    std::env::set_var("RUM_LOG_QUERIES", "1");
     Logger::init();
     let args = Cli::parse();
+
+    match args.subcommands {
+        Subcommands::Migrate(migrate) => match migrate.command {
+            Migrate::Run { version } => migrate::migrate(version).await,
+            Migrate::Revert { version } => migrate::revert(version).await,
+            Migrate::Flush { yes } => {
+                if yes {
+                    migrate::revert(None).await;
+                    migrate::migrate(None).await;
+                } else {
+                    log::info!("Aborting");
+                }
+            }
+        },
+    }
 }

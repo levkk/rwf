@@ -1311,7 +1311,7 @@ checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
 
 [[package]]
 name = "rwf"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes",
  "aes-gcm-siv",
@@ -1341,6 +1341,7 @@ name = "rwf-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "log",
  "rwf",
  "tokio",
 ]

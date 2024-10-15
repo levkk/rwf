@@ -1,6 +1,6 @@
 [package]
 name = "rwf"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "Comprehensive framework for building web applications in Rust"
@@ -8,16 +8,25 @@ description = "Comprehensive framework for building web applications in Rust"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-time = { version = "0.3", features = ["formatting", "serde", "parsing"]}
-tokio-postgres = {version = "0.7", features = ["with-time-0_3", "with-serde_json-1"]}
+time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
+tokio-postgres = { version = "0.7", features = [
+    "with-time-0_3",
+    "with-serde_json-1",
+] }
 bytes = "1"
-tokio = { version = "1", features = ["net", "fs", "rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1", features = [
+    "net",
+    "fs",
+    "rt",
+    "macros",
+    "rt-multi-thread",
+] }
 thiserror = "1"
 parking_lot = "0.12"
 once_cell = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-rwf-macros =  "0.1.1"
+rwf-macros = "0.1.1"
 colored = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
