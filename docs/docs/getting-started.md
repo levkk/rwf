@@ -1,6 +1,6 @@
 # Getting started
 
-Rust Web Framework (also called Rwf) has very few dependencies and is easy to install and use.
+Rust Web Framework (Rwf for short) has very few dependencies and is easy to install and use.
 
 ## Install Rust
 
@@ -55,7 +55,7 @@ Adding this declaration in your source files will make handling imports easier, 
 
 Rwf controllers are defined as Rust structs which implement the `Controller` trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
 and has only one method you need to implement: `async fn handle`. This method
-acccepts an HTTP `Request`, and must return an HTTP `Response`.
+accepts an HTTP `Request`, and must return an HTTP `Response`.
 
 In this example, we are returning `HTTP 200 - OK` with the body `<h1>My first Rwf app</h1>`. This is not strictly valid HTML,
 but it'll work in all browsers for our demo purposes.
