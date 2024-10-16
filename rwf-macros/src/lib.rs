@@ -331,6 +331,23 @@ pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+// #[proc_macro_derive(Template, attributes(path))]
+// pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
+//     let input = parse_macro_input!(input as DeriveInput);
+//     let overrides = handle_overrides(&input.attrs);
+
+//     let ident = match &input.data {
+//         Data::Struct(_data) => input.ident.clone(),
+
+//         _ => panic!("macro can only be used on structs"),
+//     };
+
+//     quote! {
+//         #[derive(rwf::macros::Context)]
+
+//     }.into()
+// }
+
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

@@ -85,6 +85,12 @@ async fn main() -> Result<(), http::Error> {
 Rwf uses the `log` crate for logging. `Logger::init()` automatically configures it for your app using `env_logger`, but if you prefer, you can configure logging yourself
 using the crate of your choosing.
 
-Once the server is launched, you can visit the index page by pointing your browser to [http://localhost:8000](http://localhost:8000).
+Launching the server can be done with Cargo:
+
+```
+cargo run
+```
+
+Once the server is running, you can visit the index page by pointing your browser to [http://localhost:8000](http://localhost:8000).
 
 Full code for this is available in GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
