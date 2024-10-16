@@ -30,17 +30,77 @@ is already applied to your database, Rwf will skip it and run the next one.
 ## Create new migration
 
 If you're looking to change your database schema, e.g. by adding a new table, you can do so in a reproducible way by making a migration. To create a new
-migration, run the following:
+migration, run the following command:
 
-```
-rwf-cli migrate add --name "<migration name>"
-```
+=== "Command"
+    ```
+    rwf-cli migrate add --name "<migration name>"
+    ```
+=== "Output"
+    ```
+    created "migrations/1729119889028371278_unnamed.up.sql"
+    created "migrations/1729119889028371278_unnamed.down.sql"
+    ```
 
 The migration name is optional, and by default the migration will be "unnamed", but it's nice to name it something recognizable, to help others
 working on the project (and the future you) to know what's being changed.
 
-### Writing a migration
+### Writing migrations
 
 The `migrate add` command creates two files in the `migrations` folder: the "up" migration and the "down" migration. The "up" migration contains
-the desired changes to the database schema, while the "down" migration contains commands to revert those changes. Having the "down" migration is
-very helpful in case the migration doesn't work in production and you need to revert your changes and try again.
+the desired changes to the database schema, while the "down" migration contains commands to revert those changes.
+
+!!! note
+    Having the "down" migration is technically optional but is
+    very helpful in case the migration doesn't work in production and you need to revert your changes and try again.
+    Additionally, without the correct "down" migration, commands like `migrate flush` won't work correctly.
+
+For example, if we want to add a `"users"` table to our database, we can write the following migration:
+
+=== "Up migration"
+    ```postgresql
+    CREATE TABLE users (
+        id BIGSERIAL PRIMARY KEY,
+        email VARCHAR UNIQUE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    ```
+=== "Down migration"
+    ```postgresql
+    DROP TABLE users;
+    ```
+
+Once finished, applying the migration can be done by running the following command:
+
+=== "Command"
+    ```
+    rwf-cli migrate run
+    ```
+=== "Output"
+    ```
+    migration "1729119889028371278_unnamed" applied
+    ```
+
+## Revert migration
+
+If something went wrong, or you'd like to make more changes without creating another migration (in development), you can revert the last migration by running:
+
+=== "Command"
+    ```
+    rwf-cli migrate revert
+    ```
+=== "Output"
+    ```
+    migration "1729119889028371278_unnamed" reverted
+    ```
+
+The `revert` command automatically executes the "down" file for the last migration. If you'd like to revert more than one migration, specify the version to which you want to revert to, by passing the `--version <VERSION>` argument.
+
+Re-running the last migration can be done by running `rwf-cli migrate run` command again.
+
+## Flush the database
+
+In local development, it's sometimes useful to delete everything in your database and start again. To do so, you can run the `rwf-cli migrate flush` command. This command will revert all migrations in reverse order, and re-apply them in normal order again.
+
+!!! warning
+    Running `rwf-cli migrate flush` will delete all your data. Never run this command in production.

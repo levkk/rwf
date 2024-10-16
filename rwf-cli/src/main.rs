@@ -1,5 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use rwf::logging::Logger;
+use rwf::model::Pool;
 
 use std::path::Path;
 
@@ -63,7 +64,7 @@ enum Migrate {
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUM_LOG_QUERIES", "1");
+    // std::env::set_var("RUM_LOG_QUERIES", "1");
     Logger::init();
 
     if !check_root() {
@@ -81,6 +82,13 @@ async fn main() {
                 if yes {
                     migrate::revert(None).await;
                     migrate::migrate(None).await;
+                    let mut conn = Pool::connection()
+                        .await
+                        .expect("failed to get connection from pool");
+                    conn.query_cached("TRUNCATE TABLE rwf_jobs", &[])
+                        .await
+                        .expect("failed to clean up jobs");
+                    log::info!("Deleted all background jobs");
                 } else {
                     log::info!("Aborting");
                 }
