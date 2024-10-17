@@ -2,11 +2,11 @@
 
 Rwf is a comprehensive framework for building web applications in Rust. Written using the classic MVC  pattern (model-view-controller), Rwf comes standard with everything you need to easily build fast and secure web apps.
 
-### Documentation
+## Documentation
 
 :blue_book: The documentation (work in progress) **[is available here](https://levkk.github.io/rwf/)**.
 
-### Features overview
+## Features overview
 
 - :heavy_check_mark: [HTTP server](examples/quick-start)
 - :heavy_check_mark: User-friendly [ORM](examples/orm) to build PostgreSQL queries easily
@@ -62,16 +62,6 @@ async fn main() {
 ## Examples
 
 See [examples](examples) for common use cases.
-
-## Documentation
-
-* [ORM & database migrations](examples/orm/README.md)
-* [Dynamic templates](examples/dynamic-templates/README.md)
-* [Authentication & sessions](examples/auth/README.md)
-* [Middleware](examples/middleware/README.md)
-* [Background jobs](examples/background-jobs/README.md)
-  * [Scheduled jobs](examples/scheduled-jobs/README.md)
-* [REST Framework](examples/rest/README.md)
 
 ## :construction: Status :construction:
 
