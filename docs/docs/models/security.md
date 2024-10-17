@@ -26,7 +26,7 @@ For other values like column names, Rwf escapes them in order to avoid modifying
     ```
 === "SQL"
     ```postgresql
-    SELECT * FROM "users" WHERE """;DROP TABLE users;" = 5;
+    SELECT * FROM "users" WHERE """;DROP TABLE users;" = $1;
     ```
 === "Error"
     ```

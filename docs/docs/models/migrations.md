@@ -11,9 +11,25 @@ cargo install rwf-cli
 
 The CLI should be available globally. You can check if it's working correctly by running:
 
-```
-rwf-cli --help
-```
+=== "Command"
+    ```
+    rwf-cli --help
+    ```
+=== "Output"
+    ```
+    Rust Web Framework CLI
+
+    Usage: rwf-cli <COMMAND>
+
+    Commands:
+      migrate  Manage migrations
+      setup    Setup the project for Rwf
+      help     Print this message or the help of the given subcommand(s)
+
+    Options:
+      -h, --help     Print help
+      -V, --version  Print version
+    ```
 
 ## Run migrations
 
@@ -41,6 +57,8 @@ migration, run the following command:
     created "migrations/1729119889028371278_unnamed.up.sql"
     created "migrations/1729119889028371278_unnamed.down.sql"
     ```
+
+Migrations are placed inside the `<PROJECT_ROOT>/migrations` folder. If this folder doesn't exist, `rwf-cli` will create one automatically.
 
 The migration name is optional, and by default the migration will be "unnamed", but it's nice to name it something recognizable, to help others
 working on the project (and the future you) to know what's being changed.
@@ -104,3 +122,5 @@ In local development, it's sometimes useful to delete everything in your databas
 
 !!! warning
     Running `rwf-cli migrate flush` will delete all your data. Never run this command in production.
+    To protect against accidental misuse, the command will not do anything unless a `--yes` flag is
+    passed to it.

@@ -192,3 +192,30 @@ in the query, by specifying them using the `order` method:
     ```postgresql
     SELECT * FROM "users" ORDER BY "email", "id" DESC
     ```
+
+## Locking rows
+
+In busy production applications, it's common for the same row to be accessed from multiple places at the same time. If you'd like to prevent that row from being
+accessed while you're doing something to it, for example updating it with new values, you can use a row-level lock:
+
+=== "Rust"
+    ```rust
+    let transaction = Pool::transaction().await?;
+
+    let user = User::find(15)
+        .lock()
+        .fetch(&mut transaction)
+        .await?;
+
+    transaction.commit().await?;
+    ```
+=== "SQL"
+    ```
+    BEGIN;
+    SELECT * FRON "users" WHERE "id" = $1 FOR UPDATE;
+    COMMIT;
+    ```
+
+
+The lock on the row(s) returned by a query last only for the duration of the transaction. It's common to use that time to update multiple tables that have some kind of
+relationship to the row being locked. This mechanism allows to perform atomic operations (all or nothing) in a concurrent environment without data races or inconsistencies.

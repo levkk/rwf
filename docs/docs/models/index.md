@@ -36,7 +36,7 @@ struct User {
 }
 ```
 
-The same table in the database be created with this query:
+The same table in the database can be created with this query[^1]:
 
 ```postgresql
 CREATE TABLE users (
@@ -46,16 +46,17 @@ CREATE TABLE users (
 );
 ```
 
-### Naming conventions
-The struct fields have the same name as the database columns, and the data types match the conversions associated Rust types. A row in a database
-table containing the data for a model is called a record.
-
 !!! note
     The `id` column is using an optional Rust `i64` integer. This is because the struct will be used
     for both inserting and selecting data from the table. When inserting, the `id` column should be `None` and will be automatically
     assigned by the database. This ensures that all rows in your tables have a unique primary key.
 
-The `macros::Model` macro automatically implements the database to Rust and vice versa types conversion
+[^1]: See [migrations](migrations) to learn how to create tables in your database in a reliable way.
+
+### Naming conventions
+The struct fields have the same name as the database columns, and the data types match their respective Rust types. The table name in the database corresponds to the name of the struct, lowercase and pluralized. For example, `User` model will refer to the `"users"` table in the database.
+
+A row in a database table which contains model data is called a record. The `macros::Model` macro automatically implements the database to Rust and vice versa types conversion
 and maps the column values to the struct fields.
 
 ## Query data

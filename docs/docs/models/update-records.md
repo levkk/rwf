@@ -34,19 +34,18 @@ Updating a single record can be done by mutating struct instance fields and call
 Instead of fetching the record from the database, you can just instantiate one manually, as long as you know
 the desired primary key value:
 
-=== "Rust"
-    ```rust
-    let user = User {
-      id: Some(25),
-      email: "new_email@example.com",
-      created_at: OffsetDateTime::now_utc(),
-    };
+```rust
+let user = User {
+  id: Some(25),
+  email: "new_email@example.com",
+  created_at: OffsetDateTime::now_utc(),
+};
 
-    let user = user
-      .save()
-      .fetch(&mut conn)
-      .await?;
-    ```
+let user = user
+  .save()
+  .fetch(&mut conn)
+  .await?;
+```
 
 This is very similar to [creating new records](../create-records), except that we set the `id` field to a known value.
 When the `id` is set to `Some(i64)`, Rwf assumes the record exists in the database, meanwhile if the `id` is `None`, Rwf will attempt to create one instead.

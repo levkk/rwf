@@ -93,18 +93,12 @@ If the record matching the `INSERT` statement exists already, Rwf supports retur
     .await?;
     ```
 === "SQL"
-    This executes _up to_ two queries, starting with:
-
     ```postgresql
-    SELECT * FROM "users" WHERE "email" = $1
+    SELECT * FROM "users" WHERE "email" = $1;
+    INSERT INTO "users" ("email") VALUES ($1) RETURNING *;
     ```
 
-    If a row is returned, no more queries are executed. However, if no rows matching the condition exist,
-    an `INSERT` query is executed:
-
-    ```postgresql
-    INSERT INTO "users" ("email") VALUES ($1) RETURNING *
-    ```
+This executes _up to_ two queries, starting with a `SELECT` to see if a row already exists, and if it doesn't, an `INSERT` to create it.
 
 ### Combining with a unique constraint
 
@@ -130,7 +124,7 @@ it's possible to combine `unque_by` with `find_or_create_by` executed inside a s
 === "SQL"
     A transaction is started explicitely:
     ```postgresql
-    BEGIN;
+    BEGIN
     ```
 
     Afterwards, the ORM attempts to find a record matching the columns
@@ -153,5 +147,5 @@ it's possible to combine `unque_by` with `find_or_create_by` executed inside a s
     Finally, the transaction is committed to the database:
 
     ```postgresql
-    COMMIT;
+    COMMIT
     ```
