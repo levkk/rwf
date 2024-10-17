@@ -53,11 +53,11 @@ impl Controller for Index {
 `rwf::prelude::*` includes the vast majority of types, structs, traits and functions you'll be using when building controllers with Rwf.
 Adding this declaration in your source files will make handling imports easier, but it's not required.
 
-Rwf controllers are defined as Rust structs which implement the `Controller` trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
+Rwf controllers are defined as Rust structs which implement the [`Controller`](../controllers/) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
 and has only one method you need to implement: `async fn handle`. This method
-accepts an HTTP `Request`, and must return an HTTP `Response`.
+accepts a [`Request`](../controllers/request), and must return a [`Response`](../controllers/response).
 
-In this example, we are returning `HTTP 200 - OK` with the body `<h1>My first Rwf app</h1>`. This is not strictly valid HTML,
+In this example, we are returning HTTP `200 - OK` with the body `<h1>My first Rwf app</h1>`. This is not strictly valid HTML,
 but it'll work in all browsers for our demo purposes.
 
 [^2]: The Rust language support for async traits is still incomplete. The `async_trait` crate helps with writing async traits in an ergonomic way.
@@ -94,3 +94,9 @@ cargo run
 Once the server is running, you can visit the index page by pointing your browser to [http://localhost:8000](http://localhost:8000).
 
 Full code for this is available in GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
+
+## Learn more
+
+- [Controllers](../controllers/)
+- [Models](../models/)
+- [Views](../views/)
