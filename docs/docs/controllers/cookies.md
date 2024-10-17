@@ -73,4 +73,4 @@ Reading private cookies works much like regular cookies, except instead of using
 let session_id = cookies.get_private("session_id")?;
 ```
 
-Decryption will be done automatically, and the controller will be able to accees the plain text value of the cookie.
+Decryption will be done automatically, and the controller will be able to access the plain text value of the cookie.

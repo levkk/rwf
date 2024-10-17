@@ -46,7 +46,7 @@ impl Controller for CurrentTime {
 }
 ```
 
-The `Controller` trait is asynchronous. Support for async traits in Rust is still incomplete, so we use the [`async_trait`](https://docs.rs/async_trait) library to make it easy to use. The trait itself has a few methods, most of which have reasonable defaults. The only methodthat needs to be written by hand is `async fn handle()`.
+The `Controller` trait is asynchronous. Support for async traits in Rust is still incomplete, so we use the [`async_trait`](https://docs.rs/async_trait) library to make it easy to use. The trait itself has a few methods, most of which have reasonable defaults. The only method that needs to be written by hand is `async fn handle()`.
 
 #### `handle`
 
