@@ -59,9 +59,9 @@ specified in our [previous example](../) has a default value `NOW()`, the curren
 ## Unique constraints
 
 It's very common to place unique constraints on certain columns in a table to avoid duplicate records. For example, the `"users"` table
-would typically have a unique contraint on the `email` column, ensuring that no two users have the same email address.
+would typically have a unique constraint on the `email` column, ensuring that no two users have the same email address.
 
-To handle unique contraints, Rwf can update a record in-place if one exists already matching the constraint:
+To handle unique constraints, Rwf can update a record in-place if one exists already matching the constraint:
 
 === "Rust"
     ```rust
@@ -82,7 +82,7 @@ To handle unique contraints, Rwf can update a record in-place if one exists alre
 
 ## Optionally create records
 
-If the record matching the `INSERT` statement exists already, Rwf supports returning the exisitng row without performing an update:
+If the record matching the `INSERT` statement exists already, Rwf supports returning the existing row without performing an update:
 
 === "Rust"
     ```rust
@@ -122,7 +122,7 @@ it's possible to combine `unque_by` with `find_or_create_by` executed inside a s
     transaction.commit().await?;
     ```
 === "SQL"
-    A transaction is started explicitely:
+    A transaction is started explicitly:
     ```postgresql
     BEGIN
     ```

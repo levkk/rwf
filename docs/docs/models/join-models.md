@@ -60,7 +60,7 @@ Specifying the `belongs_to` relationship allows us to query the `Project` model 
 
 !!! note
     The `join::<Model>` method accepts a generic argument specifying which model we are joining to. If the association between `Project` and `User` doesn't
-    exist, the Rust compiler will return an error. This helps us avoid common errors by accidently joining tables that don't have a relationship.
+    exist, the Rust compiler will return an error. This helps us avoid common errors by accidentally joining tables that don't have a relationship.
 
 ## Disambiguating fields
 

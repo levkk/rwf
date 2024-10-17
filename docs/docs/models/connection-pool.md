@@ -35,14 +35,14 @@ async fn get_users() -> Result<Vec<User>, Error> {
 
 ## Transactions
 
-All queries are executed inside implicit transactions. If you need to execute multiple queries inside a single transaction, you need to start one explicitely:
+All queries are executed inside implicit transactions. If you need to execute multiple queries inside a single transaction, you need to start one explicitly:
 
 ```rust
 let mut transaction = Pool::transaction().await?;
 ```
 
 The transaction follows the same scope semantics as a pool connection. When it goes out scope,
-the transaction is automatically rolled back and the connection is returned back to the pool. If you want to commit any changes you made inside the transaction, you need to call `commit` explcitely:
+the transaction is automatically rolled back and the connection is returned back to the pool. If you want to commit any changes you made inside the transaction, you need to call `commit` explicitly:
 
 ```rust
 transaction.commit().await?;

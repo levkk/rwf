@@ -19,7 +19,7 @@ The query will not be sent to the database, so it's safe to inspect all queries,
 
 ## Query plan
 
-Visual inspection of the query is often not sufficient to undertand query performance. For this purpose, databases like PostgreSQL provide
+Visual inspection of the query is often not sufficient to understand query performance. For this purpose, databases like PostgreSQL provide
 the `EXPLAIN` functionality which, instead of executing the query, produces an execution plan:
 
 === "Rust"

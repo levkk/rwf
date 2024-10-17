@@ -2,7 +2,7 @@
 
 ## Retrieve by primary key
 
-Retreiving a record by primary key method accepts an integer and returns a single row corresponding to where the value of the `id` column equals to the integer:
+Retrieving a record by primary key method accepts an integer and returns a single row corresponding to where the value of the `id` column equals to the integer:
 
 === "Rust"
 
@@ -87,7 +87,7 @@ The `filter` (and `not`) methods accept lists of values (in Rust, those are call
 
 ### Search by `NULL`
 
-Searching columns that have no value, i.e. the value is `NULL`, is a special case and is handled by passing the `Value::Null` explicitely:
+Searching columns that have no value, i.e. the value is `NULL`, is a special case and is handled by passing the `Value::Null` explicitly:
 
 === "Rust"
     ```rust
