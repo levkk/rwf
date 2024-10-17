@@ -33,19 +33,19 @@ The CLI should be available globally. You can check if it's working correctly by
 
 ## Run migrations
 
-If it's your first time setting up a Rwf app, you should run migrations before starting the server. To run the migrations, change directory to
+If it's your first time setting up a Rwf app, you should run migrations before starting the server. To run migrations, change directory to
 the project root (where `Cargo.toml` is located) and run:
 
 ```
 rwf-cli migrate run
 ```
 
-This command will automatically read all migration files in the `migrations` folder, and run the necessary ones in the correct order. If a migration
+This command will automatically read all files in the `migrations` folder, and run the necessary ones in the correct order. For instance, if a migration
 is already applied to your database, Rwf will skip it and run the next one.
 
 ## Create new migration
 
-If you're looking to change your database schema, e.g. by adding a new table, you can do so in a reproducible way by making a migration. To create a new
+If you're looking to change your database schema, e.g. by adding a new table, you can do so in a reproducible way with a migration. To create a new
 migration, run the following command:
 
 === "Command"
@@ -58,10 +58,10 @@ migration, run the following command:
     created "migrations/1729119889028371278_unnamed.down.sql"
     ```
 
-Migrations are placed inside the `<PROJECT_ROOT>/migrations` folder. If this folder doesn't exist, `rwf-cli` will create one automatically.
+Migrations are placed inside the `<PROJECT_ROOT>/migrations` folder. If this folder doesn't exist, `rwf-cli` will create it automatically.
 
-The migration name is optional, and by default the migration will be "unnamed", but it's nice to name it something recognizable, to help others
-working on the project (and the future you) to know what's being changed.
+The migration name is optional. By default the migration will be "unnamed", but it's nice to name it something recognizable; this helps others
+working on your project (including future you) to know what was changed.
 
 ### Writing migrations
 
@@ -70,10 +70,10 @@ the desired changes to the database schema, while the "down" migration contains 
 
 !!! note
     Having the "down" migration is technically optional but is
-    very helpful in case the migration doesn't work in production and you need to revert your changes and try again.
+    very helpful in case the migration doesn't work in production, and you need to revert your changes and try again.
     Additionally, without the correct "down" migration, commands like `migrate flush` won't work correctly.
 
-For example, if we want to add a `"users"` table to our database, we can write the following migration:
+For example, if you want to add a `"users"` table to your database, you can write the following migration:
 
 === "Up migration"
     ```postgresql
@@ -88,7 +88,7 @@ For example, if we want to add a `"users"` table to our database, we can write t
     DROP TABLE users;
     ```
 
-Once finished, applying the migration can be done by running the following command:
+Once finished, applying the migration can be done by running the `migrate run` command:
 
 === "Command"
     ```
@@ -114,11 +114,11 @@ If something went wrong, or you'd like to make more changes without creating ano
 
 The `revert` command automatically executes the "down" file for the last migration. If you'd like to revert more than one migration, specify the version to which you want to revert to, by passing the `--version <VERSION>` argument.
 
-Re-running the last migration can be done by running `rwf-cli migrate run` command again.
+Re-running the last migration can be done by running `migrate run` command again.
 
 ## Flush the database
 
-In local development, it's sometimes useful to delete everything in your database and start again. To do so, you can run the `rwf-cli migrate flush` command. This command will revert all migrations in reverse order, and re-apply them in normal order again.
+In local development, it's sometimes useful to delete everything in your database and start again. To do so, you can run the `migrate flush` command. This command will revert all migrations in reverse order, and re-apply them in normal order again.
 
 !!! warning
     Running `rwf-cli migrate flush` will delete all your data. Never run this command in production.
