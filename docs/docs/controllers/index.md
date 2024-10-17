@@ -57,7 +57,7 @@ See [Request](request) documentation for examples of requests, and [Response](re
 
 ## Connecting controllers
 
-Once you have a controller, adding it to the app requires mapping it to a route. A route is a unique URL, starting at the root of the app. For example, a route displaying all the users in our app could be `/app`, which would be handled by the `Users` controller.
+Once you have a controller, adding it to the app requires mapping it to a route. A route is a unique URL, starting at the root of the app. For example, a route displaying all the users in our app could be `/users`, which would be handled by the `Users` controller.
 
 Adding controllers to the app happens at server startup. A serve can be launched from anywhere in the code, but typically is done so in the `main` function.
 
