@@ -9,7 +9,7 @@ Dynamic templates are a mix of HTML and a programming language which directs how
 </div>
 ```
 
-The variables `username` and `bio` can be substituded for values unique to each of your users, for example:
+The variables `username` and `bio` can be substituted for values unique to each of your users, for example:
 
 === "Rust"
     ```rust

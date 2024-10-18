@@ -3,7 +3,7 @@
 Partials are templates that can be rendered inside other templates to facilitate reuse of frontend code. For example, if you have a navigation menu in your app, you would want it to look the same on all pages,
 but you don't want to implement the same menu many times. To achieve this, you can write a partial and insert it in all templates where it's needed.
 
-## Writing parials
+## Writing partials
 
 A partial is just another template. It has to be stored on disk, in a directory reachable from your application, for example `templates/partials`.
 

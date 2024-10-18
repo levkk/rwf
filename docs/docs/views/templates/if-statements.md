@@ -24,7 +24,7 @@ If statements support evaluating large expressions for truthiness, for example:
 
 While it's advisable to write simple if statements and delegate complex logic to views where the Rust compiler can be more helpful, Rwf template language is almost [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness) and can be used to write arbitrarily complex templates.
 
-### Operator precendence
+### Operator precedence
 
 Templates respect operator precedence, e.g., multiplication is performed before addition, unless parentheses are specified (which are also supported).
 

@@ -33,7 +33,7 @@ A variable is defined when a template is rendered. Using one of many possible wa
 
 ### Missing variables
 
-It's not uncommon to forget to define variables, epecially if a template is large, or used in multiple places in the app where some variables don't have a known value.
+It's not uncommon to forget to define variables, especially if a template is large, or used in multiple places in the app where some variables don't have a known value.
 
 If an undefined variable is used in a template, Rwf will throw a runtime error. This is good for debugging issues when variables are unintentionally forgotten by the developer. However, if the variable is not always available, you can check if it's defined first:
 
@@ -94,7 +94,7 @@ Using strings in templates can be used in two ways: with the `<%=` (print) opera
 
 Escaping HTML characters is a good idea in cases where your users are the ones supplying the value of the string. This prevents script injection attacks, e.g. users placing malicious code on your website.
 
-Unless you're sure about the provinance of a string, use `<%=` to output it in templates.
+Unless you're sure about the provenance of a string, use `<%=` to output it in templates.
 
 ### Boolean
 
@@ -140,7 +140,7 @@ Rwf hashes use the dot (`.`) notation to access values in a hash. In this exampl
 
 ## Truthy vs. falsy
 
-Variables are often used in [if statements](../if-statements) to decide whether to execute some code or not. To make the template language less verbose, variables can be evaluted for truthiness without calling explicit functions depending on their data type.
+Variables are often used in [if statements](../if-statements) to decide whether to execute some code or not. To make the template language less verbose, variables can be evaluated for truthiness without calling explicit functions depending on their data type.
 
 The following variables and data types evaluate to false:
 
@@ -150,7 +150,7 @@ The following variables and data types evaluate to false:
 | Float | `0.0` |
 | Boolean | `false` |
 | String | `""` (empty) |
-| List | `[]` (emtpy) |
+| List | `[]` (empty) |
 | Hash | `{}` (empty) |
 
 All other variables evaluate to true.
