@@ -1,4 +1,4 @@
-# Introduction
+# Getting started
 
 Rust Web Framework (Rwf for short) is set of libraries and tools to build web applications using the Rust programming langauge. It aims to be comprehensive, by providing all features
 for you to build modern, fast, and secure web apps, out of the box.
