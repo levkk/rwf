@@ -42,4 +42,6 @@ let response = Response::new()
 
 ## Renew sessions
 
-Sessions are automatically renewed on each request. Expired sessions are renewed as well, unless session [authentication](../authentication) is enabled.
+Sessions are automatically renewed on each request. This allows your active users to remain "logged in", while inactive ones would be redirected to a login page if session [authentication](../authentication) is enabled.
+
+Expired sessions are not renewed, so a user holding an expired session will need to use an authentication controller to get a new valid session.

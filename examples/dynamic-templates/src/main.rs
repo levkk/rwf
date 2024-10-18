@@ -50,3 +50,33 @@ async fn main() {
         .await
         .expect("error shutting down server");
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_turtles() -> Result<(), Error> {
+        let template = Template::from_str(
+            r#"
+<div class="profile">
+    <h2><%= username %></h2>
+    <p><%= bio %></p>
+</div>
+        "#,
+        )?;
+
+        let html = template.render([("username", "Alice"), ("bio", "I like turtles")])?;
+
+        assert_eq!(
+            html,
+            r#"
+<div class="profile">
+    <h2>Alice</h2>
+    <p>I like turtles</p>
+</div>
+        "#
+        );
+        Ok(())
+    }
+}

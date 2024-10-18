@@ -1,0 +1,7 @@
+nav:
+  - 'index.md'
+  - 'variables.md'
+  - 'if-statements.md'
+  - 'for-loops.md'
+  - 'functions.md'
+  - '...'
