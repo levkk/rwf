@@ -85,7 +85,7 @@ async fn main() -> Result<(), http::Error> {
 }
 ```
 
-Rwf uses the `log` crate for logging. `Logger::init()` automatically configures it for your app using `env_logger`, but if you prefer, you can configure logging yourself
+Rwf uses the `log` crate for logging. `Logger::init()` automatically configures it for your app using `tracing-subscriber`, but if you prefer, you can configure logging yourself
 using the crate of your choosing.
 
 Launching the server can be done with Cargo:
