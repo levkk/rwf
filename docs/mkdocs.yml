@@ -38,3 +38,9 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+plugins:
+  - search
+  - awesome-pages
+# nav:
+#   - "index.md"
+#   - "controllers/index.md"

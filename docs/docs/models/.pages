@@ -1,0 +1,10 @@
+nav:
+  - 'index.md'
+  - 'create-records.md'
+  - 'fetch-records.md'
+  - 'update-records.md'
+  - 'join-models.md'
+  - 'scopes.md'
+  - 'debug-queries.md'
+  - 'custom-queries.md'
+  - '...'

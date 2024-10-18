@@ -1,0 +1,6 @@
+nav:
+  - 'index.md'
+  - 'controllers'
+  - 'models'
+  - 'views'
+  - '...'

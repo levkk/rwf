@@ -100,6 +100,6 @@ Full code for this is available in GitHub in [examples/quick-start](https://gith
 
 ## Learn more
 
-- [Controllers](../controllers/)
-- [Models](../models/)
-- [Views](../views/)
+- [Controllers](controllers/)
+- [Models](models/)
+- [Views](views/)
