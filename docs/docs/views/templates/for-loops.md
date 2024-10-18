@@ -26,3 +26,22 @@ Template lists, unlike Rust's `Vec`, can hold [variables](../variables) of diffe
     10
     2.0
     ```
+
+##  Do _n_ times
+
+If you need to execute some code multiple times, templates come with a handy `times` function:
+
+=== "Template"
+    ```erb
+    <% for n in 5.times %>
+      <li><%= n %>.</li>
+    <% end %>
+    ```
+=== "Output"
+    ```
+    <li>1.</li>
+    <li>2.</li>
+    <li>3.</li>
+    <li>4.</li>
+    <li>5.</li>
+    ```

@@ -3,4 +3,6 @@ nav:
   - 'controllers'
   - 'models'
   - 'views'
+  - 'configuration.md'
+  - 'background-jobs'
   - '...'

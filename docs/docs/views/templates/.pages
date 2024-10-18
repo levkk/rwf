@@ -4,4 +4,5 @@ nav:
   - 'if-statements.md'
   - 'for-loops.md'
   - 'functions.md'
+  - 'partials.md'
   - '...'

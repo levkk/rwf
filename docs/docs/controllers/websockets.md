@@ -14,10 +14,10 @@ happens on the server, for example.
 ### How do WebSockets work?
 
 A WebSocket connection is a TCP connection. It's established by sending a regular HTTP request with a special header.
-If the server supports WebSockets, lie Rwf does, it responds by a special response and upgrades the connection to use
+If the server supports WebSockets, like Rwf does, it responds with a special response and upgrades the connection to use
 the WebSocket protocol instead of HTTP.
 
-WebSockets allow both clients and servers to send text and binary data. Rwf supports both formats.
+WebSockets allow both clients and servers to send text and binary data, both of which are supported.
 
 ## Writing a WebSocket controller
 
@@ -89,6 +89,21 @@ to send a [`Message`](https://docs.rs/rwf/latest/rwf/http/websocket/enum.Message
         }
     }
     ```
+
+## Sending messages to clients
+
+All WebSocket clients have a unique [session](../sessions) identifier. Sending a message to a client only requires that you know their session ID, which you can obtain from the [`Request`](../request), for example:
+
+```rust
+if let Some(session_id) = request.session_id() {
+    let client = Comms::websocket(&session_id);
+
+    let message = Message::Text("hey there".to_string());
+    client.send(message)?;
+}
+```
+
+WebSocket messages can be delivered to any client from anywhere in the application, including [controllers](../) and [background jobs](../../background-jobs/).
 
 ## Starting a WebSocket server
 
