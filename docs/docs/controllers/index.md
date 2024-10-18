@@ -1,6 +1,6 @@
 # Controller basics
 
-Rwf comes with multiple pre-build controllers that can be used out of the box, for example to handle WebSocket connections, REST-style interactions, or serving static files. For everything else, the `Controller` trait can be implemented to handle any kind of HTTP requests.
+Rwf comes with multiple pre-built controllers that can be used out of the box, for example, to handle WebSocket connections, REST-style interactions, or serving static files. For everything else, the `Controller` trait can be implemented to handle any kind of HTTP requests.
 
 ## What's a controller?
 
@@ -8,7 +8,7 @@ The controller is the **C** in MVC: it handles user interactions with the web ap
 
 ## Writing a controller
 
-A controller is a plain Rust struct which implements the [`Controller`](https://docs.rs/rwf/latest/rwf/controller/trait.Controller.html) trait. As an example, let's write a controller which returns the current time in UTC.
+A controller is a plain Rust struct that implements the [`Controller`](https://docs.rs/rwf/latest/rwf/controller/trait.Controller.html) trait. As an example, let's write a controller that returns the current time in UTC.
 
 #### Import types
 
@@ -59,7 +59,7 @@ If an error occurs inside the `async fn handle` function, Rwf will return HTTP `
 
 ## Connecting controllers
 
-Once you implement a controller, adding it to the app requires mapping it to a route. A route is a unique URL, starting at the root of the app. For example, `/signup` is a route which could map to the `Signup` controller, and allow your users to create accounts.
+Once you implement a controller, adding it to the app requires mapping it to a route. A route is a unique URL, starting at the root of the app. For example, `/signup` is a route that could map to the `Signup` controller, and allow your users to create accounts.
 
 Adding controllers to the app happens at server startup. A server can be launched from an async task anywhere in the code, but typically is done so from the `main` function:
 

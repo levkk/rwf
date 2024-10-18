@@ -32,7 +32,7 @@ Using one of those methods will automatically set the right `Content-Type` and `
 
 ### Raw data
 
-If your endpoint is sending binary data, or some data type we don't have a method for, you can always set the body and content type manually:
+If your endpoint is sending binary data or some data type we don't have a method for, you can always set the body and content type manually:
 
 ```rust
 let mystery_bytes: Vec<u8> = vec![1, 1, 2, 3, 5, 8, 13];

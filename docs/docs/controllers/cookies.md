@@ -1,9 +1,8 @@
 # Cookies
 
-HTTP cookies are a special header which contains key/value-encoded information. Cookies are set on the server typically, and the client (like a browser) should store them on their end, and send them with each
-subsequent request to the server.
+HTTP cookies are a special header that contains key/value-encoded information. Cookies are typically set on the server, and the client (like a browser) should store them on their end and send them with each subsequent request to the server.
 
-Cookies allow to persist information between, what are otherwise, stateless HTTP requests.
+Cookies allow persisting information between what are otherwise stateless HTTP requests.
 
 ## Read cookies
 
@@ -49,7 +48,7 @@ This produces a `Set-Cookie` header encoded with the cookie name, value, and oth
 
 ## Private cookies
 
-Private cookies are cookies which have been encrypted, so the client can't see their contents, or modify them without the server detecting (and automatically rejecting) them.
+Private cookies are cookies that have been encrypted, so the client can't see their contents, or modify them, without the server detecting (and automatically rejecting) them.
 They are useful for storing sensitive information like a user's session, which can be used in later requests to authenticate requests.
 
 ### Set private cookies

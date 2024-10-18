@@ -4,7 +4,7 @@ Rwf comes with built-in WebSockets support, requiring no additional dependencies
 
 ## What are WebSockets?
 
-A WebSocket is a bidirectional communication protocol which allows browsers and servers
+A WebSocket is a bidirectional communication protocol that allows browsers and servers
 to talk to each other. Unlike normal HTTP responses,
 which are only delivered when the client asks for them, WebSocket messages can be sent by the server at any time.
 
@@ -17,14 +17,14 @@ A WebSocket connection is a TCP connection. It's established by sending a regula
 If the server supports WebSockets, lie Rwf does, it responds by a special response and upgrades the connection to use
 the WebSocket protocol instead of HTTP.
 
-WebSockets allow both client and server to send text and binary data. Rwf supports both formats.
+WebSockets allow both clients and servers to send text and binary data. Rwf supports both formats.
 
 ## Writing a WebSocket controller
 
 A WebSocket controller is any Rust struct that implements the
 [`WebsocketController`](https://docs.rs/rwf/latest/rwf/controller/trait.WebsocketController.html) trait.
 
-The trait has two methods of interest; the first one handles new WebSocket connections, and the other
+The trait has two methods of interest: the first handles new WebSocket connections, and the other
 incoming messages from the client.
 
 ```rust
@@ -65,7 +65,7 @@ impl WebsocketController for Echo {
 }
 ```
 
-A few things to unpack here. The `handle_message` method is called every time a client sends a message
+There are a few things to unpack here. The `handle_message` method is called every time a client sends a message
 addressed to this WebSocket controller. What to do with the message depends on the application, but if we
 were writing a real-time chat app, we would save it to the database and notify all interested clients of a
 new message.
@@ -116,5 +116,5 @@ In a browser of your choice, open up the developer tools console and connect to 
 const ws = new WebSocket("ws://localhost:8000/websocket");
 ```
 
-If everything works, you should see a log line in the terminal where the server is running indicating a new
+If everything works, you should see a log line in the terminal where the server is running, indicating a new
 client has joined the party.

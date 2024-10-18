@@ -31,7 +31,7 @@ impl Controller for Index {
 !!! note
     Headers in Rwf are case-insensitive, so `accept` and `Accept` are equivalent.
 
-Most browsers sent required headers like `Origin`, `Accept`, and `User-Agent`, but that doesn't mean all HTTP clients will.
+Most browsers send required headers like `Origin`, `Accept`, and `User-Agent`, but that doesn't mean all HTTP clients will.
 Checking for valid headers is good practice to avoid bad actors like bots. Read more about intercepting HTTP requests with [Middleware](../middleware).
 
 ## Request body
@@ -57,7 +57,7 @@ if let Some(email) = email {
 
 Form fields are converted to a Rust type manually, by passing in the data type to
 the generic [`FormData::get`](https://docs.rs/rwf/latest/rwf/http/form_data/enum.FormData.html#method.get) function.
-All data types that implement the [`FromStr`](https://doc.rust-lang.org/stable/std/str/trait.FromStr.html) trait are supported, including integers, floats, booleans, and UUIDs.
+All data types that implement the [`FromStr`](https://doc.rust-lang.org/stable/std/str/trait.FromStr.html) trait are supported, including integers, floats, boolean, and UUIDs.
 
 #### Strictly-typed forms
 
@@ -94,7 +94,7 @@ column names and data types to your form:
 ### JSON
 
 If the body is expected to be JSON, it can be read using the `json` method instead. The `json` method
-is generic and automatically converts the request body in a Rust struct using the `serde_json` crate:
+is generic and automatically converts the request body into a Rust struct using the `serde_json` crate:
 
 === "Rust"
     ```rust
@@ -134,5 +134,5 @@ If you don't know the schema of the JSON request, you can use [`json_raw`](https
 ### Parsing errors
 
 If you use [`FormData::get_required`](https://docs.rs/rwf/latest/rwf/http/form_data/enum.FormData.html#method.get_required) or [`Request::json`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.json) methods with the `?` operator,
-an error will be returned to the client automatically if parsing of the form data fails.
+an error will be returned to the client automatically if the parsing of the form data fails.
 Unlike other controller errors that return HTTP `500`, this type of error will return HTTP `400` (Bad Request).

@@ -4,7 +4,7 @@ Rwf has multiple authentication and authorization mechanisms. Different kinds of
 
 ## Session authentication
 
-[Session](../sessions) authentication checks that the user-supplied session cookie is valid (not expired). If that's not the case, the request is either rejected with a `403 - Forbidden` or provided an endpoint to re-authenticate, e.g. using a username and password, with a `302 - Found` redirect.
+[Session](../sessions) authentication checks that the user-supplied session cookie is valid (not expired). If that's not the case, the request is either rejected with a `403 - Forbidden` or provided an endpoint to re-authenticate, e.g., using a username and password, with a `302 - Found` redirect.
 
 ### Enable session authentication
 
@@ -43,4 +43,4 @@ impl Controller for Private {
 ## Basic authentication
 
 HTTP Basic is a form of authentication using a global username and password. It's not particularly secure, but it's good enough to protect an endpoint quickly against random visitors. Enabling basic authentication is as simple
-as setting a [`AuthHandler`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.AuthHandler.html) with [`BasicAuth`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.BasicAuth.html) on your [controller](../). See [examples/auth](https://github.com/levkk/rwf/tree/main/examples/auth) for examples on how to do this.
+as setting an [`AuthHandler`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.AuthHandler.html) with [`BasicAuth`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.BasicAuth.html) on your [controller](../). See [examples/auth](https://github.com/levkk/rwf/tree/main/examples/auth) for examples on how to do this.

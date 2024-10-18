@@ -1,9 +1,9 @@
 # Getting started
 
-Rust Web Framework (Rwf for short) is set of libraries and tools to build web applications using the Rust programming language. It aims to be comprehensive, by providing all features
-for you to build modern, fast, and secure web apps, out of the box.
+Rust Web Framework (Rwf for short) is a set of libraries and tools to build web applications using the Rust programming language. It aims to be comprehensive by providing all features
+for you to build modern, fast, and secure web apps out of the box.
 
-Rwf has very few dependencies, and is easy to install and use within new or existing Rust applications.
+Rwf has very few dependencies and is easy to install and use within new or existing Rust applications.
 
 ## Install Rust
 
@@ -54,9 +54,9 @@ impl Controller for Index {
 ```
 
 `rwf::prelude::*` includes the vast majority of types, structs, traits and functions you'll be using when building controllers with Rwf.
-Adding this declaration in your source files will make handling imports easier, but it's not required.
+Adding this declaration to your source files will make handling imports easier, but it's not required.
 
-Rwf controllers are defined as Rust structs which implement the [`Controller`](../controllers/) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
+Rwf controllers are defined as Rust structs that implement the [`Controller`](../controllers/) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
 and has only one method you need to implement: `async fn handle`. This method
 accepts a [`Request`](../controllers/request), and must return a [`Response`](../controllers/response).
 
@@ -67,7 +67,7 @@ but it'll work in all browsers for our demo purposes.
 
 ## Launching the server
 
-Once you have at least one controller, you can add it to the Rwf HTTP server and launch it on the address and port of your choosing:
+Once you have at least one controller, you can add it to the Rwf HTTP server and launch it at the address and port of your choosing:
 
 ```rust
 use rwf::http::{self, Server};
@@ -96,7 +96,7 @@ cargo run
 
 Once the server is running, you can visit the index page by pointing your browser to [http://localhost:8000](http://localhost:8000).
 
-Full code for this is available in GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
+The full code for this is available on GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
 
 ## Learn more
 
