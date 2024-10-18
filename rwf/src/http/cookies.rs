@@ -64,6 +64,7 @@ impl Cookies {
 
     pub fn get_session(&self) -> Result<Option<Session>, Error> {
         let cookie = self.get_private("rwf_session")?;
+
         if let Some(cookie) = cookie {
             Ok(serde_json::from_str(cookie.value())?)
         } else {

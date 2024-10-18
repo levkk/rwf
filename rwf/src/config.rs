@@ -30,6 +30,9 @@ pub enum Error {
 
     #[error("config is already loaded")]
     ConfigLoaded,
+
+    #[error("config not found")]
+    NoConfig,
 }
 
 /// Global configuration.
@@ -172,7 +175,22 @@ impl Default for Config {
 impl Config {
     pub fn load() -> Result<Config, Error> {
         let mut config = Config::default();
-        let config_file = ConfigFile::load("Rum.toml")?;
+        let mut config_file = None;
+
+        for name in ["rwf.toml", "Rum.toml", "Rwf.toml"] {
+            let path = PathBuf::from(name);
+            if path.exists() {
+                config_file = Some(ConfigFile::load("Rum.toml")?);
+                break;
+            }
+
+            return Err(Error::NoConfig);
+        }
+
+        let config_file = match config_file {
+            Some(config_file) => config_file,
+            None => return Err(Error::NoConfig),
+        };
 
         let secret_key = config_file.general.secret_key()?;
 
