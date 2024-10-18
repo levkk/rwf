@@ -51,7 +51,7 @@ CREATE TABLE users (
     for both inserting and selecting data from the table. When inserting, the `id` column should be `None` and will be automatically
     assigned by the database. This ensures that all rows in your tables have a unique primary key.
 
-[^1]: See [migrations](migrations) to learn how to create tables in your database in a reliable way.
+[^1]: See [migrations](migrations) to learn how to create tables in your database reliably.
 
 ### Naming conventions
 The struct fields have the same name as the database columns, and the data types match their respective Rust types. The table name in the database corresponds to the name of the struct, lowercase and pluralized. For example, `User` model will refer to the `"users"` table in the database.
