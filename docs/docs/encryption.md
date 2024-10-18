@@ -21,7 +21,7 @@ let data = serde_json::to_vec(&data).unwrap();
 let encrypted = encrypt(&data).unwrap();
 ```
 
-Any kind of data can be encrypted, as long as it's serializable to an array of bytes. Serialization typically be achieved by using [`serde`](https://docs.rs/serde/latest/serde/) or manually.
+Any kind of data can be encrypted, as long as it's serializable to an array of bytes. Serialization can typically be achieved by using [`serde`](https://docs.rs/serde/latest/serde/).
 
 Encryption produces a base64-encoded UTF-8 string. You can save this string in the database or send it via an insecure medium like email.
 

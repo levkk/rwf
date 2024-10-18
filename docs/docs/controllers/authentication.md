@@ -1,6 +1,6 @@
 # Authentication
 
-Rwf has multiple authentication and authorization mechanisms. Different kinds of authenitcation require their own kinds of user-supplied credentials. The most commonly used mechanism is [Session](../sessions) authentication, which has built-in methods for easy use in [controllers](../).
+Rwf has multiple authentication and authorization mechanisms. Different kinds of authentication require their own kinds of user-supplied credentials. The most commonly used mechanism is [Session](../sessions) authentication, which has built-in methods for easy use in [controllers](../).
 
 ## Session authentication
 

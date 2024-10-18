@@ -1,4 +1,6 @@
 site_name: Rust Web Framework
+repo_url: "https://github.com/levkk/rwf"
+site_description: "Rust Web Framework - A comprehensive framework for building web applications with Rust"
 theme:
   name: material
   features:
@@ -12,7 +14,7 @@ theme:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-
+      primary: "white"
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -20,6 +22,7 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: "black"
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
@@ -41,6 +44,3 @@ markdown_extensions:
 plugins:
   - search
   - awesome-pages
-# nav:
-#   - "index.md"
-#   - "controllers/index.md"
