@@ -11,5 +11,5 @@ pub mod worker;
 pub use clock::Clock;
 pub use cron::Cron;
 pub use error::Error;
-pub use model::{Job, JobHandler, JobModel};
+pub use model::{queue, queue_delay, Job, JobHandler, JobModel};
 pub use worker::Worker;

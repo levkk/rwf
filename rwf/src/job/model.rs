@@ -1,6 +1,7 @@
 use crate::colors::MaybeColorize;
 use crate::job::{clock::ScheduledJob, Error};
 use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
+use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 
 use async_trait::async_trait;
@@ -216,4 +217,36 @@ impl JobHandler {
     pub fn new(job: impl Job + 'static) -> Self {
         Self { job: Box::new(job) }
     }
+}
+
+pub async fn queue<T: Job + Serialize>(job: &T) -> Result<(), Error> {
+    let mut conn = get_connection().await?;
+    let args = serde_json::to_value(job)?;
+
+    JobModel::new(job.job_name(), args)
+        .save()
+        .execute(&mut conn)
+        .await?;
+
+    info!("job {} scheduled to run now", job.job_name().green());
+
+    Ok(())
+}
+
+pub async fn queue_delay<T: Job + Serialize>(job: &T, delay: Duration) -> Result<(), Error> {
+    let mut conn = get_connection().await?;
+    let args = serde_json::to_value(job)?;
+
+    JobModel::new_with_delay(job.job_name(), args, delay)
+        .save()
+        .execute(&mut conn)
+        .await?;
+
+    info!(
+        "job {} scheduled to run in {}s",
+        job.job_name().green(),
+        delay.whole_seconds()
+    );
+
+    Ok(())
 }
