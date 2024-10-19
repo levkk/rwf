@@ -43,6 +43,10 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] More README-style docs
 - [ ] Code docs (rust doc) for every public struct, function, enum, etc.
 
+## Migrate from Python
+
+- [ ] Run Django/Flask apps side by side
+
 ## More?
 
 Please feel free to add more features to this list.
