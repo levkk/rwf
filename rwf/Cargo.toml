@@ -38,3 +38,4 @@ rand = { version = "0.8", features = ["getrandom"] }
 regex = "1"
 sha1 = "0.10"
 toml = "0.8"
+pyo3 = { version = "0.22", features = ["auto-initialize"] }

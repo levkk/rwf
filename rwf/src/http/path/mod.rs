@@ -26,6 +26,13 @@ pub struct Path {
     base: String,
 }
 
+impl std::fmt::Display for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.base)?;
+        write!(f, "{}", self.query)
+    }
+}
+
 impl Default for Path {
     fn default() -> Self {
         Path {
