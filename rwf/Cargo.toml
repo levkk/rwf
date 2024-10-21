@@ -7,6 +7,9 @@ description = "Comprehensive framework for building web applications in Rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+wsgi = ["pyo3"]
+
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
 tokio-postgres = { version = "0.7", features = [
@@ -38,4 +41,4 @@ rand = { version = "0.8", features = ["getrandom"] }
 regex = "1"
 sha1 = "0.10"
 toml = "0.8"
-pyo3 = { version = "0.22", features = ["auto-initialize"] }
+pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }

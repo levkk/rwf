@@ -7,6 +7,11 @@ pub mod ser;
 pub mod static_files;
 pub mod util;
 
+#[cfg(feature = "wsgi")]
+pub mod wsgi;
+#[cfg(feature = "wsgi")]
+pub use wsgi::WsgiController;
+
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
@@ -59,7 +64,7 @@ pub trait Controller: Sync + Send {
     where
         Self: Sized + 'static,
     {
-        todo!()
+        Handler::wildcard(path, self)
     }
 
     fn protocol(&self) -> Protocol {
@@ -160,7 +165,7 @@ pub trait PageController: Controller {
 ///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
 ///         // Delegate handling of this controller to the `RestController`.
 ///         RestController::handle(self, request).await
-///     }  
+///     }
 /// }
 ///
 /// #[async_trait]

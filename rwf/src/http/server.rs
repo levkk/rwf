@@ -15,6 +15,8 @@ use std::time::{Duration, Instant};
 
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
+use tokio::select;
+use tokio::signal::ctrl_c;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
 
@@ -63,17 +65,27 @@ impl Server {
         info!("Listening on {}", listener.local_addr().unwrap());
 
         loop {
-            let (stream, peer_addr) = listener.accept().await?;
-            let handlers = self.handlers.clone();
+            select! {
+                _ = ctrl_c() => {
+                    info!("Shutting down...");
+                    return Ok(());
+                }
 
-            tokio::spawn(async move {
-                match Self::handle_connection(handlers, stream, peer_addr).await {
-                    Ok(_) => (),
-                    Err(_) => {
-                        error!("panic detected, this is a bug; controllers should return an error instead");
+                result = listener.accept()  => {
+                    if let Ok((stream, peer_addr)) = result {
+                        let handlers = self.handlers.clone();
+
+                        tokio::spawn(async move {
+                            match Self::handle_connection(handlers, stream, peer_addr).await {
+                                Ok(_) => (),
+                                Err(_) => {
+                                    error!("panic detected, this is a bug; controllers should return an error instead");
+                                }
+                            }
+                        });
                     }
                 }
-            });
+            }
         }
     }
 

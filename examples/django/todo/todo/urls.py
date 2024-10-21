@@ -20,7 +20,7 @@ from django.urls import path
 from django.http import HttpResponse
 
 def index(request):
-    return HttpResponse("Hello, world. You're at the todo index.")
+    return HttpResponse("This is served by Django.")
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -15,6 +15,8 @@ pub mod router;
 pub mod server;
 pub mod url;
 pub mod websocket;
+
+#[cfg(feature = "wsgi")]
 pub mod wsgi;
 
 pub use authorization::Authorization;

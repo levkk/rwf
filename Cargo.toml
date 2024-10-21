@@ -14,5 +14,5 @@ members = [
     "rwf",
     "rwf-cli",
     "rwf-macros",
-    "rwf-tests",
+    "rwf-tests", "examples/django",
 ]

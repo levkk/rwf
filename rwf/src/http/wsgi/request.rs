@@ -1,8 +1,9 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::http::{Error, Request};
+use crate::http::{Error, Request, Response};
 use pyo3::prelude::*;
-use pyo3::types::IntoPyDict;
+use pyo3::types::{IntoPyDict, PyBytes, PyFunction, PyList};
 
 use once_cell::sync::Lazy;
 
@@ -27,14 +28,47 @@ def into_bytes(b):
     })
 });
 
-#[derive(Debug)]
+static WRAPPER: Lazy<Py<PyModule>> = Lazy::new(|| py_module!("uwsgi_wrapper.py"));
+
+macro_rules! py_module {
+    ($module:expr) => {
+        Python::with_gil(|py| {
+            let module: Py<PyModule> = PyModule::from_code_bound(
+                py,
+                include_str!($module),
+                "uwsgi_wrapper.py",
+                "uwsgi_wrapper",
+            )
+            .unwrap()
+            .into();
+            module
+        })
+    };
+}
+
+macro_rules! py_module_str {
+    ($module:expr) => {
+        Python::with_gil(|py| {
+            let module: Py<PyModule> =
+                PyModule::from_code_bound(py, $module, "uwsgi_wrapper.py", "uwsgi_wrapper")
+                    .unwrap()
+                    .into();
+            module
+        })
+    };
+}
+
+pub(crate) use py_module;
+pub(crate) use py_module_str;
+
+#[derive(Debug, Clone)]
 pub struct WsgiRequest {
     headers: HashMap<String, String>,
     body: Vec<u8>,
 }
 
 impl WsgiRequest {
-    fn from_request(request: &Request) -> Result<Self, Error> {
+    pub fn from_request(request: &Request) -> Result<Self, Error> {
         let map = request.headers().clone().into_raw();
         let body = request.body().to_vec();
 
@@ -59,6 +93,33 @@ impl WsgiRequest {
 
         Ok(wsgi)
     }
+
+    pub fn send(self, application: &Py<PyAny>) -> Result<WsgiResponse, Error> {
+        let body: Vec<Vec<u8>>;
+        let code: String;
+        let headers: Vec<(String, String)>;
+
+        (body, code, headers) = Python::with_gil(|py| {
+            let request = self.into_py(py);
+            let wrapper: Py<PyAny> = WRAPPER.getattr(py, "wrapper").unwrap().into();
+            let body: Py<PyAny> = wrapper.call1(py, (request, application)).unwrap();
+            let body: Vec<Vec<u8>> = body.extract(py).unwrap();
+
+            let func: Py<PyAny> = WRAPPER.getattr(py, "get_code").unwrap().into();
+            let code: String = func.call0(py).unwrap().extract(py).unwrap();
+
+            let func: Py<PyAny> = WRAPPER.getattr(py, "get_headers").unwrap().into();
+            let headers: Vec<(String, String)> = func.call0(py).unwrap().extract(py).unwrap();
+
+            (body, code, headers)
+        });
+
+        Ok(WsgiResponse {
+            body,
+            code,
+            headers,
+        })
+    }
 }
 
 impl IntoPy<PyObject> for WsgiRequest {
@@ -70,9 +131,36 @@ impl IntoPy<PyObject> for WsgiRequest {
             .collect::<Vec<_>>();
 
         let body = Python::with_gil(|py| INTO_BYTES.call1(py, (self.body,)).unwrap());
-        // let body: Py<PyAny> = self.body.into_py(py).into();
         iter.push(("wsgi.input".into_py(py), body));
         IntoPyDict::into_py_dict_bound(iter, py).into()
+    }
+}
+
+#[derive(Debug)]
+pub struct WsgiResponse {
+    code: String,
+    headers: Vec<(String, String)>,
+    body: Vec<Vec<u8>>,
+}
+
+impl WsgiResponse {
+    pub fn to_response(self) -> Result<Response, Error> {
+        let mut response = Response::new();
+        let body = self.body.into_iter().flatten().collect::<Vec<u8>>();
+        let body = String::from_utf8_lossy(&body);
+        let code = self
+            .code
+            .split(" ")
+            .next()
+            .unwrap_or("200")
+            .parse::<u16>()
+            .unwrap_or(200);
+
+        for (key, value) in self.headers {
+            response = response.header(key, value);
+        }
+
+        Ok(response.html(body).code(code))
     }
 }
 
@@ -81,26 +169,44 @@ mod test {
     use super::*;
     use crate::http::request::test::dummy_request;
 
+    static UWSGI_TEST: Lazy<Py<PyAny>> = Lazy::new(|| {
+        Python::with_gil(|py| {
+            let func: Py<PyAny> = PyModule::from_code_bound(
+                py,
+                "
+def application(env, start_response):
+    start_response('200 OK', [('Content-Type', 'text/plain')])
+    return [b'Hello World']
+",
+                "application.py",
+                "application",
+            )
+            .unwrap()
+            .getattr("application")
+            .unwrap()
+            .into();
+
+            func
+        })
+    });
+
     #[tokio::test]
     async fn test_wsgi_request() {
         let request = dummy_request().await.unwrap();
         let request = WsgiRequest::from_request(&request).unwrap();
-        Python::with_gil(|py| {
-            let fun: Py<PyAny> = PyModule::from_code_bound(
-                py,
-                "
-def debug(env):
-    print(env)
-",
-                "request.py",
-                "request",
-            )
-            .unwrap()
-            .getattr("debug")
-            .unwrap()
-            .into();
+        let application = Python::with_gil(|py| (*UWSGI_TEST).clone_ref(py));
+        let response = request.send(&application).unwrap();
 
-            fun.call1(py, (request,)).unwrap();
-        });
+        assert_eq!(response.code, "200 OK");
+        assert_eq!(response.headers[0].0, "Content-Type");
+        assert_eq!(response.headers[0].1, "text/plain");
+        let body = String::from_utf8_lossy(&response.body[0]);
+        assert_eq!(body, "Hello World");
+    }
+
+    #[tokio::test]
+    async fn test_django() {
+        let request = dummy_request().await.unwrap();
+        let request = WsgiRequest::from_request(&request).unwrap();
     }
 }

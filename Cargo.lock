@@ -474,6 +474,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "django"
+version = "0.1.0"
+dependencies = [
+ "rwf 0.1.2",
+ "tokio",
+]
+
+[[package]]
 name = "dynamic-templates"
 version = "0.1.0"
 dependencies = [
