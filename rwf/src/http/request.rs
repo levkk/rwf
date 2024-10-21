@@ -191,8 +191,21 @@ impl Deref for Request {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
+
+    pub async fn dummy_request() -> Result<Request, Error> {
+        let body = ("GET /?hello=world HTTP/1.1\r\n".to_owned()
+            + "Content-Type: application/json\r\n"
+            + "Accept: */*\r\n"
+            + "Content-Length: 18\r\n"
+            + "\r\n"
+            + r#"{"hello": "world"}"#)
+            .as_bytes()
+            .to_vec();
+
+        Request::read("127.0.0.1:1337".parse().unwrap(), &body[..]).await
+    }
 
     #[tokio::test]
     async fn test_response() {
@@ -201,18 +214,8 @@ mod test {
             hello: String,
         }
 
-        let body = ("GET / HTTP/1.1\r\n".to_owned()
-            + "Content-Type: application/json\r\n"
-            + "Accept: */*\r\n"
-            + "Content-Length: 18\r\n"
-            + "\r\n"
-            + r#"{"hello": "world"}"#)
-            .as_bytes()
-            .to_vec();
-        let response = Request::read("127.0.0.1:1337".parse().unwrap(), &body[..])
-            .await
-            .expect("response");
-        let json = response.json::<Hello>().expect("deserialize body");
+        let request = dummy_request().await.unwrap();
+        let json = request.json::<Hello>().expect("deserialize body");
         assert_eq!(json.hello, "world");
     }
 }

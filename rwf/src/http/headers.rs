@@ -37,6 +37,10 @@ impl Headers {
         self.headers.clear();
     }
 
+    pub fn into_raw(self) -> HashMap<String, String> {
+        self.headers
+    }
+
     /// Convert headers to bytes (UTF-8).
     ///
     /// Used to send headers over the wire to the client as part of a response.
