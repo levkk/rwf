@@ -332,11 +332,11 @@ impl Response {
 
     pub fn internal_error(err: impl std::error::Error) -> Self {
         // TODO:
-        // #[cfg(debug_asertions)]
-        // let err = format!("{:?}", err);
+        #[cfg(debug_assertions)]
+        let err = format!("{:?}", err);
 
-        // #[cfg(not(debug_asertions))]
-        // let err = "".to_string();
+        #[cfg(not(debug_assertions))]
+        let err = "";
 
         Self::new()
             .html(format!(
@@ -347,7 +347,7 @@ impl Response {
             <br><br>
             <center><code style=\"padding: 25px;\">{:?}</code></center>
             ",
-                err
+                err,
             ))
             .code(500)
     }
