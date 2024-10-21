@@ -15,6 +15,7 @@ pub mod router;
 pub mod server;
 pub mod url;
 pub mod websocket;
+pub mod wsgi;
 
 pub use authorization::Authorization;
 pub use body::Body;

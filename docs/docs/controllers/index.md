@@ -96,6 +96,30 @@ Once the server is up and running, you can test your endpoints with cURL (or wit
     ```
 
 
+## Split `GET` from `POST`
+
+Controllers that implement the `Controller` trait don't make a distinction between HTTP request methods and handle all of them in one function. Most websites show pages via `GET` requests and accept form submissions via `POST` requests. To avoid writing boilerplate code in the `handle` method, Rwf has another type of controller, [`PageController`](https://docs.rs/rwf/latest/rwf/controller/trait.PageController.html) which splits up the two methods into their own functions: [`async fn get`](https://docs.rs/rwf/latest/rwf/controller/trait.PageController.html#tymethod.get) and [`async fn post`](https://docs.rs/rwf/latest/rwf/controller/trait.PageController.html#method.post):
+
+```rust
+#[derive(Default, macros::PageController)]
+struct Login;
+
+impl PageController for Login {
+    /// Handle GET request.
+    async fn get(&self, request: &Request) -> Result<Response, Error> {
+        /* show page, by rendering a template */
+    }
+
+    /// Handle POST request.
+    async fn post(&self, request: &Request) -> Result<Response, Error> {
+        let form = request.form_data();
+
+        /* process form submission and redirect */
+    }
+}
+```
+
+
 ## Learn more
 
 Read more about working with controllers, requests, and responses:

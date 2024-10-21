@@ -24,8 +24,9 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] Better error messages, e.g. syntax errors, undefined variables, functions, etc.
 - [ ] More data types support, e.g. UUIDs, timestampts, whatever Rust data types we forgot to add
 - [ ] More tests
-- [ ] `context!` macro to generate `Context` from a key => value map
-- [ ] `render!` macro to load and render a template as `Ok(Response::new().html())`
+- [x] `context!` macro to generate `Context` from a key => value map
+- [x] `render!` macro to load and render a template as `Ok(Response::new().html())`
+- [ ] Allow for extending template syntax with user-defined functions (defined at startup)
 
 ## Background & scheduled jobs
 

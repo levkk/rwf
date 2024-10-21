@@ -79,4 +79,34 @@ mod test {
         );
         Ok(())
     }
+
+    #[test]
+    fn test_context() -> Result<(), Error> {
+        let _ctx = context!(
+            "var1" => "A string value",
+            "var2" => vec![
+                1_i64, 1, 2, 3, 5, 8,
+            ],
+        );
+
+        #[derive(macros::Context)]
+        struct Variables {
+            title: String,
+            r2d2_password: Vec<i64>,
+        }
+
+        let ctx = Variables {
+            title: "hello".into(),
+            r2d2_password: vec![1, 2, 3, 4],
+        };
+
+        let template = Template::from_str(
+            "<%= title %><% for digit in r2d2_password %><%= digit %><% end %>",
+        )?;
+
+        let result = template.render(&ctx)?;
+        assert_eq!(result, "hello1234");
+
+        Ok(())
+    }
 }

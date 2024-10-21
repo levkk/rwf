@@ -41,7 +41,7 @@ on the expected content type.
 
 ### Forms
 
-HTTP forms submitted using `POST` (or `PUT`/`PATCH`) are encoded using either URL encoding or chunked encoding.
+HTTP forms submitted using `POST` (or `PUT`/`PATCH`) are encoded using either URL encoding or multipart encoding.
 Parsing the form data is automatically handled by Rwf, so accessing a form field can be done in a couple ways.
 
 #### Form fields

@@ -20,7 +20,7 @@ section configures database connection settings, like the database URL, connecti
 |---------|-------------|---------|
 | `log_queries` | Toggles logging of all SQL queries executed by the [ORM](../models/). | `false` |
 | `secret_key` | Secret key, encoded using base64, used for [encryption](../encryption). | Randomly generated |
-| `cache_templates` | Toggle caching of [dynamic templates](/views/templates/). | `false` |
+| `cache_templates` | Toggle caching of [dynamic templates](/views/templates/). | `false` in debug, `true` in release |
 
 #### Secret key
 

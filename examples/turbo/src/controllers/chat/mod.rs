@@ -18,13 +18,6 @@ struct UserMessage {
     mine: bool,
 }
 
-#[derive(rwf::macros::Context)]
-struct Context {
-    title: String,
-    messages: Vec<UserMessage>,
-    user: User,
-}
-
 #[derive(rwf::macros::PageController)]
 #[auth(auth)]
 pub struct ChatController {
@@ -42,15 +35,12 @@ impl Default for ChatController {
 impl ChatController {
     fn chat_message(user: &User, message: &ChatMessage, mine: bool) -> Result<TurboStream, Error> {
         let chat_message = Template::load("templates/chat_message.html")?;
-        let rendered = chat_message.render([(
-            "message",
-            UserMessage {
-                user: user.clone(),
-                message: message.clone(),
-                mine,
-            }
-            .to_template_value()?,
-        )])?;
+        let context = context!("message" => UserMessage {
+            user: user.clone(),
+            message: message.clone(),
+            mine,
+        });
+        let rendered = chat_message.render(&context)?;
 
         Ok(TurboStream::new(rendered)
             .action("append")
@@ -85,13 +75,11 @@ impl PageController for ChatController {
             })
             .collect::<Vec<_>>();
 
-        let rendered = Template::load("templates/chat.html")?.render(Context {
-            title: "rwf + Turbo = chat".into(),
-            messages,
-            user,
-        })?;
-
-        Ok(Response::new().html(rendered))
+        render!("templates/chat.html",
+            "title" => "rwf + Turbo = chat",
+            "messages" => messages,
+            "user" => user
+        )
     }
 
     async fn post(&self, request: &Request) -> Result<Response, Error> {
@@ -123,9 +111,11 @@ impl PageController for ChatController {
         // Display the message for the user.
         let chat_message = Self::chat_message(&user, &message, true)?;
 
+        let context = context!("user" => user);
+
         // Reset the form.
         let form = Template::load("templates/chat_form.html")?;
-        let form = form.render([("user", user.to_template_value()?)])?;
+        let form = form.render(&context)?;
 
         Ok(Response::new().turbo_stream(&[
             chat_message,

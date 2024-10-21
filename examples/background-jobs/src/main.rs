@@ -33,7 +33,7 @@ impl Controller for IndexController {
             body: "Hey, this is Rum, how are you?".into(),
         };
 
-        job.execute_async(serde_json::to_value(&job)?).await?;
+        queue_async(&job).await?;
 
         Ok(Response::new().html("<h1>Job scheduled!</h1>"))
     }

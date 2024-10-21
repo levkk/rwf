@@ -16,4 +16,6 @@ The first time the template is loaded, it will be fetched from disk and compiled
 
 ## Enable the cache
 
-The template cache is disabled by default. To enable it, toggle the `cache_templates` setting in [configuration](../../../configuration).
+The template cache is disabled by default in development, and enabled in production[^1]. To change this behavior, toggle the `cache_templates` setting in [configuration](../../../configuration).
+
+[^1]: This assumes you build your application using the `release` profile, e.g. `cargo build --release`.

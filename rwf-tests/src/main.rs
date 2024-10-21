@@ -360,7 +360,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let template = Templates::cache().get("templates/test.html")?;
     let start = Instant::now();
-    let result = template.render(&context.try_into()?)?;
+    let result = template.render(&context)?;
     println!(
         "{}, elapsed: {}",
         result,

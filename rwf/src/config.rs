@@ -154,6 +154,12 @@ impl Default for Config {
         let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
         let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
+        #[cfg(debug_assertions)]
+        let cache_templates = false;
+
+        #[cfg(not(debug_assertions))]
+        let cache_templates = true;
+
         Self {
             path: None,
             aes_key,
@@ -163,7 +169,7 @@ impl Default for Config {
             default_auth: AuthHandler::new(AllowAll {}),
             session_duration: Duration::days(4),
             default_middleware: MiddlewareSet::default(),
-            cache_templates: false,
+            cache_templates,
             websocket: Websocket::default(),
             log_queries: var("RUM_LOG_QUERIES").is_ok(),
             http: Http::default(),
@@ -269,7 +275,10 @@ impl General {
     }
 
     fn default_cache_templates() -> bool {
-        false
+        #[cfg(debug_assertions)]
+        return false;
+        #[cfg(not(debug_assertions))]
+        return true;
     }
 }
 

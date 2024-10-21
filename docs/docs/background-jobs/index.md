@@ -65,7 +65,7 @@ To spawn a worker inside the web app, use the code above without the `sleep`. Th
 
 ## Scheduling jobs
 
-With the background jobs defined and the workers running, we can start scheduling jobs to run in the background. A job can be scheduled to run from anywhere in the code by calling the [`Job::execute_async`](https://docs.rs/rwf/latest/rwf/job/model/trait.Job.html#method.execute_async) method:
+With the background jobs defined and the workers running, we can start scheduling jobs to run in the background. A job can be scheduled to run from anywhere in the code by calling the `queue_async` method:
 
 ```rust
 let email = WelcomeEmail {
@@ -73,12 +73,9 @@ let email = WelcomeEmail {
     user_name: "Alice".to_string(),
 };
 
-// Convert the job to a JSON value.
-let args = serde_json::to_value(&email)?;
-
 // Schedule the job to run in the background
 // as soon as possible.
-email.execute_async(args).await?;
+queue_async(&email).await?;
 ```
 
-The `execute_async` method creates a record of the job in the queue and returns immediately without doing the actual work. This makes this method very quick so you can schedule multiple jobs inside a controller without it having noticeable effect on endpoint latency.
+The `queue_async` method creates a record of the job in the queue and returns immediately without doing the actual work. This makes this method very quick so you can schedule multiple jobs inside a controller without it having noticeable effect on endpoint latency.

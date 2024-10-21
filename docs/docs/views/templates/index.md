@@ -22,10 +22,12 @@ The variables `username` and `bio` can be substituted for values unique to each 
     </div>
     "#)?;
 
-    let html = template.render([
-      ("username", "Alice"),
-      ("bio", "I like turtles")
-    ])?;
+    let ctx = context!(
+      "username" => "Alice",
+      "bio" => "I like turtles"
+    );
+
+    let html = template.render(&ctx)?;
 
     println!("{}", html);
     ```

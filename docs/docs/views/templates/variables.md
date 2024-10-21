@@ -21,9 +21,8 @@ A variable is defined when a template is rendered. Using one of many possible wa
 === "Rust"
     ```rust
     let template = Template::from_str("<%= variable %>")?;
-    let string = template.render([
-        ("variable", "I love pancakes for dinner."),
-    ])?;
+    let ctx = context!("variable" => "I love pancakes for dinner.");
+    let string = template.render(&ctx)?;
     println!("{}", string);
     ```
 === "Output"
@@ -157,6 +156,7 @@ All other variables evaluate to true.
 
 ## Learn more
 
+- [Context](../context)
 - [If statements](../if-statements)
 - [For loops](../for-loops)
 - [Functions](../functions)

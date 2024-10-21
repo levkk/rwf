@@ -219,34 +219,19 @@ impl JobHandler {
     }
 }
 
+#[inline]
 pub async fn queue<T: Job + Serialize>(job: &T) -> Result<(), Error> {
-    let mut conn = get_connection().await?;
     let args = serde_json::to_value(job)?;
-
-    JobModel::new(job.job_name(), args)
-        .save()
-        .execute(&mut conn)
-        .await?;
-
-    info!("job {} scheduled to run now", job.job_name().green());
-
-    Ok(())
+    job.execute_async(args).await
 }
 
+#[inline]
 pub async fn queue_delay<T: Job + Serialize>(job: &T, delay: Duration) -> Result<(), Error> {
-    let mut conn = get_connection().await?;
     let args = serde_json::to_value(job)?;
+    job.execute_delay(args, delay).await
+}
 
-    JobModel::new_with_delay(job.job_name(), args, delay)
-        .save()
-        .execute(&mut conn)
-        .await?;
-
-    info!(
-        "job {} scheduled to run in {}s",
-        job.job_name().green(),
-        delay.whole_seconds()
-    );
-
-    Ok(())
+#[inline]
+pub async fn queue_async<T: Job + Serialize>(job: &T) -> Result<(), Error> {
+    queue(job).await
 }
