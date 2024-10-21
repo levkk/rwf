@@ -1,4 +1,7 @@
-
+# This is called while holding the GIL.
+# If you read how Django actually implements this,
+# they don't separate headers from the body either,
+# so we don't slow things down here.
 response_code = None
 response_headers = None
 
