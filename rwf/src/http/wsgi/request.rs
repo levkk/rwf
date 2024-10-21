@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::http::{Error, Request, Response};
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyBytes, PyFunction, PyList};
+use pyo3::types::IntoPyDict;
 
 use once_cell::sync::Lazy;
 
@@ -46,20 +45,7 @@ macro_rules! py_module {
     };
 }
 
-macro_rules! py_module_str {
-    ($module:expr) => {
-        Python::with_gil(|py| {
-            let module: Py<PyModule> =
-                PyModule::from_code_bound(py, $module, "uwsgi_wrapper.py", "uwsgi_wrapper")
-                    .unwrap()
-                    .into();
-            module
-        })
-    };
-}
-
 pub(crate) use py_module;
-pub(crate) use py_module_str;
 
 #[derive(Debug, Clone)]
 pub struct WsgiRequest {
@@ -207,6 +193,6 @@ def application(env, start_response):
     #[tokio::test]
     async fn test_django() {
         let request = dummy_request().await.unwrap();
-        let request = WsgiRequest::from_request(&request).unwrap();
+        let _request = WsgiRequest::from_request(&request).unwrap();
     }
 }

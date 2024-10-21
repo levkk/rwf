@@ -1,15 +1,10 @@
 use super::{Controller, Error};
-use crate::http::{
-    wsgi::{py_module_str, WsgiRequest, WsgiResponse},
-    Request, Response,
-};
+use crate::http::{wsgi::WsgiRequest, Request, Response};
 
 use async_trait::async_trait;
 use pyo3::prelude::*;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::time::{timeout, Duration};
 
-use std::path::{Path, PathBuf};
+use tokio::time::{timeout, Duration};
 
 pub struct WsgiController {
     path: &'static str,

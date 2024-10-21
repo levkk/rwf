@@ -9,6 +9,7 @@ description = "Comprehensive framework for building web applications in Rust"
 
 [features]
 wsgi = ["pyo3"]
+default = []
 
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
