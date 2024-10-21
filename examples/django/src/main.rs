@@ -22,7 +22,9 @@ async fn main() {
     std::env::set_var("PYTHONPATH", pythonpath.display().to_string());
 
     Server::new(vec![
+        // Serve /rust with Rwf.
         route!("/rust" => RustIndex),
+        // Serve every other path with Django.
         WsgiController::new("todo.wsgi").wildcard("/"),
     ])
     .launch("0.0.0.0:8002")
