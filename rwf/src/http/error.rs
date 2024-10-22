@@ -28,6 +28,9 @@ pub enum Error {
 
     #[error("parameter is missing")]
     MissingParameter,
+
+    #[error("timeout exceeded")]
+    Timeout(#[from] tokio::time::error::Elapsed),
 }
 
 impl Error {

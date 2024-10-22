@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("session is not set")]
     SessionMissingError,
+
+    #[error("timeout exceeded")]
+    TimeoutError(#[from] tokio::time::error::Elapsed),
 }
 
 impl Error {

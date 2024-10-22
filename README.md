@@ -4,7 +4,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 
 ## Documentation
 
-:blue_book: The documentation (work in progress) **[is available here](https://levkk.github.io/rwf/)**.
+:blue_book: The documentation **[is available here](https://levkk.github.io/rwf/)**.
 
 ## Features overview
 
@@ -22,6 +22,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 - :heavy_check_mark: Environment-specific configuration
 - :heavy_check_mark: Logging and metrics
 - :heavy_check_mark: [CLI](rwf-cli)
+- :heavy_check_mark: WSGI server for [migrating](examples/django) from Django/Flask apps
 
 ## Quick start
 
