@@ -28,10 +28,10 @@ use rwf::controller::WsgiController;
 
 #[tokio::main]
 async fn main() {
-    Server::vec![
+    Server::new(vec![
         WsgiController::new("project.wsgi")
             .wildcard("/"),
-    ]
+    ])
     .launch("0.0.0.0:8000")
     .await
     .unwrap();
