@@ -3,7 +3,7 @@
 //! Made to be easily extendable. Users need only to implement the [`crate::controller::auth::Authentication`] trait
 //! and set it on their controller.
 use super::Error;
-use crate::comms::{get_comms, WebsocketSender};
+use crate::comms::WebsocketSender;
 use crate::config::get_config;
 use crate::http::{Authorization, Request, Response};
 
@@ -216,7 +216,8 @@ impl Session {
     }
 
     pub fn websocket(&self) -> WebsocketSender {
-        get_comms().websocket_sender(&self.session_id)
+        use crate::comms::Comms;
+        Comms::websocket(&self.session_id)
     }
 
     pub fn authenticated(&self) -> bool {

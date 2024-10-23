@@ -22,7 +22,7 @@ use super::http::{
     Handler, Method, Protocol, Request, Response, Stream, ToParameter,
 };
 use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value};
-use crate::comms::get_comms;
+use crate::comms::Comms;
 use crate::config::get_config;
 
 use tokio::select;
@@ -426,10 +426,9 @@ pub trait WebsocketController: Controller {
 
         debug!("new websocket connection from session \"{:?}\"", session_id);
 
-        let comms = get_comms();
         let config = get_config();
         let mut stream = stream.stream();
-        let mut receiver = comms.websocket_receiver(&session_id);
+        let mut receiver = Comms::receiver(&session_id);
         let mut check = interval(config.websocket.ping_interval.unsigned_abs());
         let mut lost_pings = 0;
 
