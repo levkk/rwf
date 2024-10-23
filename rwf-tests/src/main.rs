@@ -198,8 +198,8 @@ impl WebsocketController for MyWebsocketController {
     ) -> Result<(), Error> {
         println!("echo: {:?}", message);
         // send it back
-        let comms = rwf::comms::get_comms();
-        let sender = comms.websocket_sender(user_id);
+        use rwf::comms::Comms;
+        let sender = Comms::websocket(user_id);
         let _ = sender.send(message);
         Ok(())
     }

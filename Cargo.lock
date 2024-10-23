@@ -1445,7 +1445,7 @@ dependencies = [
  "pyo3",
  "rand",
  "regex",
- "rwf-macros 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rwf-macros 0.1.2",
  "serde",
  "serde_json",
  "sha1",

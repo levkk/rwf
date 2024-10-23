@@ -131,6 +131,18 @@ impl RestController for Users {
         Ok(Response::new().json(users)?)
     }
 
+    /// Get a particular user by identifier.
+    /// "GET /users/<id>"
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+        let user = serde_json::json!({
+            "id": *id,
+            "email": "admin@example.com",
+            "admin": true
+        });
+
+        Ok(Response::new().json(user)?)
+    }
+
     /* Optionally implement other REST methods */
 }
 ```
