@@ -213,27 +213,27 @@ pub trait RestController: Controller {
     }
 
     async fn list(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 
     async fn get(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 
     async fn create(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 
     async fn update(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 
     async fn patch(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 
     async fn delete(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
-        Ok(Response::not_implemented())
+        Ok(Response::method_not_allowed())
     }
 }
 
