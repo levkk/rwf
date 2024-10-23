@@ -3,10 +3,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::parse::{Parse, ParseStream};
-use syn::PathArguments;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, Ident, LitStr,
-    Meta, Result, Token, Type,
+    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, LitStr, Meta,
+    Result, Token, Type,
 };
 
 use quote::quote;

@@ -1,8 +1,0 @@
-[package]
-name = "simple-controller"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-rwf = { path = "../../rwf" }
-tokio = { version = "1", features = ["full"] }
