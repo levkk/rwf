@@ -3,9 +3,10 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::parse::{Parse, ParseStream};
+use syn::PathArguments;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, LitStr, Meta,
-    Result, Token, Type,
+    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, Ident, LitStr,
+    Meta, Result, Token, Type,
 };
 
 use quote::quote;
@@ -707,6 +708,26 @@ pub fn render(input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+// struct ControllerInput {
+//     _pub: Option<Token![pub]>,
+//     _async: Token![async],
+//     _fn: Token![fn],
+//     name: Ident,
+//     arguments: PathArguments,
+//     bracket_open: Token![{],
+// }
+
+// #[proc_macro_attribute]
+// pub fn controller(attrs: TokenStream, item: TokenStream) -> TokenStream {
+//     let item = parse_macro_input!(item as proc_macro2::TokenStream);
+//     panic!("{:?}", item);
+
+//     quote! {
+//         #item
+//     }
+//     .into()
+// }
 
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
