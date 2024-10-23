@@ -62,7 +62,7 @@ Specifying the `belongs_to` relationship allows us to query the `Project` model 
     The `join::<Model>` method accepts a generic argument specifying which model we are joining to. If the association between `Project` and `User` doesn't
     exist, the Rust compiler will return an error. This helps us avoid common errors by accidentally joining tables that don't have a relationship.
 
-## Disambiguating fields
+## Disambiguation fields
 
 More often than not, two tables have columns with the same name. The most obvious example of this is the primary key, the `id` column by default, which
 exists in all Rwf models. To specify which table & column a query is referring to, Rwf provides the ability to fully qualify the column with the table name:

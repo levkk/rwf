@@ -111,7 +111,6 @@ Rwf comes with a REST [controller](../), which has the six aforementioned method
 
 ```rust
 use rwf::prelude::*;
-use rwf::controller::RestController;
 
 #[derive(Default, macros::RestController)]
 struct Users;
@@ -174,6 +173,5 @@ The `rest!` macro will ensure that all [six](#six-methods) REST-style paths are 
 
 ## Learn more
 
-- [Model controller](../model-controller)
-- [Serialization](../serialization)
+- [Model controller](model-controller.md)
 - [examples/rest](https://github.com/levkk/rwf/tree/main/examples/rest)
