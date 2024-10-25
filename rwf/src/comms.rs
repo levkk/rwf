@@ -77,7 +77,7 @@ impl Messages {
         self.websocket.lock().get(session_id).is_some()
     }
 
-    pub fn websocket_receiver(&self, session_id: &SessionId, topic: &str) -> WebsocketReceiver {
+    pub fn websocket_receiver(&self, session_id: &SessionId, _topic: &str) -> WebsocketReceiver {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(session_id.clone())
@@ -90,7 +90,7 @@ impl Messages {
         }
     }
 
-    pub fn websocket_sender(&self, session_id: &SessionId, topic: &str) -> WebsocketSender {
+    pub fn websocket_sender(&self, session_id: &SessionId, _topic: &str) -> WebsocketSender {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(session_id.clone())
@@ -100,7 +100,7 @@ impl Messages {
         }
     }
 
-    pub fn websocket_broadcast(&self, session_id: &SessionId, topic: &str) -> Broadcast {
+    pub fn websocket_broadcast(&self, session_id: &SessionId, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
         let entries = guard
             .iter()

@@ -101,17 +101,17 @@ impl Database {
 
 impl Default for Database {
     fn default() -> Self {
-        let url = match var("RUM_DATABASE_URL") {
+        let url = match var("RWF_DATABASE_URL") {
             Ok(url) => Some(url),
             Err(_) => None,
         };
 
-        let user = match var("RUM_DATABASE_USER") {
+        let user = match var("RWF_DATABASE_USER") {
             Ok(user) => user,
             Err(_) => var("USER").unwrap_or("postgres".into()),
         };
 
-        let name = match var("RUM_DATABASE") {
+        let name = match var("RWF_DATABASE") {
             Ok(database) => database,
             Err(_) => user.clone(),
         };
@@ -171,7 +171,7 @@ impl Default for Config {
             default_middleware: MiddlewareSet::default(),
             cache_templates,
             websocket: Websocket::default(),
-            log_queries: var("RUM_LOG_QUERIES").is_ok(),
+            log_queries: var("RWF_LOG_QUERIES").is_ok(),
             http: Http::default(),
             database: Database::default(),
         }
@@ -182,11 +182,13 @@ impl Config {
     pub fn load() -> Result<Config, Error> {
         let mut config = Config::default();
         let mut config_file = None;
+        let mut config_path = None;
 
         for name in ["rwf.toml", "Rum.toml", "Rwf.toml"] {
             let path = PathBuf::from(name);
             if path.exists() {
-                config_file = Some(ConfigFile::load("Rum.toml")?);
+                config_file = Some(ConfigFile::load(name)?);
+                config_path = Some(path);
                 break;
             }
 
@@ -203,7 +205,7 @@ impl Config {
         let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
         let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
-        config.path = Some(PathBuf::from("Rum.toml"));
+        config.path = config_path;
         config.aes_key = aes_key;
         config.secure_id_key = secure_id_key;
         config.log_queries = config_file.general.log_queries;

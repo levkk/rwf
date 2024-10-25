@@ -189,6 +189,13 @@ mod models {
             self.scope
         }
     }
+
+    #[derive(Clone, rwf::macros::Model)]
+    #[table_name("users")]
+    #[foreign_key("user_id")]
+    pub struct CustomTable {
+        id: Option<i64>,
+    }
 }
 
 use models::*;
@@ -297,6 +304,12 @@ async fn main() -> Result<(), Error> {
     .await?;
 
     let _tasks = User::related::<Task>(&users).fetch_all(&mut conn).await?;
+
+    let table_name = CustomTable::table_name();
+    assert_eq!(table_name, "users");
+
+    let foreign_key = CustomTable::foreign_key();
+    assert_eq!(foreign_key, "user_id");
 
     Ok(())
 }
