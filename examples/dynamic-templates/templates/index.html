@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
     <head>
         <title><%= title %></title>
-        <%- rum_head %>
+        <%- rwf_head %>
 
         <style>
             body {
@@ -42,11 +42,20 @@
 
         <div class="container">
             <% if planets == 1 %>
-            <p class="center">There is one other planet in our solar system that contains life.</p>
+            <p class="center">
+                There is one other planet in our solar system that contains
+                life.
+            </p>
             <% elsif planets == 2 %>
-            <p class="center">There is two other planets in our solar system that contains life.</p>
+            <p class="center">
+                There is two other planets in our solar system that contains
+                life.
+            </p>
             <% else %>
-            <p class="center">There is many other planets in our solar system that contains life.</p>
+            <p class="center">
+                There is many other planets in our solar system that contains
+                life.
+            </p>
             <% end %>
         </div>
 

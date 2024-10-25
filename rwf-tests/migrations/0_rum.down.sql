@@ -1,1 +1,1 @@
-DROP TABLE rum_jobs;
+DROP TABLE rwf_jobs;

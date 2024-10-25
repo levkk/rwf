@@ -64,7 +64,7 @@ enum Migrate {
 
 #[tokio::main]
 async fn main() {
-    // std::env::set_var("RUM_LOG_QUERIES", "1");
+    // std::env::set_var("RWF_LOG_QUERIES", "1");
     Logger::init();
 
     if !check_root() {

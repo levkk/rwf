@@ -16,14 +16,16 @@ pub enum Error {
 }
 
 static MESSAGES: Lazy<Messages> = Lazy::new(|| Messages::new());
+static DEFAULT_TOPIC: &str = "default";
 
-pub fn get_comms() -> &'static Messages {
+fn get_comms() -> &'static Messages {
     &MESSAGES
 }
 
 struct Websocket {
     sender: Sender<Message>,
     receiver: Receiver<Message>,
+    topic: String,
 }
 
 impl Clone for Websocket {
@@ -31,6 +33,7 @@ impl Clone for Websocket {
         Websocket {
             sender: self.sender.clone(),
             receiver: self.receiver.resubscribe(),
+            topic: self.topic.clone(),
         }
     }
 }
@@ -38,7 +41,11 @@ impl Clone for Websocket {
 impl Websocket {
     fn new() -> Self {
         let (sender, receiver) = channel(1024);
-        Self { sender, receiver }
+        Self {
+            sender,
+            receiver,
+            topic: DEFAULT_TOPIC.to_string(),
+        }
     }
 
     fn receiver(&self) -> Receiver<Message> {
@@ -70,7 +77,7 @@ impl Messages {
         self.websocket.lock().get(session_id).is_some()
     }
 
-    pub fn websocket_receiver(&self, session_id: &SessionId) -> WebsocketReceiver {
+    pub fn websocket_receiver(&self, session_id: &SessionId, _topic: &str) -> WebsocketReceiver {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(session_id.clone())
@@ -83,7 +90,7 @@ impl Messages {
         }
     }
 
-    pub fn websocket_sender(&self, session_id: &SessionId) -> WebsocketSender {
+    pub fn websocket_sender(&self, session_id: &SessionId, _topic: &str) -> WebsocketSender {
         let mut guard = self.websocket.lock();
         let entry = guard
             .entry(session_id.clone())
@@ -93,7 +100,7 @@ impl Messages {
         }
     }
 
-    pub fn websocket_broadcast(&self, session_id: &SessionId) -> Broadcast {
+    pub fn websocket_broadcast(&self, session_id: &SessionId, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
         let entries = guard
             .iter()
@@ -174,14 +181,19 @@ impl Broadcast {
     }
 }
 
+/// App-wide communications using WebSockets.
 pub struct Comms;
 
 impl Comms {
     pub fn websocket(session_id: &SessionId) -> WebsocketSender {
-        get_comms().websocket_sender(session_id)
+        get_comms().websocket_sender(session_id, DEFAULT_TOPIC)
+    }
+
+    pub fn receiver(session_id: &SessionId) -> WebsocketReceiver {
+        get_comms().websocket_receiver(session_id, DEFAULT_TOPIC)
     }
 
     pub fn broadcast(session_id: &SessionId) -> Broadcast {
-        get_comms().websocket_broadcast(session_id)
+        get_comms().websocket_broadcast(session_id, DEFAULT_TOPIC)
     }
 }
