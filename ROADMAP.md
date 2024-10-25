@@ -18,6 +18,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] Fuzzy tests (not the cute ones on four legs, the ones that ingest junk into the router and try to make it crash)
 - [ ] EventStreams
 - [ ] Integration tests
+- [ ] Support for multiple WebSocket controllers (`Comms::websocket` assumes only one)
 
 ## Dynanic templates
 
@@ -33,6 +34,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] Statistics on running/pending/failed jobs (can be done with VIEWs)
 - [ ] More tests
 - [ ] Support more crontab syntax extensions
+- [ ] More user-friendly (de)ser (https://github.com/levkk/rwf/issues/7)
 
 ## Authentication & user sessions
 
@@ -46,7 +48,12 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 
 ## Migrate from Python
 
-- [ ] Run Django/Flask apps side by side
+- [x] Run Django/Flask apps side by side (experimental)
+
+## Built-ins
+
+- [ ] Feature flags and experiments
+- [ ] Tracking (user requests)
 
 ## More?
 
