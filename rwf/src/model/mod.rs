@@ -75,7 +75,7 @@ pub use value::{ToValue, Value};
 ///             email,
 ///         }
 ///     }
-/// }   
+/// }
 /// ```
 pub trait FromRow: Clone + Send {
     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error>

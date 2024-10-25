@@ -10,17 +10,12 @@ pub struct TypingController;
 impl Controller for TypingController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let state = request.json::<TypingState>()?;
+        let mut conn = Pool::connection().await?;
+        let user = request.user::<User>(&mut conn).await?;
 
-        if let Some(session_id) = request.session_id() {
-            if let Some(user_id) = session_id.user_id() {
-                let user = {
-                    let mut conn = Pool::connection().await?;
-                    User::find(user_id).fetch(&mut conn).await?
-                };
-
-                let broadcast = Comms::broadcast(&session_id);
-                broadcast.send(state.render(&user)?)?;
-            }
+        if let Some(user) = user {
+            let broadcast = Comms::broadcast(&user);
+            broadcast.send(state.render(&user)?)?;
 
             Ok(Response::new().json(serde_json::json!({
                 "status": "success",

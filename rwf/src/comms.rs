@@ -1,5 +1,7 @@
 use crate::controller::auth::SessionId;
 use crate::http::websocket::Message;
+use crate::model::{Model, Value};
+
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -181,19 +183,121 @@ impl Broadcast {
     }
 }
 
+/// Convert an object into a session.
+///
+/// If a model is passed in, the `id` field is used.
+pub trait IntoSessionId {
+    fn into_session_id(self) -> SessionId;
+}
+
+impl IntoSessionId for &SessionId {
+    fn into_session_id(self) -> SessionId {
+        self.clone()
+    }
+}
+
+impl IntoSessionId for &i64 {
+    fn into_session_id(self) -> SessionId {
+        SessionId::Authenticated(*self)
+    }
+}
+
+impl IntoSessionId for i64 {
+    fn into_session_id(self) -> SessionId {
+        SessionId::Authenticated(self)
+    }
+}
+
+impl<T: Model> IntoSessionId for &T {
+    fn into_session_id(self) -> SessionId {
+        match self.id() {
+            Value::Optional(user_id) => match *user_id {
+                Some(Value::Integer(user_id)) => SessionId::Authenticated(user_id),
+                _ => panic!("session id cannot be extrated"),
+            },
+            _ => panic!("session id cannot be extracted"),
+        }
+    }
+}
+
 /// App-wide communications using WebSockets.
 pub struct Comms;
 
 impl Comms {
-    pub fn websocket(session_id: &SessionId) -> WebsocketSender {
-        get_comms().websocket_sender(session_id, DEFAULT_TOPIC)
+    /// Get a handle for a WebSocket connection for a session.
+    ///
+    /// Allows sending WebSocket messages to all connections with this session.
+    pub fn websocket(session: impl IntoSessionId) -> WebsocketSender {
+        let session_id = session.into_session_id();
+        get_comms().websocket_sender(&session_id, DEFAULT_TOPIC)
     }
 
-    pub fn receiver(session_id: &SessionId) -> WebsocketReceiver {
-        get_comms().websocket_receiver(session_id, DEFAULT_TOPIC)
+    /// Get a handle for a WebSocket connection _receiver_ for a session.
+    ///
+    /// Allows listening for WebSocket messages sent by clients (browsers)
+    /// connected with this session.
+    pub fn receiver(session_id: impl IntoSessionId) -> WebsocketReceiver {
+        let session_id = session_id.into_session_id();
+        get_comms().websocket_receiver(&session_id, DEFAULT_TOPIC)
     }
 
-    pub fn broadcast(session_id: &SessionId) -> Broadcast {
-        get_comms().websocket_broadcast(session_id, DEFAULT_TOPIC)
+    /// Get a broadcast handle for a WebSocket message to everyone else except
+    /// the session sending this message.
+    pub fn broadcast(session_id: impl IntoSessionId) -> Broadcast {
+        let session_id = session_id.into_session_id();
+        get_comms().websocket_broadcast(&session_id, DEFAULT_TOPIC)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::model::{FromRow, ToValue, Value};
+
+    #[test]
+    fn test_websocket_sender() {
+        let session = SessionId::Authenticated(5);
+        let websocket = Comms::websocket(&session);
+        websocket.send(Message::Text("test".into())).unwrap();
+
+        #[derive(Clone)]
+        struct User {
+            id: Option<i64>,
+        }
+
+        impl Model for User {
+            fn table_name() -> &'static str {
+                "users"
+            }
+
+            fn foreign_key() -> &'static str {
+                "user_id"
+            }
+
+            fn column_names() -> &'static [&'static str] {
+                &[]
+            }
+
+            fn values(&self) -> Vec<Value> {
+                vec![]
+            }
+
+            fn id(&self) -> Value {
+                self.id.to_value()
+            }
+        }
+
+        impl FromRow for User {
+            fn from_row(_row: tokio_postgres::Row) -> Result<Self, crate::model::Error>
+            where
+                Self: Sized,
+            {
+                unimplemented!()
+            }
+        }
+
+        let user = User { id: Some(5) };
+        let websocket = Comms::websocket(&user);
+        websocket.send(Message::Text("test2".into())).unwrap();
     }
 }

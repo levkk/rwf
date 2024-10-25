@@ -52,8 +52,7 @@ impl ChatController {
 impl PageController for ChatController {
     async fn get(&self, request: &Request) -> Result<Response, Error> {
         let mut conn = Pool::connection().await?;
-
-        let user = User::find(request.user_id()?).fetch(&mut conn).await?;
+        let user = request.user_required::<User>(&mut conn).await?;
 
         let users = User::all().fetch_all(&mut conn).await?;
         let messages = User::related::<ChatMessage>(&users)
@@ -91,7 +90,7 @@ impl PageController for ChatController {
 
         let mut conn = Pool::connection().await?;
 
-        let user = User::find(request.user_id()?).fetch(&mut conn).await?;
+        let user = request.user_required::<User>(&mut conn).await?;
 
         let message =
             ChatMessage::create(&[("body", form.body.to_value()), ("user_id", user.id())])
@@ -99,12 +98,11 @@ impl PageController for ChatController {
                 .await?;
 
         // Broadcast the message to everyone else.
-        if let Some(session_id) = request.session_id() {
-            let broadcast = Comms::broadcast(&session_id);
+        {
+            let broadcast = Comms::broadcast(&user);
             let message = Self::chat_message(&user, &message, false)?.render();
-            broadcast.send(Message::Text(message))?;
 
-            // let typing = Self::typing(&user, "remove")?;
+            broadcast.send(Message::Text(message))?;
             broadcast.send(TypingState { typing: false }.render(&user)?)?;
         }
 

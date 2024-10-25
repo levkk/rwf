@@ -11,7 +11,10 @@ use serde_json::{Deserializer, Value};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
-use crate::controller::{Session, SessionId};
+use crate::{
+    controller::{Session, SessionId},
+    model::{ConnectionGuard, Model},
+};
 
 /// HTTP request.
 ///
@@ -132,28 +135,58 @@ impl Request {
         self.session.as_ref()
     }
 
+    /// Get the session identifier.
+    ///
+    /// This will be a random string if it's a guest
+    /// or a unique integer if logged in.
     pub fn session_id(&self) -> Option<SessionId> {
         self.session
             .as_ref()
             .map(|session| session.session_id.clone())
     }
 
+    /// Get the authenticated user's ID. Return HTTP 403
+    /// if not logged in.
     pub fn user_id(&self) -> Result<i64, Error> {
         if let Some(session_id) = self.session_id() {
             match session_id {
                 SessionId::Authenticated(id) => Ok(id),
-                _ => Err(Error::MalformedRequest("session is not logged in")),
+                _ => Err(Error::Forbidden),
             }
         } else {
-            Err(Error::MalformedRequest("session is not logged in"))
+            Err(Error::Forbidden)
         }
     }
 
+    /// Fetch the user that's currently authenticated, if any.
+    pub async fn user<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
+        match self.session_id() {
+            Some(SessionId::Authenticated(user_id)) => {
+                Ok(Some(T::find(user_id).fetch(conn).await?))
+            }
+
+            _ => Ok(None),
+        }
+    }
+
+    /// Fetch the user that's currently authenticated. If none, return HTTP 403.
+    pub async fn user_required<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<T, Error> {
+        match self.user(conn).await? {
+            Some(user) => Ok(user),
+            None => Err(Error::Forbidden),
+        }
+    }
+
+    /// Set the session on the request.
+    ///
+    /// For internal use only. This is automatically done by the HTTP server,
+    /// if the session is available.
     pub fn set_session(mut self, session: Option<Session>) -> Self {
         self.session = session;
         self
     }
 
+    /// Is the client requesting upgrade to use WebSocket?
     pub fn upgrade_websocket(&self) -> bool {
         self.headers()
             .get("connection")
@@ -163,6 +196,7 @@ impl Request {
                 == Some(String::from("websocket"))
     }
 
+    /// Create an authenticated session for the provided user identifier.
     pub fn login(&self, user_id: i64) -> Response {
         let mut session = self
             .session()
@@ -172,6 +206,9 @@ impl Request {
         Response::new().set_session(session).html("")
     }
 
+    /// Log the user out.
+    ///
+    /// This overwrites the session cookie with a guest session.
     pub fn logout(&self) -> Response {
         let mut session = self
             .session()

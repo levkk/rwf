@@ -191,7 +191,9 @@ impl Config {
                 config_path = Some(path);
                 break;
             }
+        }
 
+        if config_path.is_none() {
             return Err(Error::NoConfig);
         }
 
@@ -302,5 +304,36 @@ impl DatabaseConfig {
 
     fn default_checkout_timeout() -> usize {
         5
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::{fs::File, io::Write};
+    use tempdir::TempDir;
+
+    #[test]
+    fn test_load_config() {
+        for config_path in ["rwf.toml", "Rum.toml", "Rwf.toml"] {
+            let tmp_dir = TempDir::new("test").unwrap();
+            let path = tmp_dir.path();
+
+            std::env::set_current_dir(path).unwrap();
+
+            let config = r#"
+[general]
+cache_templates = true
+
+[database]
+name = "test"
+    "#;
+            let path = path.join(config_path);
+            let mut file = File::create(path).unwrap();
+            file.write_all(config.as_bytes()).unwrap();
+
+            let config = Config::load().unwrap();
+            assert_eq!(config.path, Some(PathBuf::from(config_path)));
+        }
     }
 }

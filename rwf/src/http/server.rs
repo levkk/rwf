@@ -123,6 +123,7 @@ impl Server {
                                 match err {
                                     ControllerError::HttpError(err) => match err.code() {
                                         400 => Response::bad_request(),
+                                        403 => Response::forbidden(),
                                         _ => Response::internal_error(err),
                                     },
 

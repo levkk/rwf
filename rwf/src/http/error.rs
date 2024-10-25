@@ -31,12 +31,19 @@ pub enum Error {
 
     #[error("timeout exceeded")]
     Timeout(#[from] tokio::time::error::Elapsed),
+
+    #[error("database error: {0}")]
+    Orm(#[from] crate::model::Error),
+
+    #[error("forbidden")]
+    Forbidden,
 }
 
 impl Error {
     pub fn code(&self) -> u16 {
         match self {
             Self::MissingParameter => 400,
+            Self::Forbidden => 403,
             _ => 500,
         }
     }

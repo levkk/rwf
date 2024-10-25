@@ -15,3 +15,12 @@ jobs:
         run: cargo build
       - name: Format
         run: cargo fmt --all -- --check
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest
+      - name: Setup PostgreSQL
+        run: |
+          sudo service postgresql start
+          sudo -u postgres createuser --superuser --login $USER
+          createdb $USER
+      - name: Test
+        run: cargo nextest run
