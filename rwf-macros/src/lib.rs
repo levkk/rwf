@@ -551,26 +551,6 @@ pub fn render(input: TokenStream) -> TokenStream {
     .into()
 }
 
-// struct ControllerInput {
-//     _pub: Option<Token![pub]>,
-//     _async: Token![async],
-//     _fn: Token![fn],
-//     name: Ident,
-//     arguments: PathArguments,
-//     bracket_open: Token![{],
-// }
-
-// #[proc_macro_attribute]
-// pub fn controller(attrs: TokenStream, item: TokenStream) -> TokenStream {
-//     let item = parse_macro_input!(item as proc_macro2::TokenStream);
-//     panic!("{:?}", item);
-
-//     quote! {
-//         #item
-//     }
-//     .into()
-// }
-
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 
