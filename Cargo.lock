@@ -1417,7 +1417,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "regex",
- "rwf-macros 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rwf-macros 0.1.2",
  "serde",
  "serde_json",
  "sha1",
@@ -1445,7 +1445,7 @@ dependencies = [
  "pyo3",
  "rand",
  "regex",
- "rwf-macros 0.1.2",
+ "rwf-macros 0.1.3",
  "serde",
  "serde_json",
  "sha1",
@@ -1473,6 +1473,8 @@ dependencies = [
 [[package]]
 name = "rwf-macros"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "553d27769370f84a27211fd2e5d789fcc99902c636ce3d2e0cfc63b82a704e70"
 dependencies = [
  "pluralizer",
  "proc-macro2",
@@ -1482,9 +1484,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-macros"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "553d27769370f84a27211fd2e5d789fcc99902c636ce3d2e0cfc63b82a704e70"
+version = "0.1.3"
 dependencies = [
  "pluralizer",
  "proc-macro2",
@@ -1499,7 +1499,7 @@ dependencies = [
  "console-subscriber",
  "parking_lot",
  "rwf 0.1.3",
- "rwf-macros 0.1.2",
+ "rwf-macros 0.1.3",
  "serde",
  "serde_json",
  "tokio",
