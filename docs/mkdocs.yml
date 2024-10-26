@@ -1,5 +1,6 @@
 site_name: Rust Web Framework
 repo_url: "https://github.com/levkk/rwf"
+site_url: "https://levkk.github.io/rwf/"
 site_description: "Rust Web Framework - A comprehensive framework for building web applications with Rust"
 theme:
   name: material
