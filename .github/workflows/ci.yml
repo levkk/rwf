@@ -8,11 +8,8 @@ jobs:
     steps:
       - name: Setup PostgreSQL
         run: |
-          sudo cat /etc/postgresql/14/main/pg_hba.conf
-          echo "peer all all peer" | sudo tee /etc/postgresql/14/main/pg_hba.conf
-          echo "local all postgres peer" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
-          echo "host all all 127.0.0.1/32 trust" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
-          sudo service postgresql start
+          sudo sed -i 's/scram-sha-256/trust/g' /etc/postgresql/14/main/pg_hba.conf
+          sudo service postgresql restart
           sudo cat /etc/postgresql/14/main/pg_hba.conf
           sudo -u postgres createuser --superuser --login $USER
           createdb $USER
