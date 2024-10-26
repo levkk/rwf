@@ -22,5 +22,6 @@ jobs:
           sudo service postgresql start
           sudo -u postgres createuser --superuser --login $USER
           createdb $USER
+          echo "host all all 127.0.0.1/32 trust" >> /etc/postgresql/14/main/pg_hba.conf
       - name: Test
         run: cargo nextest run
