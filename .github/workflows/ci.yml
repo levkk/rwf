@@ -14,6 +14,7 @@ jobs:
       - name: Setup PostgreSQL
         run: |
           echo "host all all 127.0.0.1/32 trust" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
+          cat /etc/postgresql/14/main/pg_hba.conf
           sudo service postgresql start
           sudo service postgresql reload
           sudo -u postgres psql -c 'SHOW hba_file'
