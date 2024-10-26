@@ -1,6 +1,6 @@
 # Variables
 
-Template variables are used to substitute unique information into a reusable template. Rwf supports variables of different kinds, like strings, numbers, lists, and hashes. Complex variables like hashes can be iterated through using [for loops](../for-loops).
+Template variables are used to substitute unique information into a reusable template. Rwf supports variables of different kinds, like strings, numbers, lists, and hashes. Complex variables like hashes can be iterated through using [for loops](for-loops.md).
 
 ## Using variables
 
@@ -10,19 +10,21 @@ Using variables in your templates is typically done by "printing" them, or outpu
 <%= variable %>
 ```
 
-The `<%=` tag indicates what follows is an [expression](../nomenclature), which should be evaluated and converted to text for displaying purposes.
+The `<%=` tag indicates what follows is an [expression](nomenclature.md), which should be evaluated and converted to text for displaying purposes.
 
 The `%>` tag is not specific to printing variables, and indicates the end of a code block inside a template. What follows that tag is just regular text which has no special meaning.
 
 ## Defining variables
 
-A variable is defined when a template is rendered. Using one of many possible ways to define a [context](../context), the variable is given a value at runtime:
+A variable is defined when a template is rendered. Using one of many possible ways to define a [context](context.md), the variable is given a value at runtime:
 
 === "Rust"
     ```rust
-    let template = Template::from_str("<%= variable %>")?;
     let ctx = context!("variable" => "I love pancakes for dinner.");
+
+    let template = Template::from_str("<%= variable %>")?;
     let string = template.render(&ctx)?;
+
     println!("{}", string);
     ```
 === "Output"
@@ -42,7 +44,7 @@ If an undefined variable is used in a template, Rwf will throw a runtime error. 
 <% end %>
 ```
 
-Due to the nature of [if statements](../if-statements), if the variable is defined and evaluates to a "falsy" value, e.g. `0`, `""` (empty string), `null`, etc., the if statement will not be executed either. This is helpful for handling many similar cases without having to write complex statements.
+Due to the nature of [if statements](if-statements.md), if the variable is defined and evaluates to a "falsy" value, e.g. `0`, `""` (empty string), `null`, etc., the if statement will not be executed either. This is helpful for handling many similar cases without having to write complex statements.
 
 ## Supported data types
 
@@ -74,7 +76,7 @@ Rust's `f32` and `f64` are converted to 64-bit double precision floating point. 
     501.5
     ```
 
-Numbers can be [converted](../functions) to strings, floored, ceiled and rounded, for example:
+Numbers can be [converted](functions.md) to strings, floored, ceiled and rounded, for example:
 
 === "Template"
     ```erb
@@ -87,11 +89,32 @@ Numbers can be [converted](../functions) to strings, floored, ceiled and rounded
 
 ### Strings
 
-Using strings in templates can be used in two ways: with the `<%=` (print) operator, which outputs the string, escaping any dangerous HTML characters, e.g. `<` becomes `&lt;`, or using `<%-` which performs no conversions and prints the string as-is.
+Strings in templates can be used in two ways:
+
+- `<%=` (print) operator, which outputs the string, escaping any dangerous HTML characters, e.g. `<` becomes `&lt;`
+- `<%-` operator which performs no conversions and prints the string as-is
+
+=== "Template"
+    ```erb
+    <%= "<script>" %>
+    <%- "<script>" %>
+    ```
+=== "Output"
+    ```
+    &lt;script&gt;
+    <script>
+    ```
+
+!!! note
+    If you're coming here from Rails, the `<%-` operator works differently.  In ERB, the `<%-` operator prints the string without trailing or leading spaces. The equivalent in Rwf would be to call `trim`, for example:
+
+    ```erb
+    <%= variable.trim %>
+    ```
 
 #### String security
 
-Escaping HTML characters is a good idea in cases where your users are the ones supplying the value of the string. This prevents script injection attacks, e.g. users placing malicious code on your website.
+Escaping HTML characters is a good idea in case your users are the ones supplying the value of the string. This prevents script injection attacks, e.g. users placing malicious code on your website.
 
 Unless you're sure about the provenance of a string, use `<%=` to output it in templates.
 
@@ -101,7 +124,7 @@ Boolean variables can either be `true` or `false`. They map directly to Rust's `
 
 ### Lists
 
-Lists are arrays of other template variables, including other lists, strings, numbers, and hashes. In templates, lists can be defined by using square brackets, and iterated on using [for loops](../for-loops), for example:
+Lists are arrays of other template variables, including other lists, strings, numbers, and hashes. In templates, lists can be defined by using square brackets, and iterated on using [for loops](for-loops.md), for example:
 
 === "Template"
     ```erb
@@ -128,7 +151,7 @@ Lists are 0-indexed, so the above example accesses the second element in the lis
 
 ### Hashes
 
-Hashes, also known as dicts or hash tables, are a key/value storage data type. Unlike a list, it contains a mapping between a value (the key), and a value. Values can be accessed by knowing a key, or by iterating through the entire hash with a [for loop](../for-loops):
+Hashes, also known as dicts or hash tables, are a key/value storage data type. Unlike a list, it contains a mapping between a value (the key), and a value. Values can be accessed by knowing a key, or by iterating through the entire hash with a [for loop](for-loops.md):
 
 ```erb
 <p><%= user.name %></p>
@@ -139,7 +162,7 @@ Rwf hashes use the dot (`.`) notation to access values in a hash. In this exampl
 
 ## Truthy vs. falsy
 
-Variables are often used in [if statements](../if-statements) to decide whether to execute some code or not. To make the template language less verbose, variables can be evaluated for truthiness without calling explicit functions depending on their data type.
+Variables are often used in [if statements](if-statements.md) to decide whether to execute some code or not. To make the template language less verbose, variables can be evaluated for truthiness without calling explicit functions depending on their data type.
 
 The following variables and data types evaluate to false:
 
@@ -156,7 +179,7 @@ All other variables evaluate to true.
 
 ## Learn more
 
-- [Context](../context)
-- [If statements](../if-statements)
-- [For loops](../for-loops)
-- [Functions](../functions)
+- [Context](context.md)
+- [If statements](if-statements.md)
+- [For loops](for-loops.md)
+- [Functions](functions.md)
