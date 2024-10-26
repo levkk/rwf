@@ -7,6 +7,8 @@ use rayon::{ThreadPool, ThreadPoolBuilder};
 use tokio::sync::oneshot::channel;
 use tokio::time::{timeout, Duration};
 
+use tracing::warn;
+
 pub struct WsgiController {
     path: &'static str,
     timeout: Duration,
@@ -18,7 +20,7 @@ impl WsgiController {
         WsgiController {
             path,
             timeout: Duration::from_secs(60),
-            pool: ThreadPoolBuilder::new().num_threads(2).build().unwrap(),
+            pool: Self::runtime(2),
         }
     }
 
@@ -28,11 +30,18 @@ impl WsgiController {
     }
 
     pub fn max_threads(mut self, threads: usize) -> Self {
-        self.pool = ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build()
-            .unwrap();
+        self.pool = Self::runtime(threads);
         self
+    }
+
+    fn runtime(threads: usize) -> ThreadPool {
+        ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .panic_handler(|_| {
+                warn!("WSGI thread panicked. This is a bug in the WSGI application.");
+            })
+            .build()
+            .unwrap()
     }
 }
 
