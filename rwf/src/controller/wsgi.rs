@@ -61,7 +61,7 @@ impl Controller for WsgiController {
             })
             .unwrap();
 
-            tx.send(response).unwrap();
+            let _ = tx.send(response);
         });
 
         // TODO: spawn blocking tasks cannot be aborted.
