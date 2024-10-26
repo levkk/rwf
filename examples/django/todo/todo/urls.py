@@ -20,7 +20,22 @@ from django.urls import path
 from django.http import HttpResponse
 
 def index(request):
-    return HttpResponse("This is served by Django.")
+    if request.method == 'GET':
+        return HttpResponse("""
+            <html>
+                <body>
+                <h1>This is served by Django</h1>
+                <form method="post" action="/">
+                    <input type="text" name="name" />
+                    <button type="submit">Submit</button>
+                </form>
+                </body>
+            </html>
+        """)
+    else:
+        print(request.POST)
+        name = request.POST.get("name", "none")
+        return HttpResponse("Name: " + name)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

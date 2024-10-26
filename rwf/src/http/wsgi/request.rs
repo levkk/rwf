@@ -74,6 +74,15 @@ impl WsgiRequest {
         headers.insert("UWSGI_ROUTER".into(), "http".into());
         headers.insert("REMOTE_ADDR".into(), request.peer().ip().to_string());
         headers.insert("REMOTE_PORT".into(), request.peer().port().to_string());
+        headers.insert("CONTENT_LENGTH".into(), body.len().to_string());
+        headers.insert(
+            "CONTENT_TYPE".into(),
+            request
+                .headers()
+                .get("content-type")
+                .unwrap_or(&"application/x-www-form-urlencoded".to_string())
+                .clone(),
+        );
 
         let wsgi = WsgiRequest { headers, body };
 
@@ -89,13 +98,8 @@ impl WsgiRequest {
             let request = self.into_py(py);
             let wrapper: Py<PyAny> = WRAPPER.getattr(py, "wrapper").unwrap().into();
             let body: Py<PyAny> = wrapper.call1(py, (request, application)).unwrap();
-            let body: Vec<Vec<u8>> = body.extract(py).unwrap();
-
-            let func: Py<PyAny> = WRAPPER.getattr(py, "get_code").unwrap().into();
-            let code: String = func.call0(py).unwrap().extract(py).unwrap();
-
-            let func: Py<PyAny> = WRAPPER.getattr(py, "get_headers").unwrap().into();
-            let headers: Vec<(String, String)> = func.call0(py).unwrap().extract(py).unwrap();
+            let (body, code, headers): (Vec<Vec<u8>>, String, Vec<(String, String)>) =
+                body.extract(py).unwrap();
 
             (body, code, headers)
         });
