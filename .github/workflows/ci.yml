@@ -6,21 +6,21 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
       - name: Setup PostgreSQL
         run: |
           echo "host all all 127.0.0.1/32 trust" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
-          cat /etc/postgresql/14/main/pg_hba.conf
+          sudo cat /etc/postgresql/14/main/pg_hba.conf
           sudo service postgresql start
           sudo service postgresql reload
           sudo -u postgres psql -c 'SHOW hba_file'
           sudo -u postgres createuser --superuser --login $USER
           createdb $USER
           psql postgres://$USER@127.0.0.1:5432/$USER -c "SELECT 1" > /dev/null
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
       - name: Build
         run: cargo build
       - name: Format
