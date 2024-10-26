@@ -11,17 +11,17 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - name: Setup PostgreSQL
+        run: |
+          sudo service postgresql start
+          sudo -u postgres createuser --superuser --login $USER
+          createdb $USER
+          echo "host all all 127.0.0.1/32 trust" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
       - name: Build
         run: cargo build
       - name: Format
         run: cargo fmt --all -- --check
       - name: Install cargo-nextest
         run: cargo install cargo-nextest
-      - name: Setup PostgreSQL
-        run: |
-          sudo service postgresql start
-          sudo -u postgres createuser --superuser --login $USER
-          createdb $USER
-          echo "host all all 127.0.0.1/32 trust" >> /etc/postgresql/14/main/pg_hba.conf
       - name: Test
         run: cargo nextest run
