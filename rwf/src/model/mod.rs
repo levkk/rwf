@@ -1175,7 +1175,7 @@ mod test {
 
         transaction
             .client()
-            .query("DROP TABLE users CASCADE", &[])
+            .query("DROP TABLE IF EXISTS users CASCADE", &[])
             .await?;
 
         transaction
