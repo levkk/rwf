@@ -1,6 +1,6 @@
 # Logging
 
-Rwf uses the [`log`](https://docs.rs/log) crate for logging. The crate employs the standard `INFO`, `WARN`, `ERROR`, and `DEBUG` levels to output information of different importance. If you have a logging preference, e.g. you want to use JSON-structured logs without colors, you can use a logging subscriber of your choice. Alternatively, you can use the logger that comes with Rwf, like so:
+Rwf uses the [`tracing`](https://docs.rs/tracing) crate for logging. The crate employs the standard `INFO`, `WARN`, `ERROR`, and `DEBUG` levels to output information of different importance. If you have a logging preference, e.g. you want to use JSON-structured logs without colors, you can use a logging subscriber of your choice. Alternatively, you can use the logger that comes with Rwf, like so:
 
 ```rust
 use rwf::prelude::*;
