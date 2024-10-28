@@ -53,8 +53,6 @@ pub enum Token {
 
 impl Token {
     pub fn len(&self) -> usize {
-        use Token::*;
-
         match self {
             Token::If => 2,
             Token::Else => 4,

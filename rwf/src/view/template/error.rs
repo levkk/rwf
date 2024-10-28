@@ -46,9 +46,9 @@ impl Error {
         };
 
         let error_msg = match self {
-            Error::Syntax(ref token) => "syntax error".to_string(),
-            Error::ExpressionSyntax(ref token) => "expression syntax error".to_string(),
-            Error::WrongToken(ref token, _) => "unexpected token".to_string(),
+            Error::Syntax(ref _token) => "syntax error".to_string(),
+            Error::ExpressionSyntax(ref _token) => "expression syntax error".to_string(),
+            Error::WrongToken(ref _token, _) => "unexpected token".to_string(),
             _ => "".to_string(),
         };
 
@@ -117,7 +117,7 @@ mod test {
             "<% if apples %>
     <% if oranges are blue %>
 ",
-            None,
+            None::<&str>,
         );
 
         assert_eq!(
