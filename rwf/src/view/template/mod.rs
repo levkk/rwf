@@ -12,48 +12,67 @@ use crate::view::Templates;
 
 use language::Program;
 
+use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Rwf template.
+///
+/// Contains the AST for the template.
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Template {
     program: Program,
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 impl Template {
+    /// Read and compile a template from disk.
     pub fn new(path: impl AsRef<Path> + std::marker::Copy) -> Result<Self, Error> {
-        let text = match std::fs::read_to_string(path) {
+        let text = match read_to_string(path) {
             Ok(text) => text,
             Err(_) => return Err(Error::TemplateDoesNotExist(path.as_ref().to_owned())),
         };
 
         Ok(Template {
             program: Program::from_str(&text)?,
-            path: path.as_ref().to_owned(),
+            path: Some(path.as_ref().to_owned()),
         })
     }
 
+    /// Read and compile a template from a string.
     pub fn from_str(template: &str) -> Result<Self, Error> {
         Ok(Template {
             program: Program::from_str(template)?,
-            path: PathBuf::from("/dev/null"),
+            path: None,
         })
     }
 
+    /// Given a context, execute the template, producing a string.
     pub fn render(&self, context: impl TryInto<Context, Error = Error>) -> Result<String, Error> {
         let context: Context = context.try_into()?;
 
-        self.program.evaluate(&context)
+        match self.program.evaluate(&context) {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                if let Some(path) = &self.path {
+                    Err(err.pretty_from_path(path))
+                } else {
+                    Err(err)
+                }
+            }
+        }
     }
 
     pub fn render_default(&self) -> Result<String, Error> {
-        self.program.evaluate(&Context::default())
+        self.render(&Context::default())
     }
 
     pub fn cached(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
-        Templates::cache().get(path)
+        match Templates::cache().get(path) {
+            Ok(template) => Ok(template),
+            Err(err) => Err(err.pretty_from_path(path)),
+        }
     }
 
     pub fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {

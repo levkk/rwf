@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+    <head>
+        <title><%= title %></title>
+        <style>
+            .container {
+                margin: 10px 25px;
+            }
+
+            .center {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .error {
+                border: 1px solid red;
+                border-radius: 2px;
+                padding: 10px 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container center">
+            <h3><%= title %></h3>
+        </div>
+        <div class="container center">
+            <code class="error"><pre><%= message %></pre></code>
+        </div>
+    </body>
+</html>

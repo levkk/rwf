@@ -19,6 +19,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] EventStreams
 - [ ] Integration tests
 - [ ] Support for multiple WebSocket controllers (`Comms::websocket` assumes only one)
+- [ ] Multipart forms
 
 ## Dynanic templates
 
@@ -47,6 +48,10 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 ## Migrate from Python
 
 - [ ] Consider using granian (https://github.com/levkk/rwf/issues/4)
+
+## Migrate from Ruby
+
+- [ ] Add support for running Rake apps (e.g. Rails)
 
 ## Built-ins
 

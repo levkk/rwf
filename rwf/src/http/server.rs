@@ -127,6 +127,13 @@ impl Server {
                                         _ => Response::internal_error(err),
                                     },
 
+                                    ControllerError::ViewError(err) => {
+                                        Response::internal_error_pretty(
+                                            "Template error",
+                                            err.to_string().as_str(),
+                                        )
+                                    }
+
                                     err => Response::internal_error(err),
                                 }
                             }

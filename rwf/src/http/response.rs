@@ -6,7 +6,7 @@ use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
-use crate::view::TurboStream;
+use crate::view::{Template, TurboStream};
 use crate::{config::get_config, controller::Session};
 
 /// Response status, e.g. 404, 200, etc.
@@ -350,6 +350,16 @@ impl Response {
                 err,
             ))
             .code(500)
+    }
+
+    pub fn internal_error_pretty(title: &str, message: &str) -> Self {
+        let template = include_str!("error.html");
+        let template = Template::from_str(template).unwrap();
+        let body = template
+            .render([("title", title), ("message", message)])
+            .unwrap();
+
+        Self::new().html(body).code(500)
     }
 
     pub fn unauthorized(auth: &str) -> Self {
