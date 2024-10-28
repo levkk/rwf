@@ -81,9 +81,7 @@ impl Expression {
                 Err(err) => return Err(err),
             },
 
-            Expression::Binary {
-                left, op, right, ..
-            } => {
+            Expression::Binary { left, op, right } => {
                 let left = left.evaluate(context)?;
                 let right = right.evaluate(context)?;
                 op.evaluate_binary(&left, &right)
