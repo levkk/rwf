@@ -57,6 +57,10 @@ impl Token {
             Token::If => 2,
             Token::Else => 4,
             Token::End => 3,
+            Token::BlockEnd => 2,
+            Token::BlockStart => 2,
+            Token::BlockStartPrint => 3,
+            Token::BlockStartRender => 3,
             _ => 0,
         }
     }
