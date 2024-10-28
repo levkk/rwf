@@ -17,9 +17,6 @@ pub enum Expression {
         left: Box<Expression>,
         op: Op,
         right: Box<Expression>,
-
-        // Provides context where the expression is in the source code.
-        start_token: TokenWithContext,
     },
 
     Unary {
@@ -317,8 +314,6 @@ impl Expression {
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Self, Error> {
-        let start_token = iter.peek().ok_or(Error::Eof("start token"))?.clone();
-
         // Get the left term, if one exists.
         // TODO: support unary operations.
         let left = Self::term(iter)?;
@@ -346,7 +341,6 @@ impl Expression {
                         left: Box::new(left),
                         op,
                         right: Box::new(right),
-                        start_token,
                     }),
 
                     // We have an operator.
@@ -364,28 +358,24 @@ impl Expression {
                                     left: Box::new(right),
                                     right: Box::new(right2),
                                     op: second_op,
-                                    start_token: start_token.clone(),
                                 };
 
                                 Ok(Expression::Binary {
                                     left: Box::new(left),
                                     right: Box::new(expr),
                                     op,
-                                    start_token,
                                 })
                             } else {
                                 let left = Expression::Binary {
                                     left: Box::new(left),
                                     right: Box::new(right),
                                     op,
-                                    start_token: start_token.clone(),
                                 };
 
                                 Ok(Expression::Binary {
                                     left: Box::new(left),
                                     right: Box::new(right2),
                                     op: second_op,
-                                    start_token,
                                 })
                             }
                         }
