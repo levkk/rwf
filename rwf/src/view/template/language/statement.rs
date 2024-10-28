@@ -3,10 +3,7 @@ use super::{
     super::{Context, Error, Token, TokenWithContext, Tokenize, Value},
     Expression, Term,
 };
-use std::{
-    iter::{Iterator, Peekable},
-    ops::Deref,
-};
+use std::iter::{Iterator, Peekable};
 
 use std::path::PathBuf;
 
@@ -26,21 +23,6 @@ macro_rules! block_end {
             break;
         }
     };
-}
-
-#[derive(Debug, Clone)]
-pub struct StatementWithContext {
-    line: usize,
-    column: usize,
-    statement: Statement,
-}
-
-impl Deref for StatementWithContext {
-    type Target = Statement;
-
-    fn deref(&self) -> &Self::Target {
-        &self.statement
-    }
 }
 
 #[derive(Debug, Clone)]
