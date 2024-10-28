@@ -50,3 +50,18 @@ pub enum Token {
     RoundBracketStart,
     RoundBracketEnd,
 }
+
+impl Token {
+    pub fn len(&self) -> usize {
+        match self {
+            Token::If => 2,
+            Token::Else => 4,
+            Token::End => 3,
+            Token::BlockEnd => 2,
+            Token::BlockStart => 2,
+            Token::BlockStartPrint => 3,
+            Token::BlockStartRender => 3,
+            _ => 0,
+        }
+    }
+}

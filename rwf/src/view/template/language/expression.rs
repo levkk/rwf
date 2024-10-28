@@ -9,7 +9,7 @@ use std::iter::{Iterator, Peekable};
 
 /// An expression, like `5 == 6` or `logged_in == false`,
 /// which when evaluated produces a single value, e.g. `true`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     // Standard `5 + 6`-style expression.
     // It's recursive, so you can have something like `(5 + 6) / (1 - 5)`.

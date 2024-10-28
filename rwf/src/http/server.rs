@@ -119,13 +119,20 @@ impl Server {
                         let response = match handler.handle_internal(request.clone()).await {
                             Ok(response) => response,
                             Err(err) => {
-                                error!("{:?}", err);
+                                error!("{}", err);
                                 match err {
                                     ControllerError::HttpError(err) => match err.code() {
                                         400 => Response::bad_request(),
                                         403 => Response::forbidden(),
                                         _ => Response::internal_error(err),
                                     },
+
+                                    ControllerError::ViewError(err) => {
+                                        Response::internal_error_pretty(
+                                            "Template error",
+                                            err.to_string().as_str(),
+                                        )
+                                    }
 
                                     err => Response::internal_error(err),
                                 }

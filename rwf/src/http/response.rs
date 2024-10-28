@@ -1,13 +1,19 @@
 //! HTTP response.
 
+use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::marker::Unpin;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
-use crate::view::TurboStream;
+use crate::view::{Template, TurboStream};
 use crate::{config::get_config, controller::Session};
+
+static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
+    let template = include_str!("error.html");
+    Template::from_str(template).unwrap()
+});
 
 /// Response status, e.g. 404, 200, etc.
 #[derive(Debug)]
@@ -350,6 +356,14 @@ impl Response {
                 err,
             ))
             .code(500)
+    }
+
+    pub fn internal_error_pretty(title: &str, message: &str) -> Self {
+        let body = ERROR_TEMPLATE
+            .render([("title", title), ("message", message)])
+            .unwrap();
+
+        Self::new().html(body).code(500)
     }
 
     pub fn unauthorized(auth: &str) -> Self {
