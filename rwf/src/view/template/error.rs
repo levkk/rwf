@@ -11,25 +11,25 @@ pub enum Error {
     #[error("expression syntax error")]
     ExpressionSyntax(TokenWithContext),
 
-    #[error("expected {0}, got {0}")]
+    #[error("expected token \"{0}\", but have token \"{0}\" instead")]
     WrongToken(TokenWithContext, Token),
 
-    #[error("eof: {0}")]
+    #[error("reached end of file while performing \"{0}\", did you forget a closing tag?")]
     Eof(&'static str),
 
-    #[error("undefined variable: {0}")]
+    #[error("variable \"{0}\" is not defined or in scope")]
     UndefinedVariable(String),
 
-    #[error("unknown method: {0}")]
+    #[error("method \"{0}\" is not defined")]
     UnknownMethod(String),
 
-    #[error("template does not exist: {0}")]
+    #[error("template \"{0}\" does not exist")]
     TemplateDoesNotExist(PathBuf),
 
     #[error("serialization error")]
     SerializationError,
 
-    #[error("time format error: {0}")]
+    #[error("failed to format a timtestamp correctly, error: \"{0}\"")]
     TimeFormatError(#[from] time::error::Format),
 
     #[error("{0}")]
@@ -42,7 +42,20 @@ impl Error {
             Error::Syntax(ref token) => token,
             Error::ExpressionSyntax(ref token) => token,
             Error::WrongToken(ref token, _) => token,
-            _ => return self,
+            _ => {
+                if let Some(path) = path {
+                    let prefix = "---> ";
+                    return Error::Pretty(format!(
+                        "{}{}\n\n{}{}",
+                        prefix,
+                        path.as_ref().display(),
+                        vec![' '; prefix.len()].into_iter().collect::<String>(),
+                        self.to_string()
+                    ));
+                } else {
+                    return self;
+                }
+            }
         };
 
         let error_msg = match self {
@@ -122,8 +135,7 @@ mod test {
 
         assert_eq!(
             pretty.to_string(),
-            "    <% if oranges are blue %>
-       ^ syntax error"
+            "  | \n1 | <% if apples %>\n  |         ^ syntax error"
         );
     }
 }

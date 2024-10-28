@@ -119,7 +119,7 @@ impl Server {
                         let response = match handler.handle_internal(request.clone()).await {
                             Ok(response) => response,
                             Err(err) => {
-                                error!("{:?}", err);
+                                error!("{}", err);
                                 match err {
                                     ControllerError::HttpError(err) => match err.code() {
                                         400 => Response::bad_request(),

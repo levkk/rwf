@@ -35,9 +35,7 @@ impl Controller for IndexController {
             }],
         };
 
-        println!("strt render");
         let rendered = Template::load("templates/index.html")?.render(context)?;
-        println!("render ok");
 
         Ok(Response::new().html(rendered))
     }
