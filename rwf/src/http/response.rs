@@ -342,7 +342,10 @@ impl Response {
         let err = format!("{:?}", err);
 
         #[cfg(not(debug_assertions))]
-        let err = "";
+        let err = {
+            let _ = err;
+            ""
+        };
 
         Self::new()
             .html(format!(

@@ -33,7 +33,6 @@ def index(request):
             </html>
         """)
     else:
-        print(request.POST)
         name = request.POST.get("name", "none")
         return HttpResponse("Name: " + name)
 

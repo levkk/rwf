@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 rwf = { path = "../../rwf", features = ["wsgi"] }
 tokio = { version = "1", features = ["full"] }
+pyo3 = "0.22"
+tracing = "0.1"

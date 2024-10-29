@@ -109,12 +109,21 @@ impl Error {
     }
 
     pub fn pretty_from_path(self, path: impl AsRef<Path> + Copy) -> Self {
-        let src = match std::fs::read_to_string(path) {
-            Ok(src) => src,
-            Err(_) => return self,
-        };
+        #[cfg(debug_assertions)]
+        {
+            let src = match std::fs::read_to_string(path) {
+                Ok(src) => src,
+                Err(_) => return self,
+            };
 
-        self.pretty(&src, Some(path))
+            self.pretty(&src, Some(path))
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = path;
+            self
+        }
     }
 }
 

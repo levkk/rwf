@@ -20,7 +20,7 @@ impl Handler {
             path: Path::parse(path).unwrap().with_regex(path_type).unwrap(),
             controller: Box::new(controller),
             name: None,
-            rank: -20,
+            rank: 0,
         }
     }
 
@@ -33,7 +33,7 @@ impl Handler {
     }
 
     pub fn wildcard(path: &str, controller: impl Controller + 'static) -> Self {
-        Self::new(path, controller, PathType::Wildcard)
+        Self::new(path, controller, PathType::Wildcard).with_rank(-20)
     }
 
     pub fn route(path: &str, controller: impl Controller + 'static) -> Self {
@@ -51,6 +51,11 @@ impl Handler {
 
     pub fn path(&self) -> &Path {
         self.path.deref()
+    }
+
+    pub fn with_rank(mut self, rank: i64) -> Self {
+        self.rank = rank;
+        self
     }
 
     pub fn controller_name(&self) -> &'static str {
