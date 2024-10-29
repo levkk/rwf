@@ -7,9 +7,7 @@
 use super::{Error, Handler, Request, Response, Router};
 use crate::controller::Error as ControllerError;
 
-use crate::analytics::Request as AnalyticsRequest;
 use crate::colors::MaybeColorize;
-use crate::model::{Model, Pool, ToValue};
 
 use std::net::SocketAddr;
 use std::sync::Arc;

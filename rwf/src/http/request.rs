@@ -30,6 +30,18 @@ pub struct Request {
     received_at: OffsetDateTime,
 }
 
+impl Default for Request {
+    fn default() -> Self {
+        Self {
+            head: Head::default(),
+            session: None,
+            inner: Arc::new(Inner::default()),
+            params: None,
+            received_at: OffsetDateTime::now_utc(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 struct Inner {
     body: Vec<u8>,
