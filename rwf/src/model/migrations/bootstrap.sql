@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS rwf_requests (
     duration REAL NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS rwf_requests_path_created_at ON rwf_requests USING btree(path, created_at);
+CREATE INDEX IF NOT EXISTS rwf_requests_path_created_at ON rwf_requests USING btree(created_at, path);
 
-CREATE INDEX IF NOT EXISTS rwf_requests_errors ON rwf_requests USING btree(code) WHERE code >= 400;
+CREATE INDEX IF NOT EXISTS rwf_requests_errors ON rwf_requests USING btree(created_at, client_id, code) WHERE code >= 400;
 
-CREATE INDEX IF NOT EXISTS rwf_requests_too_slow ON rwf_requests USING btree(duration) WHERE duration > 1000.0; -- the unit is milliseconds
+CREATE INDEX IF NOT EXISTS rwf_requests_too_slow ON rwf_requests USING btree(created_at, duration) WHERE duration >= 1000.0; -- the unit is milliseconds
