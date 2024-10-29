@@ -22,12 +22,13 @@ use super::http::{
     Handler, Method, Protocol, Request, Response, Stream, ToParameter,
 };
 use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value};
+use crate::colors::MaybeColorize;
 use crate::comms::Comms;
 use crate::config::get_config;
 
 use tokio::select;
 use tokio::time::{interval, timeout};
-use tracing::debug;
+use tracing::{debug, info};
 
 use serde::{Deserialize, Serialize};
 
@@ -89,15 +90,19 @@ pub trait Controller: Sync + Send {
 
         let outcome = self.middleware().handle_request(request).await?;
         let response = match outcome {
-            Outcome::Forward(request) => match self.handle(&request).await {
+            (Outcome::Forward(request), executed) => match self.handle(&request).await {
                 Ok(response) => {
                     self.middleware()
-                        .handle_response(&request, response.from_request(&request)?)
+                        .handle_response(&request, response.from_request(&request)?, executed)
                         .await?
                 }
                 Err(err) => return Err(err),
             },
-            Outcome::Stop(response) => response,
+            (Outcome::Stop(request, response), executed) => {
+                self.middleware()
+                    .handle_response(&request, response.from_request(&request)?, executed)
+                    .await?
+            }
         };
 
         Ok(response)
@@ -424,7 +429,12 @@ pub trait WebsocketController: Controller {
             return Err(Error::SessionMissingError);
         };
 
-        debug!("new websocket connection from session \"{:?}\"", session_id);
+        info!(
+            "{} {} {} connected",
+            "websocket".purple(),
+            request.path().path().purple(),
+            self.controller_name().green(),
+        );
 
         let config = get_config();
         let mut stream = stream.stream();
@@ -437,7 +447,7 @@ pub trait WebsocketController: Controller {
         loop {
             select! {
                 _ = check.tick() => {
-                    debug!("checking websocket session \"{:?}\"", session_id);
+                    debug!("{} check session \"{:?}\"", "websocket".purple(), session_id);
 
                     let closed = match timeout(
                         config.websocket.ping_timeout.unsigned_abs(),
@@ -475,7 +485,7 @@ pub trait WebsocketController: Controller {
                     let frame = frame?;
 
                     if frame.is_pong() {
-                        debug!("websocket session \"{:?}\" is alive", session_id);
+                        debug!("{} session \"{:?}\" is alive", "websocket".purple(), session_id);
                         lost_pings -= 1;
 
                         // Protect against weird clients.

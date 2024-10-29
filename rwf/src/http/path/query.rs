@@ -49,6 +49,10 @@ impl Query {
             None => None,
         }
     }
+
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(&self.query).unwrap_or(serde_json::Value::default())
+    }
 }
 
 impl std::fmt::Display for Query {

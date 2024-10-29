@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod colors;
 pub mod comms;
 pub mod config;

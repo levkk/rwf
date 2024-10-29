@@ -245,9 +245,16 @@ impl Response {
         &mut self.cookies
     }
 
+    /// Set a private (encrypted) cookie on the response.
     pub fn private_cookie(mut self, cookie: Cookie) -> Result<Self, Error> {
         self.cookies.add_private(cookie)?;
         Ok(self)
+    }
+
+    /// Set a cookie on the response.
+    pub fn cookie(mut self, cookie: Cookie) -> Self {
+        self.cookies.add(cookie);
+        self
     }
 
     pub fn set_session(mut self, session: Session) -> Self {

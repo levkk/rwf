@@ -132,7 +132,7 @@ impl Middleware for RateLimiter {
         };
 
         if too_many {
-            Ok(Outcome::Stop(Response::too_many()))
+            Ok(Outcome::Stop(request, Response::too_many()))
         } else {
             Ok(Outcome::Forward(request))
         }

@@ -9,7 +9,7 @@ impl Middleware for LoggedInCheck {
     async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
         if let Some(session) = request.session() {
             if session.authenticated() {
-                return Ok(Outcome::Stop(Response::new().redirect("/chat")));
+                return Ok(Outcome::Stop(request, Response::new().redirect("/chat")));
             }
         }
 

@@ -6,6 +6,7 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use time::Duration;
 
+use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
 use crate::controller::{AllowAll, AuthHandler, MiddlewareSet};
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -168,7 +169,9 @@ impl Default for Config {
             tty: std::io::stderr().is_terminal(),
             default_auth: AuthHandler::new(AllowAll {}),
             session_duration: Duration::days(4),
-            default_middleware: MiddlewareSet::default(),
+            default_middleware: MiddlewareSet::without_default(vec![
+                RequestTracker::new().middleware()
+            ]),
             cache_templates,
             websocket: Websocket::default(),
             log_queries: var("RWF_LOG_QUERIES").is_ok(),
@@ -216,6 +219,14 @@ impl Config {
             .database
             .from_config_file(&config_file.database.unwrap_or_default());
 
+        let mut middelware = vec![];
+
+        if config_file.general.track_requests {
+            middelware.push(RequestTracker::new().middleware());
+        }
+
+        config.default_middleware = MiddlewareSet::without_default(middelware);
+
         Ok(config)
     }
 
@@ -251,6 +262,8 @@ struct General {
     log_queries: bool,
     #[serde(default = "General::default_cache_templates")]
     cache_templates: bool,
+    #[serde(default = "General::default_track_requests")]
+    track_requests: bool,
 }
 
 impl General {
@@ -283,6 +296,10 @@ impl General {
         return false;
         #[cfg(not(debug_assertions))]
         return true;
+    }
+
+    fn default_track_requests() -> bool {
+        false
     }
 }
 

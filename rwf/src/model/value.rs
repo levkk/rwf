@@ -1,8 +1,9 @@
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::types::{to_sql_checked, IsNull, Type};
+use uuid::Uuid;
 
-use std::ops::Range;
+use std::{net::IpAddr, ops::Range};
 
 use super::{Column, Error, Escape, ToSql};
 
@@ -28,6 +29,8 @@ pub enum Value {
     TimestampT(OffsetDateTime),
     /// Timestamp without time zone.
     Timestamp(PrimitiveDateTime),
+    IpAddr(IpAddr),
+    Uuid(Uuid),
     /// List (Postgres array) of values, e.g. `{1, 2, 3}`.
     List(Vec<Value>),
     /// Tuple (also known as "record") of values, e.g. `(1, 2, 3)`.
@@ -175,6 +178,30 @@ impl ToValue for f32 {
     }
 }
 
+impl ToValue for IpAddr {
+    fn to_value(&self) -> Value {
+        Value::IpAddr(self.clone())
+    }
+}
+
+impl ToValue for Option<IpAddr> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
+impl ToValue for Uuid {
+    fn to_value(&self) -> Value {
+        Value::Uuid(self.clone())
+    }
+}
+
+impl ToValue for Option<Uuid> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
 impl ToValue for Value {
     fn to_value(&self) -> Value {
         self.clone()
@@ -316,6 +343,8 @@ impl tokio_postgres::types::ToSql for Value {
             Value::Boolean(b) => b.to_sql(ty, out),
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
+            Value::IpAddr(ip) => ip.to_sql(ty, out),
+            Value::Uuid(uuid) => uuid.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),
             Value::Json(json) => json.to_sql(ty, out),
             Value::Optional(value) => {
@@ -350,6 +379,8 @@ impl ToSql for Value {
             SmallInt(integer) => integer.to_string(),
             Float(float) => float.to_string(),
             Real(float) => float.to_string(),
+            IpAddr(ip) => ip.to_string(),
+            Uuid(uuid) => uuid.to_string(),
             Placeholder(number) => format!("${}", number),
             Range((a, b)) => format!("BETWEEN {} AND {}", a.to_sql(), b.to_sql()),
             List(values) => format!(
@@ -421,6 +452,8 @@ impl From<Value> for serde_json::Value {
             Value::Float(f) => serde_json::Value::Number(Number::from_f64(f).unwrap()),
             Value::Real(f) => serde_json::Value::Number(Number::from_f64(f as f64).unwrap()),
             Value::Json(json) => json,
+            Value::IpAddr(ip) => serde_json::Value::String(ip.to_string()),
+            Value::Uuid(uuid) => serde_json::Value::String(uuid.to_string()),
             _ => todo!("model::Value to serde_json::Value"),
         }
     }
