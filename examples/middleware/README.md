@@ -26,7 +26,7 @@ impl Middleware for OnlyLinuxBrowsers {
             }
         }
 
-        return Ok(Outcome::Stop(Response::redirect("https://archlinux.org")))
+        return Ok(Outcome::Stop(request, Response::redirect("https://archlinux.org")))
     }
 }
 ```
@@ -64,4 +64,4 @@ Middleware is evaluated in the order it's added to the middleware set. The middl
 
 ## Modifying responses
 
-To modify responses, implement the `handle_response` method on the `Middleware` trait. See the included [request rate limiter](rwf/src/controller/middleware/rate_limiter.rs) middleware for complete example.
+To modify responses, implement the `handle_response` method on the `Middleware` trait. See the included [request rate limiter](/rwf/src/controller/middleware/rate_limiter.rs) middleware for complete example.

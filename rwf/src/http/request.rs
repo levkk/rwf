@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 use serde_json::{Deserializer, Value};
+use time::OffsetDateTime;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
@@ -20,12 +21,25 @@ use crate::{
 ///
 /// The request is fully loaded into memory. It's safe to clone
 /// since the contents are behind an [`std::sync::Arc`].
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Request {
     head: Head,
     session: Option<Session>,
     inner: Arc<Inner>,
     params: Option<Arc<Params>>,
+    received_at: OffsetDateTime,
+}
+
+impl Default for Request {
+    fn default() -> Self {
+        Self {
+            head: Head::default(),
+            session: None,
+            inner: Arc::new(Inner::default()),
+            params: None,
+            received_at: OffsetDateTime::now_utc(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -57,6 +71,7 @@ impl Request {
                 peer: Some(peer),
                 cookies,
             }),
+            received_at: OffsetDateTime::now_utc(),
         })
     }
 
@@ -133,6 +148,11 @@ impl Request {
     /// Request's session.
     pub fn session(&self) -> Option<&Session> {
         self.session.as_ref()
+    }
+
+    /// When thre request was received.
+    pub fn received_at(&self) -> OffsetDateTime {
+        self.received_at
     }
 
     /// Get the session identifier.

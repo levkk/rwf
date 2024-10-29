@@ -23,7 +23,7 @@ impl Middleware for SecureId {
         if let Ok(Some(id)) = id {
             // Block requests to a numeric ID.
             if self.block_unencrypted && id.chars().all(|c| c.is_numeric()) {
-                return Ok(Outcome::Stop(Response::not_found()));
+                return Ok(Outcome::Stop(request, Response::not_found()));
             }
 
             let path = request.path().clone();
@@ -36,7 +36,7 @@ impl Middleware for SecureId {
 
                 return Ok(Outcome::Forward(request));
             } else {
-                return Ok(Outcome::Stop(Response::not_found()));
+                return Ok(Outcome::Stop(request, Response::not_found()));
             }
         }
 

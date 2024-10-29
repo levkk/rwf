@@ -1,5 +1,6 @@
 use std::path::Path;
 use tokio::fs::{create_dir_all, read_to_string, File};
+use tokio::process::Command;
 
 use crate::logging::created;
 use rwf::colors::MaybeColorize;
@@ -62,4 +63,21 @@ pub async fn setup() {
             break;
         }
     }
+
+    // Add rwf dependencies
+    Command::new("cargo")
+        .arg("add")
+        .arg("tokio@1")
+        .arg("--features")
+        .arg("full")
+        .status()
+        .await
+        .unwrap();
+
+    Command::new("cargo")
+        .arg("add")
+        .arg("rwf")
+        .status()
+        .await
+        .unwrap();
 }

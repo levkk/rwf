@@ -524,7 +524,7 @@ impl<T: Model> Query<T> {
                 let result = match result {
                     Ok(result) => result,
                     Err(err) => {
-                        self.log_error();
+                        self.log_error(&err);
                         return Err(err);
                     }
                 };
@@ -542,7 +542,7 @@ impl<T: Model> Query<T> {
         match result {
             Ok(rows) => Ok(rows),
             Err(err) => {
-                self.log_error();
+                self.log_error(&err);
                 Err(err)
             }
         }
@@ -659,12 +659,13 @@ impl<T: Model> Query<T> {
         );
     }
 
-    fn log_error(&self) {
+    fn log_error(&self, err: &Error) {
         error!(
-            "{} {} {}",
+            "{} {} {} {}",
             Self::type_name().green(),
             self.action().purple(),
-            self.to_sql()
+            self.to_sql(),
+            err,
         )
     }
 }

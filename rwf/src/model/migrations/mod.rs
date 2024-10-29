@@ -123,9 +123,18 @@ impl Migrations {
             while let Some(dir_entry) = dir_entries.next_entry().await? {
                 let metadata = dir_entry.metadata().await?;
                 if metadata.is_file() {
-                    let file = MigrationFile::parse(
-                        dir_entry.file_name().to_str().expect("migration OsString"),
-                    )?;
+                    let file_name = dir_entry
+                        .file_name()
+                        .to_str()
+                        .expect("migration OsString")
+                        .to_string();
+
+                    // Skip hidden files
+                    if file_name.starts_with(".") {
+                        continue;
+                    }
+
+                    let file = MigrationFile::parse(&file_name)?;
                     let entry = checks
                         .entry(file.name.clone())
                         .or_insert_with(Check::default);

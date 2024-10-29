@@ -14,7 +14,7 @@ impl Middleware for BlockBadHeader {
             }
         }
 
-        Ok(Outcome::Stop(Response::bad_request()))
+        Ok(Outcome::Stop(request, Response::bad_request()))
     }
 }
 

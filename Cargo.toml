@@ -16,4 +16,5 @@ members = [
     "rwf-macros",
     "rwf-tests",
     "examples/django",
+    "examples/request-tracking",
 ]

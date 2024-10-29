@@ -16,6 +16,7 @@ time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
 tokio-postgres = { version = "0.7", features = [
     "with-time-0_3",
     "with-serde_json-1",
+    "with-uuid-1",
 ] }
 bytes = "1"
 tokio = { version = "1", features = ["full"] }
@@ -38,6 +39,7 @@ sha1 = "0.10"
 toml = "0.8"
 pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
 rayon = { version = "1", optional = true }
+uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
 tempdir = "0.3"

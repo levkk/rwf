@@ -5,7 +5,6 @@
 //!
 //! The server is using Tokio, so it can support millions of concurrent clients.
 use super::{Error, Handler, Request, Response, Router};
-use crate::controller::Error as ControllerError;
 
 use crate::colors::MaybeColorize;
 
@@ -97,13 +96,18 @@ impl Server {
         let mut stream = BufReader::new(BufWriter::new(stream));
 
         tokio::spawn(async move {
-            debug!("new connection from {:?}", peer_addr);
+            debug!("{} new connection from {:?}", "http".purple(), peer_addr);
 
             loop {
                 let request = match Request::read(peer_addr, &mut stream).await {
                     Ok(request) => request,
                     Err(err) => {
-                        debug!("client {:?} disconnected: {:?}", peer_addr, err);
+                        debug!(
+                            "{} client {:?} disconnected: {:?}",
+                            "http".purple(),
+                            peer_addr,
+                            err
+                        );
                         return;
                     }
                 };
@@ -120,22 +124,7 @@ impl Server {
                             Ok(response) => response,
                             Err(err) => {
                                 error!("{}", err);
-                                match err {
-                                    ControllerError::HttpError(err) => match err.code() {
-                                        400 => Response::bad_request(),
-                                        403 => Response::forbidden(),
-                                        _ => Response::internal_error(err),
-                                    },
-
-                                    ControllerError::ViewError(err) => {
-                                        Response::internal_error_pretty(
-                                            "Template error",
-                                            err.to_string().as_str(),
-                                        )
-                                    }
-
-                                    err => Response::internal_error(err),
-                                }
+                                Response::internal_error(err)
                             }
                         };
 
@@ -200,13 +189,18 @@ impl Server {
     }
 
     fn log(request: &Request, controller_name: &str, response: &Response, duration: Duration) {
+        let method = request.method().to_string();
+        let path = request.path().path();
+        let code = response.status().code() as i32;
+        let duration = (duration.as_secs_f64() * 1000.0) as f32;
+
         info!(
             "{} {} {} {} ({:.3} ms)",
-            request.method().to_string().purple(),
-            request.path().path().purple(),
+            method.purple(),
+            path.purple(),
             controller_name.green(),
-            response.status().code(),
-            duration.as_secs_f64() * 1000.0,
+            code,
+            duration,
         );
     }
 }
