@@ -9,7 +9,7 @@ struct Index;
 
 #[async_trait]
 impl Controller for Index {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let ok = rand::thread_rng().gen::<bool>();
 
         if ok {
