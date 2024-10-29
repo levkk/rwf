@@ -39,7 +39,7 @@ impl Middleware for RequiredHeaders {
             let header = request.headers().get(header);
 
             if header.is_none() {
-                return Ok(Outcome::Stop(request, Response::bad_request()));
+                return Ok(Outcome::Stop((request, Response::bad_request())));
             }
         }
 
