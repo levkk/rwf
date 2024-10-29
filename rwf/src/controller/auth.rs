@@ -146,6 +146,15 @@ impl SessionId {
     }
 }
 
+impl std::fmt::Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SessionId::Authenticated(id) => write!(f, "{}", id),
+            SessionId::Guest(id) => write!(f, "{}", id),
+        }
+    }
+}
+
 impl Default for SessionId {
     fn default() -> Self {
         use rand::{distributions::Alphanumeric, thread_rng, Rng};

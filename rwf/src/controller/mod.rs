@@ -28,7 +28,7 @@ use crate::config::get_config;
 
 use tokio::select;
 use tokio::time::{interval, timeout};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
 
@@ -86,8 +86,6 @@ pub trait Controller: Sync + Send {
             return auth.auth().denied(&request).await;
         }
 
-        let no_session = request.session().is_none();
-
         let outcome = self.middleware().handle_request(request).await?;
         let response = match outcome {
             (Outcome::Forward(request), executed) => match self.handle(&request).await {
@@ -96,7 +94,29 @@ pub trait Controller: Sync + Send {
                         .handle_response(&request, response.from_request(&request)?, executed)
                         .await?
                 }
-                Err(err) => return Err(err),
+                Err(err) => {
+                    error!("{}", err);
+
+                    let response = match err {
+                        Error::HttpError(err) => match err.code() {
+                            400 => Response::bad_request(),
+                            403 => Response::forbidden(),
+                            _ => Response::internal_error(err),
+                        },
+
+                        Error::ViewError(err) => Response::internal_error_pretty(
+                            "Template error",
+                            err.to_string().as_str(),
+                        ),
+
+                        err => Response::internal_error(err),
+                    };
+
+                    // Run the middleware chain on the response anyway.
+                    self.middleware()
+                        .handle_response(&request, response, executed)
+                        .await?
+                }
             },
             (Outcome::Stop(request, response), executed) => {
                 self.middleware()
@@ -447,7 +467,7 @@ pub trait WebsocketController: Controller {
         loop {
             select! {
                 _ = check.tick() => {
-                    debug!("{} check session \"{:?}\"", "websocket".purple(), session_id);
+                    debug!("{} check session \"{}\"", "websocket".purple(), session_id);
 
                     let closed = match timeout(
                         config.websocket.ping_timeout.unsigned_abs(),
@@ -467,7 +487,9 @@ pub trait WebsocketController: Controller {
                 message = receiver.recv() => {
                     match message {
                         Ok(message) => {
-                            debug!("sending {:?} to {:?}", message, receiver.session_id());
+                            debug!("{} sending {:?} to session \"{}\"",
+                                "websocket".purple(),
+                                message, receiver.session_id());
                             message.send(&mut stream).await?;
                         }
 
@@ -485,7 +507,7 @@ pub trait WebsocketController: Controller {
                     let frame = frame?;
 
                     if frame.is_pong() {
-                        debug!("{} session \"{:?}\" is alive", "websocket".purple(), session_id);
+                        debug!("{} session \"{}\" is alive", "websocket".purple(), session_id);
                         lost_pings -= 1;
 
                         // Protect against weird clients.
