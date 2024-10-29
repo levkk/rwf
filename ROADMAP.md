@@ -23,7 +23,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 
 ## Dynanic templates
 
-- [ ] Better error messages, e.g. syntax errors, undefined variables, functions, etc.
+- [x] Better error messages, e.g. syntax errors, undefined variables, functions, etc.
 - [ ] More data types support, e.g. UUIDs, timestampts, whatever Rust data types we forgot to add
 - [ ] More tests
 - [ ] Allow for extending template syntax with user-defined functions (defined at startup)
@@ -56,7 +56,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 ## Built-ins
 
 - [ ] Feature flags and experiments
-- [ ] Tracking (user requests)
+- [x] Tracking (user requests)
 
 ## More?
 
