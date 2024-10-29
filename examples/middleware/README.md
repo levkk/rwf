@@ -26,7 +26,7 @@ impl Middleware for OnlyLinuxBrowsers {
             }
         }
 
-        return Ok(Outcome::Stop(request, Response::redirect("https://archlinux.org")))
+        return Ok(Outcome::Stop((request, Response::redirect("https://archlinux.org"))))
     }
 }
 ```
