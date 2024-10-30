@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <title><% if title %><%= title %><% end %></title>
+	<meta name="turbo-cache-control" content="no-cache">
         <%- rwf_head() %>
 
         <script async src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,6 +15,14 @@
             async
             src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"
         ></script>
+
+        <script async>
+            import { Application } from "hotwired/stimulus";
+            import JobsController from "/static/js/jobs_controller.js";
+
+            const application = Application.start();
+            application.register("jobs", JobsController);
+        </script>
     </head>
-    <body>
+    <body class="grey darken-4 grey-text text-lighten-4">
         <%- rwf_turbo_stream("/turbo-stream") %>

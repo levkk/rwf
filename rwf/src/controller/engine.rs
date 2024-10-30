@@ -1,11 +1,12 @@
 use crate::http::{Handler, Path, Request, Response, Router};
 
-use super::{Controller, Error};
+use super::{AuthHandler, Controller, Error};
 
 #[derive(Default)]
 pub struct Engine {
     router: Router,
     mount: Path,
+    auth: Option<AuthHandler>,
 }
 
 impl Engine {
@@ -14,12 +15,19 @@ impl Engine {
         Self {
             router: Router::new(handlers).unwrap(),
             mount: Path::parse("/").unwrap(),
+            auth: None,
         }
     }
 
     /// Move the engine to this mount point.
     pub fn remount(mut self, mount: &Path) -> Self {
         self.mount = mount.clone();
+        self
+    }
+
+    /// Set authentication on the engine.
+    pub fn auth(mut self, auth: AuthHandler) -> Self {
+        self.auth = Some(auth);
         self
     }
 
@@ -32,6 +40,14 @@ impl Engine {
 #[crate::async_trait]
 impl Controller for Engine {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        // Handle authentication.
+        if let Some(ref auth) = self.auth {
+            let auth = auth.auth();
+            if !auth.authorize(request).await? {
+                return auth.denied(request).await;
+            }
+        }
+
         let path = request.path().pop_base(&self.mount);
         let handler = self.router.find(&path);
 

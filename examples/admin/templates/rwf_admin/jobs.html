@@ -1,12 +1,22 @@
 <%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
 <div class="container">
-    <h1>Jobs</h1>
+    <div
+        style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0;
+        "
+    >
+        <h1 style="margin: 0">Jobs</h1>
+        <a class="waves-effect waves-light btn" href="/admin/jobs">Reload</a>
+    </div>
     <div class="row">
         <div class="col s2">
             <div class="card blue">
                 <div class="card-content">
                     <p class="card-title center-align">Queued</p>
-                    <h3 class="center-align">25</h3>
+                    <h3 class="center-align"><%= queued %></h3>
                 </div>
             </div>
         </div>
@@ -14,7 +24,7 @@
             <div class="card green">
                 <div class="card-content">
                     <p class="card-title center-align">Running</p>
-                    <h3 class="center-align">5</h3>
+                    <h3 class="center-align"><%= running %></h3>
                 </div>
             </div>
         </div>
@@ -22,7 +32,7 @@
             <div class="card red">
                 <div class="card-content">
                     <p class="card-title center-align">Errors</p>
-                    <h3 class="center-align">5</h3>
+                    <h3 class="center-align"><%= errors %></h3>
                 </div>
             </div>
         </div>
@@ -30,7 +40,7 @@
             <div class="card grey">
                 <div class="card-content">
                     <p class="card-title center-align">Latency</p>
-                    <h3 class="center-align">25s</h3>
+                    <h3 class="center-align"><%= latency %>s</h3>
                 </div>
             </div>
         </div>
@@ -47,15 +57,20 @@
                 </tr>
             </thead>
             <tbody>
+                <% for job in jobs %>
                 <tr>
-                    <td>1</td>
-                    <td>SendEmail</td>
+                    <td><%= job.id %></td>
+                    <td><%= job.name %></td>
                     <td>
-                        <small><code>{"email": "test@test.com"}</code></small>
+                        <small><code><%= job.args %></code></small>
                     </td>
-                    <td>2023-03-03 11:00:00 UTC</td>
-                    <td>Running</td>
+                    <td><%= job.created_at %></td>
+                    <td>
+                        <% if job.completed_at %> Completed <% elsif
+                        job.started_at %> Running <% else %> Queued <% end %>
+                    </td>
                 </tr>
+                <% end %>
             </tbody>
         </table>
     </div>

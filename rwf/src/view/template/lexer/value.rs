@@ -477,6 +477,8 @@ impl ToTemplateValue for crate::model::Value {
                 use time::format_description::well_known::Rfc2822;
                 timestamp.format(&Rfc2822)?.to_template_value()
             }
+            ModelValue::Json(json) => serde_json::to_string(json).unwrap().to_template_value(),
+            ModelValue::Int(int) => (*int as i64).to_template_value(),
             value => todo!("model value {:?} to template value", value),
         }
     }

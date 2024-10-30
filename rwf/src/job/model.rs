@@ -71,6 +71,20 @@ impl JobModel {
             .filter("started_at", Value::Null)
             .filter("name", &self.name)
     }
+
+    pub fn running() -> Scope<Self> {
+        Self::filter("completed_at", Value::Null).not("started_at", Value::Null)
+    }
+
+    pub fn queued() -> Scope<Self> {
+        Self::filter("completed_at", Value::Null).filter("started_at", Value::Null)
+    }
+
+    pub fn errors() -> Scope<Self> {
+        Self::all()
+            .not("completed_at", Value::Null)
+            .not("error", Value::Null)
+    }
 }
 
 impl FromRow for JobModel {
