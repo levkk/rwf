@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title><% if title %><%= title %><% end %></title>
+        <%- rwf_head() %>
+
+        <script async src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+        />
+        <script
+            async
+            src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"
+        ></script>
+    </head>
+    <body>
+        <%- rwf_turbo_stream("/turbo-stream") %>

@@ -112,6 +112,16 @@ impl Messages {
 
         Broadcast { everyone: entries }
     }
+
+    pub fn websocket_notify(&self, _topic: &str) -> Broadcast {
+        let guard = self.websocket.lock();
+        let entries = guard
+            .iter()
+            .map(|(_, websocket)| websocket.clone())
+            .collect::<Vec<_>>();
+
+        Broadcast { everyone: entries }
+    }
 }
 
 #[derive(Debug)]
@@ -246,6 +256,11 @@ impl Comms {
     pub fn broadcast(session_id: impl IntoSessionId) -> Broadcast {
         let session_id = session_id.into_session_id();
         get_comms().websocket_broadcast(&session_id, DEFAULT_TOPIC)
+    }
+
+    /// Used for dev server notifications (sent to every connected session).
+    pub fn notify() -> Broadcast {
+        get_comms().websocket_notify(DEFAULT_TOPIC)
     }
 }
 

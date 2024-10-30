@@ -1,0 +1,5 @@
+[general]
+track_requests = true
+
+[database]
+name = "rwf_admin"

@@ -197,14 +197,16 @@ impl Expression {
                         let mut terms = vec![];
 
                         loop {
+                            let term = Self::term(iter)?;
+                            terms.push(term);
                             let next = iter.next().ok_or(Error::Eof("term token"))?;
                             match next.token() {
                                 Token::SquareBracketEnd => break,
                                 Token::Comma => continue,
-                                Token::Value(value) => terms.push(Expression::constant(value)),
-                                Token::Variable(variable) => {
-                                    terms.push(Expression::variable(variable))
-                                }
+                                // Token::Value(value) => terms.push(Expression::constant(value)),
+                                // Token::Variable(variable) => {
+                                //     terms.push(Expression::variable(variable))
+                                // }
                                 _ => return Err(Error::ExpressionSyntax(next)),
                             }
                         }
@@ -458,6 +460,24 @@ mod test {
         assert_eq!("<% [1, 2, 3].0 %>".evaluate_default()?, Value::Integer(1));
 
         assert_eq!(r#"<% list.0 %>"#.evaluate(&context)?, Value::Integer(1));
+
+        let nested = r#"<% [[1, 2, 3], "hello", ["world", "is", "pretty"]]"#.evaluate_default()?;
+        assert_eq!(
+            nested,
+            Value::List(vec![
+                Value::List(vec![
+                    Value::Integer(1),
+                    Value::Integer(2),
+                    Value::Integer(3),
+                ]),
+                Value::String("hello".into()),
+                Value::List(vec![
+                    Value::String("world".into()),
+                    Value::String("is".into()),
+                    Value::String("pretty".into()),
+                ])
+            ])
+        );
 
         Ok(())
     }

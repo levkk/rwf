@@ -6,6 +6,7 @@ pub mod error;
 pub mod middleware;
 pub mod ser;
 pub mod static_files;
+pub mod turbo_stream;
 pub mod util;
 
 #[cfg(feature = "wsgi")]
@@ -18,6 +19,7 @@ pub use engine::Engine;
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
+pub use turbo_stream::TurboStream;
 
 use super::http::{
     websocket::{self, DataFrame},

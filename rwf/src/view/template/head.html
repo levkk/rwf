@@ -8,4 +8,16 @@
 </script>
 <script async type="module">
     import "https://unpkg.com/@hotwired/turbo@8.0.10/dist/turbo.es2017-esm.js";
+
+    addEventListener("turbo:before-stream-render", (event) => {
+        const fallback = event.detail.render;
+
+        event.detail.render = function (stream) {
+            if (stream.action == "reload-page") {
+                Turbo.visit(window.location.href, { action: "replace" });
+            } else {
+                fallback(stream);
+            }
+        };
+    });
 </script>

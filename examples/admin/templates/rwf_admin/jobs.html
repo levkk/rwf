@@ -1,0 +1,63 @@
+<%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
+<div class="container">
+    <h1>Jobs</h1>
+    <div class="row">
+        <div class="col s2">
+            <div class="card blue">
+                <div class="card-content">
+                    <p class="card-title center-align">Queued</p>
+                    <h3 class="center-align">25</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col s2">
+            <div class="card green">
+                <div class="card-content">
+                    <p class="card-title center-align">Running</p>
+                    <h3 class="center-align">5</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col s2">
+            <div class="card red">
+                <div class="card-content">
+                    <p class="card-title center-align">Errors</p>
+                    <h3 class="center-align">5</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col s2">
+            <div class="card grey">
+                <div class="card-content">
+                    <p class="card-title center-align">Latency</p>
+                    <h3 class="center-align">25s</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Args</th>
+                    <th>Queued</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>SendEmail</td>
+                    <td>
+                        <small><code>{"email": "test@test.com"}</code></small>
+                    </td>
+                    <td>2023-03-03 11:00:00 UTC</td>
+                    <td>Running</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<%% "templates/rwf_admin/footer.html" %>

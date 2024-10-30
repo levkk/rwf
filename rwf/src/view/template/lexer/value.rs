@@ -4,6 +4,8 @@
 //!
 //! This allows operations across data types, like multiplying lists by integers,
 //! or accessing hash keys.
+use once_cell::sync::Lazy;
+
 use super::{super::Context, Error};
 
 use std::cmp::Ordering;
@@ -11,6 +13,9 @@ use std::collections::HashMap;
 
 use crate::model::Model;
 use crate::view::template::Template;
+
+static TURBO_STREAM: Lazy<Template> =
+    Lazy::new(|| Template::from_str(include_str!("../turbo-stream.html")).unwrap());
 
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
@@ -273,6 +278,15 @@ impl Value {
                 },
 
                 "rwf_head" => Value::String(include_str!("../head.html").to_string()),
+                "rwf_turbo_stream" => match &args {
+                    &[Value::String(endpoint)] => Value::String(
+                        TURBO_STREAM
+                            .render([("endpoint", endpoint.clone())])
+                            .unwrap(),
+                    ),
+
+                    _ => Value::Null,
+                },
 
                 "render" => match &args {
                     &[Value::String(n)] => {
