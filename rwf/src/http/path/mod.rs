@@ -99,6 +99,22 @@ impl Path {
     pub fn with_regex(self, path_type: PathType) -> Result<PathWithRegex, Error> {
         PathWithRegex::new(self, path_type)
     }
+
+    /// Remove the base path from this path, e.g.
+    /// `/engine/users/1` with the base `/engine` removed is `/users/1`.
+    pub fn pop_base(&self, base: &Path) -> Self {
+        let mut new_base = String::new();
+        let mut iter = base.base().chars().into_iter();
+        for c in self.base.chars() {
+            if let Some(c2) = iter.next() {
+                if c2 == c {
+                    continue;
+                }
+            }
+            new_base.push(c);
+        }
+        Self::from_parts(&new_base, self.query())
+    }
 }
 
 #[cfg(test)]
@@ -128,5 +144,13 @@ mod test {
         assert!(regex.find("/api/orders/1").is_some());
         assert!(regex.find("/api/orders").is_none());
         assert!(regex.find("/api/orders/hello/world").is_some());
+    }
+
+    #[test]
+    fn test_pop_base() {
+        let path = Path::parse("/engine/users/1/engine").unwrap();
+        let engine = Path::parse("/engine").unwrap();
+        let path = path.pop_base(&engine);
+        assert_eq!(path.base(), "/users/1/engine");
     }
 }

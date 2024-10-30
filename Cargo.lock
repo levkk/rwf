@@ -1520,7 +1520,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "regex",
- "rwf-macros 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rwf-macros 0.1.3",
  "serde",
  "serde_json",
  "sha1",

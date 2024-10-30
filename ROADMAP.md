@@ -20,6 +20,7 @@ Rwf is brand new, but web development is ancient. Many features are missing or a
 - [ ] Integration tests
 - [ ] Support for multiple WebSocket controllers (`Comms::websocket` assumes only one)
 - [ ] Multipart forms
+- [ ] Support for engines, a set of controllers, models, views that can be moved added/removed from any app to add functionality; similar to Rails engines
 
 ## Dynanic templates
 

@@ -4,6 +4,7 @@ use crate::colors::MaybeColorize;
 use regex::RegexSet;
 use tracing::info;
 
+#[derive(Default)]
 pub struct Router {
     regex: RegexSet,
     handlers: Vec<Handler>,
