@@ -179,7 +179,7 @@ impl Server {
                                 let _ = stream.flush().await;
                             }
                             Err(err) => {
-                                debug!("2 {} error {:?}", peer_addr, err);
+                                debug!("{} error {:?}", peer_addr, err);
                             }
                         }
                     }

@@ -15,14 +15,3 @@ impl FromFormData for FormData {
         Ok(form_data.clone())
     }
 }
-
-pub struct FormTest {
-    name: Option<String>,
-}
-
-impl FromFormData for FormTest {
-    fn from_form_data(form_data: &FormData) -> Result<Self, Error> {
-        let name = form_data.get::<String>("name");
-        Ok(Self { name })
-    }
-}
