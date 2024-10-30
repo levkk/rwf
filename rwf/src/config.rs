@@ -169,9 +169,7 @@ impl Default for Config {
             tty: std::io::stderr().is_terminal(),
             default_auth: AuthHandler::new(AllowAll {}),
             session_duration: Duration::days(4),
-            default_middleware: MiddlewareSet::without_default(vec![
-                RequestTracker::new().middleware()
-            ]),
+            default_middleware: MiddlewareSet::without_default(vec![]),
             cache_templates,
             websocket: Websocket::default(),
             log_queries: var("RWF_LOG_QUERIES").is_ok(),

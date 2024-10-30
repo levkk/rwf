@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 
 pub mod auth;
+pub mod engine;
 pub mod error;
 pub mod middleware;
 pub mod ser;
@@ -13,6 +14,7 @@ pub mod wsgi;
 pub use wsgi::WsgiController;
 
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
+pub use engine::Engine;
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;

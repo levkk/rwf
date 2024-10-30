@@ -413,6 +413,20 @@ pub fn rest(input: TokenStream) -> TokenStream {
     .into()
 }
 
+#[proc_macro]
+pub fn engine(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
+    let mut iter = input.into_iter();
+
+    let route = iter.next().unwrap();
+    let engine = iter.next().unwrap();
+
+    quote! {
+        #engine.remount(&rwf::http::Path::parse(#route).unwrap()).wildcard(#route)
+    }
+    .into()
+}
+
 struct RenderInput {
     template_name: LitStr,
     _comma: Option<Token![,]>,
