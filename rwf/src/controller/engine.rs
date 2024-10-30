@@ -9,6 +9,7 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Create new engine for the given routes.
     pub fn new(handlers: Vec<Handler>) -> Self {
         Self {
             router: Router::new(handlers).unwrap(),
@@ -16,11 +17,13 @@ impl Engine {
         }
     }
 
+    /// Move the engine to this mount point.
     pub fn remount(mut self, mount: &Path) -> Self {
         self.mount = mount.clone();
         self
     }
 
+    /// Get the engine mount point.
     pub fn mount(&self) -> &Path {
         &self.mount
     }

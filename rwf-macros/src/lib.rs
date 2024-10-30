@@ -422,7 +422,7 @@ pub fn engine(input: TokenStream) -> TokenStream {
     let engine = iter.next().unwrap();
 
     quote! {
-        #engine.remount(rwf::http::Path::parse(route).unwrap()).wildcard(#route)
+        #engine.remount(&rwf::http::Path::parse(#route).unwrap()).wildcard(#route)
     }
     .into()
 }
