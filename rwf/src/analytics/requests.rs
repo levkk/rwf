@@ -16,12 +16,6 @@ pub struct Request {
     duration: f32,
 }
 
-// impl Request {
-//     fn minute() -> Scope<Self> {
-//         todo!()
-//     }
-// }
-
 impl FromRow for Request {
     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
         Ok(Self {
