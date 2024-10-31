@@ -16,13 +16,13 @@
             src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"
         ></script>
 
-        <script async>
-            import { Application } from "hotwired/stimulus";
-            import JobsController from "/static/js/jobs_controller.js";
-
-            const application = Application.start();
-            application.register("jobs", JobsController);
+        <script type="module" async>
+          import { Application } from 'hotwired/stimulus'
+          const application = Application.start();
+          import Requests from '/static/js/requests_controller.js'
+          application.register('requests', Requests)
         </script>
+
     </head>
     <body class="grey darken-4 grey-text text-lighten-4">
         <%- rwf_turbo_stream("/turbo-stream") %>

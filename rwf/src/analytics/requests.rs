@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use crate::model::{Error, FromRow, Model, ToValue, Value};
+
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -14,6 +15,12 @@ pub struct Request {
     created_at: OffsetDateTime,
     duration: f32,
 }
+
+// impl Request {
+//     fn minute() -> Scope<Self> {
+//         todo!()
+//     }
+// }
 
 impl FromRow for Request {
     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {

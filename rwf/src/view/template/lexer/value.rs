@@ -205,6 +205,15 @@ impl Value {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
+                "capitalize" => {
+                    let mut iter = value.chars();
+                    let uppercase = match iter.next() {
+                        None => String::new(),
+                        Some(letter) => letter.to_uppercase().chain(iter).collect(),
+                    };
+
+                    Value::String(uppercase)
+                }
                 _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 
@@ -238,6 +247,10 @@ impl Value {
                     "reverse" | "rev" => {
                         Value::List(list.clone().into_iter().rev().collect::<Vec<_>>())
                     }
+
+                    "empty" => Value::Boolean(list.is_empty()),
+
+                    "len" => Value::Integer(list.len() as i64),
 
                     _ => return Err(Error::UnknownMethod(method_name.into())),
                 },
@@ -479,6 +492,7 @@ impl ToTemplateValue for crate::model::Value {
             }
             ModelValue::Json(json) => serde_json::to_string(json).unwrap().to_template_value(),
             ModelValue::Int(int) => (*int as i64).to_template_value(),
+            ModelValue::Null => Ok(Value::Null),
             value => todo!("model value {:?} to template value", value),
         }
     }
@@ -493,7 +507,11 @@ impl<T: Model> ToTemplateValue for T {
             return Err(Error::SerializationError);
         }
 
-        let mut hash = HashMap::from([("id".to_string(), self.id().to_template_value()?)]);
+        let mut hash = HashMap::new();
+
+        if !self.id().is_null() {
+            hash.insert("id".to_string(), self.id().to_template_value()?);
+        }
 
         for (key, value) in columns.iter().zip(values.iter()) {
             hash.insert(key.to_string(), value.to_template_value()?);

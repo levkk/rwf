@@ -1,4 +1,3 @@
-pub mod admin;
 pub mod analytics;
 pub mod colors;
 pub mod comms;

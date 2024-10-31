@@ -17,6 +17,7 @@ pub mod limit;
 pub mod lock;
 pub mod migrations;
 pub mod order_by;
+pub mod picked;
 pub mod placeholders;
 pub mod pool;
 pub mod prelude;
@@ -37,6 +38,7 @@ pub use limit::Limit;
 pub use lock::Lock;
 pub use migrations::{migrate, rollback, Migrations};
 pub use order_by::{OrderBy, OrderColumn, ToOrderBy};
+pub use picked::Picked;
 pub use placeholders::Placeholders;
 pub use pool::{get_connection, get_pool, start_transaction, Connection, ConnectionGuard, Pool};
 pub use row::Row;
@@ -151,6 +153,7 @@ pub enum Query<T: FromRow + ?Sized = Row> {
         query: String,
         placeholders: Placeholders,
     },
+    Picked(Picked<T>),
 }
 
 impl<T: FromRow> ToSql for Query<T> {
@@ -165,6 +168,7 @@ impl<T: FromRow> ToSql for Query<T> {
             InsertIfNotExists { select, insert, .. } => {
                 format!("{}; {};", select.to_sql(), insert.to_sql())
             }
+            Picked(picked) => picked.select.to_sql(),
         }
     }
 }
@@ -537,6 +541,14 @@ impl<T: Model> Query<T> {
                     Ok(result)
                 }
             }
+
+            Query::Picked(picked) => {
+                let select = &picked.select;
+                let query = select.to_sql();
+                let placeholdres = { select.placeholders() };
+                let values = placeholdres.values();
+                client.query_cached(&query, &values).await
+            }
         };
 
         match result {
@@ -578,6 +590,7 @@ impl<T: Model> Query<T> {
             Query::Select(select) => select.placeholders,
             Query::Update(update) => update.placeholders,
             Query::Insert(insert) => insert.placeholders,
+            Query::Picked(picked) => picked.select.placeholders,
             _ => todo!("explain"),
         };
 
@@ -637,7 +650,7 @@ impl<T: Model> Query<T> {
 
     fn action(&self) -> &'static str {
         match self {
-            Query::Select(_) => "load",
+            Query::Select(_) | Query::Picked(_) => "load",
             Query::Update(_) => "save",
             Query::Raw { .. } => "query",
             Query::Insert(_) => "save",
