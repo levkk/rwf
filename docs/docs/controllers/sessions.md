@@ -21,7 +21,7 @@ match request.session_id() {
 To give a user an authenticated session, i.e. log them into your app, you can set the session cookie with the user ID on the response:
 
 ```rust
-async fn handle(&self, requets: &Request) -> Result<Response, Error> {
+async fn handle(&self, request: &Request) -> Result<Response, Error> {
     let response = request.login(1234);
     Ok(response)
 }
