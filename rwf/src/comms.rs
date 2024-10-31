@@ -206,6 +206,12 @@ impl IntoSessionId for &SessionId {
     }
 }
 
+impl IntoSessionId for SessionId {
+    fn into_session_id(self) -> SessionId {
+        self
+    }
+}
+
 impl IntoSessionId for &i64 {
     fn into_session_id(self) -> SessionId {
         SessionId::Authenticated(*self)
