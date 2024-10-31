@@ -13,6 +13,12 @@ pub struct TurboStream {
     target: String,
 }
 
+impl std::fmt::Display for TurboStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.clone().render())
+    }
+}
+
 impl From<TurboStream> for Context {
     fn from(stream: TurboStream) -> Context {
         let mut context = Context::new();

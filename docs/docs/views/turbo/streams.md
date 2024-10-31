@@ -73,8 +73,10 @@ if let Some(session_id) = session_id {
         </div>
     "#).action("replace");
 
+    let message = Message::Text(update.render());
+
     // Send it via a WebSocket connection.
-    Comms::websocket(&session_id).send(update)?;
+    Comms::websocket(&session_id).send(message)?;
 }
 ```
 
