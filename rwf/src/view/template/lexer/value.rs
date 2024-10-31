@@ -493,7 +493,28 @@ impl ToTemplateValue for crate::model::Value {
             ModelValue::Json(json) => serde_json::to_string(json).unwrap().to_template_value(),
             ModelValue::Int(int) => (*int as i64).to_template_value(),
             ModelValue::Null => Ok(Value::Null),
-            value => todo!("model value {:?} to template value", value),
+            ModelValue::BigInt(int) => Ok(Value::Integer(*int)),
+            ModelValue::SmallInt(int) => (*int as i64).to_template_value(),
+            ModelValue::Real(f) => (*f as f64).to_template_value(),
+            ModelValue::Boolean(b) => (*b).to_template_value(),
+            ModelValue::Timestamp(timestamp) => {
+                use time::format_description::well_known::Rfc2822;
+                timestamp.format(&Rfc2822)?.to_template_value()
+            }
+            ModelValue::IpAddr(addr) => Ok(Value::String(addr.to_string())),
+            ModelValue::Uuid(uuid) => Ok(Value::String(uuid.to_string())),
+            ModelValue::List(list) => {
+                let mut new_list = vec![];
+                for item in list.iter() {
+                    new_list.push(item.clone().to_template_value()?);
+                }
+                Ok(Value::List(new_list))
+            }
+            ModelValue::Record(_)
+            | ModelValue::Placeholder(_)
+            | ModelValue::Column(_)
+            | ModelValue::Range(_)
+            | ModelValue::Function(_) => Ok(Value::Null), // value => todo!("model value {:?} to template value", value),
         }
     }
 }
@@ -509,6 +530,7 @@ impl<T: Model> ToTemplateValue for T {
 
         let mut hash = HashMap::new();
 
+        // Don't think we need this null check.
         if !self.id().is_null() {
             hash.insert("id".to_string(), self.id().to_template_value()?);
         }

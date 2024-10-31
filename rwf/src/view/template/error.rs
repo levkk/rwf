@@ -37,6 +37,7 @@ pub enum Error {
 }
 
 impl Error {
+    // TODO: this function is iffy. Needs more work.
     pub fn pretty(self, source: &str, path: Option<impl AsRef<Path> + Copy>) -> Self {
         let token = match self {
             Error::Syntax(ref token) => token,
@@ -65,20 +66,13 @@ impl Error {
             _ => "".to_string(),
         };
 
-        println!(
-            "token {:?}, {}, {}",
-            token,
-            token.line(),
-            token.token().len()
-        );
-
         let context = source.lines().nth(std::cmp::max(1, token.line()) - 1); // std::fs lines start at 0
         let leading_spaces = if let Some(ref context) = context {
             context.len() - context.trim().len()
         } else {
             0
         };
-        println!("leading spaces: {}", leading_spaces);
+
         let underline = vec![
             ' ';
             std::cmp::max(

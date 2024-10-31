@@ -203,10 +203,6 @@ impl Expression {
                             match next.token() {
                                 Token::SquareBracketEnd => break,
                                 Token::Comma => continue,
-                                // Token::Value(value) => terms.push(Expression::constant(value)),
-                                // Token::Variable(variable) => {
-                                //     terms.push(Expression::variable(variable))
-                                // }
                                 _ => return Err(Error::ExpressionSyntax(next)),
                             }
                         }
