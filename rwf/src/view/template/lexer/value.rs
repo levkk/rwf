@@ -4,6 +4,8 @@
 //!
 //! This allows operations across data types, like multiplying lists by integers,
 //! or accessing hash keys.
+use once_cell::sync::Lazy;
+
 use super::{super::Context, Error};
 
 use std::cmp::Ordering;
@@ -11,6 +13,9 @@ use std::collections::HashMap;
 
 use crate::model::Model;
 use crate::view::template::Template;
+
+static TURBO_STREAM: Lazy<Template> =
+    Lazy::new(|| Template::from_str(include_str!("../turbo-stream.html")).unwrap());
 
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
@@ -200,6 +205,15 @@ impl Value {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
+                "capitalize" => {
+                    let mut iter = value.chars();
+                    let uppercase = match iter.next() {
+                        None => String::new(),
+                        Some(letter) => letter.to_uppercase().chain(iter).collect(),
+                    };
+
+                    Value::String(uppercase)
+                }
                 _ => return Err(Error::UnknownMethod(method_name.into())),
             },
 
@@ -233,6 +247,10 @@ impl Value {
                     "reverse" | "rev" => {
                         Value::List(list.clone().into_iter().rev().collect::<Vec<_>>())
                     }
+
+                    "empty" => Value::Boolean(list.is_empty()),
+
+                    "len" => Value::Integer(list.len() as i64),
 
                     _ => return Err(Error::UnknownMethod(method_name.into())),
                 },
@@ -273,6 +291,15 @@ impl Value {
                 },
 
                 "rwf_head" => Value::String(include_str!("../head.html").to_string()),
+                "rwf_turbo_stream" => match &args {
+                    &[Value::String(endpoint)] => Value::String(
+                        TURBO_STREAM
+                            .render([("endpoint", endpoint.clone())])
+                            .unwrap(),
+                    ),
+
+                    _ => Value::Null,
+                },
 
                 "render" => match &args {
                     &[Value::String(n)] => {
@@ -463,7 +490,31 @@ impl ToTemplateValue for crate::model::Value {
                 use time::format_description::well_known::Rfc2822;
                 timestamp.format(&Rfc2822)?.to_template_value()
             }
-            value => todo!("model value {:?} to template value", value),
+            ModelValue::Json(json) => serde_json::to_string(json).unwrap().to_template_value(),
+            ModelValue::Int(int) => (*int as i64).to_template_value(),
+            ModelValue::Null => Ok(Value::Null),
+            ModelValue::BigInt(int) => Ok(Value::Integer(*int)),
+            ModelValue::SmallInt(int) => (*int as i64).to_template_value(),
+            ModelValue::Real(f) => (*f as f64).to_template_value(),
+            ModelValue::Boolean(b) => (*b).to_template_value(),
+            ModelValue::Timestamp(timestamp) => {
+                use time::format_description::well_known::Rfc2822;
+                timestamp.format(&Rfc2822)?.to_template_value()
+            }
+            ModelValue::IpAddr(addr) => Ok(Value::String(addr.to_string())),
+            ModelValue::Uuid(uuid) => Ok(Value::String(uuid.to_string())),
+            ModelValue::List(list) => {
+                let mut new_list = vec![];
+                for item in list.iter() {
+                    new_list.push(item.clone().to_template_value()?);
+                }
+                Ok(Value::List(new_list))
+            }
+            ModelValue::Record(_)
+            | ModelValue::Placeholder(_)
+            | ModelValue::Column(_)
+            | ModelValue::Range(_)
+            | ModelValue::Function(_) => Ok(Value::Null), // value => todo!("model value {:?} to template value", value),
         }
     }
 }
@@ -477,7 +528,12 @@ impl<T: Model> ToTemplateValue for T {
             return Err(Error::SerializationError);
         }
 
-        let mut hash = HashMap::from([("id".to_string(), self.id().to_template_value()?)]);
+        let mut hash = HashMap::new();
+
+        // Don't think we need this null check.
+        if !self.id().is_null() {
+            hash.insert("id".to_string(), self.id().to_template_value()?);
+        }
 
         for (key, value) in columns.iter().zip(values.iter()) {
             hash.insert(key.to_string(), value.to_template_value()?);

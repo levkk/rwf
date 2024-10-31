@@ -27,7 +27,11 @@ pub fn impl_derive_model(input: TokenStream) -> TokenStream {
                     }
                 }
             } else {
-                quote! {}
+                quote! {
+                    fn id(&self) -> rwf::model::Value {
+                        rwf::model::Value::Null
+                    }
+                }
             };
 
             let without_id = data

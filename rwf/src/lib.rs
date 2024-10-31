@@ -5,6 +5,7 @@ pub mod config;
 pub mod controller;
 pub mod crypto;
 pub mod error;
+pub mod hmr;
 pub mod http;
 pub mod job;
 pub mod lock;

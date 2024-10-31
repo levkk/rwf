@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use crate::model::{Error, FromRow, Model, ToValue, Value};
+
 use time::OffsetDateTime;
 
 #[derive(Clone)]

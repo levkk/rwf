@@ -79,10 +79,11 @@ impl Column {
 
 #[derive(Debug, Clone)]
 pub struct Columns {
-    columns: Vec<Column>,
+    pub columns: Vec<Column>,
     table_name: Option<String>,
     exists: bool,
     all: bool,
+    count: bool,
 }
 
 impl Default for Columns {
@@ -92,11 +93,24 @@ impl Default for Columns {
             table_name: None,
             exists: false,
             all: true,
+            count: false,
         }
     }
 }
 
 impl Columns {
+    pub fn pick(columns: &[impl ToColumn]) -> Self {
+        Self {
+            columns: columns.iter().map(|c| c.to_column()).collect(),
+            all: false,
+            ..Default::default()
+        }
+    }
+
+    pub fn picked(&self) -> bool {
+        !self.columns.is_empty()
+    }
+
     pub fn table_name(mut self, table_name: impl ToString) -> Self {
         self.table_name = Some(table_name.to_string());
         self
@@ -112,6 +126,11 @@ impl Columns {
         self
     }
 
+    pub fn count(mut self) -> Self {
+        self.count = true;
+        self
+    }
+
     pub fn add_column(mut self, column: impl ToColumn) -> Self {
         self.columns.push(column.to_column());
         self
@@ -123,15 +142,19 @@ impl ToSql for Columns {
         if self.exists {
             "COUNT(*) AS count".into()
         } else {
-            let mut columns = if self.columns.is_empty() || self.all {
-                if let Some(ref table_name) = self.table_name {
-                    vec![format!(r#""{}".*"#, table_name)]
-                } else {
-                    vec!["*".to_string()]
-                }
+            let mut columns = if self.count {
+                vec!["COUNT(*) AS count".to_string()]
             } else {
                 vec![]
             };
+
+            if self.columns.is_empty() || self.all {
+                if let Some(ref table_name) = self.table_name {
+                    columns.push(format!(r#""{}".*"#, table_name));
+                } else {
+                    columns.push("*".to_string());
+                }
+            }
 
             columns.extend(self.columns.iter().map(|column| column.to_sql()));
 

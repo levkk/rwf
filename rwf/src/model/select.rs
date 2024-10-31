@@ -28,6 +28,7 @@ pub struct Select<T: FromRow + ?Sized> {
     pub where_clause: WhereClause,
     pub joins: Joins,
     lock: Lock,
+    group: bool,
     _phantom: PhantomData<T>,
 }
 
@@ -44,6 +45,7 @@ impl<T: FromRow> Select<T> {
             where_clause: WhereClause::default(),
             joins: Joins::default(),
             lock: Lock::default(),
+            group: false,
             _phantom: PhantomData,
         }
     }
@@ -231,16 +233,33 @@ impl<T: FromRow> Select<T> {
         self.columns = self.columns.add_column(column);
         self
     }
+
+    pub fn group(mut self, columns: &[impl ToColumn]) -> Self {
+        self.group = true;
+        self.columns = Columns::pick(columns);
+        self
+    }
+
+    pub fn count(mut self) -> Self {
+        self.columns = self.columns.count();
+        self
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {
     fn to_sql(&self) -> String {
+        let group = if self.group {
+            format!("GROUP BY {} ", self.columns.to_sql())
+        } else {
+            "".to_string()
+        };
         format!(
-            r#"SELECT {} FROM "{}"{}{}{}{}{}"#,
+            r#"SELECT {} FROM "{}"{}{}{}{}{}{}"#,
             self.columns.to_sql(),
             self.table_name.escape(),
             self.joins.to_sql(),
             self.where_clause.to_sql(),
+            group,
             self.order_by.to_sql(),
             self.limit.to_sql(),
             self.lock.to_sql(),
