@@ -1,4 +1,4 @@
-use rwf::http::Server;
+
 use rwf::job::{Error as JobError, Job, Worker};
 use rwf::prelude::*;
 
