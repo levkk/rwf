@@ -87,6 +87,7 @@ Comparing a float and an integer:
 | `to_lowercase` | Convert string to lowercase lettering. |
 | `lower` | Alias for `to_uppercase`. |
 | `trim` | Remove leading and trailing spaces and new lines. |
+| `capitalize` | Capitalize the first letter of a string. |
 
 ### Examples
 
@@ -108,6 +109,8 @@ Trim a string with extra leading and trailing spaces:
 | `enumerate` | Convert the list to a list of element position and element tuples. |
 | `reverse` | Convert the list to a new list of elements positioned from end to beginning. |
 | `rev` | Alias for `reverse`. |
+| `len` | Get the list length. |
+| `empty` | `true` if empty, `false` otherwise |
 
 ### Examples
 
@@ -132,3 +135,36 @@ Enumerate a list:
 | `keys` | Create a list of hash keys. |
 | `values` | Create a list of hash values. |
 | `iter` | Create a list of tuples, mapping keys to values. Used for iteration over a hash. |
+
+## Global functions
+
+Global functions are functions that can be used without a value, anywhere in the template.
+
+| Function | Description |
+|----------|-------------|
+| `rwf_head` | Inject HTML and JavaScript that makes Rwf "just work". Use in the `<head>` element of a template. |
+| `rwf_turbo_stream` | Inject code that will create a `<turbo-stream-source>` element pointing to the right endpoint. |
+| `render` | Render a partial template. `<%%` is an alias for this function. |
+
+=== "Head"
+    ```erb
+    <html>
+      <head>
+        <%- rwf_head() %>
+        <title>Home page</title>
+      </head>
+    ```
+
+=== "Turbo Stream"
+    ```erb
+    <html>
+      <body>
+        <%- rwf_turbo_stream("/turbo-stream-endpoint") %>
+    ```
+
+=== "Render"
+    ```erb
+    <html>
+      <body>
+        <%- render("templates/index.html") %>
+    ```
