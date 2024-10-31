@@ -5,4 +5,5 @@ nav:
   - 'views'
   - 'configuration.md'
   - 'background-jobs'
+  - 'user-guides'
   - '...'

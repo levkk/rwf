@@ -11,7 +11,7 @@ async fn main() -> Result<(), http::Error> {
     Logger::init();
     Migrations::migrate().await?;
 
-    #[cfg(debug_assertions)]
+    // Enable HMR.
     rwf::hmr::hmr(PathBuf::from("templates"));
 
     // Basic auth is just an example, it's not secure. I would recommend using SessionAuth

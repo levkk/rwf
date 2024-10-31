@@ -19,3 +19,7 @@ Otherwise, you can always get Turbo from a CDN, like [Skypack](https://www.skypa
 ## Using Turbo
 
 Once Turbo is loaded, all links and forms will use Turbo automatically. When visiting links or submitting forms, Turbo will intercept the request, send it on the browser's behalf, process the response and replace the contents of the page seamlessly.
+
+## Learn more
+
+- [Turbo Streams](streams.md)

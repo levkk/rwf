@@ -5,7 +5,6 @@ pub mod config;
 pub mod controller;
 pub mod crypto;
 pub mod error;
-#[cfg(debug_assertions)]
 pub mod hmr;
 pub mod http;
 pub mod job;

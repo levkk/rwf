@@ -10,6 +10,7 @@ use tokio::time::sleep;
 use crate::http::websocket::Message;
 use crate::{comms::Comms, view::TurboStream};
 
+#[cfg(debug_assertions)]
 pub fn hmr(path: PathBuf) {
     tokio::task::spawn(async move {
         let mut watcher = notify::recommended_watcher(|res: Result<Event>| match res {
@@ -33,3 +34,6 @@ pub fn hmr(path: PathBuf) {
         Result::Ok(())
     });
 }
+
+#[cfg(not(debug_assertions))]
+pub fn hmr(_path: PathBuf) {}
