@@ -43,7 +43,7 @@ pub enum Expression {
     // Call a function on a value/expression.
     Function {
         term: Box<Expression>,
-        name: String,
+        name: Box<Expression>,
         args: Vec<Expression>,
     },
 
@@ -74,7 +74,9 @@ impl Expression {
                     let value = Value::Interpreter;
                     match value.call(term.name(), &[], context) {
                         Ok(value) => Ok(value),
-                        Err(Error::UnknownMethod(_)) => return Err(Error::UndefinedVariable(name)),
+                        Err(Error::UnknownMethod(_, _)) => {
+                            return Err(Error::UndefinedVariable(name))
+                        }
                         Err(err) => return Err(err),
                     }
                 }
@@ -102,12 +104,22 @@ impl Expression {
 
             Expression::Function { term, name, args } => {
                 let value = term.evaluate(context)?;
+                let name = match name.evaluate(context)? {
+                    Value::String(name) => name,
+                    name => {
+                        return Err(Error::Runtime(format!(
+                            "function name should be a string, got {} instead",
+                            name
+                        )))
+                    }
+                };
+
                 let args = args
                     .iter()
                     .map(|arg| arg.evaluate(context))
                     .collect::<Result<Vec<Value>, Error>>()?;
 
-                Ok(value.call(name, &args, context)?)
+                Ok(value.call(&name, &args, context)?)
             }
 
             Expression::Interpreter => Ok(Value::Interpreter),
@@ -272,7 +284,7 @@ impl Expression {
 
         Ok(Expression::Function {
             term: Box::new(expr),
-            name: name.to_string(),
+            name: Box::new(Expression::constant(Value::String(name.to_string()))),
             args,
         })
     }
@@ -292,10 +304,25 @@ impl Expression {
                         Token::Variable(name) => Self::function(&name, expr, iter)?,
                         Token::Value(Value::Integer(n)) => Expression::Function {
                             term: Box::new(expr),
-                            name: n.to_string(),
+                            name: Box::new(Expression::constant(Value::String(n.to_string()))),
                             args: vec![],
                         },
                         _ => return Err(Error::ExpressionSyntax(name.clone())),
+                    }
+                }
+
+                Some(Token::SquareBracketStart) => {
+                    let _ = iter.next().ok_or(Error::Eof("accessor bracket"))?;
+                    let name = Self::parse(iter)?;
+                    let next = iter.next().ok_or(Error::Eof("expected closing bracket"))?;
+                    match next.token() {
+                        Token::SquareBracketEnd => (),
+                        token => return Err(Error::WrongToken(next, token)),
+                    }
+                    Expression::Function {
+                        term: Box::new(expr),
+                        name: Box::new(name),
+                        args: vec![],
                     }
                 }
 
@@ -485,9 +512,13 @@ mod test {
             "hash",
             Value::Hash(HashMap::from([("key".to_string(), Value::Integer(5))])),
         )?;
+        context.set("name", Value::String("key".into()))?;
 
         let t1 = "<% (hash.key * 2.5) - 2.5 %>".evaluate(&context)?;
         assert_eq!(t1, Value::Float(10.0));
+
+        let t1 = "<% hash[name] %>".evaluate(&context)?;
+        assert_eq!(t1, Value::Integer(5));
 
         Ok(())
     }

@@ -51,6 +51,43 @@ pub fn urldecode(s: &str) -> String {
     result
 }
 
+pub fn urlencode(s: &str) -> String {
+    let mut result = String::new();
+
+    for c in s.chars() {
+        let replacement = match c {
+            ':' => "%3A",
+            '/' => "%2F",
+            '?' => "%3F",
+            '#' => "%23",
+            '[' => "%5B",
+            ']' => "%5D",
+            '@' => "%40",
+            '!' => "%21",
+            '$' => "%24",
+            '&' => "%26",
+            '\'' => "%27",
+            '(' => "%28",
+            ')' => "%29",
+            '*' => "%2A",
+            '+' => "%2B",
+            ',' => "%2C",
+            ';' => "%3B",
+            '=' => "%3D",
+            '%' => "%25",
+            ' ' => "%20",
+            c => {
+                result.push(c);
+                continue;
+            }
+        };
+
+        result.push_str(replacement);
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

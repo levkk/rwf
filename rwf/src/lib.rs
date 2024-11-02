@@ -26,7 +26,6 @@ pub use logging::Logger;
 
 use std::net::SocketAddr;
 
-#[allow(dead_code)]
 fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 
@@ -40,6 +39,16 @@ fn snake_case(string: &str) -> String {
     }
 
     result
+}
+
+fn capitalize(string: &str) -> String {
+    let mut iter = string.chars();
+    let uppercase = match iter.next() {
+        None => String::new(),
+        Some(letter) => letter.to_uppercase().chain(iter).collect(),
+    };
+
+    uppercase
 }
 
 fn peer_addr(addr: &str) -> Option<SocketAddr> {

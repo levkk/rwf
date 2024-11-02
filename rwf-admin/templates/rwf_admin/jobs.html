@@ -38,6 +38,7 @@
         </div>
     </div>
     <div>
+        <h3>Last jobs</h3>
         <% if jobs %>
         <table>
             <thead>
@@ -66,6 +67,8 @@
                 <% end %>
             </tbody>
         </table>
+        <% else %>
+        <p class="center-align">There are currently no jobs.</p>
         <% end %>
     </div>
 </div>

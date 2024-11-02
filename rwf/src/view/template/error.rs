@@ -20,8 +20,8 @@ pub enum Error {
     #[error("variable \"{0}\" is not defined or in scope")]
     UndefinedVariable(String),
 
-    #[error("method \"{0}\" is not defined")]
-    UnknownMethod(String),
+    #[error("method \"{0}\" is not defined for type \"{1}\"")]
+    UnknownMethod(String, &'static str),
 
     #[error("template \"{0}\" does not exist")]
     TemplateDoesNotExist(PathBuf),
@@ -34,6 +34,9 @@ pub enum Error {
 
     #[error("{0}")]
     Pretty(String),
+
+    #[error("{0}")]
+    Runtime(String),
 }
 
 impl Error {

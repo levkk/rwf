@@ -367,6 +367,40 @@ impl tokio_postgres::types::ToSql for Value {
     to_sql_checked!();
 }
 
+impl<'a> tokio_postgres::types::FromSql<'a> for Value {
+    fn from_sql(
+        ty: &Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        match ty {
+            &Type::BOOL => Ok(Value::Boolean(bool::from_sql(ty, raw)?)),
+            &Type::INT8 => Ok(Value::Integer(i64::from_sql(ty, raw)?)),
+            &Type::INT4 => Ok(Value::Int(i32::from_sql(ty, raw)?)),
+            &Type::INT2 => Ok(Value::SmallInt(i16::from_sql(ty, raw)?)),
+            &Type::TEXT | &Type::VARCHAR => Ok(Value::String(String::from_sql(ty, raw)?)),
+            &Type::JSON | &Type::JSONB => Ok(Value::Json(serde_json::Value::from_sql(ty, raw)?)),
+            &Type::FLOAT4 => Ok(Value::Real(f32::from_sql(ty, raw)?)),
+            &Type::FLOAT8 => Ok(Value::Float(f64::from_sql(ty, raw)?)),
+            &Type::INET => Ok(Value::IpAddr(IpAddr::from_sql(ty, raw)?)),
+            &Type::TIMESTAMPTZ => Ok(Value::TimestampT(OffsetDateTime::from_sql(ty, raw)?)),
+            &Type::TIMESTAMP => Ok(Value::Timestamp(PrimitiveDateTime::from_sql(ty, raw)?)),
+            &Type::UUID => Ok(Value::Uuid(Uuid::from_sql(ty, raw)?)),
+
+            ty => todo!("unimplemented conversion from {:?} to rust", ty),
+        }
+    }
+
+    #[allow(unused_variables)]
+    fn from_sql_null(ty: &Type) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        Ok(Value::Null)
+    }
+
+    #[allow(unused_variables)]
+    fn accepts(ty: &Type) -> bool {
+        true
+    }
+}
+
 impl ToSql for Value {
     fn to_sql(&self) -> String {
         use Value::*;

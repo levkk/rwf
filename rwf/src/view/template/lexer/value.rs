@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use crate::model::Model;
+use crate::model::Value as ModelValue;
 use crate::view::template::Template;
 
 static TURBO_STREAM: Lazy<Template> =
@@ -188,7 +189,7 @@ impl Value {
                     }
                     Value::List(list)
                 }
-                method_name => return Err(Error::UnknownMethod(method_name.into())),
+                method_name => return Err(Error::UnknownMethod(method_name.into(), "integer")),
             },
 
             Value::Float(value) => match method_name {
@@ -198,23 +199,27 @@ impl Value {
                 "round" => Value::Float(value.round()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_i" | "to_integer" => Value::Integer(*value as i64),
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "float")),
             },
 
             Value::String(value) => match method_name {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
-                "capitalize" => {
-                    let mut iter = value.chars();
-                    let uppercase = match iter.next() {
-                        None => String::new(),
-                        Some(letter) => letter.to_uppercase().chain(iter).collect(),
-                    };
+                "capitalize" => Value::String(crate::capitalize(&value)),
+                "camelize" | "to_PascalCase" => {
+                    let value = value
+                        .split("_")
+                        .map(|s| crate::capitalize(s))
+                        .collect::<Vec<_>>()
+                        .join("");
 
-                    Value::String(uppercase)
+                    Value::String(value)
                 }
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
+                "urlencode" => Value::String(crate::http::urlencode(&value)),
+                "urldecode" => Value::String(crate::http::urldecode(&value)),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
             Value::List(list) => match method_name.parse::<i64>() {
@@ -252,7 +257,7 @@ impl Value {
 
                     "len" => Value::Integer(list.len() as i64),
 
-                    _ => return Err(Error::UnknownMethod(method_name.into())),
+                    _ => return Err(Error::UnknownMethod(method_name.into(), "list")),
                 },
             },
 
@@ -309,10 +314,10 @@ impl Value {
 
                     _ => Value::Null,
                 },
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "global")),
             },
 
-            _ => return Err(Error::UnknownMethod(method_name.into())),
+            _ => return Err(Error::UnknownMethod(method_name.into(), "other")),
         })
     }
 
@@ -476,7 +481,6 @@ impl TryInto<serde_json::Value> for Value {
 
 impl ToTemplateValue for crate::model::Value {
     fn to_template_value(&self) -> Result<Value, Error> {
-        use crate::model::Value as ModelValue;
         use std::ops::Deref;
         match self {
             ModelValue::Integer(i) => i.to_template_value(),
@@ -552,5 +556,16 @@ impl<T: ToTemplateValue> ToTemplateValue for Vec<T> {
         }
 
         Ok(Value::List(list))
+    }
+}
+
+impl ToTemplateValue for HashMap<String, ModelValue> {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        let mut result = HashMap::new();
+        for (key, value) in self.iter() {
+            result.insert(key.clone(), value.to_template_value()?);
+        }
+
+        Ok(Value::Hash(result))
     }
 }

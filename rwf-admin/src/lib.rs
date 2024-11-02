@@ -1,3 +1,4 @@
+use models::{ModelController, ModelsController};
 use rwf::controller::Engine;
 use rwf::prelude::*;
 
@@ -9,5 +10,7 @@ pub fn engine() -> Engine {
         route!("/" => Index),
         route!("/jobs" => Jobs),
         route!("/requests" => Requests),
+        route!("/models" => ModelsController),
+        route!("/models/model" => ModelController),
     ])
 }

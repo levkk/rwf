@@ -1,4 +1,5 @@
 import { Controller } from "hotwired/stimulus";
+import "https://cdn.jsdelivr.net/npm/chart.js";
 
 export default class extends Controller {
   static targets = ["requestsOk", "chart"];

@@ -1,6 +1,6 @@
 use super::{Error, FromRow, Model, Value};
 
-use std::sync::Arc;
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct Row {
@@ -50,6 +50,16 @@ impl std::ops::Deref for Row {
 impl Row {
     pub fn new(row: tokio_postgres::Row) -> Self {
         Self { row: Arc::new(row) }
+    }
+
+    pub fn values(self) -> Result<HashMap<String, Value>, Error> {
+        let mut result = HashMap::new();
+        for column in self.columns() {
+            let name = column.name();
+            result.insert(name.to_string(), self.try_get(name)?);
+        }
+
+        Ok(result)
     }
 }
 

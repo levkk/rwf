@@ -2,6 +2,8 @@ use rwf::job::JobModel;
 use rwf::prelude::*;
 use rwf::serde::Serialize;
 
+pub mod models;
+
 #[derive(Default)]
 pub struct Index;
 

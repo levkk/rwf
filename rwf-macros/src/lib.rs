@@ -559,7 +559,7 @@ pub fn render(input: TokenStream) -> TokenStream {
         {
             let template = rwf::view::template::Template::load(#template_name)?;
             #(#render_call)*
-            Ok(rwf::http::Response::new().html(html))
+            return Ok(rwf::http::Response::new().html(html))
         }
     }
     .into()

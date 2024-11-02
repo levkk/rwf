@@ -1,0 +1,66 @@
+<%% "templates/rwf_admin/head.html" %>
+<%% "templates/rwf_admin/nav.html" %>
+<div class="container" data-controller="model">
+    <h1><%= table_name.camelize %></h1>
+    <div>
+        <h5>Create model</h5>
+        <form action="/admin/models" method="post">
+            <input type="hidden" name="rwf_table_name" value="<%- table_name %>">
+            <div class="row">
+                <% for column in create_columns %>
+                <div class="input-field col s6">
+                    <input
+                        id="<%- column.table_name%>-<%- column.column_name %>"
+                        type="text"
+                        class="validate"
+                        value="<%= column.column_default.trim %>"
+                    >
+                    <label for="<%- column.table_name%>-<%- column.column_name %>"><%= column.column_name %></label>
+                </div>
+                <% end %>
+            </div>
+            <div class="right-align">
+                <button type="submit" class="waves-effect waves-light btn">Create</button>
+            </div>
+        </form>
+    </div>
+    <div>
+        <h3>Records</h3>
+        <div class="row">
+            <div class="col s6"></div>
+            <div class="input-field col s6">
+                <select multiple>
+                    <% for column in columns.enumerate %>
+                        <% if column.0 <= 2 %>
+                            <option value="<%= column.1.column_name %>" selected><%= column.1.column_name %></option>
+                        <% else %>
+                            <option value="<%= column.1.column_name %>"><%= column.1.column_name %></option>
+                        <% end %>
+                    <% end %>
+                </select>
+                <label>Select columns</label>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                <% for column in columns %>
+                    <th><%= column.column_name %></th>
+                <% end %>
+                </tr>
+            </thead>
+            <tbody>
+                <% for row in rows %>
+                <tr>
+                    <% for column in columns %>
+                        <td>
+                            <%= row[column.column_name] %>
+                        </td>
+                    <% end %>
+                </tr>
+                <% end %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<%% "templates/rwf_admin/footer.html" %>

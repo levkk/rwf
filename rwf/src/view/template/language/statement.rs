@@ -111,25 +111,36 @@ impl Statement {
                 let mut result = String::new();
                 let list = list.evaluate(context)?;
                 let mut for_context = context.clone();
-                match list {
-                    Value::List(values) => {
-                        for value in values {
-                            match variable {
-                                // Convert the variable to a value from the list.
-                                Term::Variable(name) => {
-                                    for_context.set(&name, value)?;
-                                }
-                                Term::Constant(_) => (), // Looks like just a loop with no variables
-                                _ => todo!(),            // Function call is interesting
-                            };
+                let values = match list {
+                    Value::List(values) => values,
+                    Value::Hash(hash) => hash
+                        .keys()
+                        .cloned()
+                        .into_iter()
+                        .zip(hash.values().cloned())
+                        .map(|(k, v)| Value::List(vec![Value::String(k), v]))
+                        .collect::<Vec<_>>(),
+                    Value::String(s) => s
+                        .chars()
+                        .map(|c| Value::String(String::from(c)))
+                        .collect::<Vec<_>>(),
 
-                            for statement in body {
-                                result.push_str(&statement.evaluate(&for_context)?);
-                            }
+                    value => return Err(Error::Runtime(format!("not an iterable: {}", value))),
+                };
+
+                for value in values {
+                    match variable {
+                        // Convert the variable to a value from the list.
+                        Term::Variable(name) => {
+                            for_context.set(&name, value)?;
                         }
-                    }
+                        Term::Constant(_) => (), // Looks like just a loop with no variables
+                        _ => todo!(),            // Function call is interesting
+                    };
 
-                    _ => return Err(Error::Syntax(TokenWithContext::new(Token::End, 0, 0))),
+                    for statement in body {
+                        result.push_str(&statement.evaluate(&for_context)?);
+                    }
                 }
 
                 Ok(result)

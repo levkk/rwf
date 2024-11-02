@@ -39,6 +39,11 @@ pub enum Error {
 
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error(
+        "column \"{0}\" is missing from the row returned by the database,\ndid you forget to specify it in the query?"
+    )]
+    Column(String),
 }
 
 impl Error {
@@ -49,6 +54,11 @@ impl Error {
 
 impl From<tokio_postgres::Error> for Error {
     fn from(error: tokio_postgres::Error) -> Error {
-        Error::DatabaseError(error)
+        use tokio_postgres::error::Kind;
+
+        match error.kind() {
+            &Kind::Column(ref name) => Error::Column(name.clone()),
+            _ => Error::DatabaseError(error),
+        }
     }
 }
