@@ -26,7 +26,7 @@ pub use logging::Logger;
 
 use std::net::SocketAddr;
 
-fn snake_case(string: &str) -> String {
+pub fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 
     for (i, c) in string.chars().enumerate() {
@@ -41,7 +41,7 @@ fn snake_case(string: &str) -> String {
     result
 }
 
-fn capitalize(string: &str) -> String {
+pub fn capitalize(string: &str) -> String {
     let mut iter = string.chars();
     let uppercase = match iter.next() {
         None => String::new(),
@@ -51,7 +51,15 @@ fn capitalize(string: &str) -> String {
     uppercase
 }
 
-fn peer_addr(addr: &str) -> Option<SocketAddr> {
+pub fn pascal_case(string: &str) -> String {
+    string
+        .split("_")
+        .map(|s| capitalize(s))
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+pub fn peer_addr(addr: &str) -> Option<SocketAddr> {
     use std::net::ToSocketAddrs;
 
     if let Ok(mut iter) = addr.to_socket_addrs() {

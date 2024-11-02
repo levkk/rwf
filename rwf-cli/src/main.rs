@@ -4,9 +4,11 @@ use rwf::model::Pool;
 
 use std::path::Path;
 
+mod add;
 mod logging;
 mod migrate;
 mod setup;
+mod util;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -21,6 +23,9 @@ enum Subcommands {
 
     /// Setup the project for Rwf
     Setup,
+
+    /// Add a controller/view/model/all of the above
+    Add(AddSubcommand),
 }
 
 #[derive(Args, Debug)]
@@ -62,6 +67,27 @@ enum Migrate {
     },
 }
 
+#[derive(Args, Debug)]
+struct AddSubcommand {
+    #[command(subcommand)]
+    command: Add,
+
+    #[arg(long, short, help = "Overwrite if file exists")]
+    overwrite: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum Add {
+    /// Create new controller.
+    Controller {
+        #[arg(long, short, help = "Create new controller")]
+        name: String,
+
+        #[arg(long, short, help = "Create a page controller")]
+        page: bool,
+    },
+}
+
 #[tokio::main]
 async fn main() {
     // std::env::set_var("RWF_LOG_QUERIES", "1");
@@ -97,6 +123,12 @@ async fn main() {
         },
 
         Subcommands::Setup => setup::setup().await,
+
+        Subcommands::Add(add) => match add.command {
+            Add::Controller { name, page } => {
+                add::controller(&name, page, add.overwrite).await;
+            }
+        },
     }
 }
 

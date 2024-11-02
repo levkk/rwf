@@ -207,15 +207,7 @@ impl Value {
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
                 "capitalize" => Value::String(crate::capitalize(&value)),
-                "camelize" | "to_PascalCase" => {
-                    let value = value
-                        .split("_")
-                        .map(|s| crate::capitalize(s))
-                        .collect::<Vec<_>>()
-                        .join("");
-
-                    Value::String(value)
-                }
+                "camelize" | "to_PascalCase" => Value::String(crate::pascal_case(&value)),
                 "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
                 "urlencode" => Value::String(crate::http::urlencode(&value)),
                 "urldecode" => Value::String(crate::http::urldecode(&value)),

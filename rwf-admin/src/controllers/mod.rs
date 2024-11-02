@@ -3,6 +3,7 @@ use rwf::prelude::*;
 use rwf::serde::Serialize;
 
 pub mod models;
+pub mod test_controller;
 
 #[derive(Default)]
 pub struct Index;
