@@ -90,3 +90,70 @@ impl Table {
             .await?)
     }
 }
+
+#[derive(Clone, macros::Model, Serialize)]
+pub struct RequestByCode {
+    pub count: i64,
+    pub code: String,
+    #[serde(with = "time::serde::rfc2822")]
+    pub created_at: OffsetDateTime,
+}
+
+impl RequestByCode {
+    pub fn count(minutes: i64) -> Scope<Self> {
+        Self::find_by_sql(
+            "WITH timestamps AS (
+                SELECT date_trunc('minute', now() - (n || ' minute')::interval) AS created_at FROM generate_series(0, $1::bigint) n
+            )
+            SELECT
+                'ok' AS code,
+                COALESCE(e2.count, 0) AS count,
+                timestamps.created_at AS created_at
+            FROM timestamps
+            LEFT JOIN LATERAL (
+                SELECT
+                    COUNT(*) AS count,
+                    DATE_TRUNC('minute', created_at) AS created_at
+                FROM rwf_requests
+                WHERE
+                    created_at BETWEEN timestamps.created_at AND timestamps.created_at + INTERVAL '1 minute'
+                    AND code BETWEEN 100 AND 299
+                GROUP BY 2
+            ) e2 ON true
+            UNION ALL
+            SELECT
+                'warn' AS code,
+                COALESCE(e2.count, 0) AS count,
+                timestamps.created_at AS created_at
+            FROM timestamps
+            LEFT JOIN LATERAL (
+                SELECT
+                    COUNT(*) AS count,
+                    DATE_TRUNC('minute', created_at) AS created_at
+                FROM rwf_requests
+                WHERE
+                    created_at BETWEEN timestamps.created_at AND timestamps.created_at + INTERVAL '1 minute'
+                    AND code BETWEEN 300 AND 499
+                GROUP BY 2
+            ) e2 ON true
+            UNION ALL
+            SELECT
+                'error' AS code,
+                COALESCE(e2.count, 0) AS coount,
+                timestamps.created_at AS created_at
+            FROM timestamps
+            LEFT JOIN LATERAL (
+                SELECT
+                    COUNT(*) AS count,
+                    DATE_TRUNC('minute', created_at) AS created_at
+                FROM rwf_requests
+                WHERE
+                    created_at BETWEEN timestamps.created_at AND timestamps.created_at + INTERVAL '1 minute'
+                    AND code BETWEEN 500 AND 599
+                GROUP BY 2
+            ) e2 ON true
+            ORDER BY 3;",
+            &[minutes.to_value()],
+        )
+    }
+}
