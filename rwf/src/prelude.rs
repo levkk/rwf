@@ -16,3 +16,4 @@ pub use tokio;
 
 pub use macros::{context, crud, engine, render, rest, route};
 pub use rwf_macros as macros;
+pub use uuid::Uuid;

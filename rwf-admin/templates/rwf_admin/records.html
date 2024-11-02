@@ -1,0 +1,45 @@
+<div id="records">
+    <h3>Records</h3>
+    <div class="row">
+        <div class="col s6"></div>
+        <div class="input-field col s6">
+            <select multiple data-action="change->model#selectColumn">
+                <% for column in columns %>
+                    <% if selected_columns.contains(column) %>
+                        <option value="<%= column %>" selected><%= column %></option>
+                    <% else %>
+                        <option value="<%= column %>"><%= column %></option>
+                    <% end %>
+                <% end %>
+            </select>
+            <label>Select columns</label>
+        </div>
+        <form
+            method="post"
+            action="/admin/models/model"
+            data-model-target="form">
+            <input type="hidden" name="table_name" value="<%= table_name %>">
+            <input type="hidden" name="columns" data-model-target="columns">
+        </form>
+    </div>
+    <table>
+        <thead>
+            <tr>
+            <% for column in selected_columns %>
+                <th><%= column %></th>
+            <% end %>
+            </tr>
+        </thead>
+        <tbody>
+            <% for row in rows %>
+            <tr>
+                <% for column in selected_columns %>
+                    <td>
+                        <%= row[column] %>
+                    </td>
+                <% end %>
+            </tr>
+            <% end %>
+        </tbody>
+    </table>
+</div>

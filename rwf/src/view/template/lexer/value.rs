@@ -253,6 +253,12 @@ impl Value {
                         Value::List(list.clone().into_iter().rev().collect::<Vec<_>>())
                     }
 
+                    "contains" => match &args {
+                        &[needle] => Value::Boolean(list.contains(&needle)),
+
+                        _ => Value::Boolean(false),
+                    },
+
                     "empty" => Value::Boolean(list.is_empty()),
 
                     "len" => Value::Integer(list.len() as i64),

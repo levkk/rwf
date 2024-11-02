@@ -27,15 +27,39 @@ pub fn urldecode(s: &str) -> String {
 
                 loop {
                     match iter.peek() {
-                        Some(&c) if c.is_ascii_hexdigit() => {
-                            num.push(iter.next().unwrap());
+                        Some(&c)
+                            if (c.is_numeric() || ['A', 'B', 'C', 'D', 'E', 'F'].contains(&c)) =>
+                        {
+                            let _ = iter.next().unwrap();
+                            num.push(c);
                         }
 
                         _ => {
-                            if let Ok(byte) = u8::from_str_radix(&num, 16) {
-                                result.push(byte as char);
-                            }
+                            let replacement = match num.as_str() {
+                                "3A" => ":",
+                                "2F" => "/",
+                                "3F" => "?",
+                                "23" => "#",
+                                "5B" => "[",
+                                "5D" => "]",
+                                "40" => "@",
+                                "21" => "!",
+                                "24" => "$",
+                                "26" => "&",
+                                "27" => "\'",
+                                "28" => "(",
+                                "29" => ")",
+                                "2A" => "*",
+                                "2B" => "+",
+                                "2C" => ",",
+                                "3B" => ";",
+                                "3D" => "=",
+                                "25" => "%",
+                                "20" => " ",
+                                _ => &num,
+                            };
 
+                            result.push_str(replacement);
                             break;
                         }
                     }
@@ -101,5 +125,9 @@ mod test {
         let url = "?foo=bar&hello=world%20&apples%3Doranges";
         let decoded = urldecode(url);
         assert_eq!(decoded, "?foo=bar&hello=world &apples=oranges");
+
+        let url = "id%2Cpath%2Cmethod%2Cclient_ip";
+        let decoded = urldecode(url);
+        assert_eq!(decoded, "id,path,method,client_ip")
     }
 }
