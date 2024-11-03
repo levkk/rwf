@@ -11,7 +11,8 @@
             href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap"
         />
 
-        <link rel="stylesheet" href="/static/css/mdb.min.css" />
+        <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+        <!-- <link rel="stylesheet" href="/static/css/mdb.min.css" /> -->
 
         <script type="module" src="/static/js/mdb.umd.min.js"></script>
 
@@ -20,16 +21,14 @@
             const application = Application.start();
             import Requests from "/static/js/requests_controller.js";
             import Model from "/static/js/model_controller.js";
+            import Reload from "/static/js/reload_controller.js";
+
             application.register("requests", Requests);
             application.register("model", Model);
+            application.register("reload", Reload);
         </script>
 
-        <link
-            href="https://fonts.googleapis.com/icon?family=Material+Icons"
-            rel="stylesheet"
-        />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     </head>
     <body data-bs-theme="dark">
         <%- rwf_turbo_stream("/turbo-stream") %>
-    </body>
-</html>

@@ -1,7 +1,9 @@
 <%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
 <div class="container" data-controller="model">
-    <h1><%= table_name.camelize %></h1>
+    <% for name in [table_name.camelize] %> <%% "templates/rwf_admin/reload.html" %> <% end
+    %>
     <%% "templates/rwf_admin/records.html" %>
+
     <div class="my-5">
         <h5>Create model</h5>
         <form action="/admin/models" method="post">

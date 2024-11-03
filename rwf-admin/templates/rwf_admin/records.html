@@ -1,26 +1,18 @@
 <div id="records">
-    <h3>Records</h3>
-    <div class="row">
-        <div class="col s6"></div>
-        <div class="input-field col s6">
-            <select multiple data-action="change->model#selectColumn">
-                <% for column in columns %> <% if
-                selected_columns.contains(column) %>
-                <option value="<%= column %>" selected><%= column %></option>
-                <% else %>
-                <option value="<%= column %>"><%= column %></option>
-                <% end %> <% end %>
+    <div class="d-flex justify-content-end mb-4">
+        <div class="form-group">
+            <label class="form-label">Select columns</label>
+            <select multiple data-action="change->model#selectColumn" class="form-select">
+                <% for column in columns %>
+                    <% if selected_columns.contains(column) %>
+                        <option value="<%= column %>" selected><%= column %></option>
+                    <% else %>
+                        <option value="<%= column %>"><%= column %></option>
+                    <% end %>
+                <% end %>
             </select>
-            <label>Select columns</label>
+            <div class="form-text">Hold Cmd/Ctrl to select multiple fields.</div>
         </div>
-        <form
-            method="post"
-            action="/admin/models/model"
-            data-model-target="form"
-        >
-            <input type="hidden" name="table_name" value="<%= table_name %>" />
-            <input type="hidden" name="columns" data-model-target="columns" />
-        </form>
     </div>
     <table class="table">
         <thead>

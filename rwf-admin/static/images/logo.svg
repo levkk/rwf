@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="#000000"/>
+  
+  <!-- Web elements - stylized brackets -->
+  <path d="M40 80 L70 100 L40 120" stroke="#FF4500" stroke-width="8" fill="none"/>
+  <path d="M160 80 L130 100 L160 120" stroke="#FF4500" stroke-width="8" fill="none"/>
+  
+  <!-- Framework foundation - base platform -->
+  <rect x="45" y="130" width="110" height="12" fill="#FF4500" rx="6"/>
+  
+  <!-- Ferris the Crab - Centered -->
+  <g transform="translate(32.5, 15) scale(0.7)">
+    <!-- Body -->
+    <path d="M100 40 
+             C120 40, 140 50, 140 70
+             C140 90, 120 100, 100 100
+             C80 100, 60 90, 60 70
+             C60 50, 80 40, 100 40" 
+          fill="#FF4500"/>
+    
+    <!-- Eyes -->
+    <circle cx="80" cy="60" r="8" fill="white"/>
+    <circle cx="120" cy="60" r="8" fill="white"/>
+    <circle cx="80" cy="60" r="4" fill="black"/>
+    <circle cx="120" cy="60" r="4" fill="black"/>
+    
+    <!-- Claws -->
+    <path d="M65 75 C55 85, 45 80, 40 70" stroke="#FF4500" stroke-width="6" fill="none"/>
+    <path d="M135 75 C145 85, 155 80, 160 70" stroke="#FF4500" stroke-width="6" fill="none"/>
+  </g>
+</svg>
