@@ -97,6 +97,9 @@ Comparing a float and an integer:
 | `blank` | Alias for `empty`. |
 | `is_empty` | Alias for `empty`. |
 | `len` | Return lenght of the string. |
+| `urldecode` | Convert percent-encoding to ASCII. |
+| `urlencode` | Opposite of `urldecode`. |
+| `capitalize` | Make the first letter of the string uppercase. |
 
 ### Examples
 
