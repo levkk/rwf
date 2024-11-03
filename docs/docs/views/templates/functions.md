@@ -11,6 +11,18 @@ Templates provide a number of functions that manipulate variables. Each variable
     LOWERCASE
     ```
 
+## Any value functions
+
+Functions that can be called on any value, irrespective of type.
+
+| Function | Description |
+|----------|-------------|
+| `null` | Return true if the value is null, false otherwise. |
+| `nil` | Alias for `null` |
+| `numeric` | True if the value is a number, e.g. integer or float. |
+| `integer` | True if the value is an integer. |
+| `float` | True if the value is a float. |
+
 ## Integer functions
 
 | Function | Description |
@@ -96,7 +108,7 @@ Comparing a float and an integer:
 | `empty` | True if string is empty. |
 | `blank` | Alias for `empty`. |
 | `is_empty` | Alias for `empty`. |
-| `len` | Return lenght of the string. |
+| `len` | Return length of the string. |
 | `urldecode` | Convert percent-encoding to ASCII. |
 | `urlencode` | Opposite of `urldecode`. |
 | `capitalize` | Make the first letter of the string uppercase. |
