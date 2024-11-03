@@ -3,28 +3,33 @@
     <head>
         <meta charset="utf-8" />
         <title><% if title %><%= title %><% end %></title>
-	<meta name="turbo-cache-control" content="no-cache">
+        <meta name="turbo-cache-control" content="no-cache" />
         <%- rwf_head() %>
 
-        <!-- <script async src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
         <link
             rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap"
         />
-        <script
-            src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"
-        ></script>
+
+        <link rel="stylesheet" href="/static/css/mdb.min.css" />
+
+        <script type="module" src="/static/js/mdb.umd.min.js"></script>
 
         <script type="module" async>
-          import { Application } from 'hotwired/stimulus'
-          const application = Application.start();
-          import Requests from '/static/js/requests_controller.js'
-          import Model from '/static/js/model_controller.js'
-          application.register('requests', Requests)
-          application.register('model', Model)
+            import { Application } from "hotwired/stimulus";
+            const application = Application.start();
+            import Requests from "/static/js/requests_controller.js";
+            import Model from "/static/js/model_controller.js";
+            application.register("requests", Requests);
+            application.register("model", Model);
         </script>
 
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/icon?family=Material+Icons"
+            rel="stylesheet"
+        />
     </head>
-    <body class="">
+    <body data-bs-theme="dark">
         <%- rwf_turbo_stream("/turbo-stream") %>
+    </body>
+</html>

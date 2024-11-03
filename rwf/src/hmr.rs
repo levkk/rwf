@@ -12,14 +12,19 @@ use crate::{comms::Comms, view::TurboStream};
 
 #[cfg(debug_assertions)]
 pub fn hmr(path: PathBuf) {
+    use notify::event::ModifyKind;
+    use tracing::info;
+
     tokio::task::spawn(async move {
         let mut watcher = notify::recommended_watcher(|res: Result<Event>| match res {
             Ok(event) => {
                 match event.kind {
-                    EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
+                    EventKind::Access(AccessKind::Close(AccessMode::Write))
+                    | EventKind::Modify(ModifyKind::Data(_)) => {
                         let everyone = Comms::notify();
                         let reload = TurboStream::new("").action("reload-page").render();
                         let _ = everyone.send(Message::Text(reload));
+                        info!("HMR trigger");
                     }
                     _ => {}
                 };
@@ -28,6 +33,8 @@ pub fn hmr(path: PathBuf) {
         })?;
 
         watcher.watch(&path, RecursiveMode::Recursive)?;
+
+        info!("Hot reload started");
 
         sleep(Duration::MAX).await;
 

@@ -1,13 +1,6 @@
-<div
-    style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 2rem 0;
-    "
->
-    <h1 style="margin: 0"><%= name.capitalize %></h1>
-    <div style="display: flex; justify-content: between; align-items: center; gap: 0.5rem;">
-        <a class="waves-effect waves-light btn" href="/admin/<%= name %>">Reload</a>
+<div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+    <h1 style="m-0"><%= name.capitalize %></h1>
+    <div class="d-flex justify-content-between align-items-center gap-1">
+        <a class="btn btn-primary" href="/admin/<%= name %>">Reload</a>
     </div>
 </div>

@@ -1,29 +1,37 @@
-<%% "templates/rwf_admin/head.html" %>
-<%% "templates/rwf_admin/nav.html" %>
+<%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
 <div class="container" data-controller="model">
     <h1><%= table_name.camelize %></h1>
-    <div>
+    <%% "templates/rwf_admin/records.html" %>
+    <div class="my-5">
         <h5>Create model</h5>
         <form action="/admin/models" method="post">
-            <input type="hidden" name="rwf_table_name" value="<%- table_name %>">
-            <div class="row">
+            <input
+                type="hidden"
+                name="rwf_table_name"
+                value="<%- table_name %>"
+            />
+            <div class="row gx-4 gy-2">
                 <% for column in create_columns %>
-                <div class="input-field col s6">
+                <div class="col-sm-6">
+                    <label
+                        class="form-label"
+                        for="<%- column.table_name%>-<%- column.column_name %>"
+                        ><%= column.column_name %></label
+                    >
+
                     <input
                         id="<%- column.table_name%>-<%- column.column_name %>"
                         type="text"
-                        class="validate"
+                        class="form-control"
                         value="<%= column.column_default.trim %>"
-                    >
-                    <label for="<%- column.table_name%>-<%- column.column_name %>"><%= column.column_name %></label>
+                    />
                 </div>
                 <% end %>
             </div>
-            <div class="right-align">
-                <button type="submit" class="waves-effect waves-light btn">Create</button>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">Create</button>
             </div>
         </form>
     </div>
-    <%% "templates/rwf_admin/records.html" %>
 </div>
 <%% "templates/rwf_admin/footer.html" %>
