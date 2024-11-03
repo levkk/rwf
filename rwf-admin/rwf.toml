@@ -1,5 +1,6 @@
 [general]
 track_requests = true
+log_queries = true
 
 [database]
 name = "rwf_admin"

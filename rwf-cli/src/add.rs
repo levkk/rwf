@@ -2,12 +2,12 @@ use rwf::macros::context;
 use rwf::view::Template;
 use rwf::Error;
 use std::path::Path;
-use tokio::fs::{read_dir, DirEntry, File};
+use tokio::fs::{read_dir, File};
 use tokio::io::AsyncWriteExt;
 
-use crate::logging::{created, error};
+use crate::logging::{created, error, written};
 
-async fn modules(path: &Path) -> Result<(), Error> {
+pub async fn modules(path: &Path) -> Result<(), Error> {
     if !path.is_dir() {
         error(format!("\"{}\" is not a directory", path.display()));
         return Ok(());
@@ -16,17 +16,30 @@ async fn modules(path: &Path) -> Result<(), Error> {
     let mut modules = vec![];
     let mut entries = read_dir(path).await?;
     while let Ok(Some(entry)) = entries.next_entry().await {
-        let name = entry.file_name().into_string().unwrap();
-        modules.push(name);
+        let name = entry
+            .path()
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        if name != "mod" {
+            modules.push(name);
+        }
     }
+
+    modules.sort();
 
     let tpl = Template::from_str(include_str!("templates/mod.rs.tpl"))?;
     let rendered = tpl.render(&context!("modules" => modules))?;
 
-    let mut file = File::create(path.join("mod.rs")).await?;
-    file.write_all(rendered.as_bytes()).await?;
+    let path = path.join("mod.rs");
 
-    created(path.display().to_string());
+    let mut file = File::create(&path).await?;
+    file.write_all(rendered.trim().as_bytes()).await?;
+
+    written(path.display().to_string());
     Ok(())
 }
 

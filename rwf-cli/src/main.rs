@@ -7,6 +7,7 @@ use std::path::Path;
 mod add;
 mod logging;
 mod migrate;
+mod remove;
 mod setup;
 mod util;
 
@@ -26,6 +27,9 @@ enum Subcommands {
 
     /// Add a controller/view/model/all of the above
     Add(AddSubcommand),
+
+    /// Remove a controller/view/model/all of the above
+    Remove(RemoveSubcommand),
 }
 
 #[derive(Args, Debug)]
@@ -76,6 +80,12 @@ struct AddSubcommand {
     overwrite: bool,
 }
 
+#[derive(Args, Debug)]
+struct RemoveSubcommand {
+    #[command(subcommand)]
+    command: Remove,
+}
+
 #[derive(Subcommand, Debug)]
 enum Add {
     /// Create new controller.
@@ -85,6 +95,15 @@ enum Add {
 
         #[arg(long, short, help = "Create a page controller")]
         page: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum Remove {
+    // Create new controller.
+    Controller {
+        #[arg(long, short, help = "Create new controller")]
+        name: String,
     },
 }
 
@@ -127,6 +146,12 @@ async fn main() {
         Subcommands::Add(add) => match add.command {
             Add::Controller { name, page } => {
                 add::controller(&name, page, add.overwrite).await;
+            }
+        },
+
+        Subcommands::Remove(remove) => match remove.command {
+            Remove::Controller { name } => {
+                remove::controller(&name).await.unwrap();
             }
         },
     }

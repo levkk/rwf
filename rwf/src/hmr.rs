@@ -24,7 +24,7 @@ pub fn hmr(path: PathBuf) {
                         let everyone = Comms::notify();
                         let reload = TurboStream::new("").action("reload-page").render();
                         let _ = everyone.send(Message::Text(reload));
-                        info!("HMR trigger");
+                        info!("Starting hot reload");
                     }
                     _ => {}
                 };
@@ -34,7 +34,7 @@ pub fn hmr(path: PathBuf) {
 
         watcher.watch(&path, RecursiveMode::Recursive)?;
 
-        info!("Hot reload started");
+        info!("Hot reload enabled");
 
         sleep(Duration::MAX).await;
 

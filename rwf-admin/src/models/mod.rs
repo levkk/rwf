@@ -6,6 +6,9 @@ pub struct TableColumn {
     pub column_name: String,
     pub data_type: String,
     pub column_default: String,
+    pub is_nullable: bool,
+    pub is_required: bool,
+    pub placeholder: String,
 }
 
 impl TableColumn {
@@ -17,7 +20,10 @@ impl TableColumn {
                 table_name::text,
                 column_name::text,
                 data_type::text,
-                COALESCE(column_default::text, '')::text AS column_default
+                COALESCE(column_default::text, '')::text AS column_default,
+                is_nullable::boolean AS is_nullable,
+                (is_nullable::boolean = false AND COALESCE(column_default::text, '') = '')::boolean AS is_required,
+                '' AS placeholder
             FROM information_schema.columns
             INNER JOIN pg_class ON table_name = relname
             INNER JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
@@ -30,14 +36,15 @@ impl TableColumn {
             })
             .await?
             .into_iter()
-            .map(|c| c.transform_default())
+            .map(|c| c.transform())
             .collect())
     }
 
-    pub fn transform_default(mut self) -> Self {
+    fn transform(mut self) -> Self {
+        let format =
+            time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+
         if self.column_default == "now()" {
-            let format =
-                time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
             self.column_default = OffsetDateTime::now_utc().format(format).unwrap();
         } else if self.column_default == "gen_random_uuid()" {
             self.column_default = Uuid::new_v4().to_string();
@@ -48,6 +55,18 @@ impl TableColumn {
                 .replace("'", "");
         } else if self.column_default.ends_with("::jsonb") {
             self.column_default = self.column_default.replace("::jsonb", "").replace("'", "");
+        }
+
+        match self.data_type.as_str() {
+            "timestamp with time zone" => {
+                self.placeholder = OffsetDateTime::now_utc().format(format).unwrap();
+            }
+
+            "uuid" => {
+                self.placeholder = Uuid::new_v4().to_string();
+            }
+
+            _ => (),
         }
 
         self

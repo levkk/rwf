@@ -28,14 +28,17 @@ pub fn urldecode(s: &str) -> String {
                 loop {
                     match iter.peek() {
                         Some(&c)
-                            if (c.is_numeric() || ['A', 'B', 'C', 'D', 'E', 'F'].contains(&c)) =>
+                            if ((c.is_numeric()
+                                || ['A', 'B', 'C', 'D', 'E', 'F']
+                                    .contains(&c.to_ascii_uppercase()))
+                                && num.len() < 2) =>
                         {
                             let _ = iter.next().unwrap();
                             num.push(c);
                         }
 
                         _ => {
-                            let replacement = match num.as_str() {
+                            let replacement = match num.to_ascii_uppercase().as_str() {
                                 "3A" => ":",
                                 "2F" => "/",
                                 "3F" => "?",
@@ -56,7 +59,12 @@ pub fn urldecode(s: &str) -> String {
                                 "3D" => "=",
                                 "25" => "%",
                                 "20" => " ",
-                                _ => &num,
+                                "7B" => "{",
+                                "7D" => "}",
+                                _ => {
+                                    println!("num: {}", num);
+                                    &num
+                                }
                             };
 
                             result.push_str(replacement);

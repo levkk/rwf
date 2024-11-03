@@ -5,7 +5,7 @@ pub struct <%= name %>;
 
 #[async_trait]
 impl Controller for <%= name %> {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         Ok(Response::not_implemented())
     }
 }

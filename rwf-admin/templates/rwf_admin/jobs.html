@@ -60,8 +60,17 @@
                     </td>
                     <td><%= job.created_at %></td>
                     <td>
-                        <% if job.completed_at %> Completed <% elsif
-                        job.started_at %> Running <% else %> Queued <% end %>
+                        <% if job.completed_at %>
+                            <% if job.error %>
+                                <code><small><%= job.error %></small></code>
+                            <% else %>
+                                Completed
+                            <% end %>
+                        <% elsif job.started_at %>
+                        Running
+                        <% else %>
+                        Queued
+                        <% end %>
                     </td>
                 </tr>
                 <% end %>

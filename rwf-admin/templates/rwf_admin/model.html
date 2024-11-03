@@ -2,38 +2,35 @@
 <div class="container" data-controller="model">
     <% for name in [table_name.camelize] %> <%% "templates/rwf_admin/reload.html" %> <% end
     %>
-    <%% "templates/rwf_admin/records.html" %>
-
-    <div class="my-5">
-        <h5>Create model</h5>
-        <form action="/admin/models" method="post">
-            <input
-                type="hidden"
-                name="rwf_table_name"
-                value="<%- table_name %>"
-            />
-            <div class="row gx-4 gy-2">
-                <% for column in create_columns %>
-                <div class="col-sm-6">
-                    <label
-                        class="form-label"
-                        for="<%- column.table_name%>-<%- column.column_name %>"
-                        ><%= column.column_name %></label
-                    >
-
-                    <input
-                        id="<%- column.table_name%>-<%- column.column_name %>"
-                        type="text"
-                        class="form-control"
-                        value="<%= column.column_default.trim %>"
-                    />
-                </div>
-                <% end %>
-            </div>
-            <div class="d-flex justify-content-end mt-3">
-                <button type="submit" class="btn btn-primary">Create</button>
-            </div>
-        </form>
+    <div class="mb-5">
+        <%% "templates/rwf_admin/model_pages.html" %>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <% for column in selected_columns %>
+                        <th><%= column %></th>
+                        <% end %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for row in rows %>
+                    <tr>
+                        <% for column in selected_columns %>
+                        <% if row[column] %>
+                            <td><%= row[column] %></td>
+                        <% else %>
+                            <td><code>null</code></td>
+                        <% end %>
+                        <% end %>
+                    </tr>
+                    <% end %>
+                </tbody>
+            </table>
+        </div>
+        <% if rows.len > 15 %>
+        <%% "templates/rwf_admin/model_pages.html" %>
+        <% end %>
     </div>
 </div>
 <%% "templates/rwf_admin/footer.html" %>

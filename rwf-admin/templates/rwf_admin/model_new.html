@@ -1,0 +1,57 @@
+<%% "templates/rwf_admin/head.html" %>
+<%% "templates/rwf_admin/nav.html" %>
+<div class="container">
+    <div
+        class="d-flex justify-content-between align-items-center mt-5 mb-3"
+        data-controller="reload"
+    >
+        <h1 class="d-flex align-items-center gap-2">
+            <span class="material-symbols-outlined fs-1">
+                database
+            </span>
+            New record
+        </h1>
+    </div>
+
+    <div class="my-5">
+        <form action="/admin/models/new" method="post">
+            <input
+                type="hidden"
+                name="rwf_table_name"
+                value="<%= table_name %>"
+            />
+            <div class="row gx-4">
+                <% for column in columns %>
+                <div class="col-sm-12 col-lg-5 mb-3 mx-2 form-group">
+                    <label
+                        class="form-label fw-semibold"
+                        for="<%- column.table_name %>-<%- column.column_name %>"
+                        >
+                            <%= column.column_name %><% if column.is_required %>
+                            <strong class="text-danger"><sup>*</sup></strong>
+                            <% end %>
+                        </label
+                    >
+                    <input
+                        id="<%- column.table_name %>-<%- column.column_name %>"
+                        type="text"
+                        class="form-control"
+                        value="<%= column.column_default.trim %>"
+                        name="<%= column.column_name %>"
+                        placeholder="<%= column.placeholder %>"
+                        <% if column.is_required %>
+                        required
+                        <% end %>
+                    />
+                    <div class="form-text text-end"><%= column.data_type %></div>
+                </div>
+                <% end %>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<%% "templates/rwf_admin/footer.html" %>

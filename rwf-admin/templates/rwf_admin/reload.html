@@ -5,7 +5,7 @@
     <h1 class="d-flex align-items-center gap-2">
         <span class="material-symbols-outlined fs-1">
             <% if name == "jobs" %>
-            work_history            
+            work_history
             <% elsif name == "requests"  %>
             equalizer
             <% else %>
@@ -25,7 +25,7 @@
             Refresh
         </button>
         <% if name != "models" && name != "requests" && name != "jobs" %>
-        <a href="/admin/models/new" class="btn btn-success d-flex align-items-center gap-2">
+        <a href="/admin/models/new?name=<%= name.underscore %>" class="btn btn-success d-flex align-items-center gap-2">
             <span class="material-symbols-outlined">
                 add
             </span>

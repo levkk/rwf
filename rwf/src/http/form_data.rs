@@ -1,6 +1,8 @@
 use super::{Error, Query, Request};
 use std::str::FromStr;
 
+use std::collections::hash_map::IntoIter;
+
 #[derive(Clone)]
 pub enum FormData {
     UrlEncoded(Query),
@@ -28,6 +30,13 @@ impl FormData {
     pub fn get<T: FromStr>(&self, name: &str) -> Option<T> {
         match self {
             FormData::UrlEncoded(query) => query.get::<T>(name),
+        }
+    }
+
+    /// An owning iterator over the form data.
+    pub fn into_iter(self) -> IntoIter<String, String> {
+        match self {
+            FormData::UrlEncoded(query) => query.into_iter(),
         }
     }
 

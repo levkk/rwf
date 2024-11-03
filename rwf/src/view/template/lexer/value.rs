@@ -177,11 +177,37 @@ impl Value {
         args: &[Value],
         context: &Context,
     ) -> Result<Self, Error> {
+        match method_name {
+            "nil" | "null" => return Ok(Value::Boolean(self == &Value::Null)),
+            "integer" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Integer(_) => true,
+                    _ => false,
+                }))
+            }
+            "float" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Float(_) => true,
+                    _ => false,
+                }))
+            }
+            "numeric" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Integer(_) => true,
+                    Value::Float(_) => true,
+                    _ => false,
+                }))
+            }
+            _ => (),
+        };
+
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_f" | "to_float" => Value::Float(*value as f64),
+                "clamp_zero" => Value::Integer(std::cmp::max(0, *value)),
+                "clamp_one" => Value::Integer(std::cmp::max(1, *value)),
                 "times" => {
                     let mut list = vec![];
                     for i in 0..*value {
@@ -211,6 +237,8 @@ impl Value {
                 "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
                 "urlencode" => Value::String(crate::http::urlencode(&value)),
                 "urldecode" => Value::String(crate::http::urldecode(&value)),
+                "len" => Value::Integer(value.len() as i64),
+                "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
                 _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
@@ -251,7 +279,7 @@ impl Value {
                         _ => Value::Boolean(false),
                     },
 
-                    "empty" => Value::Boolean(list.is_empty()),
+                    "empty" | "blank" | "is_empty" => Value::Boolean(list.is_empty()),
 
                     "len" => Value::Integer(list.len() as i64),
 
@@ -270,6 +298,7 @@ impl Value {
                         .map(|(k, v)| Value::List(vec![Value::String(k), v]))
                         .collect::<Vec<_>>(),
                 ),
+                "empty" | "blank" | "is_empty" => Value::Boolean(hash.is_empty()),
                 key => match hash.get(key) {
                     Some(value) => value.clone(),
                     None => Value::Null,
@@ -315,7 +344,7 @@ impl Value {
                 _ => return Err(Error::UnknownMethod(method_name.into(), "global")),
             },
 
-            _ => return Err(Error::UnknownMethod(method_name.into(), "other")),
+            v => return Err(Error::UnknownMethod(method_name.into(), v.type_name())),
         })
     }
 
@@ -348,6 +377,19 @@ impl Value {
             Value::Float(f) => f.to_string(),
             Value::Boolean(b) => b.to_string(),
             value => format!("{:?}", value),
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            &Value::Null => "null",
+            &Value::Integer(_) => "integer",
+            &Value::Float(_) => "float",
+            &Value::Boolean(_) => "boolean",
+            &Value::Hash(_) => "hash",
+            &Value::Interpreter => "global",
+            &Value::List(_) => "list",
+            &Value::String(_) => "string",
         }
     }
 }

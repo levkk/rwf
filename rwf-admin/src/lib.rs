@@ -4,17 +4,16 @@ use rwf::prelude::*;
 mod controllers;
 use controllers::*;
 
-use controllers::models::{ModelController, ModelsController};
-
 mod models;
 mod views;
 
 pub fn engine() -> Engine {
     Engine::new(vec![
-        route!("/" => Index),
-        route!("/jobs" => Jobs),
-        route!("/requests" => Requests),
-        route!("/models" => ModelsController),
-        route!("/models/model" => ModelController),
+        route!("/" => index::Index),
+        route!("/jobs" => jobs::Jobs),
+        route!("/requests" => requests::Requests),
+        route!("/models" => controllers::models::ModelsController),
+        route!("/models/model" => controllers::models::ModelController),
+        route!("/models/new" => controllers::models::NewModelController),
     ])
 }

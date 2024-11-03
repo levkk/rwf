@@ -1,8 +1,6 @@
 use rwf::job::JobModel;
 use rwf::prelude::*;
 
-use crate::models::*;
-
 #[derive(Default)]
 pub struct Jobs;
 
@@ -23,6 +21,8 @@ impl JobsContext {
         let running = JobModel::running().count(&mut conn).await?;
 
         let jobs = JobModel::all()
+            .order("completed_at DESC NULLS FIRST")
+            .order("started_at DESC NULLS LAST")
             .order(("id", "DESC"))
             .limit(25)
             .fetch_all(&mut conn)
@@ -55,21 +55,5 @@ impl Controller for Jobs {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let template = Template::load("templates/rwf_admin/jobs.html")?;
         Ok(Response::new().html(template.render(JobsContext::load().await?)?))
-    }
-}
-
-#[derive(Default)]
-pub struct Requests;
-
-#[async_trait]
-impl Controller for Requests {
-    async fn handle(&self, _request: &Request) -> Result<Response, Error> {
-        let requests = {
-            let mut conn = Pool::connection().await?;
-            RequestByCode::count(60).fetch_all(&mut conn).await?
-        };
-        let requests = serde_json::to_string(&requests)?;
-
-        render!("templates/rwf_admin/requests.html", "requests" => requests)
     }
 }

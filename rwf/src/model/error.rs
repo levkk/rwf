@@ -4,10 +4,10 @@ use super::Value;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("unknown error: {0}")]
+    #[error("{0}")]
     Unknown(String),
 
-    #[error("database error: {0:?}")]
+    #[error("{0:?}")]
     DatabaseError(tokio_postgres::Error),
 
     #[error("query error: {0}, query: {1}")]
@@ -34,10 +34,10 @@ pub enum Error {
     #[error("template syntax error: {0}")]
     SyntaxError(String),
 
-    #[error("migration error: {0}")]
+    #[error("migration error: \"{0}\"")]
     MigrationError(String),
 
-    #[error("io error: {0}")]
+    #[error("io error: \"{0}\"")]
     IoError(#[from] std::io::Error),
 
     #[error(
