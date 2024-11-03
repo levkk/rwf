@@ -1,6 +1,6 @@
 use super::{Error, FromRow, Model, Value};
 
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct Row {

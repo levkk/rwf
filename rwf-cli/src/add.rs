@@ -1,10 +1,34 @@
 use rwf::macros::context;
 use rwf::view::Template;
+use rwf::Error;
 use std::path::Path;
-use tokio::fs::File;
+use tokio::fs::{read_dir, DirEntry, File};
 use tokio::io::AsyncWriteExt;
 
 use crate::logging::{created, error};
+
+async fn modules(path: &Path) -> Result<(), Error> {
+    if !path.is_dir() {
+        error(format!("\"{}\" is not a directory", path.display()));
+        return Ok(());
+    }
+
+    let mut modules = vec![];
+    let mut entries = read_dir(path).await?;
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let name = entry.file_name().into_string().unwrap();
+        modules.push(name);
+    }
+
+    let tpl = Template::from_str(include_str!("templates/mod.rs.tpl"))?;
+    let rendered = tpl.render(&context!("modules" => modules))?;
+
+    let mut file = File::create(path.join("mod.rs")).await?;
+    file.write_all(rendered.as_bytes()).await?;
+
+    created(path.display().to_string());
+    Ok(())
+}
 
 pub async fn controller(name: &str, page: bool, overwrite: bool) {
     match controller_internal(name, page, overwrite).await {
@@ -25,7 +49,8 @@ async fn controller_internal(name: &str, page: bool, overwrite: bool) -> Result<
     };
     let rendered = tpl.render(&ctx)?;
 
-    let path = Path::new("src/controllers").join(format!("{}.rs", snake));
+    let mod_path = Path::new("src/controllers");
+    let path = mod_path.join(format!("{}.rs", snake));
 
     if path.exists() && !overwrite {
         error(format!(
@@ -39,5 +64,7 @@ async fn controller_internal(name: &str, page: bool, overwrite: bool) -> Result<
     file.write_all(rendered.as_bytes()).await?;
 
     created(path.display().to_string());
+
+    modules(&mod_path).await?;
     Ok(())
 }
