@@ -9,7 +9,7 @@ If you're building pages using Rwf's [dynamic templates](../templates/), you can
 ```html
 <html>
   <head>
-    <%- rwf_head %>
+    <%- rwf_head() %>
   </head>
   <!-- ... -->
 ```
