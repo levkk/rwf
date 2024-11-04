@@ -1,14 +1,19 @@
 <%% "templates/rwf_admin/head.html" %>
 <%% "templates/rwf_admin/nav.html" %>
+
 <div class="container" data-controller="requests">
     <% for name in ["requests"] %>
         <%% "templates/rwf_admin/reload.html" %>
     <% end %>
     <div>
         <canvas id="requests" data-requests-target="chart"></canvas>
-        <script type="application/json" data-requests-target="requestsOk">
+        <script type="application/json" data-requests-target="requests">
             <%= requests %>
+        </script>
+        <script type="application/json" data-requests-target="duration">
+            <%= duration %>
         </script>
     </div>
 </div>
+
 <%% "templates/rwf_admin/footer.html" %>

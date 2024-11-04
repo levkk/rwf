@@ -1,7 +1,10 @@
-<%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
+<%% "templates/rwf_admin/head.html" %>
+<%% "templates/rwf_admin/nav.html" %>
+
 <div class="container mb-5">
-    <% for name in ["jobs"] %> <%% "templates/rwf_admin/reload.html" %> <% end
-    %>
+    <% for name in ["jobs"] %>
+        <%% "templates/rwf_admin/reload.html" %>
+    <% end %>
     <div class="row">
         <div class="col-sm-2">
             <div class="card">
@@ -81,4 +84,5 @@
         <% end %>
     </div>
 </div>
+
 <%% "templates/rwf_admin/footer.html" %>

@@ -1281,7 +1281,8 @@ checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
 [[package]]
 name = "postgres-protocol"
 version = "0.6.7"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acda0ebdebc28befa84bee35e651e4c5f09073d668c7aed4cf7e23c3cda84b23"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -1298,7 +1299,8 @@ dependencies = [
 [[package]]
 name = "postgres-types"
 version = "0.2.8"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f66ea23a2d0e5734297357705193335e0a957696f34bed2f2faefacb2fec336f"
 dependencies = [
  "bytes",
  "fallible-iterator",
@@ -1628,7 +1630,7 @@ checksum = "0e819f2bc632f285be6d7cd36e25940d45b2391dd6d9b939e79de557f7014248"
 
 [[package]]
 name = "rwf"
-version = "0.1.3"
+version = "0.1.5"
 dependencies = [
  "aes",
  "aes-gcm-siv",
@@ -1643,7 +1645,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "regex",
- "rwf-macros",
+ "rwf-macros 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
  "sha1",
@@ -1660,7 +1662,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-admin"
-version = "0.1.0"
+version = "0.1.5"
 dependencies = [
  "once_cell",
  "rwf",
@@ -1673,7 +1675,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-cli"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "log",
@@ -1685,7 +1687,19 @@ dependencies = [
 
 [[package]]
 name = "rwf-macros"
-version = "0.1.4"
+version = "0.1.5"
+dependencies = [
+ "pluralizer",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "rwf-macros"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "250b073095aab2f99aff0cc793b85db8ddb5fcd9581a694a9c75dea28deaad9c"
 dependencies = [
  "pluralizer",
  "proc-macro2",
@@ -1700,7 +1714,7 @@ dependencies = [
  "console-subscriber",
  "parking_lot",
  "rwf",
- "rwf-macros",
+ "rwf-macros 0.1.5",
  "serde",
  "serde_json",
  "tokio",
@@ -2029,7 +2043,8 @@ dependencies = [
 [[package]]
 name = "tokio-postgres"
 version = "0.7.12"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b5d3742945bc7d7f210693b0c58ae542c6fd47b17adbbda0885f3dcb34a6bdb"
 dependencies = [
  "async-trait",
  "byteorder",

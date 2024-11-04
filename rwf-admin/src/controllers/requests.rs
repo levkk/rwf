@@ -1,4 +1,4 @@
-use crate::models::RequestByCode;
+use crate::models::{RequestByCode, RequestsDuration};
 use rwf::prelude::*;
 
 #[derive(Default)]
@@ -11,11 +11,19 @@ impl Controller for Requests {
             let mut conn = Pool::connection().await?;
             RequestByCode::count(60).fetch_all(&mut conn).await?
         };
+
+        let duration = {
+            let mut conn = Pool::connection().await?;
+            RequestsDuration::count(60).fetch_all(&mut conn).await?
+        };
+
         let requests = serde_json::to_string(&requests)?;
+        let duration = serde_json::to_string(&duration)?;
 
         render!("templates/rwf_admin/requests.html",
             "title" => "Requests | Rust Web Framework",
-            "requests" => requests
+            "requests" => requests,
+            "duration" => duration,
         )
     }
 }
