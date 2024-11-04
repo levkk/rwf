@@ -11,6 +11,7 @@ struct JobsContext {
     errors: i64,
     latency: i64,
     jobs: Vec<JobModel>,
+    title: String,
 }
 
 impl JobsContext {
@@ -46,6 +47,7 @@ impl JobsContext {
             running,
             jobs,
             latency,
+            title: format!("Jobs | Rust Web Framework"),
         })
     }
 }

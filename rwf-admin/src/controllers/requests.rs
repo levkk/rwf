@@ -13,6 +13,9 @@ impl Controller for Requests {
         };
         let requests = serde_json::to_string(&requests)?;
 
-        render!("templates/rwf_admin/requests.html", "requests" => requests)
+        render!("templates/rwf_admin/requests.html",
+            "title" => "Requests | Rust Web Framework",
+            "requests" => requests
+        )
     }
 }

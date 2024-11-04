@@ -10,7 +10,10 @@ pub struct ModelsController;
 impl Controller for ModelsController {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let tables = Table::load().await?;
-        render!("templates/rwf_admin/models.html", "models" => tables)
+        render!("templates/rwf_admin/models.html",
+            "title" => "Models | Rust Web Framework",
+            "models" => tables
+        )
     }
 }
 
@@ -83,6 +86,7 @@ impl PageController for ModelController {
                 }
 
                 render!("templates/rwf_admin/model.html",
+                    "title" => format!("{} | Rust Web Framework", model),
                     "table_name" => model,
                     "columns" => columns,
                     "rows" => data,
@@ -111,6 +115,7 @@ impl PageController for NewModelController {
             .collect::<Vec<_>>();
 
         render!("templates/rwf_admin/model_new.html",
+            "title" => format!("New record | {} | Rust Web Framework", model),
             "table_name" => model,
             "columns" => columns,
         )
