@@ -13,7 +13,7 @@ default = []
 
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
-tokio-postgres = { git = "https://github.com/levkk/rust-postgres.git", commit = "96605cd", features = [
+tokio-postgres = { version = "0.7", features = [
     "with-time-0_3",
     "with-serde_json-1",
     "with-uuid-1",

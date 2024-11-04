@@ -1,3 +1,5 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
 use thiserror::Error;
 
 use super::Value;
@@ -52,13 +54,20 @@ impl Error {
     }
 }
 
+static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#""(.*)""#).unwrap());
+
 impl From<tokio_postgres::Error> for Error {
     fn from(error: tokio_postgres::Error) -> Error {
-        use tokio_postgres::error::Kind;
+        // This is not great.
+        // Waiting for: https://github.com/sfackler/rust-postgres/pull/1185
+        let dbg = format!("{:?}", error);
 
-        match error.kind() {
-            &Kind::Column(ref name) => Error::Column(name.clone()),
-            _ => Error::DatabaseError(error),
+        if dbg.starts_with("Error { kind: Column(") {
+            let column = RE.captures(&dbg).unwrap();
+            let name = column.get(1).unwrap(); // Get the text in between double quotes.
+            Error::Column(name.as_str().to_string())
+        } else {
+            Error::DatabaseError(error)
         }
     }
 }
