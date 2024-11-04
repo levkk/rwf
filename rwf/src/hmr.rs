@@ -10,21 +10,32 @@ use tokio::time::sleep;
 use crate::http::websocket::Message;
 use crate::{comms::Comms, view::TurboStream};
 
+use parking_lot::Mutex;
+use std::sync::Arc;
+use std::time::Instant;
+
 #[cfg(debug_assertions)]
 pub fn hmr(path: PathBuf) {
     use notify::event::ModifyKind;
     use tracing::info;
 
+    let last_reload = Arc::new(Mutex::new(Instant::now()));
+
     tokio::task::spawn(async move {
-        let mut watcher = notify::recommended_watcher(|res: Result<Event>| match res {
+        let mut watcher = notify::recommended_watcher(move |res: Result<Event>| match res {
             Ok(event) => {
                 match event.kind {
                     EventKind::Access(AccessKind::Close(AccessMode::Write))
                     | EventKind::Modify(ModifyKind::Data(_)) => {
-                        let everyone = Comms::notify();
-                        let reload = TurboStream::new("").action("reload-page").render();
-                        let _ = everyone.send(Message::Text(reload));
-                        info!("Starting hot reload");
+                        let since_last_reload = last_reload.lock().elapsed();
+                        *last_reload.lock() = Instant::now();
+
+                        if since_last_reload > Duration::from_millis(250) {
+                            let everyone = Comms::notify();
+                            let reload = TurboStream::new("").action("reload-page").render();
+                            let _ = everyone.send(Message::Text(reload));
+                            info!("Starting hot reload");
+                        }
                     }
                     _ => {}
                 };

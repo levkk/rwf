@@ -176,3 +176,30 @@ impl RequestByCode {
         )
     }
 }
+
+#[derive(Clone, macros::Model, Serialize)]
+pub struct RequestsDuration {
+    pub duration: f64,
+    #[serde(with = "time::serde::rfc2822")]
+    pub created_at: OffsetDateTime,
+}
+
+impl RequestsDuration {
+    pub fn count(minutes: i64) -> Scope<Self> {
+        Self::find_by_sql(
+            "WITH timestamps AS (
+                SELECT date_trunc('minute', now() - (n || ' minute')::interval) AS created_at FROM generate_series(0, $1::bigint) n
+            )
+            SELECT
+                COALESCE(e2.avg, 0.0) AS duration,
+                timestamps.created_at AS created_at
+            FROM timestamps
+            LEFT JOIN LATERAL (
+                SELECT avg(duration) AS avg
+                FROM rwf_requests
+                WHERE created_at BETWEEN timestamps.created_at AND timestamps.created_at + INTERVAL '1 minute'
+            ) e2 ON true
+            ORDER BY 2", &[minutes.to_value()],
+        )
+    }
+}

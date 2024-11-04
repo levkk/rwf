@@ -1281,7 +1281,7 @@ checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
 [[package]]
 name = "postgres-protocol"
 version = "0.6.7"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "git+https://github.com/levkk/rust-postgres.git#96605cd0ab3a94c1a0174b32ad370f5a99bbfd51"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -1298,7 +1298,7 @@ dependencies = [
 [[package]]
 name = "postgres-types"
 version = "0.2.8"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "git+https://github.com/levkk/rust-postgres.git#96605cd0ab3a94c1a0174b32ad370f5a99bbfd51"
 dependencies = [
  "bytes",
  "fallible-iterator",
@@ -2029,7 +2029,7 @@ dependencies = [
 [[package]]
 name = "tokio-postgres"
 version = "0.7.12"
-source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
+source = "git+https://github.com/levkk/rust-postgres.git#96605cd0ab3a94c1a0174b32ad370f5a99bbfd51"
 dependencies = [
  "async-trait",
  "byteorder",

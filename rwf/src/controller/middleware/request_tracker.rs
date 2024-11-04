@@ -32,7 +32,7 @@ impl Middleware for RequestTracker {
         let query = request.path().query().to_json();
         let code = response.status().code() as i32;
         let duration =
-            ((request.received_at() - OffsetDateTime::now_utc()).as_seconds_f64() * 1000.0) as f32;
+            ((OffsetDateTime::now_utc() - request.received_at()).as_seconds_f64() * 1000.0) as f32;
         let client = request.peer().ip();
 
         let client_id = match request

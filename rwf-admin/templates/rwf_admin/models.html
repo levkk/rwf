@@ -1,7 +1,10 @@
-<%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
+<%% "templates/rwf_admin/head.html" %>
+<%% "templates/rwf_admin/nav.html" %>
+
 <div class="container">
-    <% for name in ["models"] %> <%% "templates/rwf_admin/reload.html" %> <% end
-    %>
+    <% for name in ["models"] %>
+        <%% "templates/rwf_admin/reload.html" %>
+    <% end %>
     <div>
         <table class="table">
             <thead>
@@ -13,9 +16,7 @@
                 <% for model in models %>
                 <tr>
                     <td>
-                        <a
-                            href="/admin/models/model?name=<%- model.table_name.urlencode %>"
-                        >
+                        <a href="/admin/models/model?name=<%- model.table_name.urlencode %>">
                             <%= model.table_name.camelize %>
                         </a>
                     </td>

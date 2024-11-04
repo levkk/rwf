@@ -1,16 +1,18 @@
 <%% "templates/rwf_admin/head.html" %>
 <%% "templates/rwf_admin/nav.html" %>
+
 <div class="container">
     <div
-        class="d-flex justify-content-between align-items-center mt-5 mb-3"
+        class="mt-5 mb-3 d-flex flex-column"
         data-controller="reload"
     >
-        <h1 class="d-flex align-items-center gap-2">
+        <h1 class="d-flex align-items-center gap-2 mb-0">
             <span class="material-symbols-outlined fs-1">
                 database
             </span>
             New record
         </h1>
+        <p class="fs-6 h-100 d-flex align-items-end text-secondary"><%= table_name %></p>
     </div>
 
     <div class="my-5">
@@ -26,12 +28,12 @@
                     <label
                         class="form-label fw-semibold"
                         for="<%- column.table_name %>-<%- column.column_name %>"
-                        >
-                            <%= column.column_name %><% if column.is_required %>
-                            <strong class="text-danger"><sup>*</sup></strong>
-                            <% end %>
-                        </label
                     >
+                        <%= column.column_name %>
+                            <% if column.is_required %>
+                                <strong class="text-danger"><sup>*</sup></strong>
+                            <% end %>
+                        </label>
                     <input
                         id="<%- column.table_name %>-<%- column.column_name %>"
                         type="text"
@@ -43,12 +45,17 @@
                         required
                         <% end %>
                     />
-                    <div class="form-text text-end"><%= column.data_type %></div>
+
+                    <!-- data type hint -->
+                    <div class="form-text text-end">
+                        <%= column.data_type %>
+                    </div>
                 </div>
                 <% end %>
             </div>
-            <div class="d-flex justify-content-end mt-3">
+            <div class="d-flex justify-content-end mt-3 gap-2">
                 <button type="submit" class="btn btn-primary">Create</button>
+                <a class="btn btn-secondary" href="/admin/models/model?name=<%= table_name.underscore.urlencode %>">Back</a>
             </div>
         </form>
     </div>
