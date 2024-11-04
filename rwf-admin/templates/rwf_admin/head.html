@@ -17,11 +17,9 @@
             const application = Application.start();
 
             import Requests from "/static/js/requests_controller.js";
-            import Model from "/static/js/model_controller.js";
             import Reload from "/static/js/reload_controller.js";
 
             application.register("requests", Requests);
-            application.register("model", Model);
             application.register("reload", Reload);
         </script>
     </head>
