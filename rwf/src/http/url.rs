@@ -61,10 +61,7 @@ pub fn urldecode(s: &str) -> String {
                                 "20" => " ",
                                 "7B" => "{",
                                 "7D" => "}",
-                                _ => {
-                                    println!("num: {}", num);
-                                    &num
-                                }
+                                _ => &num,
                             };
 
                             result.push_str(replacement);
