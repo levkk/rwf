@@ -85,6 +85,6 @@ If you need to send updates to the client from somewhere else besides a controll
 ## Learn more
 
 - [WebSockets](../../controllers/websockets.md)
-- [Template functions](../templates/functions.md)
+- [Template functions](../templates/functions/index.md)
 - [Sessions](../../controllers/sessions.md)
 - [Hotwired Turbo Streams](https://turbo.hotwired.dev/handbook/streams)

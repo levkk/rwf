@@ -45,6 +45,6 @@ let rendered = template.render(&ctx)?;
 
 ## Learn more
 
-- [For loops](../for-loops)
-- [If statements](../if-statements)
-- [Templates in controllers](../templates-in-controllers)
+- [For loops](for-loops.md)
+- [If statements](if-statements.md)
+- [Templates in controllers](templates-in-controllers.md)

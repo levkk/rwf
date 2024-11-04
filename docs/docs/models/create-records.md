@@ -7,7 +7,7 @@ Rwf can create model records in one of two ways:
 
 ## Saving models
 
-Using our `User` model from our [previous example](../), we can create a new record by instantiating a new instance of the `User` struct and calling `save`:
+Using our `User` model from our [previous example](index.md), we can create a new record by instantiating a new instance of the `User` struct and calling `save`:
 
 ```rust
 let user = User {
@@ -54,7 +54,25 @@ method instead:
     ```
 
 Any columns not specified in the `INSERT` statement will be automatically filled in with column defaults. For example, the `created_at` column
-specified in our [previous example](../) has a default value `NOW()`, the current database time.
+specified in our [previous example](index.md) has a default value `NOW()`, the current database time.
+
+## Mixing data types
+
+When using `Model::create`, Rwf automatically converts values from Rust to database types. Due to how Rust works, it's not possible to build slices containing values of different types. If you try, you will get `error[E0308]: mismatched types`. To get around this, you can call [`ToValue::to_value`](https://docs.rs/rwf/latest/rwf/model/value/trait.ToValue.html#tymethod.to_value) on each column, for example:
+
+=== "Rust"
+    ```rust
+    let user = User::create(&[
+        ("email", "user@example.com".to_value()),
+        ("created_at", OffsetDateTime::now_utc().to_value()),
+    ])
+    .fetch(&mut conn)
+    .await?;
+    ```
+=== "SQL"
+    ```postgresql
+    INSERT INTO "users" ("email", "created_at") VALUES ($1, $2) RETURNING *
+    ```
 
 ## Unique constraints
 

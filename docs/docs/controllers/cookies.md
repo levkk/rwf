@@ -6,7 +6,7 @@ Cookies allow persisting information between what are otherwise stateless HTTP r
 
 ## Read cookies
 
-Cookies sent by the browser can be read inside a [controller](../) by calling the [`cookies`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.cookies) method:
+Cookies sent by the browser can be read inside a [controller](index.md) by calling the [`cookies`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.cookies) method:
 
 ```rust
 let cookies = request.cookies();
@@ -26,7 +26,7 @@ More often than not, cookies are used to store plain text information, so no spe
 
 ## Set cookies
 
-Setting cookies on the server can be done when crafting a [response](../response):
+Setting cookies on the server can be done when crafting a [response](response.md):
 
 ```rust
 use rwf::prelude::*;
@@ -61,7 +61,7 @@ response
     .add_private(cookie)?;
 ```
 
-Cookies are [encrypted](../../encryption) with AES-128, using the security key set in the [configuration](../../configuration).
+Cookies are [encrypted](../encryption.md) with AES-128, using the security key set in the [configuration](../configuration.md).
 
 
 ### Read private cookies

@@ -1,6 +1,6 @@
 # Migrating from Python
 
-Rwf is written in Rust, so if you have an existing application you want to migrate to Rust, you have options. Rwf comes with its own [WSGI](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface) server, so you can run your existing Django or Flask apps without modifications, side by side with Rwf [controllers](../controllers/).
+Rwf is written in Rust, so if you have an existing application you want to migrate to Rust, you have options. Rwf comes with its own [WSGI](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface) server, so you can run your existing Django or Flask apps without modifications, side by side with Rwf [controllers](controllers/index.md).
 
 ## Using WSGI
 

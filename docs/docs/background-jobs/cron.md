@@ -4,7 +4,7 @@ Cron jobs, or scheduled jobs, are background jobs that are performed automatical
 
 ## Defining scheduled jobs
 
-A scheduled job is a regular [background job](../), for example:
+A scheduled job is a regular [background job](index.md), for example:
 
 ```rust
 use rwf::prelude::*;

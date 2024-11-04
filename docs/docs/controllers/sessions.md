@@ -1,6 +1,6 @@
 # Sessions
 
-A session is an [encrypted](../../encryption) [cookie](../cookies) managed by Rwf. It contains a unique identifier for each browser using your web app. All standard-compliant browsers connecting to Rwf-powered apps will have a Rwf session set automatically, and should send it back on each request.
+A session is an [encrypted](../encryption.md) [cookie](cookies.md) managed by Rwf. It contains a unique identifier for each browser using your web app. All standard-compliant browsers connecting to Rwf-powered apps will have a Rwf session set automatically, and should send it back on each request.
 
 ## Session types
 
@@ -29,7 +29,7 @@ async fn handle(&self, request: &Request) -> Result<Response, Error> {
 
 ## Check for valid session
 
-All [controllers](../) can check for the presence of a valid session:
+All [controllers](index.md) can check for the presence of a valid session:
 
 ```rust
 let session = request.session();
@@ -46,11 +46,11 @@ If the session is expired, it's advisable not to trust its point of origin. Whil
 
 ### Session authentication
 
-Rwf can ensure all requests have valid and current (not expired) sessions. To enable this feature, enable the [`SessionAuth`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.SessionAuth.html) [authentication](../authentication) on your controllers. Guest sessions will be refused access, while authenticated sessions will be allowed through.
+Rwf can ensure all requests have valid and current (not expired) sessions. To enable this feature, enable the [`SessionAuth`](https://docs.rs/rwf/latest/rwf/controller/auth/struct.SessionAuth.html) [authentication](authentication.md) on your controllers. Guest sessions will be refused access, while authenticated sessions will be allowed through.
 
 ## Store data in session
 
-Rwf sessions allow you to privately store arbitrary JSON-encoded data. Since browsers place limits on cookie sizes, this data should be relatively small. To store some data in the session, you can set it on the [response](../response):
+Rwf sessions allow you to privately store arbitrary JSON-encoded data. Since browsers place limits on cookie sizes, this data should be relatively small. To store some data in the session, you can set it on the [response](response.md):
 
 ```rust
 let session = Session::new(
@@ -65,6 +65,6 @@ let response = Response::new()
 
 ## Renew sessions
 
-Sessions are automatically renewed on each request. This allows your active users to remain "logged in", while inactive ones would be redirected to a login page if session [authentication](../authentication) is enabled.
+Sessions are automatically renewed on each request. This allows your active users to remain "logged in", while inactive ones would be redirected to a login page if session [authentication](authentication.md) is enabled.
 
 Expired sessions are not renewed, so a user holding an expired session will need to use an authentication controller to get a new valid session.

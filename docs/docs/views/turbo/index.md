@@ -1,10 +1,10 @@
 # Turbo basics
 
-[Hotwired Turbo](https://turbo.hotwired.dev/) is a JavaScript library that can intercept HTTP requests to your backend and perform  updates to the frontend without reloading the browser page. The backend produces HTML, generated with [dynamic templates](../templates/), and Turbo updates only the sections of the page that changed. This simulates the behavior of [Single-page applications](https://en.wikipedia.org/wiki/Single-page_application) (like the ones written with React or Vue) without using JavaScript on the frontend.
+[Hotwired Turbo](https://turbo.hotwired.dev/) is a JavaScript library that can intercept HTTP requests to your backend and perform  updates to the frontend without reloading the browser page. The backend produces HTML, generated with [dynamic templates](../templates/index.md), and Turbo updates only the sections of the page that changed. This simulates the behavior of [Single-page applications](https://en.wikipedia.org/wiki/Single-page_application) (like the ones written with React or Vue) without using JavaScript on the frontend.
 
 ## Enabling Turbo
 
-If you're building pages using Rwf's [dynamic templates](../templates/), you can enable Turbo by adding a declaration into the `<head>` element of your pages:
+If you're building pages using Rwf's [dynamic templates](../templates/index.md), you can enable Turbo by adding a declaration into the `<head>` element of your pages:
 
 ```html
 <html>

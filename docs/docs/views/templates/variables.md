@@ -76,7 +76,7 @@ Rust's `f32` and `f64` are converted to 64-bit double precision floating point. 
     501.5
     ```
 
-Numbers can be [converted](functions.md) to strings, floored, ceiled and rounded, for example:
+Numbers can be [converted](functions/index.md) to strings, floored, ceiled and rounded, for example:
 
 === "Template"
     ```erb
@@ -182,4 +182,4 @@ All other variables evaluate to true.
 - [Context](context.md)
 - [If statements](if-statements.md)
 - [For loops](for-loops.md)
-- [Functions](functions.md)
+- [Functions](functions/index.md)

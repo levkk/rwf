@@ -7,4 +7,5 @@ nav:
   - 'scopes.md'
   - 'debug-queries.md'
   - 'custom-queries.md'
+  - 'grouping.md'
   - '...'

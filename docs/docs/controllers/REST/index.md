@@ -107,7 +107,7 @@ The delete method, implemented using the HTTP `DELETE /endpoint/<id>` call, dele
 
 ## REST controller
 
-Rwf comes with a REST [controller](../), which has the six aforementioned methods separated into individual functions. For example, writing a `/users` endpoint controller could be done like so:
+Rwf comes with a REST [controller](../index.md), which has the six aforementioned methods separated into individual functions. For example, writing a `/users` endpoint controller could be done like so:
 
 ```rust
 use rwf::prelude::*;

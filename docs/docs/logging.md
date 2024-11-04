@@ -16,7 +16,7 @@ async fn main() {
 
 ## Log queries
 
-By default, queries executed against the database are not logged. If you want to see what's being executed (and how long queries are taking to return results), toggle the `log_queries` setting in the [configuration](../configuration).
+By default, queries executed against the database are not logged. If you want to see what's being executed (and how long queries are taking to return results), toggle the `log_queries` setting in the [configuration](configuration.md).
 
 ## Log requests
 

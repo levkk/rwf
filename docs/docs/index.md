@@ -56,9 +56,9 @@ impl Controller for Index {
 `rwf::prelude::*` includes the vast majority of types, structs, traits and functions you'll be using when building controllers with Rwf.
 Adding this declaration to your source files will make handling imports easier, but it's not required.
 
-Rwf controllers are defined as Rust structs that implement the [`Controller`](../controllers/) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
+Rwf controllers are defined as Rust structs that implement the [`Controller`](controllers/index.md) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
 and has only one method you need to implement: `async fn handle`. This method
-accepts a [`Request`](../controllers/request), and must return a [`Response`](../controllers/response).
+accepts a [`Request`](controllers/request.md), and must return a [`Response`](controllers/response.md).
 
 In this example, we are returning HTTP `200 - OK` with the body `<h1>My first Rwf app</h1>`. This is not strictly valid HTML,
 but it'll work in all browsers for our demo purposes.
@@ -100,6 +100,6 @@ The full code for this is available on GitHub in [examples/quick-start](https://
 
 ## Learn more
 
-- [Controllers](controllers/)
-- [Models](models/)
-- [Views](views/)
+- [Controllers](controllers/index.md)
+- [Models](models/index.md)
+- [Views](views/index.md)

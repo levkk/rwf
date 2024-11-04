@@ -1,6 +1,6 @@
 # If statements
 
-If statements allow you to control the flow of templates, conditionally displaying some elements while hiding others. For example, if a [variable](../variables) is "falsy", you can hide entire sections of your website:
+If statements allow you to control the flow of templates, conditionally displaying some elements while hiding others. For example, if a [variable](variables.md) is "falsy", you can hide entire sections of your website:
 
 ```erb
 <% if logged_in %>

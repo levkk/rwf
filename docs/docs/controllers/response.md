@@ -1,7 +1,7 @@
 # Responses
 
-Each HTTP request served by Rwf is expected to return a response. If your app is using a [REST](../REST/) API, responses
-are typically JSON. If you prefer [HTML over the wire](../../views/turbo/) or plain old websites, the responses will contain HTML or text.
+Each HTTP request served by Rwf is expected to return a response. If your app is using a [REST](REST/index.md) API, responses
+are typically JSON. If you prefer [HTML over the wire](../views/turbo/index.md) or plain old websites, the responses will contain HTML or text.
 
 ## Creating responses
 
@@ -56,5 +56,5 @@ let response = Response::new()
 
 ## Learn more
 
-- [Cookies](../cookies)
-- [Sessions](../sessions)
+- [Cookies](cookies.md)
+- [Sessions](sessions.md)
