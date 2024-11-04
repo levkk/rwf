@@ -21,7 +21,7 @@ cargo watch --exec run
 Rwf can refresh pages automatically as they are being changed. If you enable [hot reload](hot-reload.md), and also use `cargo-watch`, make sure to tell it to ignore template changes:
 
 ```bash
-cargo watch --exec run --ignore *.html
+cargo watch --exec run --ignore "*.html"
 ```
 
 ## Run tests
