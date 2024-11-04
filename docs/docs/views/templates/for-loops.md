@@ -12,7 +12,7 @@ A for loop can iterate over a list of values, for example:
 </ul>
 ```
 
-Template lists, unlike Rust's `Vec`, can hold [variables](../variables) of different data types, and are dynamically evaluated at runtime:
+Template lists, unlike Rust's `Vec`, can hold [variables](variables.md) of different data types, and are dynamically evaluated at runtime:
 
 === "Template"
     ```erb

@@ -9,11 +9,11 @@ Middleware needs to be specified on each controller. By default, all controllers
 
 ### Define middleware
 
-Middleware, similar to [controllers](../), is any struct which implements the [`Middleware`](https://docs.rs/rwf/latest/rwf/controller/middleware/trait.Middleware.html) trait. The only method that needs
-implementation is the [`async fn handle_request`](https://docs.rs/rwf/latest/rwf/controller/middleware/trait.Middleware.html#tymethod.handle_request) method, which accepts a [`Request`](../request) and must return an [`Outcome`](https://docs.rs/rwf/latest/rwf/controller/middleware/enum.Outcome.html).
+Middleware, similar to [controllers](index.md), is any struct which implements the [`Middleware`](https://docs.rs/rwf/latest/rwf/controller/middleware/trait.Middleware.html) trait. The only method that needs
+implementation is the [`async fn handle_request`](https://docs.rs/rwf/latest/rwf/controller/middleware/trait.Middleware.html#tymethod.handle_request) method, which accepts a [`Request`](request.md) and must return an [`Outcome`](https://docs.rs/rwf/latest/rwf/controller/middleware/enum.Outcome.html).
 
 If the request is allowed to proceed, [`Outcome::Forward`](https://docs.rs/rwf/latest/rwf/controller/middleware/enum.Outcome.html#variant.Forward) is returned, containing the request, in its modified or unchanged form.
-If on the other hand, the request failed some kind of validation, [`Outcome::Stop`](https://docs.rs/rwf/latest/rwf/controller/middleware/enum.Outcome.html#variant.Stop) must be returned with a [`Response`](../response), for example:
+If on the other hand, the request failed some kind of validation, [`Outcome::Stop`](https://docs.rs/rwf/latest/rwf/controller/middleware/enum.Outcome.html#variant.Stop) must be returned with a [`Response`](response.md), for example:
 
 ```rust
 use rwf::controller::middleware::prelude::*;

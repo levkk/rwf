@@ -23,14 +23,12 @@ let users = User::all()
 Returning the connection to the pool is done automatically when the `conn` variable goes out of scope. In Rust semantics, the `conn` variable is "dropped". For example, to checkout a connection for only one query, you can do so inside its own scope:
 
 ```rust
-async fn get_users() -> Result<Vec<User>, Error> {
+let users = {
     let mut conn = Pool::connection().await?;
     let users = User::all()
         .fetch_all(&mut conn)
-        .await?;
-    Ok(users)
-    // The connection is returned to the pool here.
-}
+        .await?
+};
 ```
 
 ## Transactions

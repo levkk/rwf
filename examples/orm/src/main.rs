@@ -24,6 +24,13 @@ mod models {
                 .fetch(&mut conn)
                 .await?;
 
+            let user = User::create(&[
+                ("email", "user@example.com".to_value()),
+                ("created_at", OffsetDateTime::now_utc().to_value()),
+            ])
+            .fetch(&mut conn)
+            .await?;
+
             Ok(user)
         }
 

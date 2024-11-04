@@ -5,7 +5,7 @@ and will automatically return the right `Content-Type` header (also known as [MI
 
 ## Serve static files
 
-The static files server is just another [controller](../), implemented internally. To add it to your app, you can
+The static files server is just another [controller](index.md), implemented internally. To add it to your app, you can
 add it to the server at startup:
 
 ```rust

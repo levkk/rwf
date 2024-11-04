@@ -5,7 +5,7 @@ models out of the box, but requires a couple of annotations to declare relations
 
 ## Define model relationship
 
-Using the `User` model from our [previous example](../), let's define a `Project` model, which will record projects created by the users of our
+Using the `User` model from our [previous example](index.md), let's define a `Project` model, which will record projects created by the users of our
 fictional web app:
 
 ```rust

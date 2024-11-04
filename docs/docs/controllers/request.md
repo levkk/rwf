@@ -1,7 +1,7 @@
 # Requests
 
 For each HTTP request served by Rwf, a new [`Request`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html) struct is created. It contains the client IP address,
-browser headers, [cookies](../cookies), [session](../sessions) information, and the request body.
+browser headers, [cookies](cookies.md), [session](sessions.md) information, and the request body.
 
 ## Headers
 
@@ -32,7 +32,7 @@ impl Controller for Index {
     Headers in Rwf are case-insensitive, so `accept` and `Accept` are equivalent.
 
 Most browsers send required headers like `Origin`, `Accept`, and `User-Agent`, but that doesn't mean all HTTP clients will.
-Checking for valid headers is good practice to avoid bad actors like bots. Read more about intercepting HTTP requests with [Middleware](../middleware).
+Checking for valid headers is good practice to avoid bad actors like bots. Read more about intercepting HTTP requests with [Middleware](middleware.md).
 
 ## Request body
 

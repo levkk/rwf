@@ -47,7 +47,7 @@ let user = user
   .await?;
 ```
 
-This is very similar to [creating new records](../create-records), except that we set the `id` field to a known value.
+This is very similar to [creating new records](create-records.md), except that we set the `id` field to a known value.
 When the `id` is set to `Some(i64)`, Rwf assumes the record exists in the database, meanwhile if the `id` is `None`, Rwf will attempt to create one instead.
 
 ## Update multiple records

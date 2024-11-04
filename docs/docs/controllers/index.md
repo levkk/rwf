@@ -50,7 +50,7 @@ The `Controller` trait is asynchronous. Support for async traits in Rust is stil
 
 #### `handle`
 
-The `handle` method accepts a [`Request`](request) and must return a [`Response`](response). The response can be any valid HTTP response, including `404` or even `500`.
+The `handle` method accepts a [`Request`](request.md) and must return a [`Response`](response.md). The response can be any valid HTTP response, including `404` or even `500`.
 
 ##### Errors
 
@@ -124,5 +124,5 @@ impl PageController for Login {
 
 Read more about working with controllers, requests, and responses:
 
-- [Requests](request)
-- [Responses](response)
+- [Requests](request.md)
+- [Responses](response.md)

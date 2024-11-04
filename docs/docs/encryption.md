@@ -1,6 +1,6 @@
 # Encryption
 
-Rwf uses [AES-128](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) for encrypting user [sessions](../controllers/sessions) and private [cookies](../controllers/cookies). The same functionality is available through the [`rwf::crypto`](https://docs.rs/rwf/latest/rwf/crypto/index.html) module to encrypt and decrypt arbitrary data.
+Rwf uses [AES-128](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) for encrypting user [sessions](controllers/sessions.md) and private [cookies](controllers/cookies.md). The same functionality is available through the [`rwf::crypto`](https://docs.rs/rwf/latest/rwf/crypto/index.html) module to encrypt and decrypt arbitrary data.
 
 ## Encrypt data
 

@@ -44,6 +44,6 @@ reuse code.
 
 ## Learn more
 
-- [Variables](variables)
-- [For loops](for-loops)
-- [If statements](if-statements)
+- [Variables](variables.md)
+- [For loops](for-loops.md)
+- [If statements](if-statements.md)
