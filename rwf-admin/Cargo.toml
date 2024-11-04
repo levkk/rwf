@@ -1,6 +1,6 @@
 [package]
 name = "rwf-admin"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,4 +12,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 time = { version = "0.3", features = ["formatting", "serde", "parsing", "macros"] }
 once_cell = "1"
-uuid = { version = "*", features = ["v4"]}
+uuid = { version = "1", features = ["v4"]}
