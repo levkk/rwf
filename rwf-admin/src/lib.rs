@@ -5,7 +5,6 @@ mod controllers;
 use controllers::*;
 
 mod models;
-// mod views;
 
 pub fn engine() -> Engine {
     Engine::new(vec![
