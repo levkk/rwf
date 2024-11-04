@@ -178,7 +178,7 @@ impl Value {
         context: &Context,
     ) -> Result<Self, Error> {
         match method_name {
-            "nil" | "null" => return Ok(Value::Boolean(self == &Value::Null)),
+            "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
             "integer" => {
                 return Ok(Value::Boolean(match self {
                     Value::Integer(_) => true,

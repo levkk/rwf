@@ -3,7 +3,7 @@ nav:
   - 'variables.md'
   - 'if-statements.md'
   - 'for-loops.md'
-  - 'functions.md'
+  - 'functions'
   - 'partials.md'
   - '...'
   - 'nomenclature.md'
