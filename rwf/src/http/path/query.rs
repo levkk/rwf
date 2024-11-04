@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::IntoIter, HashMap};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use crate::http::urldecode;
+use crate::http::Error;
 
 #[derive(Debug, Clone)]
 pub struct Query {
@@ -50,8 +51,21 @@ impl Query {
         }
     }
 
+    /// Get a parameter, returning HTTP 400 if it's not set.
+    pub fn get_required<T: FromStr>(&self, name: &str) -> Result<T, Error> {
+        match self.get(name) {
+            Some(value) => Ok(value),
+            None => Err(Error::MissingParameter),
+        }
+    }
+
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(&self.query).unwrap_or(serde_json::Value::default())
+    }
+
+    /// An owning iterator over the query.
+    pub fn into_iter(self) -> IntoIter<String, String> {
+        self.query.into_iter()
     }
 }
 

@@ -6,6 +6,16 @@ use rwf::{
 };
 use std::path::PathBuf;
 
+#[derive(Default)]
+struct Redirect;
+
+#[async_trait]
+impl Controller for Redirect {
+    async fn handle(&self, _: &Request) -> Result<Response, Error> {
+        Ok(Response::new().redirect("/admin/"))
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
     Logger::init();
@@ -22,6 +32,7 @@ async fn main() -> Result<(), http::Error> {
     }));
 
     Server::new(vec![
+        route!("/" => Redirect),
         engine!("/admin" => admin),
         route!("/turbo-stream" => TurboStream),
         StaticFiles::serve("static")?,

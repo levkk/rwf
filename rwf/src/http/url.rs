@@ -27,15 +27,44 @@ pub fn urldecode(s: &str) -> String {
 
                 loop {
                     match iter.peek() {
-                        Some(&c) if c.is_ascii_hexdigit() => {
-                            num.push(iter.next().unwrap());
+                        Some(&c)
+                            if ((c.is_numeric()
+                                || ['A', 'B', 'C', 'D', 'E', 'F']
+                                    .contains(&c.to_ascii_uppercase()))
+                                && num.len() < 2) =>
+                        {
+                            let _ = iter.next().unwrap();
+                            num.push(c);
                         }
 
                         _ => {
-                            if let Ok(byte) = u8::from_str_radix(&num, 16) {
-                                result.push(byte as char);
-                            }
+                            let replacement = match num.to_ascii_uppercase().as_str() {
+                                "3A" => ":",
+                                "2F" => "/",
+                                "3F" => "?",
+                                "23" => "#",
+                                "5B" => "[",
+                                "5D" => "]",
+                                "40" => "@",
+                                "21" => "!",
+                                "24" => "$",
+                                "26" => "&",
+                                "27" => "\'",
+                                "28" => "(",
+                                "29" => ")",
+                                "2A" => "*",
+                                "2B" => "+",
+                                "2C" => ",",
+                                "3B" => ";",
+                                "3D" => "=",
+                                "25" => "%",
+                                "20" => " ",
+                                "7B" => "{",
+                                "7D" => "}",
+                                _ => &num,
+                            };
 
+                            result.push_str(replacement);
                             break;
                         }
                     }
@@ -46,6 +75,43 @@ pub fn urldecode(s: &str) -> String {
 
             c => result.push(c),
         }
+    }
+
+    result
+}
+
+pub fn urlencode(s: &str) -> String {
+    let mut result = String::new();
+
+    for c in s.chars() {
+        let replacement = match c {
+            ':' => "%3A",
+            '/' => "%2F",
+            '?' => "%3F",
+            '#' => "%23",
+            '[' => "%5B",
+            ']' => "%5D",
+            '@' => "%40",
+            '!' => "%21",
+            '$' => "%24",
+            '&' => "%26",
+            '\'' => "%27",
+            '(' => "%28",
+            ')' => "%29",
+            '*' => "%2A",
+            '+' => "%2B",
+            ',' => "%2C",
+            ';' => "%3B",
+            '=' => "%3D",
+            '%' => "%25",
+            ' ' => "%20",
+            c => {
+                result.push(c);
+                continue;
+            }
+        };
+
+        result.push_str(replacement);
     }
 
     result
@@ -64,5 +130,9 @@ mod test {
         let url = "?foo=bar&hello=world%20&apples%3Doranges";
         let decoded = urldecode(url);
         assert_eq!(decoded, "?foo=bar&hello=world &apples=oranges");
+
+        let url = "id%2Cpath%2Cmethod%2Cclient_ip";
+        let decoded = urldecode(url);
+        assert_eq!(decoded, "id,path,method,client_ip")
     }
 }

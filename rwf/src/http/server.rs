@@ -52,7 +52,7 @@ impl Server {
     pub async fn launch(self, addr: impl ToSocketAddrs) -> Result<(), Error> {
         info!(
             "Starting {} {} {}",
-            "Rum".green(),
+            "Rwf".green(),
             "HTTP".purple(),
             "server".red()
         );

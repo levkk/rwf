@@ -160,7 +160,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "auth"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -222,7 +222,7 @@ name = "background-jobs"
 version = "0.1.0"
 dependencies = [
  "log",
- "rwf 0.1.3",
+ "rwf",
  "serde",
  "serde_json",
  "tokio",
@@ -503,7 +503,7 @@ name = "django"
 version = "0.1.0"
 dependencies = [
  "pyo3",
- "rwf 0.1.3",
+ "rwf",
  "tokio",
  "tracing",
 ]
@@ -513,7 +513,7 @@ name = "dynamic-templates"
 version = "0.1.0"
 dependencies = [
  "rand 0.8.5",
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -527,7 +527,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 name = "engine"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -1034,7 +1034,7 @@ dependencies = [
 name = "middleware"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -1160,7 +1160,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 name = "orm"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "time",
  "tokio",
 ]
@@ -1281,8 +1281,7 @@ checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
 [[package]]
 name = "postgres-protocol"
 version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acda0ebdebc28befa84bee35e651e4c5f09073d668c7aed4cf7e23c3cda84b23"
+source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -1299,8 +1298,7 @@ dependencies = [
 [[package]]
 name = "postgres-types"
 version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f66ea23a2d0e5734297357705193335e0a957696f34bed2f2faefacb2fec336f"
+source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
 dependencies = [
  "bytes",
  "fallible-iterator",
@@ -1434,7 +1432,7 @@ dependencies = [
 name = "quick-start"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -1601,7 +1599,7 @@ name = "request-tracking"
 version = "0.1.0"
 dependencies = [
  "rand 0.8.5",
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -1609,7 +1607,7 @@ dependencies = [
 name = "rest"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "serde",
  "serde_json",
  "time",
@@ -1645,7 +1643,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "regex",
- "rwf-macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rwf-macros",
  "serde",
  "serde_json",
  "sha1",
@@ -1661,43 +1659,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "rwf"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3aeed8605b7d48758a6db727a195cdaeaa056bfb2dca6239a0db91425ad0609"
-dependencies = [
- "aes",
- "aes-gcm-siv",
- "async-trait",
- "base64 0.22.1",
- "bytes",
- "colored",
- "once_cell",
- "parking_lot",
- "rand 0.8.5",
- "regex",
- "rwf-macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
- "serde_json",
- "sha1",
- "thiserror",
- "time",
- "tokio",
- "tokio-postgres",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "rwf-admin"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "once_cell",
+ "rwf",
  "serde",
  "serde_json",
  "time",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1707,7 +1678,7 @@ dependencies = [
  "clap",
  "log",
  "regex",
- "rwf 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rwf",
  "time",
  "tokio",
 ]
@@ -1715,18 +1686,6 @@ dependencies = [
 [[package]]
 name = "rwf-macros"
 version = "0.1.4"
-dependencies = [
- "pluralizer",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rwf-macros"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df052042dd7864c1355ad4dcd80e4af08a6e2f5ecee0d5cd344ec97e6d70cf0d"
 dependencies = [
  "pluralizer",
  "proc-macro2",
@@ -1740,8 +1699,8 @@ version = "0.1.0"
 dependencies = [
  "console-subscriber",
  "parking_lot",
- "rwf 0.1.3",
- "rwf-macros 0.1.4",
+ "rwf",
+ "rwf-macros",
  "serde",
  "serde_json",
  "tokio",
@@ -1767,7 +1726,7 @@ dependencies = [
 name = "scheduled-jobs"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "serde",
  "serde_json",
  "tokio",
@@ -1895,7 +1854,7 @@ dependencies = [
 name = "static-files"
 version = "0.1.0"
 dependencies = [
- "rwf 0.1.3",
+ "rwf",
  "tokio",
 ]
 
@@ -2070,8 +2029,7 @@ dependencies = [
 [[package]]
 name = "tokio-postgres"
 version = "0.7.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b5d3742945bc7d7f210693b0c58ae542c6fd47b17adbbda0885f3dcb34a6bdb"
+source = "git+https://github.com/levkk/rust-postgres.git?branch=levkk-make-error-pub#810fdaa2563f285e288c3ba49c53c58a91c9740d"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -2299,7 +2257,7 @@ name = "turbo"
 version = "0.1.0"
 dependencies = [
  "rand 0.8.5",
- "rwf 0.1.3",
+ "rwf",
  "serde",
  "serde_json",
  "time",

@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use crate::model::Model;
+use crate::model::Value as ModelValue;
 use crate::view::template::Template;
 
 static TURBO_STREAM: Lazy<Template> =
@@ -176,11 +177,37 @@ impl Value {
         args: &[Value],
         context: &Context,
     ) -> Result<Self, Error> {
+        match method_name {
+            "nil" | "null" => return Ok(Value::Boolean(self == &Value::Null)),
+            "integer" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Integer(_) => true,
+                    _ => false,
+                }))
+            }
+            "float" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Float(_) => true,
+                    _ => false,
+                }))
+            }
+            "numeric" => {
+                return Ok(Value::Boolean(match self {
+                    Value::Integer(_) => true,
+                    Value::Float(_) => true,
+                    _ => false,
+                }))
+            }
+            _ => (),
+        };
+
         Ok(match self {
             Value::Integer(value) => match method_name {
                 "abs" => Value::Integer((*value).abs()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_f" | "to_float" => Value::Float(*value as f64),
+                "clamp_zero" => Value::Integer(std::cmp::max(0, *value)),
+                "clamp_one" => Value::Integer(std::cmp::max(1, *value)),
                 "times" => {
                     let mut list = vec![];
                     for i in 0..*value {
@@ -188,7 +215,7 @@ impl Value {
                     }
                     Value::List(list)
                 }
-                method_name => return Err(Error::UnknownMethod(method_name.into())),
+                method_name => return Err(Error::UnknownMethod(method_name.into(), "integer")),
             },
 
             Value::Float(value) => match method_name {
@@ -198,23 +225,21 @@ impl Value {
                 "round" => Value::Float(value.round()),
                 "to_string" | "to_s" => Value::String(value.to_string()),
                 "to_i" | "to_integer" => Value::Integer(*value as i64),
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "float")),
             },
 
             Value::String(value) => match method_name {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
-                "capitalize" => {
-                    let mut iter = value.chars();
-                    let uppercase = match iter.next() {
-                        None => String::new(),
-                        Some(letter) => letter.to_uppercase().chain(iter).collect(),
-                    };
-
-                    Value::String(uppercase)
-                }
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                "capitalize" => Value::String(crate::capitalize(&value)),
+                "camelize" | "to_PascalCase" => Value::String(crate::pascal_case(&value)),
+                "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
+                "urlencode" => Value::String(crate::http::urlencode(&value)),
+                "urldecode" => Value::String(crate::http::urldecode(&value)),
+                "len" => Value::Integer(value.len() as i64),
+                "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
             Value::List(list) => match method_name.parse::<i64>() {
@@ -248,11 +273,17 @@ impl Value {
                         Value::List(list.clone().into_iter().rev().collect::<Vec<_>>())
                     }
 
-                    "empty" => Value::Boolean(list.is_empty()),
+                    "contains" => match &args {
+                        &[needle] => Value::Boolean(list.contains(&needle)),
+
+                        _ => Value::Boolean(false),
+                    },
+
+                    "empty" | "blank" | "is_empty" => Value::Boolean(list.is_empty()),
 
                     "len" => Value::Integer(list.len() as i64),
 
-                    _ => return Err(Error::UnknownMethod(method_name.into())),
+                    _ => return Err(Error::UnknownMethod(method_name.into(), "list")),
                 },
             },
 
@@ -267,6 +298,7 @@ impl Value {
                         .map(|(k, v)| Value::List(vec![Value::String(k), v]))
                         .collect::<Vec<_>>(),
                 ),
+                "empty" | "blank" | "is_empty" => Value::Boolean(hash.is_empty()),
                 key => match hash.get(key) {
                     Some(value) => value.clone(),
                     None => Value::Null,
@@ -309,10 +341,10 @@ impl Value {
 
                     _ => Value::Null,
                 },
-                _ => return Err(Error::UnknownMethod(method_name.into())),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "global")),
             },
 
-            _ => return Err(Error::UnknownMethod(method_name.into())),
+            v => return Err(Error::UnknownMethod(method_name.into(), v.type_name())),
         })
     }
 
@@ -345,6 +377,19 @@ impl Value {
             Value::Float(f) => f.to_string(),
             Value::Boolean(b) => b.to_string(),
             value => format!("{:?}", value),
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            &Value::Null => "null",
+            &Value::Integer(_) => "integer",
+            &Value::Float(_) => "float",
+            &Value::Boolean(_) => "boolean",
+            &Value::Hash(_) => "hash",
+            &Value::Interpreter => "global",
+            &Value::List(_) => "list",
+            &Value::String(_) => "string",
         }
     }
 }
@@ -476,7 +521,6 @@ impl TryInto<serde_json::Value> for Value {
 
 impl ToTemplateValue for crate::model::Value {
     fn to_template_value(&self) -> Result<Value, Error> {
-        use crate::model::Value as ModelValue;
         use std::ops::Deref;
         match self {
             ModelValue::Integer(i) => i.to_template_value(),
@@ -552,5 +596,16 @@ impl<T: ToTemplateValue> ToTemplateValue for Vec<T> {
         }
 
         Ok(Value::List(list))
+    }
+}
+
+impl ToTemplateValue for HashMap<String, ModelValue> {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        let mut result = HashMap::new();
+        for (key, value) in self.iter() {
+            result.insert(key.clone(), value.to_template_value()?);
+        }
+
+        Ok(Value::Hash(result))
     }
 }

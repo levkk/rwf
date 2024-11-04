@@ -1,45 +1,44 @@
 <%% "templates/rwf_admin/head.html" %> <%% "templates/rwf_admin/nav.html" %>
-<div class="container">
-    <% for name in ["jobs"] %>
-        <%% "templates/rwf_admin/reload.html" %>
-    <% end %>
+<div class="container mb-5">
+    <% for name in ["jobs"] %> <%% "templates/rwf_admin/reload.html" %> <% end
+    %>
     <div class="row">
-        <div class="col s2">
-            <div class="card blue">
-                <div class="card-content">
-                    <p class="card-title center-align">Queued</p>
-                    <h3 class="center-align"><%= queued %></h3>
+        <div class="col-sm-2">
+            <div class="card">
+                <div class="card-body">
+                    <p class="card-title text-center">Queued</p>
+                    <h3 class="text-center"><%= queued %></h3>
                 </div>
             </div>
         </div>
-        <div class="col s2">
-            <div class="card green">
-                <div class="card-content">
-                    <p class="card-title center-align">Running</p>
-                    <h3 class="center-align"><%= running %></h3>
+        <div class="col-sm-2">
+            <div class="card">
+                <div class="card-body">
+                    <p class="card-title text-center">Running</p>
+                    <h3 class="text-center"><%= running %></h3>
                 </div>
             </div>
         </div>
-        <div class="col s2">
-            <div class="card red">
-                <div class="card-content">
-                    <p class="card-title center-align">Errors</p>
-                    <h3 class="center-align"><%= errors %></h3>
+        <div class="col-sm-2">
+            <div class="card">
+                <div class="card-body">
+                    <p class="card-title text-center">Errors</p>
+                    <h3 class="text-center"><%= errors %></h3>
                 </div>
             </div>
         </div>
-        <div class="col s2">
-            <div class="card grey">
-                <div class="card-content">
-                    <p class="card-title center-align">Latency</p>
-                    <h3 class="center-align"><%= latency %>s</h3>
+        <div class="col-sm-2">
+            <div class="card">
+                <div class="card-body">
+                    <p class="card-title text-center">Latency</p>
+                    <h3 class="text-center"><%= latency %>s</h3>
                 </div>
             </div>
         </div>
     </div>
-    <div>
+    <div class="mt-5">
         <% if jobs %>
-        <table>
+        <table class="table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -53,19 +52,32 @@
                 <% for job in jobs %>
                 <tr>
                     <td><%= job.id %></td>
-                    <td><small><code><%= job.name %></code></small></td>
+                    <td>
+                        <small><code><%= job.name %></code></small>
+                    </td>
                     <td>
                         <small><code><%= job.args %></code></small>
                     </td>
                     <td><%= job.created_at %></td>
                     <td>
-                        <% if job.completed_at %> Completed <% elsif
-                        job.started_at %> Running <% else %> Queued <% end %>
+                        <% if job.completed_at %>
+                            <% if job.error %>
+                                <code><small><%= job.error %></small></code>
+                            <% else %>
+                                Completed
+                            <% end %>
+                        <% elsif job.started_at %>
+                        Running
+                        <% else %>
+                        Queued
+                        <% end %>
                     </td>
                 </tr>
                 <% end %>
             </tbody>
         </table>
+        <% else %>
+        <p class="text-center">There are currently no jobs.</p>
         <% end %>
     </div>
 </div>

@@ -33,7 +33,7 @@ pub use request::Request;
 pub use response::Response;
 pub use router::Router;
 pub use server::{Server, Stream};
-pub use url::urldecode;
+pub use url::{urldecode, urlencode};
 pub use websocket::Message;
 
 #[derive(Debug, Copy, Clone, PartialEq)]

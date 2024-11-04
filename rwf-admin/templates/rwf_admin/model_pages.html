@@ -1,0 +1,8 @@
+<div class="d-flex justify-content-between my-3">
+    <a href="/admin/models/model?name=<%= table_name.underscore %>&page=<%= (page - 1).clamp_one %>">
+        Previous
+    </a>
+    <a href="/admin/models/model?name=<%= table_name.underscore %>&page=<%= page + 1 %>">
+        Next
+    </a>
+</div>

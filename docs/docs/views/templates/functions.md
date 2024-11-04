@@ -11,6 +11,18 @@ Templates provide a number of functions that manipulate variables. Each variable
     LOWERCASE
     ```
 
+## Any value functions
+
+Functions that can be called on any value, irrespective of type.
+
+| Function | Description |
+|----------|-------------|
+| `null` | Return true if the value is null, false otherwise. |
+| `nil` | Alias for `null` |
+| `numeric` | True if the value is a number, e.g. integer or float. |
+| `integer` | True if the value is an integer. |
+| `float` | True if the value is a float. |
+
 ## Integer functions
 
 | Function | Description |
@@ -21,6 +33,8 @@ Templates provide a number of functions that manipulate variables. Each variable
 | `to_float` | Convert integer to float. |
 | `to_f` | Alias for `to_float`. |
 | `times` | Create a list of integers, starting at 0 and ending with the integer. |
+| `clamp_zero` | Clamp integer to 0, i.e. all negative values become 0. |
+| `clamp_one` | Clamp integer to 1, i.e. all values less than 1 become 1. |
 
 ### Examples
 
@@ -88,6 +102,16 @@ Comparing a float and an integer:
 | `lower` | Alias for `to_uppercase`. |
 | `trim` | Remove leading and trailing spaces and new lines. |
 | `capitalize` | Capitalize the first letter of a string. |
+| `underscore` | Convert to snake_case. |
+| `to_snake_case` | Alias for `underscore`. |
+| `camelize` | Convert to PascalCase. |
+| `empty` | True if string is empty. |
+| `blank` | Alias for `empty`. |
+| `is_empty` | Alias for `empty`. |
+| `len` | Return length of the string. |
+| `urldecode` | Convert percent-encoding to ASCII. |
+| `urlencode` | Opposite of `urldecode`. |
+| `capitalize` | Make the first letter of the string uppercase. |
 
 ### Examples
 
@@ -135,6 +159,10 @@ Enumerate a list:
 | `keys` | Create a list of hash keys. |
 | `values` | Create a list of hash values. |
 | `iter` | Create a list of tuples, mapping keys to values. Used for iteration over a hash. |
+| `len` | Get the hash length (how many keys are stored in it). |
+| `empty` | `true` if empty, `false` otherwise |
+| `blank` | Alias for `empty`. |
+| `is_empty` | Alias for `empty`. |
 
 ## Global functions
 

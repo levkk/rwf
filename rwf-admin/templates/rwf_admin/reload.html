@@ -1,11 +1,36 @@
 <div
-    style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 2rem 0;
-    "
+    class="d-flex justify-content-between align-items-center mt-5 mb-3"
+    data-controller="reload"
 >
-    <h1 style="margin: 0"><%= name.capitalize %></h1>
-    <a class="waves-effect waves-light btn" href="/admin/<%= name %>">Reload</a>
+    <h1 class="d-flex align-items-center gap-2">
+        <span class="material-symbols-outlined fs-1">
+            <% if name == "jobs" %>
+            work_history
+            <% elsif name == "requests"  %>
+            equalizer
+            <% else %>
+            database
+            <% end %>
+        </span>
+        <%= name.capitalize %>
+    </h1>
+    <div class="d-flex justify-content-between align-items-center gap-1">
+        <button
+            class="btn btn-primary d-flex align-items-center gap-2"
+            data-action="click->reload#reload"
+        >
+            <span class="material-symbols-outlined">
+                restart_alt
+            </span>
+            Refresh
+        </button>
+        <% if name != "models" && name != "requests" && name != "jobs" %>
+        <a href="/admin/models/new?name=<%= name.underscore %>" class="btn btn-success d-flex align-items-center gap-2">
+            <span class="material-symbols-outlined">
+                add
+            </span>
+            New
+        </a>
+        <% end %>
+    </div>
 </div>

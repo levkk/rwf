@@ -18,14 +18,21 @@
                 border-radius: 2px;
                 padding: 10px 30px;
             }
+
+            pre {
+                text-wrap: wrap;
+                max-width: 75vw;
+            }
         </style>
     </head>
     <body>
         <div class="container center">
             <h3><%= title %></h3>
         </div>
+        <% if message %>
         <div class="container center">
             <code class="error"><pre><%= message %></pre></code>
         </div>
+        <% end %>
     </body>
 </html>
