@@ -72,7 +72,7 @@ pub fn encrypt(data: &[u8]) -> Result<String, Error> {
     let config = get_config();
     let nonce = nonce();
 
-    let key = config.aes_key;
+    let key = config.general.aes_key;
     let cipher = Aes128GcmSiv::new(&key);
     let aes_nonce = Nonce::from_slice(&nonce); // 96-bits; unique per message
     let ciphertext = cipher
@@ -86,7 +86,7 @@ pub fn decrypt(data: &str) -> Result<Vec<u8>, Error> {
     let config = get_config();
     let encrypted = Encrypted::from_base64(data)?;
 
-    let key = config.aes_key;
+    let key = config.general.aes_key;
     let cipher = Aes128GcmSiv::new(&key);
     let aes_nonce = Nonce::from_slice(&encrypted.nonce);
     let plaintext = cipher.decrypt(aes_nonce, encrypted.ciphertext.as_ref())?;
@@ -98,7 +98,7 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
     let config = get_config();
     let nonce = nonce();
 
-    let key = config.secure_id_key;
+    let key = config.general.secure_id_key;
     let cipher = Aes128GcmSiv::new(&key);
     let aes_nonce = Nonce::from_slice(&nonce);
     let data = n.to_be_bytes();
@@ -131,7 +131,7 @@ pub fn encrypt_number(n: i64) -> Result<String, Error> {
 pub fn decrypt_number(s: &str) -> Result<i64, Error> {
     let config = get_config();
 
-    let key = config.secure_id_key;
+    let key = config.general.secure_id_key;
     let cipher = Aes128GcmSiv::new(&key);
 
     // Remove the pretty format.

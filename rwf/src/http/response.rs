@@ -120,7 +120,9 @@ impl Response {
 
             if let Some(session) = session {
                 if !session.expired() {
-                    let session = session.clone().renew(get_config().session_duration);
+                    let session = session
+                        .clone()
+                        .renew(get_config().general.session_duration());
                     self.cookies.add_session(&session)?;
 
                     // Set the session on the response, so it can be

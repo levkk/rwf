@@ -1,5 +1,5 @@
 pub use crate::comms::Comms;
-pub use crate::config::Config;
+pub use crate::config::ConfigFile;
 pub use crate::controller::{auth::SessionAuth, AuthHandler};
 pub use crate::controller::{
     Authentication, Controller, Error, ModelController, PageController, RestController, SessionId,

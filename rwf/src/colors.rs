@@ -11,7 +11,7 @@ impl MaybeColorize for &str {
     fn green(&self) -> String {
         let config = get_config();
 
-        if config.tty {
+        if config.general.tty {
             Colorize::green(*self).to_string()
         } else {
             self.to_string()
@@ -21,7 +21,7 @@ impl MaybeColorize for &str {
     fn red(&self) -> String {
         let config = get_config();
 
-        if config.tty {
+        if config.general.tty {
             Colorize::red(*self).to_string()
         } else {
             self.to_string()
@@ -31,7 +31,7 @@ impl MaybeColorize for &str {
     fn purple(&self) -> String {
         let config = get_config();
 
-        if config.tty {
+        if config.general.tty {
             Colorize::purple(*self).to_string()
         } else {
             self.to_string()

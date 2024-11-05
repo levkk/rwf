@@ -19,7 +19,7 @@ impl Transaction {
         let start = Instant::now();
         connection.query_cached("BEGIN", &[]).await?;
 
-        if get_config().log_queries {
+        if get_config().general.log_queries {
             info!("BEGIN ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
         }
 
@@ -38,7 +38,7 @@ impl Transaction {
         let start = Instant::now();
         self.connection.query_cached("COMMIT", &[]).await?;
 
-        if get_config().log_queries {
+        if get_config().general.log_queries {
             info!("COMMIT ({:.3} ms)", start.elapsed().as_secs_f64() * 1000.0);
         }
 
@@ -54,7 +54,7 @@ impl Transaction {
         let start = Instant::now();
         self.connection.query_cached("ROLLBACK", &[]).await?;
 
-        if get_config().log_queries {
+        if get_config().general.log_queries {
             info!(
                 "ROLLBACK ({:.3} ms)",
                 start.elapsed().as_secs_f64() * 1000.0

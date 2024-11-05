@@ -204,7 +204,7 @@ impl Cookie {
     pub fn new(name: impl ToString) -> Self {
         Cookie {
             name: name.to_string(),
-            max_age: Some(get_config().cookie_max_age),
+            max_age: Some(get_config().general.cookie_max_age()),
             ..Default::default()
         }
     }

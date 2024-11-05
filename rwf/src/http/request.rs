@@ -261,7 +261,9 @@ pub mod test {
             .as_bytes()
             .to_vec();
 
-        Request::read("127.0.0.1:1337".parse().unwrap(), &body[..]).await
+        let req = Request::read("127.0.0.1:1337".parse().unwrap(), &body[..]).await?;
+
+        Ok(req)
     }
 
     #[tokio::test]

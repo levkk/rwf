@@ -215,8 +215,8 @@ impl Pool {
             &database_url,
             PoolConfig {
                 pool_size: config.pool_size,
-                idle_timeout: config.idle_timeout.unsigned_abs(),
-                checkout_timeout: config.checkout_timeout.unsigned_abs(),
+                idle_timeout: config.idle_timeout().unsigned_abs(),
+                checkout_timeout: config.checkout_timeout().unsigned_abs(),
             },
         )
     }

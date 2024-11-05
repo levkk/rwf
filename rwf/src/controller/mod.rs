@@ -51,11 +51,11 @@ pub trait Controller: Sync + Send {
     /// be adjusted through configuration.
     fn auth(&self) -> &AuthHandler {
         // Allow all requests by default.
-        &get_config().default_auth
+        &get_config().general.default_auth
     }
 
     fn middleware(&self) -> &MiddlewareSet {
-        &get_config().default_middleware
+        &get_config().general.default_middleware
     }
 
     fn route(self, path: &str) -> Handler
@@ -463,8 +463,8 @@ pub trait WebsocketController: Controller {
         let config = get_config();
         let mut stream = stream.stream();
         let mut receiver = Comms::receiver(&session_id);
-        let mut check = interval(config.websocket.ping_interval.unsigned_abs());
-        let mut lost_pings = 0;
+        let mut check = interval(config.websocket.ping_interval().unsigned_abs());
+        let mut lost_pings = 0_i64;
 
         self.client_connected(&session_id).await?;
 
@@ -474,7 +474,7 @@ pub trait WebsocketController: Controller {
                     debug!("{} check session \"{}\"", "websocket".purple(), session_id);
 
                     let closed = match timeout(
-                        config.websocket.ping_timeout.unsigned_abs(),
+                        config.websocket.ping_timeout().unsigned_abs(),
                         DataFrame::new_ping().flush(&mut stream)
                     ).await {
                         Ok(Ok(_)) => false,
@@ -483,7 +483,7 @@ pub trait WebsocketController: Controller {
 
                     lost_pings += 1;
 
-                    if closed || lost_pings > config.websocket.ping_disconnect_count {
+                    if closed || lost_pings as usize > config.websocket.ping_disconnect_count {
                         break;
                     }
                 }

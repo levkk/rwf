@@ -102,7 +102,7 @@ impl MiddlewareSet {
     /// Create new middleware set, including middleware that runs by default
     /// on every controller.
     pub fn new(handlers: Vec<MiddlewareHandler>) -> Self {
-        let mut default_handlers = get_config().default_middleware.handlers();
+        let mut default_handlers = get_config().general.default_middleware.handlers();
         default_handlers.extend(handlers);
 
         Self {

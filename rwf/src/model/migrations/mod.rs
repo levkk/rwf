@@ -147,7 +147,7 @@ impl Migrations {
             HashMap::new()
         };
 
-        let log_queries = get_config().log_queries;
+        let log_queries = get_config().general.log_queries;
 
         let mut conn = start_transaction().await?;
 
@@ -238,7 +238,7 @@ impl Migrations {
                 .collect::<Vec<_>>();
 
             let pool = get_pool();
-            let log_queries = get_config().log_queries;
+            let log_queries = get_config().general.log_queries;
 
             // Execute the migration in a transaction.
             pool.with_transaction(|mut transaction| async move {

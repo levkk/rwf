@@ -16,7 +16,7 @@ pub fn setup_logging() {
                 .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy(),
         )
-        .with_ansi(get_config().tty)
+        .with_ansi(get_config().general.tty)
         .with_file(false)
         .with_target(false)
         .finish()

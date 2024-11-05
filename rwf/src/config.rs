@@ -7,13 +7,12 @@ use std::path::{Path, PathBuf};
 use time::Duration;
 
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
-use crate::controller::{AllowAll, AuthHandler, MiddlewareSet};
-use rand::{rngs::OsRng, RngCore};
+use crate::controller::{AuthHandler, MiddlewareSet};
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use thiserror::Error;
 
-static CONFIG: OnceCell<Config> = OnceCell::new();
+static CONFIG: OnceCell<ConfigFile> = OnceCell::new();
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -36,232 +35,114 @@ pub enum Error {
     NoConfig,
 }
 
-/// Global configuration.
-pub struct Config {
-    path: Option<PathBuf>,
-    pub aes_key: Key<AesGcmSiv<Aes128>>, // AES-128 key used for encryption.
-    pub secure_id_key: Key<AesGcmSiv<Aes128>>,
-    pub cookie_max_age: Duration,
-    pub tty: bool,
-    pub default_auth: AuthHandler,
-    pub session_duration: Duration,
-    pub default_middleware: MiddlewareSet,
-    pub cache_templates: bool,
-    pub websocket: Websocket,
-    pub log_queries: bool,
-    pub http: Http,
-    pub database: Database,
+pub fn get_config() -> &'static ConfigFile {
+    CONFIG.get_or_init(|| ConfigFile::load_default())
 }
 
-pub struct Websocket {
-    pub ping_interval: Duration,
-    pub ping_timeout: Duration,
-    pub ping_disconnect_count: i64,
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ConfigFile {
+    #[serde(skip)]
+    pub path: Option<PathBuf>,
+
+    #[serde(default = "General::default")]
+    pub general: General,
+
+    #[serde(default = "DatabaseConfig::default")]
+    pub database: DatabaseConfig,
+
+    #[serde(default = "WebsocketConfig::default")]
+    pub websocket: WebsocketConfig,
 }
 
-pub struct Http {
-    pub header_max_size: usize,
-}
-
-#[derive(Clone)]
-pub struct Database {
-    pub url: Option<String>,
-    pub name: String,
-    pub user: String,
-    pub pool_size: usize,
-    pub idle_timeout: Duration,
-    pub checkout_timeout: Duration,
-}
-
-impl Database {
-    pub fn database_url(&self) -> String {
-        if let Some(url) = &self.url {
-            return url.clone();
-        } else {
-            format!("postgresql://{}@localhost/{}", self.user, self.name)
-        }
-    }
-
-    fn from_config_file(&mut self, file: &DatabaseConfig) {
-        if let Some(url) = &file.url {
-            self.url = Some(url.clone());
-        }
-
-        if let Some(name) = &file.name {
-            self.name = name.clone();
-        }
-
-        if let Some(user) = &file.user {
-            self.user = user.clone();
-        }
-
-        self.idle_timeout = Duration::seconds(file.idle_timeout as i64);
-        self.checkout_timeout = Duration::seconds(file.checkout_timeout as i64);
-    }
-}
-
-impl Default for Database {
+impl Default for ConfigFile {
     fn default() -> Self {
-        let url = match var("RWF_DATABASE_URL") {
-            Ok(url) => Some(url),
-            Err(_) => None,
-        };
-
-        let user = match var("RWF_DATABASE_USER") {
-            Ok(user) => user,
-            Err(_) => var("USER").unwrap_or("postgres".into()),
-        };
-
-        let name = match var("RWF_DATABASE") {
-            Ok(database) => database,
-            Err(_) => user.clone(),
-        };
-
-        Self {
-            url,
-            user,
-            name,
-            pool_size: 10,
-            idle_timeout: Duration::hours(1),
-            checkout_timeout: Duration::seconds(5),
-        }
-    }
-}
-
-impl Default for Http {
-    fn default() -> Self {
-        Self {
-            header_max_size: 16 * 1024, // 16KB
-        }
-    }
-}
-
-impl Default for Websocket {
-    fn default() -> Self {
-        Self {
-            ping_timeout: Duration::seconds(5),
-            ping_interval: Duration::seconds(60),
-            ping_disconnect_count: 3,
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        // Generate a random AES key.
-        let mut secret_key = [0u8; 256 / 8];
-        OsRng.fill_bytes(&mut secret_key);
-
-        let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
-        let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
-
-        #[cfg(debug_assertions)]
-        let cache_templates = false;
-
-        #[cfg(not(debug_assertions))]
-        let cache_templates = true;
-
         Self {
             path: None,
-            aes_key,
-            secure_id_key,
-            cookie_max_age: Duration::days(30),
-            tty: std::io::stderr().is_terminal(),
-            default_auth: AuthHandler::new(AllowAll {}),
-            session_duration: Duration::days(4),
-            default_middleware: MiddlewareSet::without_default(vec![]),
-            cache_templates,
-            websocket: Websocket::default(),
-            log_queries: var("RWF_LOG_QUERIES").is_ok(),
-            http: Http::default(),
-            database: Database::default(),
+            general: General::default(),
+            database: DatabaseConfig::default(),
+            websocket: WebsocketConfig::default(),
         }
     }
-}
-
-impl Config {
-    pub fn load() -> Result<Config, Error> {
-        let mut config = Config::default();
-        let mut config_file = None;
-        let mut config_path = None;
-
-        for name in ["rwf.toml", "Rum.toml", "Rwf.toml"] {
-            let path = PathBuf::from(name);
-            if path.exists() {
-                config_file = Some(ConfigFile::load(name)?);
-                config_path = Some(path);
-                break;
-            }
-        }
-
-        if config_path.is_none() {
-            return Err(Error::NoConfig);
-        }
-
-        let config_file = match config_file {
-            Some(config_file) => config_file,
-            None => return Err(Error::NoConfig),
-        };
-
-        let secret_key = config_file.general.secret_key()?;
-
-        let aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
-        let secure_id_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
-
-        config.path = config_path;
-        config.aes_key = aes_key;
-        config.secure_id_key = secure_id_key;
-        config.log_queries = config_file.general.log_queries;
-        config.cache_templates = config_file.general.cache_templates;
-        config
-            .database
-            .from_config_file(&config_file.database.unwrap_or_default());
-
-        let mut middelware = vec![];
-
-        if config_file.general.track_requests {
-            middelware.push(RequestTracker::new().middleware());
-        }
-
-        config.default_middleware = MiddlewareSet::without_default(middelware);
-
-        Ok(config)
-    }
-
-    pub fn get() -> &'static Config {
-        get_config()
-    }
-}
-
-pub fn get_config() -> &'static Config {
-    CONFIG.get_or_init(|| Config::load().unwrap_or_default())
-}
-
-#[derive(Serialize, Deserialize)]
-struct ConfigFile {
-    general: General,
-    database: Option<DatabaseConfig>,
 }
 
 impl ConfigFile {
+    pub fn load_default() -> Self {
+        for path in ["rwf.toml", "Rwf.toml", "Rum.toml"] {
+            let path = Path::new(path);
+            if path.is_file() {
+                return Self::load(path).unwrap_or_default();
+            }
+        }
+
+        Self::default()
+    }
+
     pub fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
         let file = read_to_string(path)?;
-        let config: Self = toml::from_str(&file)?;
+        let mut config: Self = toml::from_str(&file)?;
+        config.path = Some(path.as_ref().to_owned());
+
+        if config.general.track_requests {
+            config.general.default_middleware =
+                MiddlewareSet::new(vec![RequestTracker::new().middleware()]);
+        }
+
+        let secret_key = config.general.secret_key()?;
+
+        config.general.aes_key =
+            Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
+        config.general.secure_id_key =
+            Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
         Ok(config)
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct General {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct General {
     #[serde(default = "General::default_secret_key")]
     secret_key: String,
+    #[serde(skip)]
+    pub aes_key: Key<AesGcmSiv<Aes128>>,
+    #[serde(skip)]
+    pub secure_id_key: Key<AesGcmSiv<Aes128>>,
     #[serde(default = "General::default_log_queries")]
-    log_queries: bool,
+    pub log_queries: bool,
     #[serde(default = "General::default_cache_templates")]
-    cache_templates: bool,
+    pub cache_templates: bool,
     #[serde(default = "General::default_track_requests")]
-    track_requests: bool,
+    pub track_requests: bool,
+    #[serde(default = "General::default_cookie_max_age")]
+    cookie_max_age: usize,
+    #[serde(default = "General::default_session_duration")]
+    session_duration: usize,
+    #[serde(default = "General::default_tty")]
+    pub tty: bool,
+    #[serde(default = "General::default_header_max_size")]
+    pub header_max_size: usize,
+    #[serde(skip)]
+    pub default_auth: AuthHandler,
+    #[serde(skip)]
+    pub default_middleware: MiddlewareSet,
+}
+
+impl Default for General {
+    fn default() -> Self {
+        Self {
+            secret_key: General::default_secret_key(),
+            aes_key: Key::<AesGcmSiv<Aes128>>::default(),
+            secure_id_key: Key::<AesGcmSiv<Aes128>>::default(),
+            log_queries: General::default_log_queries(),
+            cache_templates: General::default_cache_templates(),
+            track_requests: General::default_track_requests(),
+            cookie_max_age: General::default_cookie_max_age(),
+            session_duration: General::default_session_duration(),
+            tty: General::default_tty(),
+            header_max_size: General::default_header_max_size(),
+            default_auth: AuthHandler::default(),
+            default_middleware: MiddlewareSet::without_default(vec![]),
+        }
+    }
 }
 
 impl General {
@@ -299,26 +180,143 @@ impl General {
     fn default_track_requests() -> bool {
         false
     }
+
+    fn default_cookie_max_age() -> usize {
+        Duration::days(30).whole_milliseconds() as usize
+    }
+
+    pub fn cookie_max_age(&self) -> Duration {
+        Duration::milliseconds(self.cookie_max_age as i64)
+    }
+
+    pub fn session_duration(&self) -> Duration {
+        Duration::milliseconds(self.session_duration as i64)
+    }
+
+    fn default_session_duration() -> usize {
+        Duration::weeks(4).whole_milliseconds() as usize
+    }
+
+    fn default_tty() -> bool {
+        std::io::stderr().is_terminal()
+    }
+
+    fn default_header_max_size() -> usize {
+        16 * 1024 // 16K
+    }
 }
 
-#[derive(Serialize, Deserialize, Default)]
-struct DatabaseConfig {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WebsocketConfig {
+    #[serde(default = "WebsocketConfig::default_ping_timeout")]
+    pub ping_timeout: usize,
+    #[serde(default = "WebsocketConfig::default_ping_interval")]
+    pub ping_interval: usize,
+    #[serde(default = "WebsocketConfig::default_disconnect_count")]
+    pub ping_disconnect_count: usize,
+}
+
+impl Default for WebsocketConfig {
+    fn default() -> Self {
+        Self {
+            ping_timeout: Self::default_ping_timeout(),
+            ping_interval: Self::default_ping_interval(),
+            ping_disconnect_count: Self::default_disconnect_count(),
+        }
+    }
+}
+
+impl WebsocketConfig {
+    fn default_ping_timeout() -> usize {
+        Duration::seconds(5).whole_milliseconds() as usize
+    }
+
+    pub fn ping_timeout(&self) -> Duration {
+        Duration::milliseconds(self.ping_timeout as i64)
+    }
+
+    fn default_ping_interval() -> usize {
+        Duration::seconds(60).whole_milliseconds() as usize
+    }
+
+    pub fn ping_interval(&self) -> Duration {
+        Duration::milliseconds(self.ping_interval as i64)
+    }
+
+    fn default_disconnect_count() -> usize {
+        3
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DatabaseConfig {
     url: Option<String>,
     name: Option<String>,
     user: Option<String>,
     #[serde(default = "DatabaseConfig::default_idle_timeout")]
-    idle_timeout: usize,
+    pub idle_timeout: usize,
     #[serde(default = "DatabaseConfig::default_checkout_timeout")]
-    checkout_timeout: usize,
+    pub checkout_timeout: usize,
+    #[serde(default = "DatabaseConfig::default_pool_size")]
+    pub pool_size: usize,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        DatabaseConfig {
+            url: None,
+            name: None,
+            user: None,
+            idle_timeout: DatabaseConfig::default_idle_timeout(),
+            checkout_timeout: DatabaseConfig::default_checkout_timeout(),
+            pool_size: DatabaseConfig::default_pool_size(),
+        }
+    }
 }
 
 impl DatabaseConfig {
     fn default_idle_timeout() -> usize {
-        3600
+        3600 * 1000
+    }
+
+    pub fn idle_timeout(&self) -> Duration {
+        Duration::milliseconds(self.idle_timeout as i64)
     }
 
     fn default_checkout_timeout() -> usize {
-        5
+        5 * 1000
+    }
+
+    pub fn checkout_timeout(&self) -> Duration {
+        Duration::milliseconds(self.checkout_timeout as i64)
+    }
+
+    fn default_pool_size() -> usize {
+        10
+    }
+
+    pub fn database_url(&self) -> String {
+        match self.url {
+            Some(ref url) => url.clone(),
+            None => match var("RWF_DATABASE_URL") {
+                Ok(url) => url,
+                Err(_) => {
+                    let user = self.user.clone().unwrap_or(match var("RWF_DATABASE_USER") {
+                        Ok(user) => user,
+                        Err(_) => match var("USER") {
+                            Ok(user) => user,
+                            Err(_) => "postgres".into(),
+                        },
+                    });
+                    let name = self.name.clone().unwrap_or(match var("RWF_DATABASE") {
+                        Ok(name) => name,
+                        Err(_) => user.clone(),
+                    });
+
+                    format!("postgresql://{}@localhost/{}", user, name)
+                }
+            },
+        }
     }
 }
 
@@ -330,7 +328,7 @@ mod test {
 
     #[test]
     fn test_load_config() {
-        for config_path in ["rwf.toml", "Rum.toml", "Rwf.toml"] {
+        for config_path in ["Rwf.toml", "rwf.toml", "Rum.toml"] {
             let tmp_dir = TempDir::new("test").unwrap();
             let path = tmp_dir.path();
 
@@ -347,7 +345,7 @@ name = "test"
             let mut file = File::create(path).unwrap();
             file.write_all(config.as_bytes()).unwrap();
 
-            let config = Config::load().unwrap();
+            let config = ConfigFile::load_default();
             assert_eq!(config.path, Some(PathBuf::from(config_path)));
         }
     }

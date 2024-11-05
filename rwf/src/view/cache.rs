@@ -22,7 +22,7 @@ impl Templates {
     }
 
     pub fn get(&mut self, path: impl AsRef<Path> + Copy) -> Result<Arc<Template>, Error> {
-        let cache_templates = get_config().cache_templates;
+        let cache_templates = get_config().general.cache_templates;
 
         if let Some(t) = self.templates.get(path.as_ref()) {
             return Ok(t.clone());

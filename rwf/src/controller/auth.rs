@@ -20,6 +20,12 @@ pub struct AuthHandler {
     auth: Arc<Box<dyn Authentication>>,
 }
 
+impl Default for AuthHandler {
+    fn default() -> Self {
+        Self::new(AllowAll {})
+    }
+}
+
 impl AuthHandler {
     /// Create new authentication mechanism using the provided authentication method.
     pub fn new(auth: impl Authentication + 'static) -> Self {
@@ -197,7 +203,7 @@ impl Session {
     pub fn new(payload: impl Serialize) -> Result<Self, Error> {
         Ok(Self {
             payload: serde_json::to_value(payload)?,
-            expiration: (OffsetDateTime::now_utc() + get_config().session_duration)
+            expiration: (OffsetDateTime::now_utc() + get_config().general.session_duration())
                 .unix_timestamp(),
             session_id: SessionId::default(),
         })

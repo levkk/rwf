@@ -659,7 +659,7 @@ impl<T: Model> Query<T> {
     }
 
     fn log(&self, duration: Duration) {
-        if !get_config().log_queries {
+        if !get_config().general.log_queries {
             return;
         }
 

@@ -242,7 +242,7 @@ impl Head {
     async fn read_line(mut stream: impl AsyncRead + Unpin) -> Result<String, std::io::Error> {
         let mut buf = Vec::new();
         let (mut cr, mut lf) = (false, false);
-        let mut bytes_remaining = get_config().http.header_max_size; // avoid DDoS
+        let mut bytes_remaining = get_config().general.header_max_size; // avoid DDoS
 
         while bytes_remaining > 0 {
             // stream should be buffered
