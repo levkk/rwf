@@ -9,6 +9,7 @@ pub mod handler;
 pub mod head;
 pub mod headers;
 pub mod path;
+pub mod rack;
 pub mod request;
 pub mod response;
 pub mod router;

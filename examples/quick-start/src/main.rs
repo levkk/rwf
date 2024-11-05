@@ -32,6 +32,8 @@ impl Controller for CurrentTime {
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
     Logger::init();
+    rwf::http::rack::Ruby::init().unwrap();
+    rwf::http::rack::Ruby::eval("puts 'hello world'").unwrap();
 
     Server::new(vec![route!("/" => Index), route!("/time" => CurrentTime)])
         .launch("0.0.0.0:8001")
