@@ -84,7 +84,7 @@ impl ConfigFile {
 
         if config.general.track_requests {
             config.general.default_middleware =
-                MiddlewareSet::new(vec![RequestTracker::new().middleware()]);
+                MiddlewareSet::without_default(vec![RequestTracker::new().middleware()]);
         }
 
         let secret_key = config.general.secret_key()?;
