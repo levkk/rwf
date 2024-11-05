@@ -45,3 +45,7 @@ libc = "*"
 
 [dev-dependencies]
 tempdir = "0.3"
+
+[build-dependencies]
+bindgen = "0.65.1"
+cc = "*"

@@ -18,5 +18,5 @@ members = [
     "examples/django",
     "examples/request-tracking",
     "examples/engine",
-    "rwf-admin", "examples/rails",
+    "rwf-admin", "examples/rails", "rwf-ruby",
 ]

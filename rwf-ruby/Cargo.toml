@@ -1,0 +1,12 @@
+[package]
+name = "rwf-ruby"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+once_cell = "1"
+thiserror = "1"
+
+[build-dependencies]
+cc = "1"
