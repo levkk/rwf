@@ -149,6 +149,15 @@ impl Head {
         })
     }
 
+    pub fn new(method: Method, path: Path, version: Version, headers: Headers) -> Self {
+        Self {
+            method,
+            path,
+            version,
+            headers,
+        }
+    }
+
     pub fn authorization(&self) -> Option<Authorization> {
         Authorization::parse(match self.header("authorization") {
             Some(authorization) => authorization,

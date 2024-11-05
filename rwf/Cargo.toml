@@ -9,7 +9,8 @@ description = "Framework for building web applications in the Rust programming l
 
 [features]
 wsgi = ["pyo3", "rayon"]
-default = []
+cloudflare = ["worker"]
+default = ["tokio", "notify"]
 
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
@@ -19,7 +20,7 @@ tokio-postgres = { version = "0.7", features = [
     "with-uuid-1",
 ] }
 bytes = "1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["full"], optional = true }
 thiserror = "1"
 parking_lot = "0.12"
 once_cell = "1"
@@ -34,13 +35,15 @@ base64 = "0.22"
 aes-gcm-siv = "0.11"
 aes = "0.8"
 rand = { version = "0.8", features = ["getrandom"] }
+getrandom = { version = "*", features = ["js"] }
 regex = "1"
 sha1 = "0.10"
 toml = "0.8"
 pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
 rayon = { version = "1", optional = true }
 uuid = { version = "1", features = ["v4"] }
-notify = "7"
+notify = { version = "7", optional = true }
+worker = { version = "0.4", features = ["http"], optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -37,6 +37,10 @@ pub enum Error {
 
     #[error("forbidden")]
     Forbidden,
+
+    #[cfg(feature = "cloudflare")]
+    #[error("cloudflare: {0}")]
+    Cloudflare(#[from] worker::Error),
 }
 
 impl Error {

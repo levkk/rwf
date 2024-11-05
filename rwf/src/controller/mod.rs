@@ -6,6 +6,7 @@ pub mod error;
 pub mod middleware;
 pub mod ser;
 pub mod static_files;
+#[cfg(not(feature = "cloudflare"))]
 pub mod turbo_stream;
 pub mod util;
 
@@ -19,6 +20,7 @@ pub use engine::Engine;
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::StaticFiles;
+#[cfg(not(feature = "cloudflare"))]
 pub use turbo_stream::TurboStream;
 
 use super::http::{
@@ -407,6 +409,7 @@ pub trait ModelController: Controller {
 
 #[async_trait]
 #[allow(unused_variables)]
+#[cfg(not(feature = "cloudflare"))]
 pub trait WebsocketController: Controller {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         use base64::{engine::general_purpose, Engine as _};

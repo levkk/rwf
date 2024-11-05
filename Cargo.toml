@@ -19,4 +19,5 @@ members = [
     "examples/request-tracking",
     "examples/engine",
     "rwf-admin",
+    "examples/cloudflare-worker",
 ]
