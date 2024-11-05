@@ -75,6 +75,22 @@ impl Request {
         })
     }
 
+    pub fn new(head: Head, body: &[u8]) -> Result<Self, Error> {
+        let cookies = head.cookies();
+
+        Ok(Self {
+            head,
+            params: None,
+            session: cookies.get_session()?,
+            inner: Arc::new(Inner {
+                body: body.to_vec(),
+                peer: None,
+                cookies,
+            }),
+            received_at: OffsetDateTime::now_utc(),
+        })
+    }
+
     /// Get the request's source IP address.
     pub fn peer(&self) -> &SocketAddr {
         self.inner

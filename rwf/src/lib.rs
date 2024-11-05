@@ -5,6 +5,7 @@ pub mod config;
 pub mod controller;
 pub mod crypto;
 pub mod error;
+#[cfg(not(feature = "cloudflare"))]
 pub mod hmr;
 pub mod http;
 pub mod job;
@@ -21,7 +22,6 @@ pub use tokio;
 pub use tokio_postgres;
 
 pub use controller::{Controller, Error, ModelController, RestController};
-pub use http::Server;
 pub use logging::Logger;
 
 use std::net::SocketAddr;

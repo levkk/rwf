@@ -1,0 +1,24 @@
+[package]
+name = "cloudflare-worker"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
+
+[package.metadata.release]
+release = false
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.4.2", features = ['http'] }
+worker-macros = { version = "0.4.2", features = ['http'] }
+console_error_panic_hook = { version = "0.1.1" }
+http = "1.1"
+rwf = { path = "../../rwf", default-features = false, features = [
+    "cloudflare",
+] }
