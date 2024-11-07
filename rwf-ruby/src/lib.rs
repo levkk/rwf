@@ -6,6 +6,7 @@ use std::mem::MaybeUninit;
 use std::path::Path;
 
 use std::collections::HashMap;
+use tracing::info;
 
 // Make sure the Ruby VM is initialized only once.
 static RUBY_INIT: OnceCell<Ruby> = OnceCell::new();
@@ -306,8 +307,10 @@ impl Ruby {
     /// Preload the Rack app into memory. Run this before trying to run anything else.
     pub fn load_app(path: impl AsRef<Path> + Copy) -> Result<(), Error> {
         Self::init()?;
-
         let path = path.as_ref();
+
+        let version = Self::eval("RUBY_VERSION").unwrap().to_string();
+        info!("Using {}", version);
 
         if path.exists() {
             // We use `require`, which only works with abslute paths.

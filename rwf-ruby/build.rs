@@ -3,6 +3,7 @@ use std::process::Command;
 fn main() {
     println!("cargo:rerun-if-changed=src/bindings.c");
     println!("cargo:rerun-if-changed=src/bindings.h"); // Bindings are generated manually because bindgen goes overboard with ruby.h
+                                                       // println!("cargo:rustc-link-arg=-l/opt/homebrew/Cellar/ruby/3.3.4/lib/libruby.dylib");
 
     let output = Command::new("ruby")
         .arg("headers.rb")

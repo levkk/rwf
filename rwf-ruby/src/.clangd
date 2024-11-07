@@ -2,3 +2,4 @@ CompileFlags:
   Add:
     - "-I/usr/include/ruby-3.3.0"
     - "-I/usr/include/ruby-3.3.0/x86_64-linux"
+    - "-I/opt/homebrew/Cellar/ruby/3.3.4/include"
