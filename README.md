@@ -23,6 +23,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 - :heavy_check_mark: Logging and metrics
 - :heavy_check_mark: [CLI](rwf-cli)
 - :heavy_check_mark: WSGI server for [migrating](examples/django) from Django/Flask apps
+- :heavy_check_mark: Rack server for [migrating](examples/rails) from Rails
 
 ## Quick start
 
