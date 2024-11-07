@@ -8,8 +8,9 @@ description = "Framework for building web applications in the Rust programming l
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-wsgi = ["pyo3"]
+wsgi = ["pyo3", "rayon"]
 default = []
+rack = ["rwf-ruby", "rayon"]
 
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
@@ -38,10 +39,10 @@ regex = "1"
 sha1 = "0.10"
 toml = "0.8"
 pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
-rayon = { version = "1" }
+rayon = { version = "1", optional = true }
 uuid = { version = "1", features = ["v4"] }
 notify = "7"
-rwf-ruby = { path = "../rwf-ruby" }
+rwf-ruby = { path = "../rwf-ruby", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
