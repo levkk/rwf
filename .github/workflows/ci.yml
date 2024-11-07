@@ -38,8 +38,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install libruby
-        run: sudo apt update && sudo apt install ruby-dev -y
       - name: Install cargo-nextest
         run: cargo install cargo-nextest
       - name: Test
