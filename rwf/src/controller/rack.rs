@@ -55,13 +55,16 @@ impl Controller for RackController {
 
         let req_path = request.path().path().to_string();
         let method = request.method().to_string();
+        let query = request.query().to_string();
+        let req_uri = format!("{}{}", req_path, query);
 
         let mut env = HashMap::from([
-            ("REQUEST_URI".into(), req_path.clone()),
+            ("REQUEST_URI".into(), req_uri),
             ("PATH_INFO".into(), req_path.clone()),
-            ("REQUEST_PATH".into(), req_path.clone()),
+            ("REQUEST_PATH".into(), req_path),
             ("SERVER_PROTOCOL".into(), "HTTP/1.1".into()),
             ("REQUEST_METHOD".into(), method),
+            ("QUERY_STRING".into(), query.replace("?", "")),
         ]);
 
         for (key, value) in request.headers().iter() {
