@@ -1,12 +1,11 @@
 use libc::uintptr_t;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::fs::canonicalize;
+use std::mem::MaybeUninit;
 use std::path::Path;
 
-use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 // Make sure the Ruby VM is initialized only once.
 static RUBY_INIT: OnceCell<Ruby> = OnceCell::new();
@@ -14,17 +13,17 @@ static RUBY_INIT: OnceCell<Ruby> = OnceCell::new();
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct RackResponse {
-    pub value: usize,
+    pub value: uintptr_t,
     pub code: c_int,
     pub num_headers: c_int,
-    pub headers: *mut EnvKey,
+    pub headers: *mut KeyValue,
     pub body: *mut c_char,
     pub is_file: c_int,
 }
 
 #[repr(C)]
 #[derive(Debug)]
-struct EnvKey {
+pub struct KeyValue {
     key: *const c_char,
     value: *const c_char,
 }
@@ -32,12 +31,12 @@ struct EnvKey {
 #[repr(C)]
 #[derive(Debug)]
 pub struct RackRequest {
-    env: *const EnvKey,
+    env: *const KeyValue,
     length: c_int,
 }
 
 impl RackRequest {
-    pub fn send(env: HashMap<String, String>) -> RackResponse {
+    pub fn send(env: HashMap<String, String>) -> Result<RackResponse, Error> {
         // let mut c_strings = vec![];
         let mut keys = vec![];
 
@@ -49,32 +48,35 @@ impl RackRequest {
             k.push(key);
             v.push(value);
 
-            let env_key = EnvKey {
+            let env_key = KeyValue {
                 key: k.last().unwrap().as_ptr(),
                 value: v.last().unwrap().as_ptr(),
             };
 
-            // unsafe { rwf_debug_key(&env_key) };
-
             keys.push(env_key);
-
-            // Keep the references or they will be dropped and
-            // we'll segfault.
-            // c_strings.push(key);
-            // c_strings.push(value);
         }
-
-        // unsafe { rwf_debug_key(&keys[2]) };
 
         let req = RackRequest {
             length: keys.len() as c_int,
             env: keys.as_ptr(),
         };
 
-        unsafe { rwf_app_call(req) }
+        // Hardcoded to Rails, but can be any other Rack app.
+        let app_name = CString::new("Rails.application").unwrap();
+
+        let mut response: RackResponse = unsafe { MaybeUninit::zeroed().assume_init() };
+
+        let result = unsafe { rwf_app_call(req, app_name.as_ptr(), &mut response) };
+
+        if result != 0 {
+            return Err(Error::App);
+        } else {
+            Ok(response)
+        }
     }
 }
 
+/// RackResponse with values allocated in Rust memory space.
 #[derive(Debug)]
 pub struct RackResponseOwned {
     code: u16,
@@ -84,20 +86,31 @@ pub struct RackResponseOwned {
 }
 
 impl RackResponseOwned {
+    /// Request body.
     pub fn body(&self) -> &[u8] {
         &self.body
     }
 
+    /// Request HTTP code.
     pub fn code(&self) -> u16 {
         self.code
     }
 
+    /// Is the request a file?
     pub fn is_file(&self) -> bool {
         self.is_file
+    }
+
+    /// Request headers.
+    pub fn headers(&self) -> &HashMap<String, String> {
+        &self.headers
     }
 }
 
 impl From<RackResponse> for RackResponseOwned {
+    /// Move all data out of C into Rust-owned memory.
+    /// This also drops the reference to the Rack response array,
+    /// allowing it to be garbage collected.
     fn from(response: RackResponse) -> RackResponseOwned {
         let code = response.code as u16;
 
@@ -108,12 +121,14 @@ impl From<RackResponse> for RackResponseOwned {
             let name = unsafe { CStr::from_ptr((*env_key).key) };
             let value = unsafe { CStr::from_ptr((*env_key).value) };
 
+            // Headers should be valid UTF-8.
             headers.insert(
                 name.to_string_lossy().to_string(),
                 value.to_string_lossy().to_string(),
             );
         }
 
+        // Body can be anything.
         let body = unsafe { CStr::from_ptr(response.body) };
         let body = Vec::from(body.to_bytes());
 
@@ -127,6 +142,7 @@ impl From<RackResponse> for RackResponseOwned {
 }
 
 impl RackResponse {
+    /// Parse the Rack response from a Ruby value.
     pub fn new(value: &Value) -> Self {
         unsafe { rwf_rack_response_new(value.raw_ptr()) }
     }
@@ -180,7 +196,11 @@ extern "C" {
     /// Initialize Ruby correctly.
     fn rwf_init_ruby();
 
-    fn rwf_app_call(request: RackRequest) -> RackResponse;
+    fn rwf_app_call(
+        request: RackRequest,
+        app_name: *const c_char,
+        response: *mut RackResponse,
+    ) -> c_int;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -283,12 +303,14 @@ impl Ruby {
         }
     }
 
+    /// Preload the Rack app into memory. Run this before trying to run anything else.
     pub fn load_app(path: impl AsRef<Path> + Copy) -> Result<(), Error> {
         Self::init()?;
 
         let path = path.as_ref();
 
         if path.exists() {
+            // We use `require`, which only works with abslute paths.
             let absolute = canonicalize(path).unwrap();
             let s = absolute.display().to_string();
             let cs = CString::new(s).unwrap();
@@ -303,6 +325,7 @@ impl Ruby {
         Ok(())
     }
 
+    /// Run some Ruby code. If an exception is thrown, return the error.
     pub fn eval(code: &str) -> Result<Value, Error> {
         Self::init()?;
 

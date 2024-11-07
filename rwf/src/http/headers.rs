@@ -1,5 +1,5 @@
 //! HTTP request headers.
-use std::collections::HashMap;
+use std::collections::{hash_map::Iter, HashMap};
 
 /// HTTP headers.
 #[derive(Clone, Debug, Default)]
@@ -39,6 +39,10 @@ impl Headers {
 
     pub fn into_raw(self) -> HashMap<String, String> {
         self.headers
+    }
+
+    pub fn iter(&self) -> Iter<String, String> {
+        self.headers.iter()
     }
 
     /// Convert headers to bytes (UTF-8).

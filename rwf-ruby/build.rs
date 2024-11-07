@@ -1,21 +1,21 @@
-use std::{env, path::PathBuf};
+use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=src/bindings.c");
-    println!("cargo:rerun-if-changed=src/bindings.h");
+    println!("cargo:rerun-if-changed=src/bindings.h"); // Bindings are generated manually because bindgen goes overboard with ruby.h
 
-    // let bindings = bindgen::Builder::default()
-    //     .header("src/bindings.h")
-    //     .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-    //     .generate()
-    //     .expect("bindgen");
+    let output = Command::new("ruby")
+        .arg("headers.rb")
+        .output()
+        .expect("Is ruby installed on your system?")
+        .stdout;
+    let flags = String::from_utf8_lossy(&output).to_string();
 
-    // let out_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("src/bindings.rs");
-    // bindings.write_to_file(out_path).expect("write bindings");
+    let mut build = cc::Build::new();
 
-    cc::Build::new()
-        .file("src/bindings.c")
-        .flag("-I/usr/include/ruby-3.3.0")
-        .flag("-I/usr/include/ruby-3.3.0/x86_64-linux")
-        .compile("rwf_ruby");
+    for flag in flags.split(" ") {
+        build.flag(flag);
+    }
+
+    build.file("src/bindings.c").compile("rwf_ruby");
 }

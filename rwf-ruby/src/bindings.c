@@ -6,13 +6,9 @@
 #include <ruby.h>
 #include <stdio.h>
 #include "bindings.h"
-#include "ruby/internal/arithmetic/int.h"
-#include "ruby/internal/core/rstring.h"
-#include "ruby/internal/eval.h"
-#include "ruby/internal/special_consts.h"
-#include "ruby/internal/value_type.h"
 
-static void rwf_print_error(void);
+
+static int rwf_print_error(void);
 
 void rwf_init_ruby() {
     ruby_setup();
@@ -20,6 +16,10 @@ void rwf_init_ruby() {
     ruby_script("rwf_loader");
 }
 
+/*
+ * Load the Ruby app into memory.
+ * This is the only known way to execute Ruby apps from C in a way that works.
+*/
 int rwf_load_app(const char* path) {
     int state;
     void *node;
@@ -51,15 +51,12 @@ int rwf_load_app(const char* path) {
     return 0;
 }
 
-typedef enum RackBody {
-    PROXY,
-    FILES,
-} RackBody;
-
-
+/*
+ * Inspect a Ruby value and print that to the standard output.
+*/
 void rwf_debug_value(VALUE v) {
     int state;
-    VALUE kernel = rb_eval_string_protect("Kernel", &state);
+    VALUE kernel = rb_eval_string_protect("Kernel", &state); /* Kernel is always available. */
     VALUE str = rb_obj_as_string(v);
     rb_funcall(kernel, rb_intern("puts"), 1, str);
 
@@ -67,16 +64,9 @@ void rwf_debug_value(VALUE v) {
     rb_funcall(kernel, rb_intern("puts"), 1, methods);
 }
 
-int rwf_responds_to(VALUE value, const char* name) {
-    if (value == Qnil) {
-        return 0;
-    }
-
-    VALUE name_s = rb_str_new_cstr(name);
-    VALUE responds_to = rb_funcall(value, rb_intern("respond_to?"), 1, name_s);
-
+static int rwf_is_true(VALUE v) {
     /* I feel dumb, but Qtrue doesn't work. */
-    VALUE object_id = rb_funcall(responds_to, rb_intern("object_id"), 0);
+    VALUE object_id = rb_funcall(v, rb_intern("object_id"), 0);
     int is_true = NUM2INT(object_id);
 
     if (is_true == 20) {
@@ -86,6 +76,33 @@ int rwf_responds_to(VALUE value, const char* name) {
     }
 }
 
+static int rwf_is_nil(VALUE v) {
+    return rwf_is_true(rb_funcall(v, rb_intern("nil?"), 0));
+}
+
+/*
+ * Check if this value can accept a method.
+ * Use this unless you're sure of the data type you're dealing with.
+ * If you're wrong, the VM will segfault though.
+*/
+int rwf_responds_to(VALUE value, const char* name) {
+    if (value == Qnil) {
+        return 0;
+    }
+
+    VALUE name_s = rb_str_new_cstr(name);
+    VALUE responds_to = rb_funcall(value, rb_intern("respond_to?"), 1, name_s);
+
+    return rwf_is_true(responds_to);
+}
+
+/*
+ * Try to figure out what Rack returned as the body.
+ *
+ * So far I've discovered it can either be a BodyProxy which duck-types to array,
+ * or a File::Iterator which I'm not sure what it does, but I can get the path to the file,
+ * which Rust can then read.
+*/
 VALUE rwf_get_body(VALUE value, int *is_file) {
     if (rwf_responds_to(value, "to_ary") == 0) {
         VALUE proxy_body_ar = rb_funcall(value, rb_intern("to_ary"), 0);
@@ -101,8 +118,14 @@ VALUE rwf_get_body(VALUE value, int *is_file) {
     }
 }
 
-
+/* Parse the response from Rack. */
 RackResponse rwf_rack_response_new(VALUE value) {
+    /*
+        Rack returns an array of 3 elements:
+          - HTTP code
+          - headers hash
+          - response body, which can be a few things
+    */
     assert(TYPE(value) == T_ARRAY);
     assert(RARRAY_LEN(value) == 3);
 
@@ -115,7 +138,7 @@ RackResponse rwf_rack_response_new(VALUE value) {
     response.num_headers = RHASH_SIZE(headers);
 
     VALUE header_keys = rb_funcall(headers, rb_intern("keys"), 0);
-    response.headers = malloc(response.num_headers * sizeof(EnvKey));
+    response.headers = malloc(response.num_headers * sizeof(KeyValue));
 
     for(int i = 0; i < response.num_headers; i++) {
         VALUE header_key = rb_ary_entry(header_keys, i);
@@ -127,7 +150,7 @@ RackResponse rwf_rack_response_new(VALUE value) {
         char *header_key_str = StringValueCStr(header_key_symbol_str);
         char *header_value_str = StringValueCStr(header_value);
 
-        EnvKey env_key;
+        KeyValue env_key;
         env_key.key = header_key_str;
         env_key.value = header_value_str;
 
@@ -140,45 +163,52 @@ RackResponse rwf_rack_response_new(VALUE value) {
     // to array.
     VALUE body = rwf_get_body(body_entry, &response.is_file);
 
-    response.body = StringValueCStr(body);
+    if (rwf_is_nil(body) == 0) {
+        VALUE empty = rb_str_new_cstr("");
+        response.body = StringValueCStr(empty);
+    } else {
+        response.body = StringValueCStr(body);
+    }
+
     response.value = value;
 
     return response;
 }
 
-void rwf_debug_key(EnvKey *k) {
-    int state;
-    VALUE kernel = rb_eval_string_protect("Kernel", &state);
-
-    VALUE key = rb_str_new_cstr(k->key);
-    VALUE value = rb_str_new_cstr(k->value);
-
-    rb_funcall(kernel, rb_intern("puts"), 1, key);
-    rb_funcall(kernel, rb_intern("puts"), 1, value);
-}
-
-RackResponse rwf_app_call(RackRequest request) {
+/*
+ * Execute a Rack app and return an HTTP response.
+ *
+ * The app_name is a Ruby string which evaluates to the Rack app, for example: `Rails.application`.
+ *
+ * This function isn't super safe yet. For example, if the app_name is not a Rack app, we'll segfault.
+*/
+int rwf_app_call(RackRequest request, const char *app_name, RackResponse *res) {
     int state;
 
-    VALUE hash = rb_hash_new();
+    VALUE env = rb_hash_new();
     for (int i = 0; i < request.length; i++) {
         VALUE key = rb_str_new_cstr(request.env[i].key);
         VALUE value = rb_str_new_cstr(request.env[i].value);
 
-        rb_hash_aset(hash, key, value);
+        rb_hash_aset(env, key, value);
     }
 
-    VALUE app = rb_eval_string_protect("Rails.application", &state);
+    VALUE app = rb_eval_string_protect(app_name, &state);
 
     if (state) {
         rwf_print_error();
+        return -1;
     }
 
-    VALUE response = rb_funcall(app, rb_intern("call"), 1, hash);
+    VALUE response = rb_funcall(app, rb_intern("call"), 1, env);
 
-    rwf_print_error();
+    if (rwf_print_error() != 0) {
+        return -1;
+    }
 
-    return rwf_rack_response_new(response);
+    *res = rwf_rack_response_new(response);
+
+    return 0;
 }
 
 void rwf_rack_response_drop(RackResponse *response) {
@@ -206,7 +236,7 @@ void rwf_clear_error_state() {
     rb_set_errinfo(Qnil);
 }
 
-void rwf_print_error() {
+int rwf_print_error() {
     VALUE error = rb_errinfo();
 
     if (error != Qnil) {
@@ -216,7 +246,9 @@ void rwf_print_error() {
         VALUE backtrace_obj = rb_obj_as_string(backtrace);
         char *backtrace_str = StringValueCStr(backtrace_obj);
         printf("error: %s\nbacktrace: %s", error_msg, backtrace_str);
+        rb_set_errinfo(Qnil);
+        return 1;
     }
 
-    rb_set_errinfo(Qnil);
+    return 0;
 }

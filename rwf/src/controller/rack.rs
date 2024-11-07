@@ -8,12 +8,11 @@ use crate::http::{Request, Response};
 use async_trait::async_trait;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use tokio::sync::oneshot::channel;
-use tokio::time::{timeout, Duration};
-use tracing::warn;
+use tracing::{info, warn};
 
 use tokio::fs::{metadata, File};
 
-use rwf_ruby::{RackRequest, RackResponse, RackResponseOwned, Ruby};
+use rwf_ruby::{RackRequest, RackResponseOwned, Ruby};
 use std::sync::Arc;
 
 pub struct RackController {
@@ -36,15 +35,11 @@ impl RackController {
         }
     }
 
-    pub fn load(&self) {
-        Ruby::load_app(&self.path).unwrap();
-    }
-
     fn runtime(threads: usize) -> ThreadPool {
         ThreadPoolBuilder::new()
             .num_threads(threads)
             .panic_handler(|_| {
-                warn!("WSGI thread panicked. This is a bug in the WSGI application.");
+                warn!("Rack thread panicked. This is a bug in the Rack application.");
             })
             .build()
             .unwrap()
@@ -61,22 +56,32 @@ impl Controller for RackController {
         let req_path = request.path().path().to_string();
         let method = request.method().to_string();
 
+        let mut env = HashMap::from([
+            ("REQUEST_URI".into(), req_path.clone()),
+            ("PATH_INFO".into(), req_path.clone()),
+            ("REQUEST_PATH".into(), req_path.clone()),
+            ("SERVER_PROTOCOL".into(), "HTTP/1.1".into()),
+            ("REQUEST_METHOD".into(), method),
+        ]);
+
+        for (key, value) in request.headers().iter() {
+            env.insert(
+                format!("HTTP_{}", crate::snake_case(key).to_ascii_uppercase()),
+                value.to_string(),
+            );
+        }
+
         self.pool.spawn(move || {
+            // We only have one thread in Rust, so there is no race.
+            // Besides, if you try this from multiple threads, you'll segfault.
             if !loaded.load(Ordering::Relaxed) {
+                info!("Loading the Rack app, hold your horses...");
                 Ruby::load_app(&path).unwrap();
                 loaded.store(true, Ordering::Relaxed);
+                info!("Rack app loaded, let's go!");
             }
 
-            let env = HashMap::from([
-                ("REQUEST_URI".into(), req_path.clone()),
-                ("PATH_INFO".into(), req_path.clone()),
-                ("REQUEST_PATH".into(), req_path.clone()),
-                ("SERVER_PROTOCOL".into(), "HTTP/1.1".into()),
-                ("HTTP_HOST".into(), ("127.0.0.1:8000".into())),
-                ("REQUEST_METHOD".into(), method),
-            ]);
-
-            let response = RackRequest::send(env);
+            let response = RackRequest::send(env).unwrap();
             let owned = RackResponseOwned::from(response);
 
             let _ = tx.send(owned);
@@ -86,15 +91,28 @@ impl Controller for RackController {
 
         if response.is_file() {
             let path = PathBuf::from(String::from_utf8_lossy(response.body()).to_string());
-            let meta = metadata(&path).await.unwrap();
-            let file = File::open(&path).await.unwrap();
+
+            let meta = if let Ok(meta) = metadata(&path).await {
+                meta
+            } else {
+                return Ok(Response::not_found());
+            };
+
+            // Don't think the file will disappear here, but you really can't know.
+            let file = if let Ok(file) = File::open(&path).await {
+                file
+            } else {
+                return Ok(Response::not_found());
+            };
 
             Ok(Response::new().body((path, file, meta)))
         } else {
-            Ok(Response::new()
-                .body(response.body())
-                .header("Content-Type", "text/html")
-                .code(response.code()))
+            let mut res = Response::new().body(response.body());
+            for (key, value) in response.headers() {
+                res = res.header(key, value);
+            }
+
+            Ok(res.code(response.code()))
         }
     }
 }

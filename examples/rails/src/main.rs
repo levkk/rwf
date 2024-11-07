@@ -11,7 +11,6 @@ async fn main() -> Result<(), http::Error> {
     Logger::init();
 
     let controller = RackController::new("todo");
-    // controller.load();
 
     Server::new(vec![controller.wildcard("/")])
         .launch("0.0.0.0:8000")
