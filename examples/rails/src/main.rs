@@ -1,4 +1,4 @@
-use rwf::controller::rack::RackController;
+use rwf::controller::RackController;
 use rwf::http::{self, Server};
 use rwf::prelude::*;
 
