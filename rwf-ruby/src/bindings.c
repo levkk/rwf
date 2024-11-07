@@ -6,9 +6,24 @@
 #include <ruby.h>
 #include <stdio.h>
 #include "bindings.h"
+#include "ruby/internal/intern/string.h"
+#include "ruby/internal/special_consts.h"
+#include "ruby/internal/symbol.h"
 
 
 static int rwf_print_error(void);
+
+static VALUE rwf_get_class(const char *name) {
+    int state;
+    VALUE clss = rb_eval_string_protect(name, &state);
+
+    if (state == 0) {
+        return clss;
+    } else {
+        rwf_print_error();
+        return Qnil;
+    }
+}
 
 void rwf_init_ruby() {
     ruby_setup();
@@ -175,6 +190,17 @@ RackResponse rwf_rack_response_new(VALUE value) {
     return response;
 }
 
+static VALUE rwf_request_body(const char *body) {
+    VALUE rb_str = rb_str_new_cstr(body);
+    VALUE str_io = rwf_get_class("StringIO");
+    VALUE wrapper = rwf_get_class("Rack::Lint::Wrapper::InputWrapper");
+
+    VALUE str_io_instance = rb_funcall(str_io, rb_intern("new"), 1, rb_str);
+    VALUE wrapper_instance = rb_funcall(wrapper, rb_intern("new"), 1, str_io_instance);
+
+    return wrapper_instance;
+}
+
 /*
  * Execute a Rack app and return an HTTP response.
  *
@@ -184,6 +210,7 @@ RackResponse rwf_rack_response_new(VALUE value) {
 */
 int rwf_app_call(RackRequest request, const char *app_name, RackResponse *res) {
     int state;
+    VALUE body = rwf_request_body(request.body);
 
     VALUE env = rb_hash_new();
     for (int i = 0; i < request.length; i++) {
@@ -192,6 +219,9 @@ int rwf_app_call(RackRequest request, const char *app_name, RackResponse *res) {
 
         rb_hash_aset(env, key, value);
     }
+
+    VALUE body_key = rb_str_new_cstr("rack.input");
+    rb_hash_aset(env, body_key, body);
 
     VALUE app = rb_eval_string_protect(app_name, &state);
 
