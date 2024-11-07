@@ -57,6 +57,17 @@ impl Controller for RackController {
         let method = request.method().to_string();
         let query = request.query().to_string();
         let req_uri = format!("{}{}", req_path, query);
+        let body = request.body().to_vec();
+        let content_type = request
+            .headers()
+            .get("content-type")
+            .unwrap_or(&String::from("application/x-www-form-urlencoded"))
+            .to_string();
+        let content_length = request
+            .headers()
+            .get("content-length")
+            .unwrap_or(&String::from(body.len().to_string().as_str()))
+            .to_string();
 
         let mut env = HashMap::from([
             ("REQUEST_URI".into(), req_uri),
@@ -65,6 +76,8 @@ impl Controller for RackController {
             ("SERVER_PROTOCOL".into(), "HTTP/1.1".into()),
             ("REQUEST_METHOD".into(), method),
             ("QUERY_STRING".into(), query.replace("?", "")),
+            ("CONTENT_TYPE".into(), content_type),
+            ("CONTENT_LENGTH".into(), content_length),
         ]);
 
         for (key, value) in request.headers().iter() {
@@ -84,7 +97,7 @@ impl Controller for RackController {
                 info!("Rack app loaded, let's go!");
             }
 
-            let response = RackRequest::send(env).unwrap();
+            let response = RackRequest::send(env, &body).unwrap();
             let owned = RackResponseOwned::from(response);
 
             let _ = tx.send(owned);

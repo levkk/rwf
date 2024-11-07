@@ -22,6 +22,7 @@ typedef struct RackResponse {
 typedef struct RackRequest {
     const KeyValue* env;
     const int length;
+    const char *body;
 } RackRequest;
 
 

@@ -34,10 +34,11 @@ pub struct KeyValue {
 pub struct RackRequest {
     env: *const KeyValue,
     length: c_int,
+    body: *const c_char,
 }
 
 impl RackRequest {
-    pub fn send(env: HashMap<String, String>) -> Result<RackResponse, Error> {
+    pub fn send(env: HashMap<String, String>, body: &[u8]) -> Result<RackResponse, Error> {
         // let mut c_strings = vec![];
         let mut keys = vec![];
 
@@ -57,9 +58,12 @@ impl RackRequest {
             keys.push(env_key);
         }
 
+        let body = CString::new(body).unwrap();
+
         let req = RackRequest {
             length: keys.len() as c_int,
             env: keys.as_ptr(),
+            body: body.as_ptr(),
         };
 
         // Hardcoded to Rails, but can be any other Rack app.
