@@ -17,5 +17,26 @@ fn main() {
         build.flag(flag);
     }
 
+    // Github actions workaround
+    match Command::new("find")
+        .arg("/opt/hostedtoolcache/Ruby")
+        .arg("-name")
+        .arg("libruby.so")
+        .output()
+    {
+        Ok(output) => {
+            let lib = String::from_utf8_lossy(&output.stdout)
+                .to_string()
+                .trim()
+                .to_string();
+            let lib = lib.split("\n").next().unwrap_or("").trim();
+            if !lib.is_empty() {
+                build.flag(format!("-L{}", lib));
+            }
+        }
+
+        Err(_) => (),
+    };
+
     build.file("src/bindings.c").compile("rwf_ruby");
 }
