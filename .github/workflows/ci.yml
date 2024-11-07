@@ -22,7 +22,12 @@ jobs:
           toolchain: stable
           override: true
       - name: Install libruby
-        run: sudo apt update && sudo apt install ruby-dev -y
+        run: |
+          echo "Looking for ruby"
+          find / -name libruby.so 2>/dev/null
+          echo "Ruby maybe found"
+          exit 1
+          sudo apt update && sudo apt install ruby-dev -y
       - name: Build
         run: cargo build
   tests:
