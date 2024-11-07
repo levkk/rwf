@@ -4,6 +4,7 @@ pub mod auth;
 pub mod engine;
 pub mod error;
 pub mod middleware;
+pub mod rack;
 pub mod ser;
 pub mod static_files;
 pub mod turbo_stream;

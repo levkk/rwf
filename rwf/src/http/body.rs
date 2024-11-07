@@ -167,6 +167,12 @@ impl From<Vec<u8>> for Body {
     }
 }
 
+impl From<&[u8]> for Body {
+    fn from(body: &[u8]) -> Self {
+        Self::Bytes(body.to_vec())
+    }
+}
+
 impl From<(PathBuf, File, Metadata)> for Body {
     fn from(file: (PathBuf, File, Metadata)) -> Self {
         Self::File {
