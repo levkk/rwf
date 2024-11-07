@@ -61,7 +61,7 @@ impl Controller for RackController {
         let content_type = request
             .headers()
             .get("content-type")
-            .unwrap_or(&String::from("text/x-application-www-urlencoded"))
+            .unwrap_or(&String::from("application/x-www-form-urlencoded"))
             .to_string();
         let content_length = request
             .headers()
