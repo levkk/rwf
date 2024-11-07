@@ -10,6 +10,7 @@ description = "Framework for building web applications in the Rust programming l
 [features]
 wsgi = ["pyo3", "rayon"]
 default = []
+rack = ["rwf-ruby", "rayon"]
 
 [dependencies]
 time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
@@ -41,6 +42,11 @@ pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
 rayon = { version = "1", optional = true }
 uuid = { version = "1", features = ["v4"] }
 notify = "7"
+rwf-ruby = { path = "../rwf-ruby", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
+
+[build-dependencies]
+bindgen = "0.65.1"
+cc = "*"

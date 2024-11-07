@@ -33,6 +33,8 @@ pub fn snake_case(string: &str) -> String {
         if c.is_ascii_uppercase() && i != 0 {
             result.push('_');
             result.push(c.to_ascii_lowercase());
+        } else if c == '-' {
+            result.push('_');
         } else {
             result.push(c.to_ascii_lowercase());
         }

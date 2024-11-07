@@ -17,9 +17,8 @@ struct CurrentTime;
 #[async_trait]
 impl Controller for CurrentTime {
     /// This function responds to all incoming HTTP requests.
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    async fn handle(&self, _req: &Request) -> Result<Response, Error> {
         let time = OffsetDateTime::now_utc();
-        println!("{:?}", request.headers().get("accept"));
 
         // This creates an HTTP "200 OK" response,
         // with "Content-Type: text/plain" header.

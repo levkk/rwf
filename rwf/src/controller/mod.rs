@@ -14,6 +14,11 @@ pub mod wsgi;
 #[cfg(feature = "wsgi")]
 pub use wsgi::WsgiController;
 
+#[cfg(feature = "rack")]
+pub mod rack;
+#[cfg(feature = "rack")]
+pub use rack::RackController;
+
 pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
 pub use engine::Engine;
 pub use error::Error;
