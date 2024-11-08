@@ -48,6 +48,11 @@ impl RackController {
 
 #[async_trait]
 impl Controller for RackController {
+    // Let Rails handle CSRF.
+    fn skip_csrf(&self) -> bool {
+        true
+    }
+
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let (tx, rx) = channel();
         let path = PathBuf::from(&self.path);

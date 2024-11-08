@@ -1,7 +1,7 @@
 [general]
 secret_key = "TRtZ2Ww4EeY3xfA82Bo9bNCQbkLiUZmiDO6wOE0W0qw="
 log_queries = true
-cache_templates = true
+cache_templates = false
 
 [database]
 name = "rwf_turbo"

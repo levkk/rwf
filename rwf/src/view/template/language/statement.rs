@@ -98,11 +98,13 @@ impl Statement {
                 Ok(result)
             }
             Statement::PrintRaw(expression) => Ok(expression.evaluate(context)?.to_string()),
-            Statement::Print(expression) => Ok(expression
-                .evaluate(context)?
-                .to_string()
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")),
+            Statement::Print(expression) => {
+                let value = expression.evaluate(context)?;
+                Ok(match value {
+                    Value::SafeString(s) => s,
+                    value => value.to_string().replace("<", "&lt;").replace(">", "&gt;"),
+                })
+            }
             Statement::For {
                 variable,
                 list,

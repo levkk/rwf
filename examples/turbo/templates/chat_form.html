@@ -1,4 +1,11 @@
-<form method="post" action="/chat" id="form" data-controller="form">
+<form
+    method="post"
+    action="/chat"
+    id="form"
+    data-controller="form"
+    data-csrf-token="<%= csrf_token_raw() %>"
+>
+    <%= csrf_token() %>
     <div class="mb-3">
         <textarea
             name="body"

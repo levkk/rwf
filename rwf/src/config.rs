@@ -6,6 +6,7 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use time::Duration;
 
+use crate::controller::middleware::csrf::Csrf;
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
 use crate::controller::{AuthHandler, MiddlewareSet};
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,7 @@ impl Default for ConfigFile {
             database: DatabaseConfig::default(),
             websocket: WebsocketConfig::default(),
         }
+        .transform()
     }
 }
 
@@ -82,10 +84,7 @@ impl ConfigFile {
         let mut config: Self = toml::from_str(&file)?;
         config.path = Some(path.as_ref().to_owned());
 
-        if config.general.track_requests {
-            config.general.default_middleware =
-                MiddlewareSet::without_default(vec![RequestTracker::new().middleware()]);
-        }
+        let mut config = config.transform();
 
         let secret_key = config.general.secret_key()?;
 
@@ -95,6 +94,22 @@ impl ConfigFile {
             Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
 
         Ok(config)
+    }
+
+    fn transform(mut self) -> Self {
+        let mut default_middleware = vec![];
+
+        // Request tracker always first. We want it to always run.
+        if self.general.track_requests {
+            default_middleware.push(RequestTracker::new().middleware());
+        }
+
+        if self.general.csrf_protection {
+            default_middleware.push(Csrf::new().middleware());
+        }
+
+        self.general.default_middleware = MiddlewareSet::without_default(default_middleware);
+        self
     }
 }
 
@@ -112,6 +127,8 @@ pub struct General {
     pub cache_templates: bool,
     #[serde(default = "General::default_track_requests")]
     pub track_requests: bool,
+    #[serde(default = "General::default_csrf_protection")]
+    pub csrf_protection: bool,
     #[serde(default = "General::default_cookie_max_age")]
     cookie_max_age: usize,
     #[serde(default = "General::default_session_duration")]
@@ -135,6 +152,7 @@ impl Default for General {
             log_queries: General::default_log_queries(),
             cache_templates: General::default_cache_templates(),
             track_requests: General::default_track_requests(),
+            csrf_protection: General::default_csrf_protection(),
             cookie_max_age: General::default_cookie_max_age(),
             session_duration: General::default_session_duration(),
             tty: General::default_tty(),
@@ -179,6 +197,10 @@ impl General {
 
     fn default_track_requests() -> bool {
         false
+    }
+
+    fn default_csrf_protection() -> bool {
+        true
     }
 
     fn default_cookie_max_age() -> usize {

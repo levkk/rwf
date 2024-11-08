@@ -11,6 +11,8 @@ use super::{super::Context, Error};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+use crate::controller::middleware::csrf::CSRF_INPUT;
+use crate::crypto;
 use crate::model::Model;
 use crate::model::Value as ModelValue;
 use crate::view::template::Template;
@@ -29,6 +31,7 @@ pub enum Value {
     Hash(HashMap<String, Value>),
     Null,
     Interpreter,
+    SafeString(String),
 }
 
 impl PartialOrd for Value {
@@ -40,6 +43,7 @@ impl PartialOrd for Value {
             (Value::Float(f1), Value::Float(f2)) => f1.partial_cmp(f2),
             (Value::String(s1), Value::String(s2)) => s1.partial_cmp(s2),
             (Value::Boolean(b1), Value::Boolean(b2)) => b1.partial_cmp(b2),
+            (Value::SafeString(s1), Value::SafeString(s2)) => s1.partial_cmp(s2),
             _ => None,
         }
     }
@@ -74,6 +78,7 @@ impl std::fmt::Display for Value {
             }
             Value::Null => write!(f, "null"),
             Value::Interpreter => write!(f, "global"),
+            Value::SafeString(s) => write!(f, "{}", s),
         }
     }
 }
@@ -94,6 +99,7 @@ impl Value {
             Value::List(list) => !list.is_empty(),
             Value::Hash(hash) => !hash.is_empty(),
             Value::Interpreter => true,
+            Value::SafeString(s) => !s.is_empty(),
         }
     }
 
@@ -242,6 +248,11 @@ impl Value {
                 _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
+            Value::SafeString(value) => match method_name {
+                "to_s" | "to_string" => Value::String(value.clone()),
+                _ => return Err(Error::UnknownMethod(method_name.into(), "safe_string")),
+            },
+
             Value::List(list) => match method_name.parse::<i64>() {
                 Ok(index) => match list.get(index as usize) {
                     Some(value) => value.clone(),
@@ -322,9 +333,9 @@ impl Value {
                     _ => Value::Null,
                 },
 
-                "rwf_head" => Value::String(include_str!("../head.html").to_string()),
+                "rwf_head" => Value::SafeString(include_str!("../head.html").to_string()),
                 "rwf_turbo_stream" => match &args {
-                    &[Value::String(endpoint)] => Value::String(
+                    &[Value::String(endpoint)] => Value::SafeString(
                         TURBO_STREAM
                             .render([("endpoint", endpoint.clone())])
                             .unwrap(),
@@ -333,10 +344,17 @@ impl Value {
                     _ => Value::Null,
                 },
 
+                "csrf_token_raw" => Value::SafeString(crypto::csrf_token().unwrap()),
+                "csrf_token" => Value::SafeString(format!(
+                    r#"<input type="hidden" name="{}" value="{}">"#,
+                    CSRF_INPUT,
+                    crypto::csrf_token().unwrap(),
+                )),
+
                 "render" => match &args {
                     &[Value::String(n)] => {
                         let template = Template::load(n)?;
-                        Value::String(template.render(context)?)
+                        Value::SafeString(template.render(context)?)
                     }
 
                     _ => Value::Null,
@@ -376,6 +394,7 @@ impl Value {
             Value::Integer(n) => n.to_string(),
             Value::Float(f) => f.to_string(),
             Value::Boolean(b) => b.to_string(),
+            Value::SafeString(s) => s.to_string(),
             value => format!("{:?}", value),
         }
     }
@@ -390,6 +409,7 @@ impl Value {
             &Value::Interpreter => "global",
             &Value::List(_) => "list",
             &Value::String(_) => "string",
+            &Value::SafeString(_) => "safe_string",
         }
     }
 }
@@ -515,6 +535,7 @@ impl TryInto<serde_json::Value> for Value {
             }
             Value::Null => Ok(serde_json::Value::Null),
             Value::Interpreter => Ok(serde_json::Value::Null),
+            Value::SafeString(s) => Ok(serde_json::Value::String(s)),
         }
     }
 }

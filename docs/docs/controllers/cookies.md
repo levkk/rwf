@@ -61,7 +61,7 @@ response
     .add_private(cookie)?;
 ```
 
-Cookies are [encrypted](../encryption.md) with AES-128, using the security key set in the [configuration](../configuration.md).
+Cookies are [encrypted](../security/encryption.md) with AES-128, using the security key set in the [configuration](../configuration.md).
 
 
 ### Read private cookies

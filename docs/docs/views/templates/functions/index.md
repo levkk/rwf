@@ -106,7 +106,6 @@ Inserts JavaScript code which will create and initialize a [Turbo Stream](../../
 [^1]: [https://turbo.hotwired.dev/handbook/streams](https://turbo.hotwired.dev/handbook/streams)
 
 
-
 ### `render`
 
 Renders a template directly inside the current template. Can be used for rendering [partials](../partials.md). `<%%` is a special template code tag which is an alias for `render`.
@@ -120,5 +119,25 @@ Renders a template directly inside the current template. Can be used for renderi
 
 <div>
   <%% "templates/profile.html" %>
+</div>
+```
+
+### `csrf_token`
+
+Renders an input field with a valid [CSRF](../../../security/CSRF.md) token.
+
+```html
+<form action="/login" method="post">
+    <%= csrf_token() %>
+</form>
+```
+
+
+### `csrf_token_raw`
+
+Renders a valid [CSRF](../../../security/CSRF.md) token as a raw HTML string. It can then be passed to JavaScript via a `data-` attribute or a global variable:
+
+```html
+<div data-csrf-token="<%= csrf_token_raw() %>"
 </div>
 ```

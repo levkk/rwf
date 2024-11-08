@@ -321,6 +321,17 @@ impl Response {
             .code(400)
     }
 
+    pub fn csrf_error() -> Self {
+        Self::new().html("
+            <h3>
+                <center>400 - Bad Request</center>
+            </h3>
+            <p>
+                <center>The supplied CSRF token is not valid. Reload the page to get a new one.</center>
+            </p>"
+        ).code(400)
+    }
+
     pub fn not_implemented() -> Self {
         Self::new()
             .html(

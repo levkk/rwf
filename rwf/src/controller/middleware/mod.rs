@@ -17,6 +17,7 @@ pub mod prelude;
 pub mod secure_id;
 pub use secure_id::SecureId;
 
+pub mod csrf;
 pub mod request_tracker;
 
 /// The result of middleware processing a request.
