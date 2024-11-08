@@ -17,7 +17,7 @@ If you're submitting a form, you can add the `rwf_csrf_token` input automaticall
 
 ```html
 <form method="post" action="/login">
-    <%= rwf_token() %>
+    <%= csrf_token() %>
 </form>
 ```
 
@@ -27,7 +27,7 @@ If you're making AJAX requests (using `fetch`, for example), you can pass the to
     ```html
     <div
       data-controller="login"
-      data-csrf-token="<%= rwf_token_raw() %>"
+      data-csrf-token="<%= csrf_token_raw() %>"
     >
       <!-- ... -->
     </div>
