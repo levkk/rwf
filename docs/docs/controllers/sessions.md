@@ -1,6 +1,6 @@
 # Sessions
 
-A session is an [encrypted](../encryption.md) [cookie](cookies.md) managed by Rwf. It contains a unique identifier for each browser using your web app. All standard-compliant browsers connecting to Rwf-powered apps will have a Rwf session set automatically, and should send it back on each request.
+A session is an [encrypted](../security/encryption.md) [cookie](cookies.md) managed by Rwf. It contains a unique identifier for each browser using your web app. All standard-compliant browsers connecting to Rwf-powered apps will have a Rwf session set automatically, and should send it back on each request.
 
 ## Session types
 

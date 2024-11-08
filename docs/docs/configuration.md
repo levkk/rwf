@@ -11,7 +11,7 @@ Rwf will automatically load configuration settings from that file, as they are n
 
 The configuration file is using the [TOML language](https://toml.io/). If you're not familiar with TOML, it's pretty simple and expressive language commonly used in the world of Rust programming.
 
-Rwf configuration file is split into multiple sections. The `[general]` section controls various options such as logging settings, and which secret key to use for [encryption](encryption.md). The `[database]`
+Rwf configuration file is split into multiple sections. The `[general]` section controls various options such as logging settings, and which secret key to use for [encryption](security/encryption.md). The `[database]`
 section configures database connection settings, like the database URL, connection pool size, and others.
 
 ### `[general]`
@@ -19,8 +19,9 @@ section configures database connection settings, like the database URL, connecti
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `log_queries` | Toggles logging of all SQL queries executed by the [ORM](models/index.md). | `false` |
-| `secret_key` | Secret key, encoded using base64, used for [encryption](encryption.md). | Randomly generated |
+| `secret_key` | Secret key, encoded using base64, used for [encryption](security/encryption.md). | Randomly generated |
 | `cache_templates` | Toggle caching of [dynamic templates](views/templates/index.md). | `false` in debug, `true` in release |
+| `csrf_protection` | Validate the [CSRF](security/CSRF.md) token is present on requests that mutate your application (POST, PUT, PATCH). | `true` |
 
 #### Secret key
 
