@@ -2,9 +2,10 @@
 
 <div class="container pt-5">
     <div class="row">
-        <div class="col-lg-3"><!-- spacing --></div>
+        <div class="col-lg-3"><!-- sspacing --></div>
         <div class="col-lg-6 col-12">
             <form method="post" action="/signup">
+                <%= csrf_token() %>
                 <div class="mb-3">
                     <label class="form-label">Your name</label>
                     <input name="name" type="text" class="form-control" required placeholder="What's your name?">

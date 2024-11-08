@@ -18,7 +18,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
     model::impl_derive_model(input)
 }
 
-#[proc_macro_derive(WebsocketController, attributes(auth, middleware))]
+#[proc_macro_derive(WebsocketController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -45,7 +45,7 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(ModelController, attributes(auth, middleware))]
+#[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -120,6 +120,12 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
                     _ => quote! {},
                 },
 
+                "skip_csrf" => quote! {
+                    fn skip_csrf(&self) -> bool {
+                        true
+                    }
+                },
+
                 _ => quote! {},
             }
         })
@@ -130,7 +136,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
     }
 }
 
-#[proc_macro_derive(PageController, attributes(auth, middleware))]
+#[proc_macro_derive(PageController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -153,7 +159,7 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(RestController, attributes(auth, middleware))]
+#[proc_macro_derive(RestController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);

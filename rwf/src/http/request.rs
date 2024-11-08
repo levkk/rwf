@@ -28,6 +28,8 @@ pub struct Request {
     inner: Arc<Inner>,
     params: Option<Arc<Params>>,
     received_at: OffsetDateTime,
+    // Don't check for valid CSRF token.
+    skip_csrf: bool,
 }
 
 impl Default for Request {
@@ -38,6 +40,7 @@ impl Default for Request {
             inner: Arc::new(Inner::default()),
             params: None,
             received_at: OffsetDateTime::now_utc(),
+            skip_csrf: false,
         }
     }
 }
@@ -72,6 +75,7 @@ impl Request {
                 cookies,
             }),
             received_at: OffsetDateTime::now_utc(),
+            skip_csrf: false,
         })
     }
 
@@ -150,6 +154,11 @@ impl Request {
         self.session.as_ref()
     }
 
+    /// Should the CSRF protection be bypassed on this request?
+    pub fn skip_csrf(&self) -> bool {
+        self.skip_csrf
+    }
+
     /// When thre request was received.
     pub fn received_at(&self) -> OffsetDateTime {
         self.received_at
@@ -203,6 +212,12 @@ impl Request {
     /// if the session is available.
     pub fn set_session(mut self, session: Option<Session>) -> Self {
         self.session = session;
+        self
+    }
+
+    /// Bypass CSRF protection.
+    pub fn set_skip_csrf(mut self, skip_csrf: bool) -> Self {
+        self.skip_csrf = skip_csrf;
         self
     }
 

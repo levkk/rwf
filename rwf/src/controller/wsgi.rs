@@ -47,6 +47,11 @@ impl WsgiController {
 
 #[async_trait]
 impl Controller for WsgiController {
+    // Let Django/Flask handle CSRF.
+    fn skip_csrf(&self) -> bool {
+        true
+    }
+
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let request = WsgiRequest::from_request(request)?;
         let path = self.path;

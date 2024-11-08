@@ -63,6 +63,11 @@ pub trait Controller: Sync + Send {
         &get_config().general.default_middleware
     }
 
+    /// Don't use CSRF protection on this controller.
+    fn skip_csrf(&self) -> bool {
+        false
+    }
+
     fn route(self, path: &str) -> Handler
     where
         Self: Sized + 'static,
@@ -95,7 +100,11 @@ pub trait Controller: Sync + Send {
             return auth.auth().denied(&request).await;
         }
 
+        let request = request.set_skip_csrf(self.skip_csrf());
+
+        // Run the middleware chain (forward).
         let outcome = self.middleware().handle_request(request).await?;
+
         let response = match outcome {
             (Outcome::Forward(request), executed) => match self.handle(&request).await {
                 Ok(response) => {
