@@ -163,6 +163,14 @@ impl Default for General {
     }
 }
 
+fn true_from_env(name: &str) -> bool {
+    if let Ok(var) = var(name) {
+        ["1", "true"].contains(&var.as_str())
+    } else {
+        false
+    }
+}
+
 impl General {
     pub fn secret_key(&self) -> Result<Vec<u8>, Error> {
         use base64::{engine::general_purpose, Engine as _};
@@ -176,10 +184,18 @@ impl General {
     }
 
     fn default_log_queries() -> bool {
+        if true_from_env("RWF_LOG_QUERIES") {
+            return true;
+        }
+
         false
     }
 
     fn default_secret_key() -> String {
+        if let Ok(key) = var("RWF_SECRET_KEY") {
+            return key;
+        }
+
         use base64::{engine::general_purpose, Engine as _};
         use rand::Rng;
 
@@ -189,6 +205,10 @@ impl General {
     }
 
     fn default_cache_templates() -> bool {
+        if true_from_env("RWF_CACHE_TEMPLATES") {
+            return true;
+        }
+
         #[cfg(debug_assertions)]
         return false;
         #[cfg(not(debug_assertions))]
@@ -196,10 +216,16 @@ impl General {
     }
 
     fn default_track_requests() -> bool {
+        if true_from_env("RWF_TRACK_REQUESTS") {
+            return true;
+        }
         false
     }
 
     fn default_csrf_protection() -> bool {
+        if true_from_env("RWF_CSRF_PROTECTION") {
+            return true;
+        }
         true
     }
 

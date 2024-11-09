@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use std::path::PathBuf;
 use std::time::Duration;
 

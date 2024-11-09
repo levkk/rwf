@@ -2,9 +2,10 @@ use clap::{Args, Parser, Subcommand};
 use rwf::logging::Logger;
 use rwf::model::Pool;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod add;
+mod deploy;
 mod logging;
 mod migrate;
 mod remove;
@@ -30,6 +31,9 @@ enum Subcommands {
 
     /// Remove a controller/view/model/all of the above
     Remove(RemoveSubcommand),
+
+    /// Build and deploy the application.
+    Deploy(DeploySubcommand),
 }
 
 #[derive(Args, Debug)]
@@ -107,7 +111,22 @@ enum Remove {
     },
 }
 
-#[tokio::main]
+#[derive(Args, Debug)]
+struct DeploySubcommand {
+    #[command(subcommand)]
+    command: Deploy,
+}
+
+#[derive(Subcommand, Debug)]
+enum Deploy {
+    /// Package the application for deployment.
+    Package {
+        #[arg(long, short, help = "Rwf production configuration file")]
+        config: Option<PathBuf>,
+    },
+}
+
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     // std::env::set_var("RWF_LOG_QUERIES", "1");
     Logger::init();
@@ -152,6 +171,12 @@ async fn main() {
         Subcommands::Remove(remove) => match remove.command {
             Remove::Controller { name } => {
                 remove::controller(&name).await.unwrap();
+            }
+        },
+
+        Subcommands::Deploy(deploy) => match deploy.command {
+            Deploy::Package { config } => {
+                deploy::package(config).await.unwrap();
             }
         },
     }
