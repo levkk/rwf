@@ -5,6 +5,7 @@ use std::env::var;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use time::Duration;
+use tracing::info;
 
 use crate::controller::middleware::csrf::Csrf;
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
@@ -64,6 +65,7 @@ impl Default for ConfigFile {
             websocket: WebsocketConfig::default(),
         }
         .transform()
+        .unwrap()
     }
 }
 
@@ -84,19 +86,12 @@ impl ConfigFile {
         let mut config: Self = toml::from_str(&file)?;
         config.path = Some(path.as_ref().to_owned());
 
-        let mut config = config.transform();
-
-        let secret_key = config.general.secret_key()?;
-
-        config.general.aes_key =
-            Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
-        config.general.secure_id_key =
-            Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
+        let config = config.transform()?;
 
         Ok(config)
     }
 
-    fn transform(mut self) -> Self {
+    fn transform(mut self) -> Result<Self, Error> {
         let mut default_middleware = vec![];
 
         // Request tracker always first. We want it to always run.
@@ -109,7 +104,22 @@ impl ConfigFile {
         }
 
         self.general.default_middleware = MiddlewareSet::without_default(default_middleware);
-        self
+
+        let secret_key = self.general.secret_key()?;
+
+        self.general.aes_key = Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[0..128 / 8]);
+        self.general.secure_id_key =
+            Key::<AesGcmSiv<Aes128>>::clone_from_slice(&secret_key[128 / 8..]);
+
+        Ok(self)
+    }
+
+    pub fn log_info(&self) {
+        if let Some(ref path) = self.path {
+            info!("Configuration file \"{}\" loaded", path.display());
+        } else {
+            info!("Configuration file missing, loaded from environment instead");
+        }
     }
 }
 

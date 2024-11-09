@@ -44,14 +44,12 @@ impl Connection {
     pub async fn new(database_url: &str) -> Result<Self, Error> {
         let (client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
 
-        info!("New connection to PostgreSQL created");
-
         let bad = AtomicBool::new(false);
         let shutdown = Notify::new();
 
         let inner = Arc::new(ConnectionInner { bad, shutdown });
 
-        let guard = Connection {
+        let mut guard = Connection {
             client,
             inner: inner.clone(),
             last_used: Instant::now(),
@@ -70,6 +68,19 @@ impl Connection {
                 _ = inner.shutdown.notified() => {}
             }
         });
+
+        let info = guard
+            .query_cached("SELECT current_database()::text, current_user::text", &[])
+            .await?;
+
+        let row = info.get(0).unwrap();
+        let user: String = row.get::<_, String>(1);
+        let database: String = row.get::<_, String>(0);
+
+        info!(
+            "New connection to database \"{}\" with user \"{}\" created",
+            database, user
+        );
 
         Ok(guard)
     }

@@ -41,7 +41,7 @@ pub async fn package(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::
     tar.append_file(&info.name, &mut File::open(executable).expect("binary"))
         .expect("binary");
 
-    for path in ["static", "templates"] {
+    for path in ["static", "templates", "migrations"] {
         let p = Path::new(path);
 
         if p.is_dir() {

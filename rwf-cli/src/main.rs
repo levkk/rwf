@@ -32,8 +32,11 @@ enum Subcommands {
     /// Remove a controller/view/model/all of the above
     Remove(RemoveSubcommand),
 
-    /// Build and deploy the application.
-    Deploy(DeploySubcommand),
+    /// Package the application into a tarball.
+    Package {
+        #[arg(long, short)]
+        config: Option<PathBuf>,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -111,21 +114,6 @@ enum Remove {
     },
 }
 
-#[derive(Args, Debug)]
-struct DeploySubcommand {
-    #[command(subcommand)]
-    command: Deploy,
-}
-
-#[derive(Subcommand, Debug)]
-enum Deploy {
-    /// Package the application for deployment.
-    Package {
-        #[arg(long, short, help = "Rwf production configuration file")]
-        config: Option<PathBuf>,
-    },
-}
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // std::env::set_var("RWF_LOG_QUERIES", "1");
@@ -174,11 +162,7 @@ async fn main() {
             }
         },
 
-        Subcommands::Deploy(deploy) => match deploy.command {
-            Deploy::Package { config } => {
-                deploy::package(config).await.unwrap();
-            }
-        },
+        Subcommands::Package { config } => deploy::package(config).await.unwrap(),
     }
 }
 
