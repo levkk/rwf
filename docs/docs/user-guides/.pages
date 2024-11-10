@@ -1,0 +1,4 @@
+nav:
+  - 'index.md'
+  - 'hot-reload.md'
+  - 'deploy-to-prod.md'

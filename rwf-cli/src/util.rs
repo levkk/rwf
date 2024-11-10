@@ -5,6 +5,7 @@ use toml::Value;
 #[derive(Debug, Clone)]
 pub struct PackageInfo {
     pub name: String,
+    #[allow(dead_code)]
     pub version: String,
     pub target_dir: String,
 }
