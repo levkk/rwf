@@ -10,14 +10,18 @@ use tokio::process::Command;
 use crate::logging::*;
 use crate::util::*;
 
-pub async fn build() -> Result<bool, Box<dyn std::error::Error + 'static>> {
-    let build = Command::new("cargo")
-        .arg("build")
-        .arg("--release")
-        .status()
-        .await?;
+pub async fn build(target: Option<String>) -> Result<bool, Box<dyn std::error::Error + 'static>> {
+    let mut build = Command::new("cargo");
 
-    if !build.success() {
+    build.arg("build").arg("--release");
+
+    if let Some(target) = target {
+        build.arg("--target").arg(target);
+    }
+
+    let result = build.status().await?;
+
+    if !result.success() {
         error("couldn't build the application, check build logs for error");
         return Ok(false);
     }
@@ -25,8 +29,11 @@ pub async fn build() -> Result<bool, Box<dyn std::error::Error + 'static>> {
     Ok(true)
 }
 
-pub async fn package(config: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error + 'static>> {
-    if !build().await? {
+pub async fn package(
+    config: Option<PathBuf>,
+    target: Option<String>,
+) -> Result<(), Box<dyn std::error::Error + 'static>> {
+    if !build(target).await? {
         return Ok(());
     }
 

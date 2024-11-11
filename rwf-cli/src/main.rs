@@ -34,8 +34,15 @@ enum Subcommands {
 
     /// Package the application into a tarball.
     Package {
-        #[arg(long, short)]
+        #[arg(
+            long,
+            short,
+            help = "Path to rwf.toml config file to be included in the build"
+        )]
         config: Option<PathBuf>,
+
+        #[arg(long, short, help = "Target CPU architecture")]
+        target: Option<String>,
     },
 }
 
@@ -162,7 +169,7 @@ async fn main() {
             }
         },
 
-        Subcommands::Package { config } => deploy::package(config).await.unwrap(),
+        Subcommands::Package { config, target } => deploy::package(config, target).await.unwrap(),
     }
 }
 
