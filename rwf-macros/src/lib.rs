@@ -3,6 +3,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::parse::{Parse, ParseStream};
+use syn::LitInt;
 use syn::{
     parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, LitStr, Meta,
     Result, Token, Type,
@@ -437,6 +438,7 @@ struct RenderInput {
     template_name: LitStr,
     _comma: Option<Token![,]>,
     context: Vec<ContextInput>,
+    code: Option<LitInt>,
 }
 
 struct ContextInput {
@@ -482,16 +484,22 @@ impl Parse for RenderInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let template_name: LitStr = input.parse()?;
         let _comma: Option<Token![,]> = input.parse()?;
+        let mut code = None;
 
         let context = if _comma.is_some() {
             let mut result = vec![];
             loop {
-                let context: Result<ContextInput> = input.parse();
-
-                if let Ok(context) = context {
-                    result.push(context);
+                if input.peek(LitInt) {
+                    let c: LitInt = input.parse().unwrap();
+                    code = Some(c);
                 } else {
-                    break;
+                    let context: Result<ContextInput> = input.parse();
+
+                    if let Ok(context) = context {
+                        result.push(context);
+                    } else {
+                        break;
+                    }
                 }
             }
 
@@ -504,6 +512,7 @@ impl Parse for RenderInput {
             template_name,
             _comma,
             context,
+            code,
         })
     }
 }
@@ -561,11 +570,22 @@ pub fn render(input: TokenStream) -> TokenStream {
         values
     };
 
+    let code = if let Some(code) = input.code {
+        quote! {
+            let response = response.code(#code);
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         {
             let template = rwf::view::template::Template::load(#template_name)?;
             #(#render_call)*
-            return Ok(rwf::http::Response::new().html(html))
+
+            let response = rwf::http::Response::new().html(html);
+            #code
+            return Ok(response)
         }
     }
     .into()

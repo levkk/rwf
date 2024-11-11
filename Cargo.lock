@@ -1920,7 +1920,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-macros"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "pluralizer",
  "proc-macro2",

@@ -298,7 +298,7 @@ impl Response {
 
     pub fn csrf_error() -> Self {
         Self::error_pretty(
-            "400 - Bad Request",
+            "400 - CSRF Token Validation Failed",
             "The supplied CSRF token is not valid. Reload the page to get a new one.",
         )
         .code(400)

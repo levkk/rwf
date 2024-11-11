@@ -8,10 +8,7 @@ use rwf::prelude::*;
 async fn main() -> Result<(), http::Error> {
     Logger::init();
 
-    Server::new(vec![
-        route!("/" => controllers::Upload),
-        route!("/ok" => controllers::UploadOk),
-    ])
-    .launch("0.0.0.0:8000")
-    .await
+    Server::new(vec![route!("/" => controllers::Upload)])
+        .launch("0.0.0.0:8000")
+        .await
 }
