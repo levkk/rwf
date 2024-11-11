@@ -97,7 +97,9 @@ pub struct Head {
 impl Head {
     /// Read request head from a stream.
     pub async fn read(mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
-        let request = Self::read_line(&mut stream)
+        let bytes_remaining = get_config().general.header_max_size; // avoid DDoS
+
+        let request = Self::read_line(&mut stream, bytes_remaining)
             .await?
             .split(" ")
             .map(|s| s.to_string())
@@ -121,7 +123,7 @@ impl Head {
         let mut headers = Headers::new();
 
         loop {
-            let header = Self::read_line(&mut stream).await?;
+            let header = Self::read_line(&mut stream, bytes_remaining).await?;
             if header.is_empty() {
                 break;
             } else {
@@ -210,6 +212,23 @@ impl Head {
         }
     }
 
+    /// Get the multipart boundary, if one exists.
+    pub fn multipart_boundary(&self) -> Option<String> {
+        if let Some(content_type) = self.headers.get("content-type") {
+            let mut parts = content_type.split(";").into_iter();
+            let _content_type = parts.next();
+            if let Some(boundary) = parts.next() {
+                let mut parts = boundary.split("=").into_iter();
+                let _name = parts.next();
+                if let Some(boundary) = parts.next() {
+                    return Some(boundary.to_owned());
+                }
+            }
+        }
+
+        None
+    }
+
     /// Request headers.
     pub fn headers(&self) -> &Headers {
         &self.headers
@@ -239,10 +258,12 @@ impl Head {
     }
 
     /// Read a line from the stream, parsing out \r\n.
-    async fn read_line(mut stream: impl AsyncRead + Unpin) -> Result<String, std::io::Error> {
+    async fn read_line(
+        mut stream: impl AsyncRead + Unpin,
+        mut bytes_remaining: usize,
+    ) -> Result<String, std::io::Error> {
         let mut buf = Vec::new();
         let (mut cr, mut lf) = (false, false);
-        let mut bytes_remaining = get_config().general.header_max_size; // avoid DDoS
 
         while bytes_remaining > 0 {
             // stream should be buffered
@@ -277,7 +298,7 @@ mod test {
     #[tokio::test]
     async fn test_read_line() {
         let line = b"Content-Type: application/json\r\n";
-        let result = Head::read_line(&line[..]).await.expect("read_line");
+        let result = Head::read_line(&line[..], 4096).await.expect("read_line");
         assert_eq!(result, "Content-Type: application/json");
     }
 
