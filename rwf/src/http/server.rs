@@ -101,9 +101,24 @@ impl Server {
             loop {
                 let request = match Request::read(peer_addr, &mut stream).await {
                     Ok(request) => request,
-                    Err(err) => {
+                    Err(ref err) => {
+                        match err {
+                            Error::ContentTooLarge(head) => {
+                                let response = Response::content_too_large();
+                                let _ = Self::send_response(&mut stream, response).await;
+
+                                info!(
+                                    "{} {} {} 413",
+                                    head.method().to_string().purple(),
+                                    head.path().base().purple(),
+                                    std::any::type_name::<Self>().green(),
+                                );
+                            }
+
+                            _ => (),
+                        }
                         debug!(
-                            "{} client {:?} disconnected: {:?}",
+                            "{} client {:?} disconnected: {}",
                             "http".purple(),
                             peer_addr,
                             err
@@ -140,15 +155,8 @@ impl Server {
                         // Log request.
                         Self::log(&request, handler.controller_name(), &response, duration);
 
-                        // Send reply to client.
-                        match response.send(&mut stream).await {
-                            Ok(_) => (),
-                            Err(err) => {
-                                debug!("{} error {:?}", peer_addr, err);
-                            }
-                        }
-
-                        if stream.flush().await.is_err() {
+                        if let Err(err) = Self::send_response(&mut stream, response).await {
+                            debug!("{} error {:?}", peer_addr, err);
                             break;
                         }
 
@@ -174,13 +182,9 @@ impl Server {
                         Self::log(&request, std::any::type_name::<Self>(), &response, duration);
 
                         // Send reply to client.
-                        match response.send(&mut stream).await {
-                            Ok(_) => {
-                                let _ = stream.flush().await;
-                            }
-                            Err(err) => {
-                                debug!("{} error {:?}", peer_addr, err);
-                            }
+                        if let Err(err) = Self::send_response(&mut stream, response).await {
+                            debug!("{} error {:?}", peer_addr, err);
+                            break;
                         }
                     }
                 }
@@ -202,5 +206,15 @@ impl Server {
             code,
             duration,
         );
+    }
+
+    async fn send_response(
+        mut stream: impl AsyncWrite + Unpin,
+        response: Response,
+    ) -> Result<(), Error> {
+        response.send(&mut stream).await?;
+        stream.flush().await?;
+
+        Ok(())
     }
 }
