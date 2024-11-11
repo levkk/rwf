@@ -1130,7 +1130,7 @@ dependencies = [
 
 [[package]]
 name = "rwf"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "aes",
  "aes-gcm-siv",
@@ -1163,9 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-macros"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "250b073095aab2f99aff0cc793b85db8ddb5fcd9581a694a9c75dea28deaad9c"
+version = "0.1.6"
 dependencies = [
  "pluralizer",
  "proc-macro2",
