@@ -37,6 +37,9 @@ pub enum Error {
 
     #[error("forbidden")]
     Forbidden,
+
+    #[error("content too large")]
+    ContentTooLarge,
 }
 
 impl Error {
@@ -44,6 +47,7 @@ impl Error {
         match self {
             Self::MissingParameter => 400,
             Self::Forbidden => 403,
+            Self::ContentTooLarge => 413,
             _ => 500,
         }
     }

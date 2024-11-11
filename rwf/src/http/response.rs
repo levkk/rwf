@@ -356,6 +356,18 @@ impl Response {
             .code(403)
     }
 
+    pub fn content_too_large() -> Self {
+        Self::new()
+            .html(
+                "
+            <h3>
+                <center>413 - Content Too Large</center>
+            </h3>
+            ",
+            )
+            .code(413)
+    }
+
     pub fn internal_error(err: impl std::error::Error) -> Self {
         // TODO:
         #[cfg(debug_assertions)]
