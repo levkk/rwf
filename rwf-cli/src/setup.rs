@@ -6,7 +6,13 @@ use crate::logging::created;
 use rwf::colors::MaybeColorize;
 
 pub async fn setup() {
-    for dir in ["migrations", "templates", "src/controllers", "src/models"] {
+    for dir in [
+        "migrations",
+        "templates",
+        "src/controllers",
+        "src/models",
+        "static",
+    ] {
         let path = Path::new(dir);
 
         if !path.exists() {

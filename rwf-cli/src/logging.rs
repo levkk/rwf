@@ -12,6 +12,14 @@ pub fn error(something: impl ToString) {
     eprintln!("{}: {}", "error".red(), something.to_string());
 }
 
+pub fn warning(something: impl ToString) {
+    eprintln!("{}: {}", "warning".yellow(), something.to_string());
+}
+
 pub fn removed(something: impl ToString) {
     eprintln!("{} {}", "removed".red(), something.to_string());
+}
+
+pub fn packaging(something: impl ToString) {
+    eprintln!("{} {}", "packaging".green(), something.to_string());
 }

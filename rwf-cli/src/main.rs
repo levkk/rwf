@@ -2,9 +2,10 @@ use clap::{Args, Parser, Subcommand};
 use rwf::logging::Logger;
 use rwf::model::Pool;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod add;
+mod deploy;
 mod logging;
 mod migrate;
 mod remove;
@@ -30,6 +31,19 @@ enum Subcommands {
 
     /// Remove a controller/view/model/all of the above
     Remove(RemoveSubcommand),
+
+    /// Package the application into a tarball.
+    Package {
+        #[arg(
+            long,
+            short,
+            help = "Path to rwf.toml config file to be included in the build"
+        )]
+        config: Option<PathBuf>,
+
+        #[arg(long, short, help = "Target CPU architecture")]
+        target: Option<String>,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -107,7 +121,7 @@ enum Remove {
     },
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     // std::env::set_var("RWF_LOG_QUERIES", "1");
     Logger::init();
@@ -154,6 +168,8 @@ async fn main() {
                 remove::controller(&name).await.unwrap();
             }
         },
+
+        Subcommands::Package { config, target } => deploy::package(config, target).await.unwrap(),
     }
 }
 
