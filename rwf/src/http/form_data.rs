@@ -134,13 +134,20 @@ impl Multipart {
                     buf.clear();
                 }
                 let ct = String::from_utf8(read_line!(reader))?;
-                content_disposition = Some(ContentDisposition::parse(&ct)?);
+                let ct = ContentDisposition::parse(&ct)?;
 
-                let ct = read_line!(reader);
-                if ct.to_ascii_lowercase().starts_with(b"content-type") {
-                    content_type = Some(String::from_utf8(ct)?);
+                if ct.filename.is_some() {
+                    let ct = read_line!(reader);
+                    if ct.to_ascii_lowercase().starts_with(b"content-type") {
+                        content_type = Some(String::from_utf8(ct)?);
+                        // Read and discard "\r\n".
+                        let _ = read_line!(reader);
+                    }
+                } else {
+                    // Read and discard "\r\n".
                     let _ = read_line!(reader);
                 }
+                content_disposition = Some(ct);
             } else if line == end_boundary {
                 if let Some(content_disposition) = content_disposition.take() {
                     entries.insert(
