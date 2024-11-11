@@ -284,88 +284,36 @@ impl Response {
 
     /// Default not found (404) error.
     pub fn not_found() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>404 - Not Found</center>
-            </h3>
-        "
-                .trim(),
-            )
-            .code(404)
+        Self::error_pretty("404 - Not Found", "").code(404)
     }
 
     /// Default method not allowed (405) error.
     pub fn method_not_allowed() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>405 - Method Not Allowed</center>
-            </h3>
-        ",
-            )
-            .code(405)
+        Self::error_pretty("405 - Method Not Allowed", "").code(405)
     }
 
     pub fn bad_request() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>400 - Bad Request</center>
-            </h3>
-        ",
-            )
-            .code(400)
+        Self::error_pretty("400 - Bad Request", "").code(400)
     }
 
     pub fn csrf_error() -> Self {
-        Self::new().html("
-            <h3>
-                <center>400 - Bad Request</center>
-            </h3>
-            <p>
-                <center>The supplied CSRF token is not valid. Reload the page to get a new one.</center>
-            </p>"
-        ).code(400)
+        Self::error_pretty(
+            "400 - Bad Request",
+            "The supplied CSRF token is not valid. Reload the page to get a new one.",
+        )
+        .code(400)
     }
 
     pub fn not_implemented() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>501 - Not Implemented</center>
-            </h3>
-            ",
-            )
-            .code(501)
+        Self::error_pretty("501 - Not Implemented", "").code(501)
     }
 
     pub fn forbidden() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>403 - Forbidden</center>
-            </h3>
-            ",
-            )
-            .code(403)
+        Self::error_pretty("403 - Forbidden", "").code(403)
     }
 
     pub fn content_too_large() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>413 - Content Too Large</center>
-            </h3>
-            ",
-            )
-            .code(413)
+        Self::error_pretty("413 - Content Too Large", "").code(413)
     }
 
     pub fn internal_error(err: impl std::error::Error) -> Self {
@@ -379,10 +327,10 @@ impl Response {
             ""
         };
 
-        Self::internal_error_pretty("500 - Internal Server Error", &err)
+        Self::error_pretty("500 - Internal Server Error", &err)
     }
 
-    pub fn internal_error_pretty(title: &str, message: &str) -> Self {
+    pub fn error_pretty(title: &str, message: &str) -> Self {
         let body = ERROR_TEMPLATE
             .render([("title", title), ("message", message)])
             .unwrap();
@@ -391,28 +339,13 @@ impl Response {
     }
 
     pub fn unauthorized(auth: &str) -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>401 - Unauthorized</center>
-            </h3>
-            ",
-            )
+        Self::error_pretty("401 - Unauthorized", "")
             .code(401)
             .header("www-authenticate", auth)
     }
 
     pub fn too_many() -> Self {
-        Self::new()
-            .html(
-                "
-            <h3>
-                <center>429 - Too Many</center>
-            </h3>
-            ",
-            )
-            .code(429)
+        Self::error_pretty("429 - Too Many", "").code(429)
     }
 
     pub fn redirect(self, to: impl ToString) -> Self {

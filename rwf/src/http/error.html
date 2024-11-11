@@ -1,37 +1,65 @@
 <!doctype html>
-<html>
+<html lang="en-US">
     <head>
+        <meta charset="utf-8">
         <title><%= title %></title>
         <style>
-            .container {
-                margin: 10px 25px;
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
             }
 
-            .center {
+            .rwf-container {
+                padding: 10px;
+            }
+
+            .rwf-center {
                 display: flex;
                 align-items: center;
                 justify-content: center;
             }
 
-            .error {
-                border: 1px solid red;
+            .rwf-error {
+                /* border: 1px solid red;
                 border-radius: 2px;
-                padding: 10px 30px;
+                padding: 10px 30px; */
             }
 
             pre {
                 text-wrap: wrap;
                 max-width: 75vw;
             }
+
+            .rwf-left {
+                display: flex;
+                align-items: center;
+            }
+
+            .rwf-bg {
+                background: #CC5500;
+            }
+
+            .rwf-header {
+                margin: 0;
+                padding: 10px;
+                color: beige;
+            }
+
+            .rwf-footer {
+                margin-top: 100px;
+                text-align: center;
+                padding: 10px;
+            }
         </style>
     </head>
     <body>
-        <div class="container center">
-            <h3><%= title %></h3>
+        <div class="rwf-left rwf-bg">
+            <h3 class="rwf-header"><%= title %></h3>
         </div>
         <% if message %>
-        <div class="container center">
-            <code class="error"><pre><%= message %></pre></code>
+        <div class="rwf-container rwf-left">
+            <code class="rwf-error"><pre><%= message %></pre></code>
         </div>
         <% end %>
     </body>

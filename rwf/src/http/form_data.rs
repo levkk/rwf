@@ -78,6 +78,7 @@ impl FormData {
                     .filename
                     .clone()
                     .unwrap_or("".to_string()),
+                content_type: f.content_type(),
             }),
             _ => None,
         }
@@ -166,10 +167,29 @@ macro_rules! read_line {
 /// A file uploaded via a multipart form.
 #[derive(Debug, Clone)]
 pub struct File<'a> {
+    body: &'a [u8],
+    name: String,
+    content_type: Option<String>,
+}
+
+impl File<'_> {
     /// File data.
-    pub body: &'a [u8],
+    pub fn body(&self) -> &[u8] {
+        self.body
+    }
+
     /// File name provided by the browser.
-    pub name: String,
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Content type of the file, if provided by the browser.
+    pub fn content_type(&self) -> &str {
+        match self.content_type {
+            Some(ref content_type) => content_type,
+            None => "application/octet-stream",
+        }
+    }
 }
 
 impl Multipart {

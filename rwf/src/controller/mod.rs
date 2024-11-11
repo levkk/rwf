@@ -123,10 +123,9 @@ pub trait Controller: Sync + Send {
                             _ => Response::internal_error(err),
                         },
 
-                        Error::ViewError(err) => Response::internal_error_pretty(
-                            "Template error",
-                            err.to_string().as_str(),
-                        ),
+                        Error::ViewError(err) => {
+                            Response::error_pretty("Template error", err.to_string().as_str())
+                        }
 
                         err => Response::internal_error(err),
                     };
