@@ -378,6 +378,20 @@ pub fn error(input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Create a route from the HTTP path to the controller.
+///
+/// The controller needs to implement the [`Default`] trait.
+///
+/// ### Example
+///
+/// ```rust
+/// use rwf::controller::TurboStream;
+/// use rwf::http::Server;
+///
+/// Server::new(vec![
+///     route!("/turbo-stream" => TurboStream)
+/// ]);
+/// ```
 #[proc_macro]
 pub fn route(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);

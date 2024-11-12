@@ -1,3 +1,11 @@
+//! A collection of types, methods and macros
+//! which when imported make Rwf development ergonomic and easy.
+//!
+//! We recommend you import these whenever you work with Rwf primitives:
+//!
+//! ```
+//! use rwf::prelude::*;
+//! ```
 pub use crate::comms::Comms;
 pub use crate::config::ConfigFile;
 pub use crate::controller::{auth::SessionAuth, AuthHandler};
@@ -10,7 +18,9 @@ pub use crate::logging::Logger;
 pub use crate::model::{Migrations, Model, Pool, Scope, ToSql, ToValue};
 pub use crate::view::{Template, ToTemplateValue, TurboStream, TurboStreams};
 
+/// A macro to easily implement async traits methods.
 pub use async_trait::async_trait;
+
 pub use time::{Duration, OffsetDateTime};
 pub use tokio;
 

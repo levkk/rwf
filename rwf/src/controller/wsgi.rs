@@ -1,3 +1,4 @@
+//! WSGI interface to Python applications, e.g. Django and Flask.
 use super::{Controller, Error};
 use crate::http::{wsgi::WsgiRequest, Request, Response};
 

@@ -1,3 +1,7 @@
+//! Handle sending a response body to the client.
+//!
+//! The body can be text, HTML, raw bytes, JSON and a static file. The `Content-Type` and `Content-Length` headers
+//! are set automatically.
 use std::fmt::Debug;
 use std::fs::Metadata;
 use std::marker::Unpin;
@@ -5,28 +9,38 @@ use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{copy, AsyncWrite, AsyncWriteExt};
 
+/// Response body.
 #[derive(Debug)]
 pub enum Body {
+    /// Static file.
     File {
         path: PathBuf,
         file: File,
         metadata: Metadata,
     },
+    /// UTF-8 encoded HTML.
     Html(String),
+    /// Raw bytes.
     Bytes(Vec<u8>),
+    /// UTF-8 encoded text.
     Text(String),
+    /// UTF-8 encoded JSON string.
     Json(Vec<u8>),
 }
 
 impl Body {
+    /// Create new body with raw bytes.
     pub fn bytes(bytes: Vec<u8>) -> Self {
         Self::Bytes(bytes)
     }
 
+    /// Create new body with HTML.
     pub fn html(text: impl ToString) -> Self {
         Self::Html(text.to_string())
     }
 
+    /// Send the body to the stream. This handles copying the file
+    /// using an efficient Tokio primitive.
     pub async fn send(
         &mut self,
         mut stream: impl AsyncWrite + Unpin,
@@ -45,6 +59,7 @@ impl Body {
         }
     }
 
+    /// Get the body size. Used in the `Content-Length` header.
     pub fn len(&self) -> usize {
         use Body::*;
 
@@ -57,6 +72,9 @@ impl Body {
         }
     }
 
+    /// Get the body's MIME type. This determines the value of the `Content-Type` header.
+    ///
+    /// It attempts to detect the correct mime type of files based on their extension.
     pub fn mime_type(&self) -> &'static str {
         use Body::*;
 

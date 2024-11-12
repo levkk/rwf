@@ -1,3 +1,29 @@
+//! HTTP controllers, the **C** in MVC.
+//!
+//! Controllers are any struct that implements the [`Controller`] trait. Rwf includes many prebuilt controllers
+//! that perform useful tasks, like handling WebSocket connections or REST.
+//!
+//! A basic controller will just implement the [`Controller::handle`] method. The [`Controller`] trait is async, so we're using the [`async_trait::async_trait`] macro.
+//!
+//! #### Example
+//!
+//! ```rust
+//! // Include all necessary types.
+//! use rwf::prelude::*;
+//!
+//! // Your controller. The Default trait helps with easy instantiation.
+//! #[derive(Default)]
+//! struct Index;
+//!
+//! // Controllers are async and use the `async_trait` crate.
+//! #[async_trait]
+//! impl Controller for Index {
+//!     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+//!         Ok(Response::new().html("<h1>Hello from Rwf!</h1>"))
+//!     }
+//! }
+//! ```
+//!
 use async_trait::async_trait;
 
 pub mod auth;
@@ -7,7 +33,6 @@ pub mod middleware;
 pub mod ser;
 pub mod static_files;
 pub mod turbo_stream;
-pub mod util;
 
 #[cfg(feature = "wsgi")]
 pub mod wsgi;
@@ -41,7 +66,7 @@ use tracing::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
 
-/// The HTTP controller.
+/// The univeresal controller.
 ///
 /// The most basic version of a controller handles all requests
 /// which match the path it's assigned to.
@@ -156,13 +181,58 @@ pub trait Controller: Sync + Send {
     }
 }
 
+/// A controller that splits GET and POST requests into two different methods.
+///
+/// Most web apps using templates would want to implement the `PageController` which splits up `GET` from `POST` requests,
+/// allowing to handle form submissions together with page rendering.
+///
+/// #### Example
+///
+/// ```
+/// // Include all necessary types.
+/// use rwf::prelude::*;
+///
+/// // Your controller.
+/// #[derive(Default, macros::PageController)]
+/// pub struct MyPage;
+///
+/// // Controllers are async and use the `async_trait` crate.
+/// #[async_trait]
+/// impl PageController for MyPage {
+///     // Respond to a GET request.
+///     async fn get(&self, request: &Request) -> Result<Response, Error> {
+///         render!("templates/my_page.html")
+///     }
+/// }
+/// ```
+///
+/// The `macros::PageController` expands to this:
+///
+/// ```rust
+/// #[async_trait]
+/// impl Controller for MyPage {
+///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+///         // Delegate request handling to the `PageController::handle` method.
+///         PageController::handle(self, request)
+///     }
+/// }
+/// ```
+///
+/// This is required because of how Rust trait dynamic dispatch works. Rwf HTTP server only handles structs that implement the [`Controller`] trait, so all controllers that implement
+/// a descendant trait (e.g. [`PageController`]) must also implement the supertrait ([`Controller`]).
 #[async_trait]
 #[allow(unused_variables)]
 pub trait PageController: Controller {
+    /// Respond to a GET request to this controller.
     async fn get(&self, request: &Request) -> Result<Response, Error>;
+
+    /// Respond to a POST request to this controller.
+    /// By default, `405 - Method Not Allowed` is returned.
     async fn post(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
+
+    /// Perform the request GET/POST split automatically.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         if request.get() {
             PageController::get(self, request).await
@@ -174,7 +244,7 @@ pub trait PageController: Controller {
     }
 }
 
-/// REST, aka CRUD, controller.
+/// REST controller, which splits requests into 6 REST verbs.
 ///
 /// This controller will split incoming requests based on the REST specification and route
 /// them to their respective methods.
@@ -188,41 +258,36 @@ pub trait PageController: Controller {
 /// - patch (PATCH /:id)
 /// - delete (DELETE /:id)
 ///
-/// By default, all methods will respond with 501 - Not Implemented. It's up to the user
+/// By default, all methods will respond with `501 - Not Implemented`. It's up to the user
 /// to implement each method according to their needs.
 ///
 /// The `:id` can be any value which implements the [`ToParameter`] trait.
-/// Common data types are implemented, e.g. i64, String, etc.
+/// Common data types are implemented, e.g. [`i64`] and [`String`].
 ///
-/// # Example
+/// ### Example
 ///
 /// ```
-/// use rwf::controller::{Controller, RestController, Error};
-/// use rwf::http::{Request, Response};
-/// use rwf::async_trait;
+/// use rwf::prelude::*;
 ///
-/// struct MyController {}
-///
-/// #[async_trait]
-/// impl Controller for MyController {
-///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-///         // Delegate handling of this controller to the `RestController`.
-///         RestController::handle(self, request).await
-///     }
-/// }
+/// #[derive(Default, macros::RestController)]
+/// struct MyController;
 ///
 /// #[async_trait]
 /// impl RestController for MyController {
 ///     type Resource = i64;
 ///
 ///     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-///         Ok(Response::default().html(format!("Hello, id #{}", id)))
+///         Ok(Response::new().html(format!("Hello, id #{}", id)))
 ///     }
 /// }
 /// ```
 #[async_trait]
 #[allow(unused_variables)] // Easier to read the code without _var_name.
 pub trait RestController: Controller {
+    /// Resource type used in the request.
+    ///
+    /// Rust is a typed language, this makes handling IDs easier by specifying the
+    /// expected data type. Inputs not matching this data type will be rejected.
     type Resource: ToParameter;
 
     /// Figure out which method to call based on request method
@@ -280,7 +345,7 @@ pub trait RestController: Controller {
     }
 }
 
-/// The model controller extends the [`RestController`] to
+/// A controller that extends the [`RestController`] to
 /// automatically performs CRUD actions on database models.
 #[async_trait]
 pub trait ModelController: Controller {
@@ -419,6 +484,7 @@ pub trait ModelController: Controller {
     }
 }
 
+/// A controller that handles WebSocket connections.
 #[async_trait]
 #[allow(unused_variables)]
 pub trait WebsocketController: Controller {

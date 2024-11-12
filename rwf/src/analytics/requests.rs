@@ -1,9 +1,15 @@
+//! Record HTTP requests made to the application.
+//!
+//! This will record the request path, response code, client IP, duration
+//! and other metadata.
+//!
 use std::net::IpAddr;
 
 use crate::model::{Error, FromRow, Model, ToValue, Value};
 
 use time::OffsetDateTime;
 
+/// HTTP request recorded by the request tracker middleware.
 #[derive(Clone)]
 pub struct Request {
     id: Option<i64>,

@@ -1,7 +1,13 @@
+//! A collection of controllers which can be mapped to
+//! an arbitrary base path.
+//!
+//! Currently a work in progress. The closest analogy in other frameworks
+//! are [Rails engines](https://guides.rubyonrails.org/engines.html).
 use crate::http::{Handler, Path, Request, Response, Router};
 
 use super::{AuthHandler, Controller, Error};
 
+/// A collection of controllers mounted on a route.
 #[derive(Default)]
 pub struct Engine {
     router: Router,

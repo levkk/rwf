@@ -1,11 +1,18 @@
+//! Handle parsing forms.
+//!
+//! Both `x-www-form-urlencoded` and `multipart/form-data` formats are supported.
 use super::{Error, Query, Request};
 use std::str::FromStr;
 
 use std::collections::hash_map::{HashMap, IntoIter};
 
+/// Data stored in the form.
 #[derive(Clone, Debug)]
 pub enum FormData {
+    /// Form encoded with `x-www-form-urlencoded` format.
     UrlEncoded(Query),
+
+    /// Form encded with `multipart/form-data` format. Typically used to upload files.
     Multipart(Multipart),
 }
 
@@ -42,7 +49,22 @@ impl FormData {
         Ok(Self::UrlEncoded(Query::parse(&request.string())))
     }
 
-    /// Get a value from the form submission.
+    /// Get a value submitted via the form. Works on all values except files.
+    ///
+    /// The value data type should be specified, so automatic conversion and validation
+    /// is performed.
+    ///
+    /// #### Example
+    ///
+    /// ```rust,ignore
+    /// let form_data = request.form_data()?;
+    /// if let Some(id) = form_data.get::<i64>("id") {
+    ///     // do something with the value
+    /// }
+    /// ```
+    ///
+    /// If the `id` parameter is not an integer, [`None`] will be returned.
+    ///
     pub fn get<T: FromStr>(&self, name: &str) -> Option<T> {
         match self {
             FormData::UrlEncoded(query) => query.get::<T>(name),
@@ -68,7 +90,7 @@ impl FormData {
         }
     }
 
-    /// Get file data from a multipart form.
+    /// Get file data from a `multipart/form-data` form.
     pub fn file<'a>(&'a self, name: &str) -> Option<File<'a>> {
         match self {
             FormData::Multipart(multipart) => multipart.get(name).map(|f| File {
@@ -84,7 +106,7 @@ impl FormData {
         }
     }
 
-    /// An owning iterator over the form data.
+    /// An owning iterator over the form data. All values except files are included.
     pub fn into_iter(self) -> IntoIter<String, String> {
         match self {
             FormData::UrlEncoded(query) => query.into_iter(),
@@ -101,7 +123,16 @@ impl FormData {
         }
     }
 
-    /// Return a Result instead of option for the required parameter.
+    /// Return a [`Result`] instead of [`Option`] for the required parameter. When used in combination with
+    /// the `?` operator, a controller will return `400 - Bad Request` automatically if the parameter is not set or is set
+    /// to the wrong data type.
+    ///
+    /// #### Example
+    ///
+    /// ```rust,ignore
+    /// let form_data = request.form_data()?;
+    /// let id = form_data.get_required::<i64>("id")?;
+    /// ```
     pub fn get_required<T: FromStr>(&self, name: &str) -> Result<T, Error> {
         match self.get(name) {
             Some(v) => Ok(v),
@@ -110,7 +141,7 @@ impl FormData {
     }
 }
 
-/// Multipart for submission.
+/// Form encoded with `multipart/form-data` format.
 #[derive(Debug, Clone)]
 pub struct Multipart {
     entries: HashMap<String, MultipartEntry>,
@@ -164,7 +195,12 @@ macro_rules! read_line {
     }};
 }
 
-/// A file uploaded via a multipart form.
+/// A file uploaded via a `multipart/form-data` form.
+///
+/// The file is loaded into memory. Typically, you don't want to handle large file uploads via multipart forms.
+/// The browser doesn't provide a progress bar, so the user won't know how far along the upload is. This makes
+/// this method unreliable for anything beyond small files that can be uploaded almost instantly, and which can fit into memory
+/// without causing any issues.
 #[derive(Debug, Clone)]
 pub struct File<'a> {
     body: &'a [u8],
@@ -173,7 +209,7 @@ pub struct File<'a> {
 }
 
 impl File<'_> {
-    /// File data.
+    /// File data. Encoding may be specified in [`File::content_type`].
     pub fn body(&self) -> &[u8] {
         self.body
     }
@@ -183,7 +219,8 @@ impl File<'_> {
         &self.name
     }
 
-    /// Content type of the file, if provided by the browser.
+    /// Content type of the file, if provided by the browser. If not set,
+    /// `application/octent-stream` is used, which is the catch-all for an unknown encoding.
     pub fn content_type(&self) -> &str {
         match self.content_type {
             Some(ref content_type) => content_type,
@@ -267,10 +304,12 @@ impl Multipart {
     }
 }
 
-/// Content-Disposition header.
+/// HTTP `Content-Disposition` header.
 #[derive(Debug, Clone)]
 pub struct ContentDisposition {
+    /// The name of the input.
     pub name: String,
+    /// File name of the input, if it's a file upload.
     pub filename: Option<String>,
 }
 

@@ -1,3 +1,12 @@
+//! Limit how many requests our clients can perform per unit of time.
+//!
+//! Clients that exceed those limits will have their requests rejected with HTTP `429 - Too Many`.
+//! The rate limiting algorithm is nothing fancy: it counts the number of requests, and resets the count
+//! every configured amount of time.
+//!
+//! Clients are bucketed per IP. The rate limiter supports proxies, so if `X-Forwarded-For` header is included, that IP
+//! will be used instead. Each response has the `X-Rwf-Request-Rate` header set with the current requests per unit of time,
+//! which could help clients self-throttle their request rate.
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::{Duration, Instant};
@@ -52,13 +61,7 @@ impl Frequency {
     }
 }
 
-/// Simple rate limiter which buckets requests by IP,
-/// counts requests and resets the counter every configurable internval.
-///
-/// Supports `X-Forwarded-For` header if used behind a reverse proxy.
-///
-/// Response header `X-Rum-Request-Rate` is set to hint the client
-/// how frequently they are using the API.
+/// Simple rate limiter.
 pub struct RateLimiter {
     frequency: Frequency,
     state: Mutex<State>,
@@ -73,18 +76,26 @@ impl RateLimiter {
         }
     }
 
+    /// Create rate limiter with this limit of requests per second.
     pub fn per_second(limit: u64) -> Self {
         Self::new(Frequency::Second(limit))
     }
 
+    /// Create rate limiter with this limit of requests per minute.
     pub fn per_minute(limit: u64) -> Self {
         Self::new(Frequency::Minute(limit))
     }
 
+    /// Create rate limiter with this limit of requests per hour. There is no advanced warning
+    /// for clients that reach this limit quickly. If they spend all their requests in the first minute of the hour,
+    /// they will be blocked for sending any more for the remainer of the hour.
     pub fn per_hour(limit: u64) -> Self {
         Self::new(Frequency::Hour(limit))
     }
 
+    /// Create rate limiter with this limit of requests per day. There is no advanced warning
+    /// for clients that reach this limit quickly. If they spend all their requests in the first hour of the day,
+    /// they will be blocked for sending any more for the remainer of the day.
     pub fn per_day(limit: u64) -> Self {
         Self::new(Frequency::Day(limit))
     }

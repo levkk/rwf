@@ -1,7 +1,8 @@
 //! Authentication system.
 //!
-//! Made to be easily extendable. Users need only to implement the [`crate::controller::auth::Authentication`] trait
-//! and set it on their controller.
+//! Made to be easily extendable. Users need only to implement the [`Authentication`] trait
+//! and set it on their controller. Rwf also comes with several built-in authentication mechanisms that
+//! can be used out of the box.
 use super::Error;
 use crate::comms::WebsocketSender;
 use crate::config::get_config;
@@ -14,7 +15,7 @@ use time::{Duration, OffsetDateTime};
 use std::fmt::Debug;
 use std::sync::Arc;
 
-/// An authentication mechanism that can be attached to a controller.
+/// An authentication mechanism wrapper that can be attached to a controller.
 #[derive(Clone)]
 pub struct AuthHandler {
     auth: Arc<Box<dyn Authentication>>,
@@ -49,7 +50,7 @@ pub trait Authentication: Sync + Send {
     async fn authorize(&self, request: &Request) -> Result<bool, Error>;
 
     /// If the request is denied, return a specific response.
-    /// Default is 403 - Forbidden.
+    /// Default is `403 - Forbidden`.
     async fn denied(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::forbidden())
     }
@@ -62,7 +63,7 @@ pub trait Authentication: Sync + Send {
     }
 }
 
-/// Allow all requests.
+/// Allow all requests. This is the default authentication method for all controllers.
 pub struct AllowAll;
 
 #[async_trait]
@@ -73,6 +74,9 @@ impl Authentication for AllowAll {
 }
 
 /// Deny all requests.
+///
+/// Not particularly useful, since there is no way to override it,
+/// but it is included to demonstrate how authentication works.
 pub struct DenyAll;
 
 #[async_trait]
@@ -128,13 +132,17 @@ impl Authentication for Token {
     }
 }
 
+/// Type of session provided by the client in the request.
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum SessionId {
+    /// Guest user. All visitors are given a guest session.
     Guest(String),
+    /// Authenticated user. This user has passed an authentication challenge, e.g. username and password.
     Authenticated(i64),
 }
 
 impl SessionId {
+    /// The session is authenticated, i.e. it's a user.
     pub fn authenticated(&self) -> bool {
         use SessionId::*;
 
@@ -144,6 +152,8 @@ impl SessionId {
         }
     }
 
+    /// Get the user's ID. This is an arbitrary integer, but
+    /// should ideally be the primary key of a `"users"` table, if such exists.
     pub fn user_id(&self) -> Option<i64> {
         match self {
             SessionId::Authenticated(id) => Some(*id),
@@ -175,12 +185,19 @@ impl Default for SessionId {
     }
 }
 
+/// A client's session.
+///
+/// This is a JSON-encoded object
+/// that's stored securely in a cookie (using encryption).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Session {
+    /// Customizable session payload.
     #[serde(rename = "p")]
     pub payload: serde_json::Value,
+    /// Session expiration (UNIX timestamp in UTC).
     #[serde(rename = "e")]
     pub expiration: i64,
+    /// Type of session, e.g. guest or user.
     #[serde(rename = "s")]
     pub session_id: SessionId,
 }
@@ -192,14 +209,17 @@ impl Default for Session {
 }
 
 impl Session {
+    /// Create a guest session.
     pub fn anonymous() -> Self {
         Self::default()
     }
 
+    /// Alias for creating a guest session.
     pub fn empty() -> Self {
         Self::default()
     }
 
+    /// Create new session with this payload. This creates a guest session.
     pub fn new(payload: impl Serialize) -> Result<Self, Error> {
         Ok(Self {
             payload: serde_json::to_value(payload)?,
@@ -209,6 +229,7 @@ impl Session {
         })
     }
 
+    /// Create new session with this payload, authenticated to a particular user.
     pub fn new_authenticated(payload: impl Serialize, user_id: i64) -> Result<Self, Error> {
         let mut session = Self::new(payload)?;
         session.session_id = SessionId::Authenticated(user_id);
@@ -216,11 +237,13 @@ impl Session {
         Ok(session)
     }
 
+    /// Renew the session for the specified duration.
     pub fn renew(mut self, renew_for: Duration) -> Self {
         self.expiration = (OffsetDateTime::now_utc() + renew_for).unix_timestamp();
         self
     }
 
+    /// Check if the session has expired.
     pub fn expired(&self) -> bool {
         if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
             let now = OffsetDateTime::now_utc();
@@ -230,22 +253,28 @@ impl Session {
         }
     }
 
+    /// Get a Websocket sender for this session. This allows to send arbitray messages
+    /// to all browsers connected with this session.
     pub fn websocket(&self) -> WebsocketSender {
         use crate::comms::Comms;
         Comms::websocket(&self.session_id)
     }
 
+    /// This session is authenticated to a user and hasn't expired.
     pub fn authenticated(&self) -> bool {
         !self.expired() && self.session_id.authenticated()
     }
 }
 
+/// Session authentication.
 #[derive(Default)]
 pub struct SessionAuth {
     redirect: Option<String>,
 }
 
 impl SessionAuth {
+    /// Create session authentication which redirects to this URL instead
+    /// of just returning `403 - Unauthorized`.
     pub fn redirect(url: impl ToString) -> Self {
         Self {
             redirect: Some(url.to_string()),

@@ -1,3 +1,14 @@
+//! Record HTTP requests served by the application.
+//!
+//! Requests record metadata like client IP, request duration, path, query, and HTTP method.
+//! Each client is given a cookie which uniquely identifies that browser. This allows to record unique sessions.
+//!
+//! You can view requests in real time in the [admin panel](https://github.com/levkk/rwf/tree/main/rwf-admin), or by querying the `rwf_requests` table, e.g.:
+//!
+//! ```sql
+//! SELECT * FROM rwf_requests
+//! WHERE created_at > NOW() - INTERVAL '5 minutes';
+//! ```
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -8,9 +19,11 @@ use crate::model::{Model, Pool, ToValue};
 
 static COOKIE_NAME: &str = "rwf_aid";
 
+/// HTTP request tracker.
 pub struct RequestTracker {}
 
 impl RequestTracker {
+    /// Creates new HTTP request tracker.
     pub fn new() -> Self {
         Self {}
     }

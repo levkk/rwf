@@ -1,7 +1,16 @@
+//! Hide unique identifiers (e.g. primary keys) in your URLs.
+//!
+//! This allows to use database identifiers, like primary keys, in URLs, but doesn't
+//! reveal potentially private information, e.g. how many users you have, by leaking those
+//! identifiers.
+//!
+//! This middleware automatically converts the hidden version of the ID to the actual number,
+//! allowing it to be used in database queries.
 use crate::controller::middleware::prelude::*;
 use crate::crypto::decrypt_number;
 use crate::http::Path;
 
+/// Hide unique identifiers.
 pub struct SecureId {
     /// Block requests that use plain text identifiers.
     pub block_unencrypted: bool,

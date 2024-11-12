@@ -1,3 +1,4 @@
+//! Handle parsing the `Authorization` header.
 use base64::prelude::*;
 
 #[derive(Debug)]

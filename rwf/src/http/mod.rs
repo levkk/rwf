@@ -1,3 +1,11 @@
+//! HTTP protocol implementation.
+//!
+//! Rwf comes with its own implementation, including routing of requests, and a tokio-based async server that can handle millions of
+//! concurrent connections.
+//!
+//! ##### Support for HTTP/2
+//! Currently, only HTTP/1.1 is supported. Support for HTTP/2 is a work in progress. You can put the Rwf application behind a load balancer (like nginx) that supports
+//! HTTP/2 to take advantage of its performance enhancements.
 #![allow(dead_code)]
 pub mod authorization;
 pub mod body;

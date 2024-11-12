@@ -1,3 +1,4 @@
+//! Errors returned by the HTTP protocol implementation.
 use thiserror::Error;
 
 use super::Head;

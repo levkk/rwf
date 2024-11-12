@@ -17,7 +17,7 @@ impl Headers {
 
     /// Insert a header name and value.
     ///
-    /// The name will be lower-cased.
+    /// The name will be converted to lowercase.
     pub fn insert(&mut self, name: impl ToString, value: impl ToString) {
         self.headers
             .insert(name.to_string().to_lowercase(), value.to_string());
@@ -33,14 +33,17 @@ impl Headers {
         self.headers.remove(&name.to_lowercase())
     }
 
+    /// Remove all headers.
     pub fn clear(&mut self) {
         self.headers.clear();
     }
 
+    /// Convert headers into a [`HashMap`] keyed by header name.
     pub fn into_raw(self) -> HashMap<String, String> {
         self.headers
     }
 
+    /// Get a borrowing interator to the headers.
     pub fn iter(&self) -> Iter<String, String> {
         self.headers.iter()
     }

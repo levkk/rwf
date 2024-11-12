@@ -1,4 +1,6 @@
-//! Request head, including HTTP version and body.
+//! Request head, including HTTP version, path and headers.
+//!
+//! Most methods used on the [`crate::http::Response`] actually redirect here.
 
 use std::marker::Unpin;
 
@@ -85,7 +87,7 @@ impl std::fmt::Display for Version {
     }
 }
 
-/// Request head.
+/// Request HTTP method, path, HTTP version and headers.
 #[derive(Debug, Clone, Default)]
 pub struct Head {
     method: Method,
@@ -151,6 +153,7 @@ impl Head {
         })
     }
 
+    /// Get the `Authorization` header if any is set.
     pub fn authorization(&self) -> Option<Authorization> {
         Authorization::parse(match self.header("authorization") {
             Some(authorization) => authorization,
@@ -158,6 +161,7 @@ impl Head {
         })
     }
 
+    /// Get any cookies set on the request.
     pub fn cookies(&self) -> Cookies {
         if let Some(cookie) = self.headers.get("cookie") {
             Cookies::parse(&cookie)
@@ -181,7 +185,7 @@ impl Head {
         &self.path
     }
 
-    /// GET query.
+    /// GET query, e,g, `hello=world`.
     pub fn query(&self) -> &Query {
         self.path().query()
     }
@@ -191,15 +195,17 @@ impl Head {
         &self.method
     }
 
+    /// Is this a POST request?
     pub fn post(&self) -> bool {
         self.method() == &Method::Post
     }
 
+    /// Is this a GET request?
     pub fn get(&self) -> bool {
         self.method() == &Method::Get
     }
 
-    /// The size of the request body in bytes.
+    /// The size of the request body in bytes. This is provided by the `Content-Length` header.
     pub fn content_length(&self) -> Option<usize> {
         if let Some(cl) = self.headers.get("content-length") {
             if let Ok(cl) = cl.parse::<usize>() {
@@ -212,29 +218,13 @@ impl Head {
         }
     }
 
-    /// Get the multipart boundary, if one exists.
-    pub fn multipart_boundary(&self) -> Option<String> {
-        if let Some(content_type) = self.headers.get("content-type") {
-            let mut parts = content_type.split(";").into_iter();
-            let _content_type = parts.next();
-            if let Some(boundary) = parts.next() {
-                let mut parts = boundary.split("=").into_iter();
-                let _name = parts.next();
-                if let Some(boundary) = parts.next() {
-                    return Some(boundary.to_owned());
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Request headers.
+    /// Get all request headers.
     pub fn headers(&self) -> &Headers {
         &self.headers
     }
 
-    /// Get a mutable reference to the headers.
+    /// Get a mutable reference to the headers. This can be used to modify headers, e.g.
+    /// inside a middleware.
     pub fn headers_mut(&mut self) -> &mut Headers {
         &mut self.headers
     }

@@ -1,6 +1,11 @@
+//! Handle (de)serialization using serde for our own primitives.
+//!
+//! Currently handles (de)serialization of secure IDs.
 use serde::de::{self, Deserializer, Visitor};
 use serde::ser::{self, Serializer};
 
+/// Secure IDs are integers encrypted with AES-128 to prevent them from leaking internal information,
+/// e.g. how many users your application has.
 pub mod secure_id {
     use super::*;
     use crate::crypto::{decrypt_number, encrypt_number};

@@ -1,6 +1,13 @@
+//! Errors that can be returned by a controller.
+//!
+//! Automatic conversions exist between many standard library, tokio and template errors,
+//! allowing you to use the `?` operator in controllers. For any errors that don't, you can implement
+//! the `From<YourError> for Error` trait. You can also manually wrap your errors with this error, e.g. by
+//! calling `Error::new(your_error)`.
 use crate::http::Error as HttpError;
 use thiserror::Error;
 
+/// A controller error.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("JSON error: {0}")]

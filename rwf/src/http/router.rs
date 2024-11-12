@@ -1,3 +1,5 @@
+//! HTTP request routing.
+//!
 use super::{Error, Handler, Path};
 use crate::colors::MaybeColorize;
 
