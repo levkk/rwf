@@ -205,7 +205,7 @@ impl Multipart {
         let mut content_disposition: Option<ContentDisposition> = None;
         let mut content_type: Option<String> = None;
 
-        loop {
+        while reader.len() > 0 {
             let line = read_line!(reader);
 
             if line.is_empty() {
@@ -288,6 +288,7 @@ impl ContentDisposition {
         }
 
         if let Some(params) = names.next() {
+            // TODO: handle double quotes inside parameters.
             let mut params = params.split(";").into_iter().map(|s| s.trim());
             let _form_data = params.next();
 
