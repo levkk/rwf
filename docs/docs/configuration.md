@@ -22,6 +22,7 @@ section configures database connection settings, like the database URL, connecti
 | `secret_key` | Secret key, encoded using base64, used for [encryption](security/encryption.md). | Randomly generated |
 | `cache_templates` | Toggle caching of [dynamic templates](views/templates/index.md). | `false` in debug, `true` in release |
 | `csrf_protection` | Validate the [CSRF](security/CSRF.md) token is present on requests that mutate your application (POST, PUT, PATCH). | `true` |
+| `max_request_size` | Maximum `Content-Length` the server will process. Any requests larger than this will be rejected. | 5 MB |
 
 #### Secret key
 

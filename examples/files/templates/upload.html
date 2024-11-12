@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-US">
+    <%% "templates/head.html" %>
+    <body>
+        <div class="container my-5">
+            <h3 class="mb-4">Upload file</h3>
+            <form method="post" action="/" enctype="multipart/form-data">
+                <%= csrf_token() %>
+                <div class="mb-3">
+                    <label class="form-label">Comment</label>
+                    <input type="text" name="comment" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Upload file</label>
+                    <input type="file" name="file" class="form-control">
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-primary" type="submit">
+                        Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </body>
+</html>

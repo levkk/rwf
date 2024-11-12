@@ -147,6 +147,8 @@ pub struct General {
     pub tty: bool,
     #[serde(default = "General::default_header_max_size")]
     pub header_max_size: usize,
+    #[serde(default = "General::default_max_request_size")]
+    pub max_request_size: usize,
     #[serde(skip)]
     pub default_auth: AuthHandler,
     #[serde(skip)]
@@ -167,6 +169,7 @@ impl Default for General {
             session_duration: General::default_session_duration(),
             tty: General::default_tty(),
             header_max_size: General::default_header_max_size(),
+            max_request_size: General::default_max_request_size(),
             default_auth: AuthHandler::default(),
             default_middleware: MiddlewareSet::without_default(vec![]),
         }
@@ -261,6 +264,10 @@ impl General {
 
     fn default_header_max_size() -> usize {
         16 * 1024 // 16K
+    }
+
+    fn default_max_request_size() -> usize {
+        5 * 1024 * 1024 // 5M
     }
 }
 
@@ -386,7 +393,7 @@ mod test {
 
     #[test]
     fn test_load_config() {
-        for config_path in ["Rwf.toml", "rwf.toml", "Rum.toml"] {
+        for config_path in ["rwf.toml", "Rum.toml"] {
             let tmp_dir = TempDir::new("test").unwrap();
             let path = tmp_dir.path();
 

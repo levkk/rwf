@@ -119,13 +119,13 @@ pub trait Controller: Sync + Send {
                         Error::HttpError(err) => match err.code() {
                             400 => Response::bad_request(),
                             403 => Response::forbidden(),
+                            413 => Response::content_too_large(),
                             _ => Response::internal_error(err),
                         },
 
-                        Error::ViewError(err) => Response::internal_error_pretty(
-                            "Template error",
-                            err.to_string().as_str(),
-                        ),
+                        Error::ViewError(err) => {
+                            Response::error_pretty("Template error", err.to_string().as_str())
+                        }
 
                         err => Response::internal_error(err),
                     };

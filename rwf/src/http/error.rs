@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use super::Head;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("io error: {0}")]
@@ -37,6 +39,9 @@ pub enum Error {
 
     #[error("forbidden")]
     Forbidden,
+
+    #[error("content too large")]
+    ContentTooLarge(Head),
 }
 
 impl Error {
@@ -44,6 +49,7 @@ impl Error {
         match self {
             Self::MissingParameter => 400,
             Self::Forbidden => 403,
+            Self::ContentTooLarge(_) => 413,
             _ => 500,
         }
     }

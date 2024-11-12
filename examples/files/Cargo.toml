@@ -1,0 +1,8 @@
+[package]
+name = "files"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rwf = { version = "0.1.7", path = "../../rwf" }
+tokio = { version = "1", features = ["full"] }

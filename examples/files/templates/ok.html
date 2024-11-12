@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-US">
+    <%% "templates/head.html" %>
+    <body>
+        <div class="container my-5">
+            <h3 class="mb-4">Upload successful</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>File name</th>
+                        <th>File size</th>
+                        <th>Content type</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="pe-3"><%= name %></td>
+                        <td class="pe-3"><%= size %> bytes</td>
+                        <td class="pe-3"><%= content_type %></td>
+                        <td><%= comment %></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="d-flex justify-content-end">
+                <a href="/" class="btn btn-primary btn-lg">Back</a>
+            </div>
+        </div>
+    </body>
+</html>

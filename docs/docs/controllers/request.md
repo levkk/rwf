@@ -91,6 +91,30 @@ column names and data types to your form:
     </form>
     ```
 
+#### Files
+
+Rwf supports file uploads using multipart form encoding. A POST request with `Content-Type: multipart/form-data` containing files can be retrieved by their input name:
+
+=== "Rust"
+    ```rust
+    let form = request.form_data()?;
+    let file = form.file("file_upload");
+
+    if let Some(file) = file {
+        let bytes = file.bytes();
+        let name = file.name();
+    }
+    ```
+=== "HTML"
+    ```html
+    <form method="post" enctype="multipart/form-data">
+      <input type="file" name="file_upload">
+    </form>
+    ```
+
+!!! note
+    Forms that wish to upload files need to have the `enctype="multipart/form-data"` attribute. By default, HTML forms use `application/x-www-form-urlencoded` encoding which will omit any unsupported inputs like files.
+
 ### JSON
 
 If the body is expected to be JSON, it can be read using the `json` method instead. The `json` method
@@ -136,3 +160,7 @@ If you don't know the schema of the JSON request, you can use [`json_raw`](https
 If you use [`FormData::get_required`](https://docs.rs/rwf/latest/rwf/http/form_data/enum.FormData.html#method.get_required) or [`Request::json`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.json) methods with the `?` operator,
 an error will be returned to the client automatically if the parsing of the form data fails.
 Unlike other controller errors that return HTTP `500`, this type of error will return HTTP `400` (Bad Request).
+
+## Learn more
+
+- [examples/files](https://github.com/levkk/rwf/tree/main/examples/files)

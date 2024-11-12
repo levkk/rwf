@@ -13,6 +13,7 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
 use crate::{
+    config::get_config,
     controller::{Session, SessionId},
     model::{ConnectionGuard, Model},
 };
@@ -57,6 +58,22 @@ impl Request {
     pub async fn read(peer: SocketAddr, mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
         let head = Head::read(&mut stream).await?;
         let content_length = head.content_length().unwrap_or(0);
+
+        // Handle requests which are too large.
+        if content_length > get_config().general.max_request_size {
+            // Throw away whatever we receive.
+            let mut throw_away = vec![0u8; 4096];
+            let mut content_length = content_length as i64;
+            loop {
+                let read = stream.read(&mut throw_away).await?;
+                content_length -= read as i64;
+                if content_length <= 0 {
+                    break;
+                }
+            }
+            return Err(Error::ContentTooLarge(head));
+        }
+
         let mut body = vec![0u8; content_length];
         stream
             .read_exact(&mut body)

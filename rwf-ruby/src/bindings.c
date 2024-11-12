@@ -5,11 +5,8 @@
 #include <stdlib.h>
 #include <ruby.h>
 #include <stdio.h>
+#include <string.h>
 #include "bindings.h"
-#include "ruby/internal/intern/string.h"
-#include "ruby/internal/special_consts.h"
-#include "ruby/internal/symbol.h"
-
 
 static int rwf_print_error(void);
 
