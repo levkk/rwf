@@ -1,7 +1,7 @@
 //! Handle parsing forms.
 //!
 //! Both `x-www-form-urlencoded` and `multipart/form-data` formats are supported.
-use super::{Error, Query, Request};
+use super::{urldecode, Error, Query, Request};
 use std::str::FromStr;
 
 use std::collections::hash_map::{HashMap, IntoIter};
@@ -26,6 +26,7 @@ impl FormData {
         if content_type.contains("application/x-www-form-urlencoded") {
             Self::from_url_encoded(request)
         } else if content_type.contains("multipart/form-data") {
+            // Extract the multipart boundary from the Content-Type header.
             if let Some(boundary) = content_type.split(";").last() {
                 let boundary = boundary.split("=").last();
                 if let Some(boundary) = boundary {
@@ -40,7 +41,7 @@ impl FormData {
             }
         } else {
             return Err(Error::MalformedRequest(
-                "only www-url-encoded form is currently supported",
+                "only \"application/x-www-form-urlencoded\" and \"multipart/form-data\" are supported",
             ));
         }
     }
@@ -327,8 +328,7 @@ impl ContentDisposition {
         }
 
         if let Some(params) = names.next() {
-            // TODO: handle double quotes inside parameters.
-            let mut params = params.split(";").into_iter().map(|s| s.trim());
+            let mut params = params.split(";").into_iter().map(|s| urldecode(s.trim()));
             let _form_data = params.next();
 
             let mut content_name: Option<String> = None;

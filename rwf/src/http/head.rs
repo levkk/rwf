@@ -243,7 +243,9 @@ impl Head {
             || self
                 .headers
                 .get("connection")
-                .map(|s| s.to_lowercase() == "keep-alive")
+                // Requests can contain other attributes.
+                // We just case about keep-alive.
+                .map(|s| s.to_lowercase().contains("keep-alive"))
                 .unwrap_or(false)
     }
 
@@ -256,12 +258,17 @@ impl Head {
         let (mut cr, mut lf) = (false, false);
 
         while bytes_remaining > 0 {
-            // stream should be buffered
+            // `stream` should be buffered.
             let b = stream.read_u8().await?;
             bytes_remaining -= 1;
 
             if b == '\r' as u8 {
                 cr = true;
+                if lf {
+                    return Err(std::io::Error::other(Error::MalformedRequest(
+                        "nl before cr",
+                    )));
+                }
             } else if b == '\n' as u8 {
                 lf = true;
             } else {
@@ -276,6 +283,7 @@ impl Head {
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
 
+    /// Change the path of this request's head.
     pub fn replace_path(&mut self, path: Path) {
         self.path = path.clone();
     }
@@ -294,10 +302,13 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_header() {
-        let body = ("GET / HTTP/1.1\r\n".to_owned()
+        let body = ("GET /?hello=world&apples=oranges HTTP/1.1\r\n".to_owned()
             + "Content-Type: application/json\r\n"
             + "Accept: */*\r\n"
             + "Content-Length: 4\r\n"
+            + "Connection: keep-alive\r\n"
+            + "Cookie: rwf_aid=1234; bananas=fruit\r\n"
+            + "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==\r\n"
             + "\r\n"
             + "hello")
             .as_bytes()
@@ -307,5 +318,31 @@ mod test {
         assert_eq!(head.method(), &Method::Get);
         assert_eq!(head.path().path(), "/");
         assert_eq!(head.content_length(), Some(4));
+        assert_eq!(head.header("accept"), Some(&String::from("*/*")));
+        assert_eq!(
+            head.header("ConTent-TypE"), // case insensitive
+            Some(&String::from("application/json"))
+        );
+        assert!(head.keep_alive());
+        assert_eq!(head.query().get::<String>("hello"), Some("world".into()));
+        assert_eq!(head.cookies().get("bananas").unwrap().value(), "fruit");
+        assert_eq!(
+            head.authorization(),
+            Some(Authorization::Basic {
+                user: "Aladdin".into(),
+                password: "open sesame".into(),
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_nl_before_cr() {
+        let err = Head::read("GET / HTTP/1.1\n\r".as_bytes())
+            .await
+            .expect_err("parser should throw err");
+
+        // Hacky way to see what's in the error.
+        let msg = format!("{:?}", err);
+        assert!(msg.contains("nl before cr"));
     }
 }

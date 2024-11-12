@@ -1,7 +1,7 @@
 //! Handle parsing the `Authorization` header.
 use base64::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Authorization {
     /// HTTP Basic authentication
     Basic { user: String, password: String },

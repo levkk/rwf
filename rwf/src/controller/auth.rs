@@ -152,6 +152,11 @@ impl SessionId {
         }
     }
 
+    /// The session is a guest session, i.e. anonymous, not logged in.
+    pub fn guest(&self) -> bool {
+        !self.authenticated()
+    }
+
     /// Get the user's ID. This is an arbitrary integer, but
     /// should ideally be the primary key of a `"users"` table, if such exists.
     pub fn user_id(&self) -> Option<i64> {
@@ -189,7 +194,7 @@ impl Default for SessionId {
 ///
 /// This is a JSON-encoded object
 /// that's stored securely in a cookie (using encryption).
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Session {
     /// Customizable session payload.
     #[serde(rename = "p")]
@@ -263,6 +268,11 @@ impl Session {
     /// This session is authenticated to a user and hasn't expired.
     pub fn authenticated(&self) -> bool {
         !self.expired() && self.session_id.authenticated()
+    }
+
+    /// This is a guest session.
+    pub fn guest(&self) -> bool {
+        !self.expired() && self.session_id.guest()
     }
 }
 
