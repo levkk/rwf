@@ -3,7 +3,7 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 use uuid::Uuid;
 
-use std::{net::IpAddr, ops::Range};
+use std::{net::IpAddr, ops::RangeInclusive};
 
 use super::{Column, Error, Escape, ToSql};
 
@@ -250,29 +250,29 @@ impl ToValue for Column {
     }
 }
 
-impl ToValue for Range<i64> {
+impl ToValue for RangeInclusive<i64> {
     fn to_value(&self) -> Value {
         Value::Range((
-            Box::new(self.start.to_value()),
-            Box::new(self.end.to_value()),
+            Box::new(self.start().to_value()),
+            Box::new(self.end().to_value()),
         ))
     }
 }
 
-impl ToValue for Range<i32> {
+impl ToValue for RangeInclusive<i32> {
     fn to_value(&self) -> Value {
         Value::Range((
-            Box::new(self.start.to_value()),
-            Box::new(self.end.to_value()),
+            Box::new(self.start().to_value()),
+            Box::new(self.end().to_value()),
         ))
     }
 }
 
-impl ToValue for Range<i16> {
+impl ToValue for RangeInclusive<i16> {
     fn to_value(&self) -> Value {
         Value::Range((
-            Box::new(self.start.to_value()),
-            Box::new(self.end.to_value()),
+            Box::new(self.start().to_value()),
+            Box::new(self.end().to_value()),
         ))
     }
 }
@@ -499,7 +499,7 @@ mod test {
 
     #[test]
     fn test_range_i64() {
-        let value = Value::new(1_i64..25);
+        let value = Value::new(1_i64..=25);
         assert_eq!(value.to_sql(), "BETWEEN 1 AND 25");
     }
 
