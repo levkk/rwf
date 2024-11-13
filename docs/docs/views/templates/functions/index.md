@@ -25,7 +25,7 @@ These functions can be called on any value, irrespective of data type.
 
 ### `null`
 
-Return true if the value is null, false if not.
+Returns true if the value is null, false if not.
 
 ```erb
 <h1>
@@ -44,7 +44,7 @@ Aliases:
 
 ### `numeric`
 
-Return true if the value is a number, i.e. integer or float. Return false if not.
+Returns true if the value is a number, i.e. integer or float. Return false if not.
 
 ```erb
 <% if value.numeric %>
@@ -56,7 +56,7 @@ Return true if the value is a number, i.e. integer or float. Return false if not
 
 ### `integer`
 
-Return true if the value is an integer, false otherwise.
+Returns true if the value is an integer, false otherwise.
 
 ```erb
 <% 5.integer == true %>
@@ -64,11 +64,29 @@ Return true if the value is an integer, false otherwise.
 
 ### `float`
 
-Return true if the value is an integer, false otherwise.
+Returns true if the value is an integer, false otherwise.
 
 ```erb
 <% 5.float == false %>
 ```
+
+### `default`
+
+Checks that a variable is defined and returns it. If the variable is not defined, returns the provided default value instead.
+
+=== "Template"
+    ```erb
+    <%= default(some_var, "default_value") %>
+    ```
+=== "Output"
+    If `some_var` variable is not defined:
+    ```
+    default_value
+    ```
+    If `some_var` is set to `"value"`:
+    ```
+    value
+    ```
 
 ## Global helpers
 

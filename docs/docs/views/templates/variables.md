@@ -1,10 +1,10 @@
 # Variables
 
-Template variables are used to substitute unique information into a reusable template. Rwf supports variables of different kinds, like strings, numbers, lists, and hashes. Complex variables like hashes can be iterated through using [for loops](for-loops.md).
+Template variables are used to substitute unique information into a reusable template. Rwf supports variables of different kinds, like strings, numbers, lists, and hashes. Complex variables like hashes and lists can be iterated through using [for loops](for-loops.md).
 
 ## Using variables
 
-Using variables in your templates is typically done by "printing" them, or outputting them, into the template text, by placing them between `<%=` and `%>` tags:
+Using variables in your templates is typically done by "printing" them, or outputting them, into the template text. This is achieved by placing them between `<%=` and `%>` tags, for example:
 
 ```erb
 <%= variable %>
@@ -12,7 +12,7 @@ Using variables in your templates is typically done by "printing" them, or outpu
 
 The `<%=` tag indicates what follows is an [expression](nomenclature.md), which should be evaluated and converted to text for displaying purposes.
 
-The `%>` tag is not specific to printing variables, and indicates the end of a code block inside a template. What follows that tag is just regular text which has no special meaning.
+The `%>` tag is not specific to printing variables, and indicates the end of a template expression or statement.
 
 ## Defining variables
 
@@ -45,6 +45,43 @@ If an undefined variable is used in a template, Rwf will throw a runtime error. 
 ```
 
 Due to the nature of [if statements](if-statements.md), if the variable is defined and evaluates to a "falsy" value, e.g. `0`, `""` (empty string), `null`, etc., the if statement will not be executed either. This is helpful for handling many similar cases without having to write complex statements.
+
+#### Default values
+
+It's possible to define default values for variables that are `null` or haven't been set in the template context:
+
+```erb
+<p><%= default(variable, "Some default text") %></p>
+```
+
+!!! note
+    While it's tempting to have defaults for most variables to avoid runtime errors, it's often best to throw an error that you can catch in testing instead. Default values are not always optimal for best user experience.
+
+### Global defaults
+
+If a variable is used in multiple templates but its value is typically the same, you can define it globally for all templates. This ensures that if used in a template where it's not defined, the default value is printed instead of throwing an error.
+
+Global variables can be defined on application startup:
+
+```rust
+#[tokio::main]
+async fn main() {
+    Template::defaults(context!(
+        "global_var" => "Some value",
+        "global_var_2" => 25,
+    ));
+}
+```
+
+!!! note
+    While it's possible to define global variables multiple times anywhere in the code, only the last declaration will be used.
+
+You can override default variables in each template, by specifying the variable value when rendering the template:
+
+```rust
+render!("templates/index.html", "global_var" => "Another value")
+```
+
 
 ## Supported data types
 

@@ -133,3 +133,20 @@ Opposite of `urldecode`. Replaces ASCII characters with special meaning in URLs 
     hello%3Dworld
     ```
 
+
+### `br`
+
+Replaces new line characters in the string with `<br>`. Also escapes all HTML tags.
+
+=== "Template"
+    ```erb
+    <p><%= message %></p>
+    ```
+=== "Context"
+    ```rust
+    context!("message" => "Hello Alice\n\n, how are you?")
+    ```
+=== "Output"
+    ```html
+    <p>Hello Alice<br><br>, how are you?</p>
+    ```
