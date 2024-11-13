@@ -341,3 +341,43 @@ impl Message {
         Ok(())
     }
 }
+
+pub trait ToMessage: Clone {
+    fn to_message(self) -> Message;
+}
+
+impl ToMessage for Message {
+    fn to_message(self) -> Message {
+        self
+    }
+}
+
+impl ToMessage for String {
+    fn to_message(self) -> Message {
+        Message::Text(self)
+    }
+}
+
+impl ToMessage for &str {
+    fn to_message(self) -> Message {
+        Message::Text(self.to_string())
+    }
+}
+
+impl ToMessage for Vec<u8> {
+    fn to_message(self) -> Message {
+        Message::Binary(self)
+    }
+}
+
+impl ToMessage for &[u8] {
+    fn to_message(self) -> Message {
+        Message::Binary(self.to_vec())
+    }
+}
+
+impl ToMessage for TurboStream {
+    fn to_message(self) -> Message {
+        Message::Text(self.render())
+    }
+}

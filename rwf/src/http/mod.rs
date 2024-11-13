@@ -43,7 +43,7 @@ pub use response::Response;
 pub use router::Router;
 pub use server::{Server, Stream};
 pub use url::{urldecode, urlencode};
-pub use websocket::Message;
+pub use websocket::{Message, ToMessage};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Protocol {

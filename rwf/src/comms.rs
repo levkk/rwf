@@ -1,5 +1,6 @@
 use crate::controller::auth::SessionId;
 use crate::http::websocket::Message;
+use crate::http::ToMessage;
 use crate::model::{Model, Value};
 
 use once_cell::sync::Lazy;
@@ -184,9 +185,9 @@ pub struct Broadcast {
 }
 
 impl Broadcast {
-    pub fn send(&self, message: Message) -> Result<(), Error> {
+    pub fn send(&self, message: impl ToMessage) -> Result<(), Error> {
         for socket in &self.everyone {
-            socket.sender.send(message.clone())?;
+            socket.sender.send(message.clone().to_message())?;
         }
 
         Ok(())

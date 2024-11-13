@@ -98,8 +98,7 @@ All WebSocket clients have a unique [session](sessions.md) identifier. Sending a
 if let Some(session_id) = request.session_id() {
     let client = Comms::websocket(&session_id);
 
-    let message = Message::Text("hey there".to_string());
-    client.send(message)?;
+    client.send("hey there")?;
 }
 ```
 

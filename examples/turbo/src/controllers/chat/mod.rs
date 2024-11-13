@@ -101,7 +101,7 @@ impl PageController for ChatController {
             let broadcast = Comms::broadcast(&user);
             let message = Self::chat_message(&user, &message, false)?.render();
 
-            broadcast.send(Message::Text(message))?;
+            broadcast.send(message)?;
             broadcast.send(TypingState { typing: false }.render(&user)?)?;
         }
 

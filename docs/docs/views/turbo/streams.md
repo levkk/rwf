@@ -71,16 +71,38 @@ if let Some(session_id) = session_id {
             <p>Hi Alice!</p>
             <p>Hello Bob!</p>
         </div>
-    "#).action("replace");
-
-    let message = Message::Text(update.render());
+    "#).action("replace").target("messages");
 
     // Send it via a WebSocket connection.
-    Comms::websocket(&session_id).send(message)?;
+    Comms::websocket(&session_id).send(update)?;
 }
 ```
 
 If you need to send updates to the client from somewhere else besides a controller, e.g. from a [background job](../../background-jobs/index.md), pass the session identifier to that code as an argument. The session identifier is unique and unlikely to change.
+
+### Using templates
+
+It's common for Turbo Streams to update elements on a page for which templates already exist. To easily render a template or partial and wrap it into a Turbo Stream, Rwf has a handy macro:
+
+```rust
+let stream = turbo_stream!(
+    "templates/partials/messages.html", // Template name.
+    "messages", // DOM element ID.
+    "messages" => vec!["Hi Alice", "Hi Bob"], // Template variables.
+)
+```
+
+The Turbo Stream can be returned as a response to a form submission, or sent via the Turbo Stream WebSocket connection, for example:
+
+```rust
+// Return response via POST response.
+let response = Response::new()
+    .turbo_stream(&[stream]);
+
+// Send it via WebSocket connection.
+Comms::websocket(&session_id)
+    .send(stream)
+```
 
 ## Learn more
 
