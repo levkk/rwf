@@ -295,7 +295,10 @@ impl Statement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::view::template::lexer::{Tokenize, Value};
+    use crate::view::template::{
+        language::expression::Evaluate,
+        lexer::{Tokenize, Value},
+    };
 
     #[test]
     fn test_statements_basic() -> Result<(), Error> {
@@ -370,5 +373,12 @@ mod test {
         assert_eq!(result, "\n<p>1. 1</p>\n\n<p>2. 2</p>\n\n<p>3. 3</p>\n");
 
         Ok(())
+    }
+
+    #[test]
+    fn test_newline() {
+        // Make sure lexer doesn't interpret new lines as something.
+        let t1 = "<% 1 + 5 \n %>".evaluate_default().unwrap();
+        assert_eq!(t1, Value::Integer(6));
     }
 }

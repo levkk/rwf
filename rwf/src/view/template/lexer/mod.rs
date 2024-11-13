@@ -451,7 +451,7 @@ impl<'a> Lexer<'a> {
                         } else if let Ok(float) = st.parse::<f64>() {
                             self.tokens
                                 .push(self.add_token(Token::Value(Value::Float(float))));
-                        } else {
+                        } else if !st.trim().is_empty() {
                             self.tokens.push(self.add_token(Token::Variable(s)));
                         }
                     }
