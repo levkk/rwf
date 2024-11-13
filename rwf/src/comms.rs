@@ -131,8 +131,8 @@ pub struct WebsocketSender {
 }
 
 impl WebsocketSender {
-    pub fn send(&self, message: Message) -> Result<usize, Error> {
-        Ok(self.sender.send(message)?)
+    pub fn send(&self, message: impl ToMessage) -> Result<usize, Error> {
+        Ok(self.sender.send(message.to_message())?)
     }
 }
 
