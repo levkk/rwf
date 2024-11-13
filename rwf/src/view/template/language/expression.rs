@@ -114,9 +114,25 @@ impl Expression {
                     }
                 };
 
+                // Allow to pass undefined variables to a function.
+                // Typically that's not great, but the purpose of this function
+                // is to catch such cases and replace with a default value (presumably defined).
+                let allow_undefined = name == "default" && value == Value::Interpreter;
+
                 let args = args
                     .iter()
-                    .map(|arg| arg.evaluate(context))
+                    .map(|arg| match arg.evaluate(context) {
+                        Ok(value) => Ok(value),
+                        Err(Error::UndefinedVariable(v)) => {
+                            if allow_undefined {
+                                Ok(Value::Null)
+                            } else {
+                                Err(Error::UndefinedVariable(v))
+                            }
+                        }
+
+                        Err(e) => Err(e),
+                    })
                     .collect::<Result<Vec<Value>, Error>>()?;
 
                 Ok(value.call(&name, &args, context)?)
@@ -638,6 +654,25 @@ mod test {
                 Value::Integer(4)
             ])
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_default() -> Result<(), Error> {
+        let t1 = r#"<% default(some_var, "val") %>"#;
+        let v = t1.evaluate_default()?;
+        assert_eq!(v, Value::String("val".into()));
+
+        let t1 = r#"<% default("set", "val") %>"#;
+        let v = t1.evaluate_default()?;
+        assert_eq!(v, Value::String("set".into()));
+
+        let t1 = r#"<% default(var, "val") %>"#;
+        let mut context = Context::default();
+        context.set("var", "set")?;
+        let v = t1.evaluate(&context)?;
+        assert_eq!(v, Value::String("set".into()));
 
         Ok(())
     }

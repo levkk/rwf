@@ -42,7 +42,7 @@ impl Query {
 
     pub fn get<T: FromStr>(&self, name: &str) -> Option<T> {
         match self.query.get(name) {
-            Some(value) => match value.parse::<T>() {
+            Some(value) => match urldecode(value).parse::<T>() {
                 Ok(value) => Some(value),
                 Err(_) => None,
             },

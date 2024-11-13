@@ -61,6 +61,7 @@ pub fn urldecode(s: &str) -> String {
                                 "20" => " ",
                                 "7B" => "{",
                                 "7D" => "}",
+                                "0A" => "\n",
                                 _ => &num,
                             };
 
@@ -105,6 +106,7 @@ pub fn urlencode(s: &str) -> String {
             '=' => "%3D",
             '%' => "%25",
             ' ' => "%20",
+            '\n' => "0A",
             c => {
                 result.push(c);
                 continue;

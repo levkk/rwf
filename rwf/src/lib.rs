@@ -61,6 +61,10 @@ pub fn pascal_case(string: &str) -> String {
         .join("")
 }
 
+pub fn safe_html(string: &str) -> String {
+    string.replace("<", "&lt;").replace(">", "&gt;")
+}
+
 pub fn peer_addr(addr: &str) -> Option<SocketAddr> {
     use std::net::ToSocketAddrs;
 

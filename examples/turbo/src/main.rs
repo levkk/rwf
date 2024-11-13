@@ -28,6 +28,11 @@ impl WebsocketController for TurboStreamController {}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    Template::defaults(context!(
+        "rwf_stimulus_src" => "/static/js/stimulus.js",
+        "rwf_turbo_src" => "/static/js/turbo.js",
+    ));
+
     // Configure logging.
     Logger::init();
 

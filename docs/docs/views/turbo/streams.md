@@ -40,7 +40,7 @@ WebSocket connections need to specify the absolute URL for the WebSocket server.
 ```erb
 <html>
     <body>
-        <%- rwf_turbo_stream("/turbo-stream") %>
+        <%= rwf_turbo_stream("/turbo-stream") %>
     <!-- ... -->
 ```
 

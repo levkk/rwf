@@ -6,7 +6,7 @@ pub use value::{ToTemplateValue, Value};
 
 use super::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TokenWithContext {
     token: Token,
     line: usize,

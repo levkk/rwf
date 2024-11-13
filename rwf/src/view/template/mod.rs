@@ -79,6 +79,12 @@ impl Template {
         Self::cached(path)
     }
 
+    /// Set global default values for variables. If the variable isn't defined
+    /// in a template context, and a default exists, the default value will be used instead.
+    pub fn defaults(context: Context) {
+        Context::defaults(context);
+    }
+
     pub fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
         match Self::cached(path) {
             Ok(template) => Ok(template.try_into()?),

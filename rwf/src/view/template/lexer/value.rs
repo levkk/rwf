@@ -19,6 +19,8 @@ use crate::view::template::Template;
 
 static TURBO_STREAM: Lazy<Template> =
     Lazy::new(|| Template::from_str(include_str!("../turbo-stream.html")).unwrap());
+static HEAD: Lazy<Template> =
+    Lazy::new(|| Template::from_str(include_str!("../head.html")).unwrap());
 
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
@@ -245,6 +247,7 @@ impl Value {
                 "urldecode" => Value::String(crate::http::urldecode(&value)),
                 "len" => Value::Integer(value.len() as i64),
                 "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
+                "br" => Value::SafeString(crate::safe_html(value).replace("\n", "<br>")),
                 _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
@@ -333,7 +336,7 @@ impl Value {
                     _ => Value::Null,
                 },
 
-                "rwf_head" => Value::SafeString(include_str!("../head.html").to_string()),
+                "rwf_head" => Value::SafeString(HEAD.render(context)?),
                 "rwf_turbo_stream" => match &args {
                     &[Value::String(endpoint)] => Value::SafeString(
                         TURBO_STREAM
@@ -341,7 +344,11 @@ impl Value {
                             .unwrap(),
                     ),
 
-                    _ => Value::Null,
+                    _ => {
+                        return Err(Error::Runtime(
+                            "rwf_turbo_stream() requires the WebSocket endpoint".into(),
+                        ))
+                    }
                 },
 
                 "csrf_token_raw" => Value::SafeString(crypto::csrf_token().unwrap()),
@@ -359,6 +366,13 @@ impl Value {
 
                     _ => Value::Null,
                 },
+
+                "default" => match &args {
+                    &[Value::Null, default_value] => default_value.clone(),
+                    &[value, _] => value.clone(),
+                    _ => Value::Null,
+                },
+
                 _ => return Err(Error::UnknownMethod(method_name.into(), "global")),
             },
 
@@ -628,5 +642,37 @@ impl ToTemplateValue for HashMap<String, ModelValue> {
         }
 
         Ok(Value::Hash(result))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let v = Value::Interpreter.call(
+            "default",
+            &[Value::Null, Value::String("val".into())],
+            &Context::default(),
+        );
+        assert_eq!(v.unwrap(), Value::String("val".into()));
+
+        let v = Value::Interpreter.call(
+            "default",
+            &[Value::Integer(5), Value::String("hello".into())],
+            &Context::default(),
+        );
+
+        assert_eq!(v.unwrap(), Value::Integer(5));
+    }
+
+    #[test]
+    fn test_br() {
+        let v = Value::String("<p>Hello\nworld</p>".into()).call("br", &[], &Context::default());
+        assert_eq!(
+            v.unwrap(),
+            Value::SafeString("&lt;p&gt;Hello<br>world&lt;/p&gt;".into())
+        );
     }
 }

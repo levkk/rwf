@@ -102,7 +102,7 @@ impl Statement {
                 let value = expression.evaluate(context)?;
                 Ok(match value {
                     Value::SafeString(s) => s,
-                    value => value.to_string().replace("<", "&lt;").replace(">", "&gt;"),
+                    value => crate::safe_html(&value.to_string()),
                 })
             }
             Statement::For {

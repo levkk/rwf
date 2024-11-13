@@ -2,12 +2,12 @@
 <script type="importmap">
     {
         "imports": {
-            "hotwired/stimulus": "https://unpkg.com/@hotwired/stimulus/dist/stimulus.js"
+            "hotwired/stimulus": "<%- default(rwf_stimulus_src, "https://unpkg.com/@hotwired/stimulus/dist/stimulus.js") %>"
         }
     }
 </script>
 <script async type="module">
-    import "https://unpkg.com/@hotwired/turbo@8.0.10/dist/turbo.es2017-esm.js";
+    import "<%- default(rwf_turbo_src, "https://unpkg.com/@hotwired/turbo@8.0.10/dist/turbo.es2017-esm.js") %>";
 
     addEventListener("turbo:before-stream-render", (event) => {
         const fallback = event.detail.render;

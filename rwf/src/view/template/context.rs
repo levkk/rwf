@@ -1,6 +1,13 @@
 use crate::view::template::{Error, ToTemplateValue, Value};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
+use std::sync::Arc;
+
+use once_cell::sync::Lazy;
+
+static DEFAULTS: Lazy<Arc<RwLock<Context>>> =
+    Lazy::new(|| Arc::new(RwLock::new(Context::default())));
 
 #[derive(Debug, Default, Clone)]
 pub struct Context {
@@ -9,7 +16,7 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Self {
-        Self::default()
+        DEFAULTS.read().clone()
     }
 
     pub fn get(&self, key: &str) -> Option<Value> {
@@ -20,6 +27,10 @@ impl Context {
         self.values
             .insert(key.to_string(), value.to_template_value()?);
         Ok(self)
+    }
+
+    pub fn defaults(context: Self) {
+        (*DEFAULTS.write()) = context;
     }
 }
 
