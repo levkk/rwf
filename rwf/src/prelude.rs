@@ -24,7 +24,7 @@ pub use async_trait::async_trait;
 pub use time::{Duration, OffsetDateTime};
 pub use tokio;
 
-pub use macros::{context, crud, engine, render, rest, route};
+pub use macros::{context, crud, engine, render, rest, route, turbo_stream};
 pub use rwf_macros as macros;
 pub use serde::{Deserialize, Serialize};
 pub use uuid::Uuid;

@@ -259,19 +259,23 @@ impl Response {
         self
     }
 
+    /// Set the session on the response.
     pub fn set_session(mut self, session: Session) -> Self {
         self.session = Some(session);
         self
     }
 
+    /// Get the response's session, if any is set.
     pub fn session(&self) -> &Option<Session> {
         &self.session
     }
 
+    /// Response is an agreement to upgrade the connection to use the WebSocket protocol.
     pub fn websocket_upgrade(&self) -> bool {
         self.code == 101 && self.headers.get("upgrade").map(|s| s == "websocket") == Some(true)
     }
 
+    /// Return a response containing one or multiple Turbo Streams.
     pub fn turbo_stream(self, body: &[TurboStream]) -> Self {
         let body = body
             .iter()

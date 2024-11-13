@@ -34,17 +34,16 @@ impl Default for ChatController {
 
 impl ChatController {
     fn chat_message(user: &User, message: &ChatMessage, mine: bool) -> Result<TurboStream, Error> {
-        let chat_message = Template::load("templates/chat_message.html")?;
-        let context = context!("message" => UserMessage {
-            user: user.clone(),
-            message: message.clone(),
-            mine,
-        });
-        let rendered = chat_message.render(&context)?;
-
-        Ok(TurboStream::new(rendered)
-            .action("append")
-            .target("messages"))
+        Ok(turbo_stream!(
+            "templates/chat_message.html",
+            "messages",
+            "message" => UserMessage {
+                user: user.clone(),
+                message: message.clone(),
+                mine,
+            },
+        )
+        .action("append"))
     }
 }
 
@@ -109,15 +108,12 @@ impl PageController for ChatController {
         // Display the message for the user.
         let chat_message = Self::chat_message(&user, &message, true)?;
 
-        let context = context!("user" => user);
+        let form = turbo_stream!(
+            "templates/chat_form.html",
+            "form",
+            "user" => user,
+        );
 
-        // Reset the form.
-        let form = Template::load("templates/chat_form.html")?;
-        let form = form.render(&context)?;
-
-        Ok(Response::new().turbo_stream(&[
-            chat_message,
-            TurboStream::new(form).action("replace").target("form"),
-        ]))
+        Ok(Response::new().turbo_stream(&[chat_message, form]))
     }
 }

@@ -2,16 +2,16 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-use syn::parse::{Parse, ParseStream};
-use syn::LitInt;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, LitStr, Meta,
-    Result, Token, Type,
+    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, Meta, Token,
+    Type,
 };
 
 use quote::quote;
 
 mod model;
+mod prelude;
+mod render;
 
 /// The `#[derive(Model)]` macro.
 #[proc_macro_derive(Model, attributes(belongs_to, has_many, table_name, foreign_key))]
@@ -448,161 +448,51 @@ pub fn engine(input: TokenStream) -> TokenStream {
     .into()
 }
 
-struct RenderInput {
-    template_name: LitStr,
-    _comma: Option<Token![,]>,
-    context: Vec<ContextInput>,
-    code: Option<LitInt>,
-}
-
-struct ContextInput {
-    name: LitStr,
-    _separator: Token![=>],
-    value: Expr,
-    _comma: Option<Token![,]>,
-}
-
-struct Context {
-    values: Vec<ContextInput>,
-}
-
-impl Parse for Context {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut values = vec![];
-        loop {
-            let context: Result<ContextInput> = input.parse();
-
-            if let Ok(context) = context {
-                values.push(context);
-            } else {
-                break;
-            }
-        }
-
-        Ok(Context { values })
-    }
-}
-
-impl Parse for ContextInput {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ContextInput {
-            name: input.parse()?,
-            _separator: input.parse()?,
-            value: input.parse()?,
-            _comma: input.parse()?,
-        })
-    }
-}
-
-impl Parse for RenderInput {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let template_name: LitStr = input.parse()?;
-        let _comma: Option<Token![,]> = input.parse()?;
-        let mut code = None;
-
-        let context = if _comma.is_some() {
-            let mut result = vec![];
-            loop {
-                if input.peek(LitInt) {
-                    let c: LitInt = input.parse().unwrap();
-                    code = Some(c);
-                } else {
-                    let context: Result<ContextInput> = input.parse();
-
-                    if let Ok(context) = context {
-                        result.push(context);
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            result
-        } else {
-            vec![]
-        };
-
-        Ok(RenderInput {
-            template_name,
-            _comma,
-            context,
-            code,
-        })
-    }
-}
-
+/// Create a template context, automatically converting Rust data types
+/// into Rwf template values.
+///
+/// ### Example
+///
+/// ```rust
+/// use rwf_macros::context;
+///
+/// let ctx = context!(
+///     "name" => "Alice",
+///     "users" => 25,
+///     "cost" => 2.54,
+/// );
+/// ```
 #[proc_macro]
 pub fn context(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as Context);
-    let mut expansion = vec![quote! {
-        let mut context = rwf::view::template::Context::new();
-    }];
-
-    for value in input.values {
-        let name = value.name;
-        let value = value.value;
-        expansion.push(quote! {
-            context.set(#name, #value)?;
-        });
-    }
-
-    quote! {
-        {
-            #(#expansion)*
-            context
-        }
-    }
-    .into()
+    render::context_impl(input)
 }
 
+/// Render a template with an optional context, and return it as an HTTP response.
+///
+/// ### Example
+///
+/// ```rust,ignore
+/// use rwf_macros::render;
+///
+/// render!("templates/index.html", "title" => "Home page")
+/// ```
 #[proc_macro]
 pub fn render(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as RenderInput);
-    let template_name = input.template_name;
+    render::render_impl(input)
+}
 
-    let render_call = if input.context.is_empty() {
-        vec![quote! {
-            let html = template.render_default()?;
-        }]
-    } else {
-        let mut values = vec![quote! {
-            let mut context = rwf::view::template::Context::new();
-        }];
-
-        for value in input.context {
-            let name = value.name;
-            let val = value.value;
-            values.push(quote! {
-                context.set(#name, #val)?;
-            })
-        }
-
-        values.push(quote! {
-            let html = template.render(&context)?;
-        });
-
-        values
-    };
-
-    let code = if let Some(code) = input.code {
-        quote! {
-            let response = response.code(#code);
-        }
-    } else {
-        quote! {}
-    };
-
-    quote! {
-        {
-            let template = rwf::view::template::Template::load(#template_name)?;
-            #(#render_call)*
-
-            let response = rwf::http::Response::new().html(html);
-            #code
-            return Ok(response)
-        }
-    }
-    .into()
+/// Render a Turbo Stream.
+///
+/// ### Example
+///
+/// ```rust,ignore
+/// use rwf_macros::turbo_stream;
+///
+/// turbo_stream!("templates/index.html", "home", "title" => "Home page")
+/// ```
+#[proc_macro]
+pub fn turbo_stream(input: TokenStream) -> TokenStream {
+    render::turbo_stream_impl(input)
 }
 
 fn snake_case(string: &str) -> String {

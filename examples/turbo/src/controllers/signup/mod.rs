@@ -12,7 +12,7 @@ use form::SignupForm;
 use middleware::LoggedInCheck;
 
 /// Handle user signup.
-#[derive(rwf::macros::PageController)]
+#[derive(macros::PageController)]
 #[middleware(middleware)]
 pub struct SignupController {
     middleware: MiddlewareSet,
@@ -26,13 +26,11 @@ impl Default for SignupController {
     }
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl PageController for SignupController {
     /// Respond to GET request.
     async fn get(&self, _request: &Request) -> Result<Response, Error> {
-        let rendered = Template::load("templates/signup.html")?.render([("title", "Test")])?;
-
-        Ok(Response::new().html(rendered))
+        render!("templates/signup.html", "title" => "Signup")
     }
 
     /// Respond to POST request.
