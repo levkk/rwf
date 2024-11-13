@@ -223,6 +223,24 @@ impl Value {
                     }
                     Value::List(list)
                 }
+                "replace" | "sub" => match args {
+                    &[Value::Integer(v), Value::Integer(r)] => {
+                        let result = value.to_string().replace(&v.to_string(), &r.to_string());
+
+                        match result.parse() {
+                            Ok(v) => Value::Integer(v),
+                            Err(_) => {
+                                return Err(Error::Runtime(format!("integer overflow: {}", result)))
+                            }
+                        }
+                    }
+
+                    _ => {
+                        return Err(Error::Runtime(
+                            "replace on integers only accepts integer arguments".into(),
+                        ))
+                    }
+                },
                 method_name => return Err(Error::UnknownMethod(method_name.into(), "integer")),
             },
 
@@ -248,6 +266,14 @@ impl Value {
                 "len" => Value::Integer(value.len() as i64),
                 "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
                 "br" => Value::SafeString(crate::safe_html(value).replace("\n", "<br>")),
+                "replace" | "sub" => match &args {
+                    &[v, r] => Value::String(value.replace(&v.to_string(), &r.to_string())),
+                    _ => {
+                        return Err(Error::Runtime(
+                            "replace takes two arguments: value and replacement".into(),
+                        ))
+                    }
+                },
                 _ => return Err(Error::UnknownMethod(method_name.into(), "string")),
             },
 
@@ -674,5 +700,23 @@ mod test {
             v.unwrap(),
             Value::SafeString("&lt;p&gt;Hello<br>world&lt;/p&gt;".into())
         );
+    }
+
+    #[test]
+    fn test_replace() {
+        let v = Value::String("Hey Alice, this is Bob".into())
+            .call(
+                "replace",
+                &[Value::String("Alice".into()), Value::String("Bob".into())],
+                &Context::default(),
+            )
+            .unwrap()
+            .call(
+                "sub",
+                &[Value::String("Bob".into()), Value::String("Alice".into())],
+                &Context::default(),
+            )
+            .unwrap();
+        assert_eq!(v, Value::String("Hey Alice, this is Alice".into()));
     }
 }

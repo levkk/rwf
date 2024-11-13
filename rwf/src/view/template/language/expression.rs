@@ -676,4 +676,15 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_replace() -> Result<(), Error> {
+        let t1 = r#"<% "Some string".sub("string", 1234) %>"#.evaluate_default()?;
+        assert_eq!(t1, Value::String("Some 1234".into()));
+
+        let t1 = "<% 1234.replace(3, 5) %>".evaluate_default()?;
+        assert_eq!(t1, Value::Integer(1254));
+
+        Ok(())
+    }
 }

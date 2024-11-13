@@ -150,3 +150,27 @@ Replaces new line characters in the string with `<br>`. Also escapes all HTML ta
     ```html
     <p>Hello Alice<br><br>, how are you?</p>
     ```
+
+### `replace`
+
+Replaces a value inside the string with another value. `sub` is an alias for `replace`.
+
+=== "Template"
+    ```erb
+    <p><%= "Apples are tasty".replace("Apples", "Oranges") %></p>
+    ```
+=== "Output"
+    ```html
+    <p>Oranges are tasty</p>
+    ```
+
+This method accepts all data types, but it does convert them to their string representation before performing the replacement. For example, a string can be replaced with an integer:
+
+=== "Template"
+    ```erb
+    <%= "One two three".replace("One", 1) %>
+    ```
+=== "Output"
+    ```
+    1 two three
+    ```

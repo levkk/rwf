@@ -61,7 +61,7 @@ Creates a list of integers, starting at 0 and ending with the integer. This func
 
 ### `clamp_zero`
 
-Clamp the integer to 0, i.e. negative values become 0.
+Clamps the integer to 0, i.e. negative values become 0.
 
 === "Template"
     ```erb
@@ -74,7 +74,7 @@ Clamp the integer to 0, i.e. negative values become 0.
 
 ### `clamp_one`
 
-Clamp the integer to 1, i.e. all values less than 1 become 1.
+Clamps the integer to 1, i.e. all values less than 1 become 1.
 
 === "Template"
     ```erb
@@ -83,4 +83,17 @@ Clamp the integer to 1, i.e. all values less than 1 become 1.
 === "Output"
     ```
     1
+    ```
+
+### `replace`
+
+Replaces matching integer(s) in the number. `sub` is an alias for `replace`.
+
+=== "Template"
+    ```erb
+    <%= 15345.replace(5, 6) %>
+    ```
+=== "Output"
+    ```
+    16346
     ```
