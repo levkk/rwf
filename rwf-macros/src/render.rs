@@ -10,7 +10,7 @@ struct RenderInput {
 struct TurboStreamInput {
     template_name: LitStr,
     _comma_1: Token![,],
-    id: LitStr,
+    id: Expr,
     _comma_2: Option<Token![,]>,
     context: Vec<ContextInput>,
 }
@@ -30,7 +30,7 @@ impl Parse for TurboStreamInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let template_name: LitStr = input.parse()?;
         let _comma_1: Token![,] = input.parse()?;
-        let id: LitStr = input.parse()?;
+        let id: Expr = input.parse()?;
         let _comma_2: Option<Token![,]> = input.parse()?;
 
         let mut context: Vec<ContextInput> = vec![];

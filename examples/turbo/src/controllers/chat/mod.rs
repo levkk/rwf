@@ -114,6 +114,6 @@ impl PageController for ChatController {
             "user" => user,
         );
 
-        Ok(Response::new().turbo_stream(&[chat_message, form]))
+        Ok(vec![chat_message, form].into())
     }
 }

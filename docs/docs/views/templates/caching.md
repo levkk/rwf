@@ -14,6 +14,9 @@ let template = Template::load("templates/index.html")?;
 
 The first time the template is loaded, it will be fetched from disk and compiled. Once compiled, it will be stored in the cache to be reused by all subsequent calls to [`Template::load`](https://docs.rs/rwf/latest/rwf/view/template/struct.Template.html#method.load).
 
+!!! note
+    The `render!` macro is taking advantage of the template cache as well since it uses the `Template::load` function.
+
 ## Enable the cache
 
 The template cache is disabled by default in development, and enabled in production[^1]. To change this behavior, toggle the `cache_templates` setting in [configuration](../../configuration.md).

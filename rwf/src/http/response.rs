@@ -369,3 +369,27 @@ impl Response {
             .code(101)
     }
 }
+
+impl From<serde_json::Value> for Response {
+    fn from(value: serde_json::Value) -> Response {
+        Response::new().json(value).unwrap()
+    }
+}
+
+impl From<String> for Response {
+    fn from(value: String) -> Response {
+        Response::new().html(value)
+    }
+}
+
+impl From<&[TurboStream]> for Response {
+    fn from(value: &[TurboStream]) -> Response {
+        Response::new().turbo_stream(value)
+    }
+}
+
+impl From<Vec<TurboStream>> for Response {
+    fn from(value: Vec<TurboStream>) -> Response {
+        Response::new().turbo_stream(&value)
+    }
+}

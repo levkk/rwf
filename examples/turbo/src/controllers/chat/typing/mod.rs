@@ -17,9 +17,10 @@ impl Controller for TypingController {
             let broadcast = Comms::broadcast(&user);
             broadcast.send(state.render(&user)?)?;
 
-            Ok(Response::new().json(serde_json::json!({
+            Ok(serde_json::json!({
                 "status": "success",
-            }))?)
+            })
+            .into())
         } else {
             Ok(Response::new().redirect("/signup"))
         }
@@ -32,22 +33,21 @@ pub struct TypingState {
 }
 
 impl TypingState {
-    pub fn render(&self, user: &User) -> Result<Message, Error> {
-        let typing = Template::load("templates/typing.html")?;
-        let rendered = typing.render([("user", user.clone().to_template_value()?)])?;
+    pub fn render(&self, user: &User) -> Result<TurboStream, Error> {
+        let stream = turbo_stream!(
+            "templates/typing.html",
+            "typing-indicators"
+            "user" => user.clone()
+        );
 
         let message = if self.typing {
-            TurboStream::new(rendered)
-                .action("append")
-                .target("typing-indicators")
-                .render()
+            stream.action("append")
         } else {
-            TurboStream::new(rendered)
+            stream
                 .action("remove")
                 .target(format!("typing-{}", user.id.unwrap()))
-                .render()
         };
 
-        Ok(Message::Text(message))
+        Ok(message)
     }
 }

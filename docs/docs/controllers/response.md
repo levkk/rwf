@@ -54,6 +54,32 @@ let response = Response::new()
   .header("Cache", "no-store");
 ```
 
+## Syntactic sugar
+
+Returning certain types of responses is common, so Rwf has a few automatic conversions to remove boilerplate from controllers. In the context of a controller method, the following statements are equivalent.
+
+#### HTML
+
+=== "Shortcut"
+    ```rust
+    "<h1>Text</h1>".into()
+    ```
+=== "Code"
+    ```rust
+    Response::new().html("<h1>Text</h1>")
+    ```
+
+#### JSON
+
+=== "Shortcut"
+    ```rust
+    serde_json::json!({"hello": "world"}).into()
+    ```
+=== "Code"
+    ```rust
+    Response::new().json(serde_json::json!({"hello": "world"})?;
+    ```
+
 ## Learn more
 
 - [Cookies](cookies.md)
