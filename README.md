@@ -1,6 +1,7 @@
 # Rwf &dash; Rust Web Framework
 
-[![Static Badge](https://img.shields.io/badge/documentation-blue?style=flat)](https://levkk.github.io/rwf/)
+[![Static Badge](https://img.shields.io/badge/docs-blue?style=flat)](https://levkk.github.io/rwf/)
+[![Latest crate](https://img.shields.io/crates/v/rwf.svg)](https://crates.io/crates/rwf)
 
 
 Rwf is a comprehensive framework for building web applications in Rust. Written using the classic MVC  pattern (model-view-controller), Rwf comes standard with everything you need to easily build fast and secure web apps.
