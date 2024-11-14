@@ -25,7 +25,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 - &#10004; Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](https://github.com/levkk/rwf/tree/main/examples/turbo)
 - &#10004; Environment-specific configuration
 - &#10004; Logging and metrics
-- &#10004; [CLI](rwf-cli)
+- &#10004; [CLI](https://github.com/levkk/rwf/tree/main/rwf-cli)
 - &#10004; WSGI server for [migrating](https://github.com/levkk/rwf/tree/main/examples/django) from Django/Flask apps
 - &#10004; Rack server for [migrating](https://github.com/levkk/rwf/tree/main/examples/rails) from Rails
 
@@ -65,7 +65,7 @@ async fn main() {
 }
 ```
 
-## https://github.com/levkk/rwf/tree/main/examples
+## Examples
 
 See [examples](https://github.com/levkk/rwf/tree/main/examples) for common use cases.
 
