@@ -12,22 +12,22 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 
 ## Features overview
 
-- [HTTP server](https://github.com/levkk/rwf/tree/main/examples/quick-start)
-- User-friendly [ORM](https://github.com/levkk/rwf/tree/main/examples/orm) to build PostgreSQL queries easily
-- [Dynamic templates](https://github.com/levkk/rwf/tree/main/examples/dynamic-templates)
-- [Authentication](https://github.com/levkk/rwf/tree/main/examples/auth) & built-in user sessions
-- [Middleware](https://github.com/levkk/rwf/tree/main/examples/middleware)
-- [Background jobs](https://github.com/levkk/rwf/tree/main/examples/background-jobs) and [scheduled jobs](https://github.com/levkk/rwf/tree/main/examples/scheduled-jobs)
-- Database migrations
-- Built-in [REST framework](https://github.com/levkk/rwf/tree/main/examples/rest) with JSON serialization
-- WebSockets support
-- [Static files](https://github.com/levkk/rwf/tree/main/examples/static-files) hosting
-- Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](https://github.com/levkk/rwf/tree/main/examples/turbo)
-- Environment-specific configuration
-- Logging and metrics
-- [CLI](https://github.com/levkk/rwf/tree/main/rwf-cli)
-- WSGI server for [migrating](https://github.com/levkk/rwf/tree/main/examples/django) from Django/Flask apps
-- Rack server for [migrating](https://github.com/levkk/rwf/tree/main/examples/rails) from Rails
+- &#10004; [HTTP server](https://github.com/levkk/rwf/tree/main/examples/quick-start)
+- &#10004; User-friendly [ORM](https://github.com/levkk/rwf/tree/main/examples/orm) to build PostgreSQL queries easily
+- &#10004; [Dynamic templates](https://github.com/levkk/rwf/tree/main/examples/dynamic-templates)
+- &#10004; [Authentication](https://github.com/levkk/rwf/tree/main/examples/auth) & built-in user sessions
+- &#10004; [Middleware](https://github.com/levkk/rwf/tree/main/examples/middleware)
+- &#10004; [Background jobs](https://github.com/levkk/rwf/tree/main/examples/background-jobs) and [scheduled jobs](https://github.com/levkk/rwf/tree/main/examples/scheduled-jobs)
+- &#10004; Database migrations
+- &#10004; Built-in [REST framework](https://github.com/levkk/rwf/tree/main/examples/rest) with JSON serialization
+- &#10004; WebSockets support
+- &#10004; [Static files](https://github.com/levkk/rwf/tree/main/examples/static-files) hosting
+- &#10004; Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](https://github.com/levkk/rwf/tree/main/examples/turbo)
+- &#10004; Environment-specific configuration
+- &#10004; Logging and metrics
+- &#10004; [CLI](https://github.com/levkk/rwf/tree/main/rwf-cli)
+- &#10004; WSGI server for [migrating](https://github.com/levkk/rwf/tree/main/examples/django) from Django/Flask apps
+- &#10004; Rack server for [migrating](https://github.com/levkk/rwf/tree/main/examples/rails) from Rails
 
 ## Quick start
 
