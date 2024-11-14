@@ -12,7 +12,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 
 ## Features overview
 
-- :heavy_check_mark: [HTTP server](examples/quick-start)
+- &#10004; [HTTP server](examples/quick-start)
 - :heavy_check_mark: User-friendly [ORM](examples/orm) to build PostgreSQL queries easily
 - :heavy_check_mark: [Dynamic templates](examples/dynamic-templates)
 - :heavy_check_mark: [Authentication](examples/auth) & built-in user sessions

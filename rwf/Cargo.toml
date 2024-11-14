@@ -4,6 +4,12 @@ version = "0.1.7"
 edition = "2021"
 license = "MIT"
 description = "Framework for building web applications in the Rust programming language"
+documentation = "https://levkk.github.io/rwf/"
+readme = "../README.md"
+homepage = "https://levkk.github.io/rwf/"
+repository = "https://github.com/levkk/rwf"
+keywords = ["mvc", "web", "framework", "http", "orm"]
+authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
