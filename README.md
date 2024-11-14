@@ -8,7 +8,7 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 
 ## Documentation
 
-:blue_book: The documentation **[is available here](https://levkk.github.io/rwf/)**.
+&#128216; The documentation **[is available here](https://levkk.github.io/rwf/)**.
 
 ## Features overview
 
@@ -69,6 +69,6 @@ async fn main() {
 
 See [examples](https://github.com/levkk/rwf/tree/main/examples) for common use cases.
 
-## :construction: Status :construction:
+## &#128679; Status &#128679;
 
 Rwf is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md) for guidelines, [ARCHITECTURE](https://github.com/levkk/rwf/tree/main/ARCHITECTURE.md) for a tour of the code, and [ROADMAP](https://github.com/levkk/rwf/tree/main/ROADMAP.md) for a non-exhaustive list of desired features.
