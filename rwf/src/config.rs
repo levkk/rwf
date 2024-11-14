@@ -1,3 +1,6 @@
+//! Server configuration handler.
+//!
+//! Parses `rwf.toml` configuration file and makes settings globally available.
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;

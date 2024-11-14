@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Construct a regex for the specified path.
-/// This allows the [`Router`] to find this path when HTTP requests are received.
+/// This allows the [`crate::http::Router`] to find this path when HTTP requests are received.
 #[derive(Debug, Clone)]
 pub struct PathWithRegex {
     path: Path,

@@ -6,7 +6,7 @@ pub enum Authorization {
     /// HTTP Basic authentication
     Basic { user: String, password: String },
 
-    /// See [`controller::auth::Token`].
+    /// See [`crate::controller::auth::Token`].
     Token { token: String },
 
     /// Bearer authentication. Token validation is up to the caller.

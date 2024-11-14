@@ -1,3 +1,6 @@
+//! Hot reload used for local development.
+//!
+//! Does nothing in production (release mode).
 #![allow(unused_imports)]
 use std::path::PathBuf;
 use std::time::Duration;

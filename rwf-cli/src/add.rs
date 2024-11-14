@@ -1,6 +1,6 @@
+use rwf::controller::Error;
 use rwf::macros::context;
 use rwf::view::Template;
-use rwf::Error;
 use std::path::Path;
 use tokio::fs::{read_dir, File};
 use tokio::io::AsyncWriteExt;
@@ -52,7 +52,7 @@ pub async fn controller(name: &str, page: bool, overwrite: bool) {
     }
 }
 
-async fn controller_internal(name: &str, page: bool, overwrite: bool) -> Result<(), rwf::Error> {
+async fn controller_internal(name: &str, page: bool, overwrite: bool) -> Result<(), Error> {
     let snake = rwf::snake_case(name);
     let ctx = context!("name" => rwf::pascal_case(&snake));
     let tpl = if page {

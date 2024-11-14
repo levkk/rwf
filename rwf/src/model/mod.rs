@@ -1,3 +1,6 @@
+//! Object-relational mapper (ORM), the **M** in MVC.
+//!
+//! See [documentation](https://levkk.github.io/rwf/models/) for detailed examples on how to use the ORM.
 use crate::colors::MaybeColorize;
 use crate::config::get_config;
 

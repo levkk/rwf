@@ -1,6 +1,6 @@
 use crate::add::modules;
 use crate::logging::{error, removed};
-use rwf::Error;
+use rwf::controller::Error;
 use std::path::Path;
 use tokio::fs::remove_file;
 

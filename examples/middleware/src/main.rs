@@ -1,6 +1,6 @@
 use rwf::controller::middleware::prelude::*;
+use rwf::http::Server;
 use rwf::prelude::*;
-use rwf::Server;
 
 #[derive(Default)]
 struct BlockBadHeader;

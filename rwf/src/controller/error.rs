@@ -48,7 +48,7 @@ pub enum Error {
 }
 
 impl Error {
-    /// Create new error from any error implementing the standard [`Error`] trait.
+    /// Create new error from any error implementing the standard [`std::error::Error`] trait.
     pub fn new(err: impl std::error::Error + Send + Sync + 'static) -> Error {
         Error::Error(Box::new(err))
     }

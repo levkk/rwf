@@ -1,3 +1,6 @@
+//! Dynamic templates and views, the **V** in MVC.
+//!
+//! See [documentation](https://levkk.github.io/rwf/views/) on how to use templates.
 pub mod cache;
 pub mod prelude;
 pub mod template;

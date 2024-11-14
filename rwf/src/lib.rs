@@ -1,3 +1,66 @@
+//! Rwf is a comprehensive framework for building web applications in Rust. Written using the classic MVC pattern
+//! (model-view-controller), Rwf comes standard with everything you need to easily build fast and secure web apps.
+//!
+//! # Getting started
+//!
+//! Rwf is a Rust library built on top of Tokio, and can be added to any binary or library Rust project:
+//!
+//! ```
+//! cargo add rwf
+//! cargo add tokio@1 --features full
+//! ```
+//!
+//! Rwf has many types and traits that make it ergonomic. You can include them all with just one import:
+//!
+//! ```
+//! use rwf::prelude::*;
+//! ```
+//!
+//! While not required, this makes things simpler.
+//!
+//! ### Controllers
+//!
+//! Rwf is an MVC framework, so **C**ontrollers are fundamental to serving HTTP requests. Defining controllers requires
+//! imlementing the [`controller::Controller`] trait for a struct:
+//!
+//! ```rust
+//! #[derive(Default)]
+//! struct Index;
+//!
+//! #[async_trait]
+//! impl Controller for Index {
+//!     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+//!         Ok(Response::new().html("<h1>Hello from Rwf!</h1>"))
+//!     }
+//! }
+//! ```
+//!
+//! Most Rwf traits are asynchronous and use the `async_trait` crate to make it user-friendly.
+//!
+//! ### HTTP server
+//!
+//! Launching the Rwf HTTP server requires mapping routes to controllers, and can be done at application startup:
+//!
+//! ```rust
+//! use rwf::http::Server;
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     Server::new(vec![
+//!         route!("/" => IndexController),
+//!     ])
+//!     .launch("0.0.0.0:8000")
+//!     .await
+//!     .unwrap();
+//! }
+//! ```
+//!
+//! # Documentation
+//!
+//! Rwf docs are primarily [located here](https://levkk.github.io/rwf/). While maintaining two sets of documentation
+//! can be challenging, we'll make every effort to maintain both versions. Most public methods have some documentation
+//! and examples.
+//!
 pub mod analytics;
 pub mod colors;
 pub mod comms;
@@ -14,18 +77,20 @@ pub mod model;
 pub mod prelude;
 pub mod view;
 
+/// Wrapper around async traits to make them easy to use.
 pub use async_trait::async_trait;
+/// Rwf macros that help reduce boilerplate code.
 pub use rwf_macros as macros;
+/// Serde is used for (de)serialization.
 pub use serde;
+/// Tokio is an asynchronous runtime for Rust.
 pub use tokio;
+/// Asynchronous PostgreSQL driver.
 pub use tokio_postgres;
-
-pub use controller::{Controller, Error, ModelController, RestController};
-pub use http::Server;
-pub use logging::Logger;
 
 use std::net::SocketAddr;
 
+/// Convert text to snake_case.
 pub fn snake_case(string: &str) -> String {
     let mut result = "".to_string();
 
@@ -43,6 +108,7 @@ pub fn snake_case(string: &str) -> String {
     result
 }
 
+/// Convert the first letter of the stirng to uppercase lettering.
 pub fn capitalize(string: &str) -> String {
     let mut iter = string.chars();
     let uppercase = match iter.next() {
@@ -53,6 +119,7 @@ pub fn capitalize(string: &str) -> String {
     uppercase
 }
 
+/// Convert string to PascalCase (often confused with camelCase).
 pub fn pascal_case(string: &str) -> String {
     string
         .split("_")
@@ -61,10 +128,13 @@ pub fn pascal_case(string: &str) -> String {
         .join("")
 }
 
+/// Remove unsafe characters from a string printed
+/// inside an HTML template.
 pub fn safe_html(string: &str) -> String {
     string.replace("<", "&lt;").replace(">", "&gt;")
 }
 
+/// Extract the first socket address from a string.
 pub fn peer_addr(addr: &str) -> Option<SocketAddr> {
     use std::net::ToSocketAddrs;
 

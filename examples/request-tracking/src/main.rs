@@ -2,7 +2,10 @@ mod controllers;
 mod models;
 
 use rand::Rng;
-use rwf::{http, prelude::*, Server};
+use rwf::{
+    http::{self, Server},
+    prelude::*,
+};
 
 #[derive(Default)]
 struct Index;

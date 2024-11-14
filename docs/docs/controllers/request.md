@@ -159,7 +159,7 @@ If you don't know the schema of the JSON request, you can use [`json_raw`](https
 
 If you use [`FormData::get_required`](https://docs.rs/rwf/latest/rwf/http/form_data/enum.FormData.html#method.get_required) or [`Request::json`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.json) methods with the `?` operator,
 an error will be returned to the client automatically if the parsing of the form data fails.
-Unlike other controller errors that return HTTP `500`, this type of error will return HTTP `400` (Bad Request).
+Unlike other controller errors that return `500 - Internal Server Error`, this type of error will return `400 - Bad Request`.
 
 ## Learn more
 

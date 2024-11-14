@@ -173,6 +173,12 @@ pub trait Controller: Sync + Send {
 
     /// Handle the request. Implement this function to define how your controller
     /// will respond to requests.
+    /// This method is asynchronous, and since we use `async_trait`, the signature can be a bit confusing.
+    /// The actual method is:
+    ///
+    /// ```rust,ignore
+    /// async fn handle(&self, request: &Request) -> Result<Response, Error>;
+    /// ```
     async fn handle(&self, request: &Request) -> Result<Response, Error>;
 
     /// The name of this controller. Used for logging.

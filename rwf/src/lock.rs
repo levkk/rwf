@@ -1,3 +1,6 @@
+//! Distributed locking primitives.
+//!
+//! Status: work in progress, do not use.
 use crate::model::{Column, Error, FromRow, Model, Pool, ToValue, Value};
 use time::OffsetDateTime;
 

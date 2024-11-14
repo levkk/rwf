@@ -1,3 +1,11 @@
+//! Communication channels between clients and servers.
+//!
+//! Currenty used for sending messages to clients via WebSocket connections.
+//!
+//! On the roadmap:
+//!
+//! * Send messages between clients connected to different Rwf servers
+//! * ORM-triggered events, e.g. callbacks
 use crate::controller::auth::SessionId;
 use crate::http::websocket::Message;
 use crate::http::ToMessage;

@@ -6,7 +6,7 @@ are typically JSON. If you prefer [HTML over the wire](../views/turbo/index.md) 
 ## Creating responses
 
 To create a response, you can just instantiate the [`Response`](https://docs.rs/rwf/latest/rwf/http/response/struct.Response.html) struct and populate the body
-with the right content. The most popular response types have their own instantiation methods in Rwf:
+with the right content. The most popular response types have their own instantiation methods:
 
 === "HTML"
     ```rust
@@ -38,15 +38,19 @@ If your endpoint is sending binary data or some data type we don't have a method
 let mystery_bytes: Vec<u8> = vec![1, 1, 2, 3, 5, 8, 13];
 
 let response = Response::new()
-  .header("Content-Type", "application/octet-stream")
-  .body(mystery_bytes);
+  .body(mystery_bytes)
+  .header("Content-Type", "x-application/fibonacci");
 ```
 
-The `Content-Length` header is always set automatically, but if you absolutely need to, you can set it manually using the [`header`](https://docs.rs/rwf/latest/rwf/http/response/struct.Response.html#method.header) method.
+!!! note
+    `Response` attempts to deduce the `Content-Type` by the body type, so if you want to override its decision,
+    set the header _after_ setting the body on the response. By default, `Vec<u8>` uses the `Content-Type: application/octet-stream`.
+
+The `Content-Length` header is always set automatically, but if you absolutely need to, you can set it [manually](#headers).
 
 ### Headers
 
-Setting custom headers can be done with the [`header`](https://docs.rs/rwf/latest/rwf/http/response/struct.Response.html#method.header) method:
+Setting custom headers can be done with the [`header`](https://docs.rs/rwf/latest/rwf/http/response/struct.Response.html#method.header) method, for example:
 
 ```rust
 let response = Response::new()
@@ -54,11 +58,60 @@ let response = Response::new()
   .header("Cache", "no-store");
 ```
 
+Headers are rewritten to lowercase lettering, i.e. `X-My-Header` and `x-my-header` are equivalent.
+
+### HTTP codes
+
+A `Response` returns with HTTP code `200 - OK` by default. If you want to set a different code, you can:
+
+```rust
+let response = Response::new()
+    .html("<h1>Created!</h1>")
+    .code(201);
+```
+
+Common use cases have their own methods to make this easier.
+
+#### Redirect
+
+Redirecting the user to a different URL can be done with:
+
+```rust
+let response = Response::new()
+    .redirect("/different-url");
+```
+
+This automatically sets the `Location` and `Cache-Control` headers, and returns with HTTP code `302 - Found`.
+
+#### Errors
+
+Common errors have their own methods which will return the correct HTTP response code and built-in response body.
+
+##### 404 - Not found
+
+Commonly used when some resource doesn't exist, HTTP response code `404 - Not Found` can be returned with:
+
+```rust
+let response = Response::not_found();
+```
+
+HTTP 404 is returned automatically by Rwf when a user requests a route that doens't have a controller.
+
+##### 403 - Forbidden
+
+When your users have failed some authentication challenge, you can block access to a resource with HTTP response code `403 - Forbidden`:
+
+```rust
+let resonse = Response::forbidden();
+```
+
+Use this one if your frontend can handle it gracefully. If not, a gentle [redirect](#redirect) to your login page may be preferable.
+
 ## Syntactic sugar
 
 Returning certain types of responses is common, so Rwf has a few automatic conversions to remove boilerplate from controllers. In the context of a controller method, the following statements are equivalent.
 
-#### HTML
+##### HTML
 
 === "Shortcut"
     ```rust
@@ -69,7 +122,7 @@ Returning certain types of responses is common, so Rwf has a few automatic conve
     Response::new().html("<h1>Text</h1>")
     ```
 
-#### JSON
+##### JSON
 
 === "Shortcut"
     ```rust

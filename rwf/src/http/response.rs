@@ -1,4 +1,13 @@
 //! HTTP response.
+//!
+//! All controllers must return a `Response`.
+//!
+//! ### Example
+//!
+//! ```rust
+//! let response = Response::new()
+//!     .html("<h1>Hello world!</h1>");
+//! ```
 
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -73,23 +82,14 @@ pub struct Response {
 
 impl Default for Response {
     fn default() -> Self {
-        Self {
-            code: 200,
-            headers: Headers::from(HashMap::from([
-                ("content-type".to_string(), "text/plain".to_string()),
-                ("server".to_string(), "rwf".to_string()),
-                ("connection".to_string(), "keep-alive".to_string()),
-            ])),
-            body: Body::bytes(vec![]),
-            version: Version::Http1,
-            cookies: Cookies::new(),
-            session: None,
-        }
+        Self::new()
     }
 }
 
 impl Response {
     /// Create empty response.
+    ///
+    /// Sets a few default headers as well.
     pub fn new() -> Self {
         Self {
             code: 200,
@@ -106,6 +106,9 @@ impl Response {
     }
 
     /// Create a response from a request.
+    ///
+    /// This is used internally automatically. It makes sure a valid session cookie is
+    /// set on all responses.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
         // Set an anonymous session if none is set on the request.
         if self.session.is_none() && request.session().is_none() {
@@ -135,6 +138,11 @@ impl Response {
         Ok(self)
     }
 
+    /// Set the request body.
+    ///
+    /// The body will automatically determine the `Content-Type` and `Content-Length` headers.
+    /// If you want to override any of them for some reason, make sure to set them _after_ the body
+    /// when building a response.
     pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.body = body.into();
         self.headers
@@ -144,7 +152,7 @@ impl Response {
         self
     }
 
-    /// Response status, e.g. 200 OK.
+    /// Get response status, e.g. 200 OK.
     pub fn status(&self) -> Status {
         self.code.into()
     }
@@ -156,7 +164,9 @@ impl Response {
     /// ```
     /// use rwf::http::Response;
     ///
-    /// let response = Response::new().text("OK").code(200);
+    /// let response = Response::new()
+    ///     .text("Created your resource!")
+    ///     .code(201);
     /// ```
     pub fn code(mut self, code: u16) -> Self {
         self.code = code;
@@ -176,9 +186,9 @@ impl Response {
     ///     value: String,
     /// }
     ///
-    /// let response = Response::new().json(Body { value: "hello world".to_string() })
-    ///    .unwrap()
-    ///    .code(200);
+    /// let response = Response::new()
+    ///     .json(Body { value: "hello world".to_string() })
+    ///    .unwrap();
     /// ```
     pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
@@ -220,7 +230,8 @@ impl Response {
     /// ```
     /// use rwf::http::Response;
     ///
-    /// let response = Response::default().text("don't cache me")
+    /// let response = Response::new()
+    ///     .text("don't cache me")
     ///     .header("Cache-Control", "no-cache");
     /// ```
     pub fn header(mut self, name: impl ToString, value: impl ToString) -> Self {
@@ -286,20 +297,22 @@ impl Response {
             .header("content-type", "text/vnd.turbo-stream.html")
     }
 
-    /// Default not found (404) error.
+    /// HTTP `404 - Not Found`.
     pub fn not_found() -> Self {
         Self::error_pretty("404 - Not Found", "").code(404)
     }
 
-    /// Default method not allowed (405) error.
+    /// HTTP `405 - Method Not Allowed`.
     pub fn method_not_allowed() -> Self {
         Self::error_pretty("405 - Method Not Allowed", "").code(405)
     }
 
+    /// HTTP `400 - Bad Request`.
     pub fn bad_request() -> Self {
         Self::error_pretty("400 - Bad Request", "").code(400)
     }
 
+    /// CSRF token validation error. Returns `400 - Bad Request`.
     pub fn csrf_error() -> Self {
         Self::error_pretty(
             "400 - CSRF Token Validation Failed",
@@ -308,18 +321,23 @@ impl Response {
         .code(400)
     }
 
+    /// HTTP `501 - Not Implemented`.
     pub fn not_implemented() -> Self {
         Self::error_pretty("501 - Not Implemented", "").code(501)
     }
 
+    /// HTTP `403 - Forbidden`.
     pub fn forbidden() -> Self {
         Self::error_pretty("403 - Forbidden", "").code(403)
     }
 
+    /// HTTP `413 - Content Too Large`.
     pub fn content_too_large() -> Self {
         Self::error_pretty("413 - Content Too Large", "").code(413)
     }
 
+    /// HTTP `500 - Internal Server Error`. Requires the error that was caught,
+    /// for debugging purposes. The error is shown in development (debug) and hidden in production (release).
     pub fn internal_error(err: impl std::error::Error) -> Self {
         // TODO:
         #[cfg(debug_assertions)]
@@ -334,6 +352,8 @@ impl Response {
         Self::error_pretty("500 - Internal Server Error", &err)
     }
 
+    /// Use the internal template to render a better looking error page.
+    /// Returns HTTP `500 - Internal Server Error`.
     pub fn error_pretty(title: &str, message: &str) -> Self {
         let body = ERROR_TEMPLATE
             .render([("title", title), ("message", message)])
@@ -342,16 +362,19 @@ impl Response {
         Self::new().html(body).code(500)
     }
 
+    /// HTTP `401 - Unauthorized`.
     pub fn unauthorized(auth: &str) -> Self {
         Self::error_pretty("401 - Unauthorized", "")
             .code(401)
             .header("www-authenticate", auth)
     }
 
+    /// HTTP `429 - Too Many`.
     pub fn too_many() -> Self {
         Self::error_pretty("429 - Too Many", "").code(429)
     }
 
+    /// HTTP `302 - Found`, also known as a redirect.
     pub fn redirect(self, to: impl ToString) -> Self {
         self.html("")
             .header("location", to)
@@ -360,6 +383,8 @@ impl Response {
             .header("cache-control", "no-cache")
     }
 
+    /// HTTP `101 - Switching Protocols`. Can be used for upgrading the connection
+    /// to HTTP/2 or WebSocket. The protocol argument isn't checked.
     pub fn switching_protocols(protocol: &str) -> Self {
         let mut response = Self::default();
         response.headers.clear();

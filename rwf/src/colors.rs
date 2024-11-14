@@ -1,3 +1,5 @@
+//! Wrapper around [`colored::Colorize`] to conditionally
+//! use colors when the terminal is TTY.
 use crate::config::get_config;
 use colored::Colorize;
 

@@ -1,3 +1,6 @@
+//! Cryptography wrappers, using AES-128.
+//!
+//! Can encrypt/decrypt arbitrary data using the application secret key.
 use aes_gcm_siv::{
     aead::{Aead, KeyInit},
     Aes128GcmSiv, Nonce,

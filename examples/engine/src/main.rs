@@ -1,8 +1,7 @@
 use rwf::{
     controller::Engine,
-    http::{self},
+    http::{self, Server},
     prelude::*,
-    Server,
 };
 
 #[derive(Default)]

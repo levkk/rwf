@@ -1,3 +1,4 @@
+//! Global error type.
 use thiserror::Error;
 
 #[derive(Error, Debug)]
