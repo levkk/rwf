@@ -228,12 +228,18 @@ impl Request {
     /// using the specified model.
     ///
     /// #### Example
-    /// ```rust,ignored
-    /// use crate::models::User;
-    /// use rwf::model::Pool;
+    ///
+    /// ```rust,ignore
+    /// use rwf::prelude::*;
+    ///
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String,
+    /// }
     ///
     /// let conn = Pool::connection().await?;
-    /// let user = request.user::<User>().await?;
+    /// let user = request.user::<User>(&mut conn).await?;
     /// ```
     pub async fn user<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
         match self.session_id() {
@@ -255,16 +261,14 @@ impl Request {
     }
 
     /// Set the session on the request.
-    ///
-    /// For internal use only. This is automatically done by the HTTP server,
+    /// *For internal use only.* This is automatically done by the HTTP server,
     /// if the session is available.
     pub fn set_session(mut self, session: Option<Session>) -> Self {
         self.session = session;
         self
     }
 
-    /// Bypass CSRF protection. For intenral use only.
-    ///
+    /// Bypass CSRF protection. *For intenral use only.*
     /// Setting this  on a response inside a controller does nothing since CSRF
     /// protection is invoked before the request reaches a controller.
     pub fn set_skip_csrf(mut self, skip_csrf: bool) -> Self {
@@ -282,14 +286,14 @@ impl Request {
                 == Some(String::from("websocket"))
     }
 
-    ///  Log the user in. This creates a response with a session cookie.
+    /// Log the user in. This creates a response with the session cookie set.
     ///
-    /// Return the response created by this method to the client.
+    /// # Example
     ///
-    /// #### Example
-    /// ```rust,ignore
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # let request = Request::default();
     /// let response = request.login(1234);
-    /// return Ok(response);
     /// ```
     pub fn login(&self, user_id: i64) -> Response {
         let mut session = self
@@ -300,12 +304,15 @@ impl Request {
         Response::new().set_session(session).html("")
     }
 
-    /// Log the user out.
+    /// Log the user out. This overwrites the session cookie with a guest session.
     ///
-    /// This overwrites the session cookie with a guest session.
+    /// # Example
     ///
-    /// Works identically to [`Request::login`], so return the response
-    /// created by this method to the client.
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # let request = Request::default();
+    /// let response = request.logout();
+    /// ```
     pub fn logout(&self) -> Response {
         let mut session = self
             .session()

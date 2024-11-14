@@ -5,6 +5,8 @@
 //! ### Example
 //!
 //! ```rust
+//! use rwf::http::Response;
+//!
 //! let response = Response::new()
 //!     .html("<h1>Hello world!</h1>");
 //! ```

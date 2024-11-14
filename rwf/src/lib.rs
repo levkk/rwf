@@ -5,7 +5,7 @@
 //!
 //! Rwf is a Rust library built on top of Tokio, and can be added to any binary or library Rust project:
 //!
-//! ```
+//! ```bash
 //! cargo add rwf
 //! cargo add tokio@1 --features full
 //! ```
@@ -24,10 +24,12 @@
 //! imlementing the [`controller::Controller`] trait for a struct:
 //!
 //! ```rust
+//! use rwf::prelude::*;
+//!
 //! #[derive(Default)]
 //! struct Index;
 //!
-//! #[async_trait]
+//! #[rwf::async_trait]
 //! impl Controller for Index {
 //!     async fn handle(&self, request: &Request) -> Result<Response, Error> {
 //!         Ok(Response::new().html("<h1>Hello from Rwf!</h1>"))
@@ -44,14 +46,34 @@
 //! ```rust
 //! use rwf::http::Server;
 //!
+//! # use rwf::prelude::*;
+//! # #[derive(Default)]
+//! # struct Index;
+//! #
+//! # #[rwf::async_trait]
+//! # impl Controller for Index {
+//! #    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+//! #        Ok(Response::new().html("<h1>Hello from Rwf!</h1>"))
+//! #    }
+//! # }
+//! let server = Server::new(vec![
+//!     route!("/" => Index),
+//! ]);
+//! ```
+//!
+//! With all the routes mapped to controllers, you can launch the server from anywhere in your app. Typically though,
+//! this is done from the main function:
+//!
+//! ```rust,ignore
+//! use rwf::http::{Server, self};
+//!
 //! #[tokio::main]
-//! async fn main() {
+//! async fn main() -> Result<(), http::Error> {
 //!     Server::new(vec![
-//!         route!("/" => IndexController),
+//!         route!("/" => Index),
 //!     ])
 //!     .launch("0.0.0.0:8000")
 //!     .await
-//!     .unwrap();
 //! }
 //! ```
 //!

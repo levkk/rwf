@@ -42,3 +42,5 @@ jobs:
         run: cargo install cargo-nextest
       - name: Test
         run: cargo nextest run
+      - name: Documentation tests
+        run: cargo test --doc

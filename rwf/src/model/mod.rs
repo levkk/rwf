@@ -62,7 +62,7 @@ pub use value::{ToValue, Value};
 /// # Example
 ///
 /// ```
-/// use rwf::model::FromRow;
+/// use rwf::model::{FromRow, Error};
 ///
 /// #[derive(Clone)]
 /// struct User {
@@ -71,14 +71,14 @@ pub use value::{ToValue, Value};
 /// }
 ///
 /// impl FromRow for User {
-///     fn from_row(row: tokio_postgres::Row) -> Self {
+///     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
 ///         let id: i64 = row.get("id");
 ///         let email: String = row.get("email");
 ///
-///         User {
+///         Ok(User {
 ///             id,
 ///             email,
-///         }
+///         })
 ///     }
 /// }
 /// ```

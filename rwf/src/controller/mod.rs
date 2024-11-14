@@ -53,7 +53,7 @@ pub use turbo_stream::TurboStream;
 
 use super::http::{
     websocket::{self, DataFrame},
-    Handler, Method, Protocol, Request, Response, Stream, ToParameter,
+    Handler, Method, Request, Response, Stream, ToParameter,
 };
 use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value};
 use crate::colors::MaybeColorize;
@@ -66,33 +66,109 @@ use tracing::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
 
-/// The univeresal controller.
+/// The controller, the **C** in MVC.
 ///
-/// The most basic version of a controller handles all requests
-/// which match the path it's assigned to.
+/// A controller handles an HTTP request routed to it by the server and returns
+/// a response. Controllers in Rwf are asynchronous and use the `async_trait` crate. For this reason,
+/// the trait signature looks a bit complicated, but underneath, all asynchronous functions are actually pretty simple.
 ///
-/// Authentication is built-in and is configurable.
+/// ### Handling requests
+///
+/// The only function that requires implementation is the [`Controller::handle`] method. It receives a [`Request`] and
+/// must return either a [`Response`] or an [`Error`].
+///
+/// ```rust
+/// // Import required types and traits.
+/// use rwf::prelude::*;
+///
+/// // A controller is a plain struct
+/// // which implements the `Controller` trait.
+/// struct Index;
+///
+/// // We use `async_trait` crate to handle async Rust traits.
+/// #[async_trait]
+/// impl Controller for Index {
+///     // This method responds to all requests routed
+///     // to this controller.
+///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+///         Ok(Response::new().html("<h1>Hello from Rwf!</h1>"))
+///     }
+/// }
+/// ```
 #[async_trait]
 #[allow(unused_variables)]
 pub trait Controller: Sync + Send {
     /// Set the authentication mechanism for this controller.
-    ///
     /// Default authentication method is to allow all requests, but can
     /// be adjusted through configuration.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rwf::prelude::*;
+    /// use rwf::controller::DenyAll;
+    ///
+    /// // The auth handler should be defined on the controller struct.
+    /// struct Index {
+    ///     auth: AuthHandler,
+    /// }
+    ///
+    /// // Auth handlers need to be instantiated.
+    /// // Some like `BasicAuth` require parameters like username and password.
+    /// impl Default for Index {
+    ///     fn default() -> Self {
+    ///         Self {
+    ///             auth: AuthHandler::new(DenyAll {}),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl Controller for Index {
+    ///     // Return the auth handler reference.
+    ///     fn auth(&self) -> &AuthHandler {
+    ///         &self.auth
+    ///     }
+    ///
+    ///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+    ///         todo!() // Handle request.
+    ///     }
+    /// }
+    /// ```
     fn auth(&self) -> &AuthHandler {
         // Allow all requests by default.
         &get_config().general.default_auth
     }
 
+    /// Configure middleware on this controller.
+    /// Global middleware can be set in the configuration. By default,
+    /// controllers have no middleware.
     fn middleware(&self) -> &MiddlewareSet {
         &get_config().general.default_middleware
     }
 
-    /// Don't use CSRF protection on this controller.
+    /// Don't use [CSRF](https://owasp.org/www-community/attacks/csrf) protection on this controller. You generally don't want to disable this unless you
+    /// have another mechanism to make sure your users are not being duped into making requests to your app
+    /// from somewhere else.
     fn skip_csrf(&self) -> bool {
         false
     }
 
+    /// Create a basic route handler for this controller.
+    ///
+    /// This method can be used to register a controller with the HTTP server.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// Index::new().route("/")
+    /// ```
+    ///
+    /// is equivalent to using the [`rwf_macros::route`] macro:
+    ///
+    /// ```rust,ignore
+    /// route!("/" => Index)
+    /// ```
     fn route(self, path: &str) -> Handler
     where
         Self: Sized + 'static,
@@ -100,6 +176,15 @@ pub trait Controller: Sync + Send {
         Handler::route(path, self)
     }
 
+    /// Create a wildcard route handler for this controller.
+    ///
+    /// A wildcard handler will serve all requests that match this path and
+    /// all paths that have this path as its parent. For example, if the path is set to
+    /// `/users`, all paths that start with `/users`, like `/users/account`, `/users/5`, etc.,
+    /// will be served by this controller.
+    ///
+    /// This is useful for creating catch-all controllers, and the handler
+    /// will have the lowest rank in the [`crate::http::Router`].
     fn wildcard(self, path: &str) -> Handler
     where
         Self: Sized + 'static,
@@ -107,17 +192,24 @@ pub trait Controller: Sync + Send {
         Handler::wildcard(path, self)
     }
 
-    fn protocol(&self) -> Protocol {
-        Protocol::Http1
-    }
-
-    /// Handle the TCP connection directly.
+    /// Internal function that handlers the TCP connection directly after a response
+    /// has been sent to the client by the controller. This is typically used for WebSocket connections,
+    /// but can also be used to stream data like video.
     async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
         Ok(request.keep_alive())
     }
 
-    /// Internal function to handle the HTTP request. Do not implement this unless
-    /// you're looking to do something really custom.
+    /// Internal function which implements the bulk of Rwf controller logic. Do not implement this unless
+    /// you're looking to do something entirely different.
+    ///
+    /// Things handled by this method:
+    ///
+    /// - Checking authentication
+    /// - Running middleware
+    /// - Ensuring each request has a session
+    ///
+    /// Controllers that override this need to be aware of the internal functionality of Rwf
+    /// and act accordingly.
     async fn handle_internal(&self, request: Request) -> Result<Response, Error> {
         let auth = self.auth();
 
@@ -171,7 +263,7 @@ pub trait Controller: Sync + Send {
         Ok(response)
     }
 
-    /// Handle the request. Implement this function to define how your controller
+    /// Handle the request and return a response. Implement this function to define how your controller
     /// will respond to requests.
     /// This method is asynchronous, and since we use `async_trait`, the signature can be a bit confusing.
     /// The actual method is:
@@ -181,7 +273,8 @@ pub trait Controller: Sync + Send {
     /// ```
     async fn handle(&self, request: &Request) -> Result<Response, Error>;
 
-    /// The name of this controller. Used for logging.
+    /// The name of this controller. Used for logging. All names are globally unique, so
+    /// you won't need to override this method.
     fn controller_name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }
@@ -203,7 +296,7 @@ pub trait Controller: Sync + Send {
 /// pub struct MyPage;
 ///
 /// // Controllers are async and use the `async_trait` crate.
-/// #[async_trait]
+/// #[rwf::async_trait]
 /// impl PageController for MyPage {
 ///     // Respond to a GET request.
 ///     async fn get(&self, request: &Request) -> Result<Response, Error> {
@@ -214,8 +307,8 @@ pub trait Controller: Sync + Send {
 ///
 /// The `macros::PageController` expands to this:
 ///
-/// ```rust
-/// #[async_trait]
+/// ```rust,ignore
+/// #[rwf::async_trait]
 /// impl Controller for MyPage {
 ///     async fn handle(&self, request: &Request) -> Result<Response, Error> {
 ///         // Delegate request handling to the `PageController::handle` method.

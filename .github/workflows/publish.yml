@@ -1,0 +1,28 @@
+name: publish
+on:
+  release:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Publish rwf-macros
+        working-directory: rwf-macros
+        run: bash ../scripts/check_publish.sh
+
+      - name: Publish rwf-ruby
+        working-directory: rwf-ruby
+        run: bash ../scripts/check_publish.sh
+
+      - name: Publish rwf
+        working-directory: rwf
+        run: bash ../scripts/check_publish.sh
+
+      - name: Publish rwf-cli
+        working-directory: rwf-cli
+        run: bash ../scripts/check_publish.sh
