@@ -13,10 +13,15 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 ## Features overview
 
 &#10004; [HTTP server](https://github.com/levkk/rwf/tree/main/examples/quick-start)
+
 &#10004; User-friendly [ORM](https://github.com/levkk/rwf/tree/main/examples/orm) to build PostgreSQL queries easily
+
 &#10004; [Dynamic templates](https://github.com/levkk/rwf/tree/main/examples/dynamic-templates)
+
 &#10004; [Authentication](https://github.com/levkk/rwf/tree/main/examples/auth) & built-in user sessions
+
 &#10004; [Middleware](https://github.com/levkk/rwf/tree/main/examples/middleware)
+
 &#10004; [Background jobs](https://github.com/levkk/rwf/tree/main/examples/background-jobs) and [scheduled jobs](https://github.com/levkk/rwf/tree/main/examples/scheduled-jobs)
 &#10004; Database migrations
 &#10004; Built-in [REST framework](https://github.com/levkk/rwf/tree/main/examples/rest) with JSON serialization
