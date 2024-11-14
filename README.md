@@ -12,22 +12,22 @@ Rwf is a comprehensive framework for building web applications in Rust. Written 
 
 ## Features overview
 
-- &#10004; [HTTP server](examples/quick-start)
-- :heavy_check_mark: User-friendly [ORM](examples/orm) to build PostgreSQL queries easily
-- :heavy_check_mark: [Dynamic templates](examples/dynamic-templates)
-- :heavy_check_mark: [Authentication](examples/auth) & built-in user sessions
-- :heavy_check_mark: [Middleware](examples/middleware)
-- :heavy_check_mark: [Background jobs](examples/background-jobs) and [scheduled jobs](examples/scheduled-jobs)
-- :heavy_check_mark: Database migrations
-- :heavy_check_mark: Built-in [REST framework](examples/rest) with JSON serialization
-- :heavy_check_mark: WebSockets support
-- :heavy_check_mark: [Static files](examples/static-files) hosting
-- :heavy_check_mark: Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](examples/turbo)
-- :heavy_check_mark: Environment-specific configuration
-- :heavy_check_mark: Logging and metrics
-- :heavy_check_mark: [CLI](rwf-cli)
-- :heavy_check_mark: WSGI server for [migrating](examples/django) from Django/Flask apps
-- :heavy_check_mark: Rack server for [migrating](examples/rails) from Rails
+- &#10004; [HTTP server](https://github.com/levkk/rwf/tree/main/examples/quick-start)
+- &#10004; User-friendly [ORM](https://github.com/levkk/rwf/tree/main/examples/orm) to build PostgreSQL queries easily
+- &#10004; [Dynamic templates](https://github.com/levkk/rwf/tree/main/examples/dynamic-templates)
+- &#10004; [Authentication](https://github.com/levkk/rwf/tree/main/examples/auth) & built-in user sessions
+- &#10004; [Middleware](https://github.com/levkk/rwf/tree/main/examples/middleware)
+- &#10004; [Background jobs](https://github.com/levkk/rwf/tree/main/examples/background-jobs) and [scheduled jobs](https://github.com/levkk/rwf/tree/main/examples/scheduled-jobs)
+- &#10004; Database migrations
+- &#10004; Built-in [REST framework](https://github.com/levkk/rwf/tree/main/examples/rest) with JSON serialization
+- &#10004; WebSockets support
+- &#10004; [Static files](https://github.com/levkk/rwf/tree/main/examples/static-files) hosting
+- &#10004; Tight integration with [Hotwired Turbo](https://turbo.hotwired.dev/) for building [backend-driven SPAs](https://github.com/levkk/rwf/tree/main/examples/turbo)
+- &#10004; Environment-specific configuration
+- &#10004; Logging and metrics
+- &#10004; [CLI](rwf-cli)
+- &#10004; WSGI server for [migrating](https://github.com/levkk/rwf/tree/main/examples/django) from Django/Flask apps
+- &#10004; Rack server for [migrating](https://github.com/levkk/rwf/tree/main/examples/rails) from Rails
 
 ## Quick start
 
@@ -65,10 +65,10 @@ async fn main() {
 }
 ```
 
-## Examples
+## https://github.com/levkk/rwf/tree/main/examples
 
-See [examples](examples) for common use cases.
+See [examples](https://github.com/levkk/rwf/tree/main/examples) for common use cases.
 
 ## :construction: Status :construction:
 
-Rwf is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines, [ARCHITECTURE](ARCHITECTURE.md) for a tour of the code, and [ROADMAP](ROADMAP.md) for a non-exhaustive list of desired features.
+Rwf is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md) for guidelines, [ARCHITECTURE](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md/ARCHITECTURE.md) for a tour of the code, and [ROADMAP](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md/ROADMAP.md) for a non-exhaustive list of desired features.
