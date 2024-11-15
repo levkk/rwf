@@ -488,7 +488,32 @@ impl From<Value> for serde_json::Value {
             Value::Json(json) => json,
             Value::IpAddr(ip) => serde_json::Value::String(ip.to_string()),
             Value::Uuid(uuid) => serde_json::Value::String(uuid.to_string()),
-            _ => todo!("model::Value to serde_json::Value"),
+            Value::Optional(value) => match *value {
+                Some(value) => value.into(),
+                None => serde_json::Value::Null,
+            },
+            Value::Boolean(value) => serde_json::Value::Bool(value),
+            Value::Timestamp(timestamp) => {
+                use time::format_description::well_known::Rfc2822;
+                serde_json::Value::String(timestamp.format(&Rfc2822).unwrap())
+            }
+            Value::TimestampT(timestamp) => {
+                use time::format_description::well_known::Rfc2822;
+                serde_json::Value::String(timestamp.format(&Rfc2822).unwrap())
+            }
+            Value::List(list) => {
+                let mut values = vec![];
+                for v in list {
+                    values.push(v.into());
+                }
+                serde_json::Value::Array(values)
+            }
+            Value::Record(_) => serde_json::Value::Null,
+            Value::Column(_) => serde_json::Value::Null,
+            Value::Function(_) => serde_json::Value::Null,
+            Value::Null => serde_json::Value::Null,
+            Value::Placeholder(_) => serde_json::Value::Null,
+            Value::Range(_) => serde_json::Value::Null,
         }
     }
 }

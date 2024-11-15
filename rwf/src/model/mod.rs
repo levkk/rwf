@@ -49,15 +49,11 @@ pub use select::Select;
 pub use update::Update;
 pub use value::{ToValue, Value};
 
-/// Convert a PostgreSQL row to a Rust struct.
+/// Convert a PostgreSQL row to a Rust struct. Type conversions are handled by `tokio_postgres`. This only
+/// creates a mapping between columns and struct fields.
 ///
-/// This trait needs to be implemented by all structs that are used
-/// as models.
+/// This trait needs to be implemented for all structs that implement the [`Model`] trait.
 ///
-/// It's recommended to handle missing columns by using default values
-/// instead of panicking. Missing columns could indicate the version
-/// of the code is out of sync with the database, which could happen
-/// because of a migration or manual intervention.
 ///
 /// # Example
 ///
@@ -72,17 +68,15 @@ pub use value::{ToValue, Value};
 ///
 /// impl FromRow for User {
 ///     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error> {
-///         let id: i64 = row.get("id");
-///         let email: String = row.get("email");
-///
 ///         Ok(User {
-///             id,
-///             email,
+///             id: row.try_get("id")?,
+///             email: row.try_get("email")?
 ///         })
 ///     }
 /// }
 /// ```
 pub trait FromRow: Clone + Send {
+    /// Convert a [`tokio_postgres::Row`] to [`Self`].
     fn from_row(row: tokio_postgres::Row) -> Result<Self, Error>
     where
         Self: Sized;
@@ -95,6 +89,8 @@ pub trait FromRow: Clone + Send {
 /// It's the implementor's responsibility to make sure
 /// all SQL is valid and user input is escaped to avoid SQL injection
 /// attacks.
+///
+/// This trait is used internally by the ORM to generate SQL queries.
 ///
 /// # Examples
 ///
@@ -688,95 +684,339 @@ impl<T: Model> Query<T> {
 
 pub type Scope<T> = Query<T>;
 
+/// Convert a Rust struct into a database model.
+///
+/// This trait doesn't have to be implemented manually. Use the [`rwf_macros::Model`] macro instead, for example:
+///
+/// ```
+/// # use rwf::prelude::*;
+/// #[derive(Clone, macros::Model)]
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+/// }
+/// ```
+///
+/// Structs that wish to implement this trait need to implement two more:
+///
+/// - [`FromRow`]
+/// - [`Clone`]
+///
+/// If using the [`rwf_macros::Model`] derive, [`FromRow`] is derived automatically.
 pub trait Model: FromRow {
-    /// Name of the Postgres table.
+    /// Name of the PostgreSQL table where data for this model is stored.
     ///
-    /// Typically this is automatically inferred based on the name of the struct,
-    /// if you're using the derive macro. If not, you can specify any table name you want.
+    /// The name must not be fully qualified
+    /// or contain double quotes, e.g. `"users"` is correct, while `"public"."users"` won't work.
+    ///
+    /// This method is implemented automatically by the [`rwf_macros::Model`] derive. If you wish to override
+    /// that implementation, use `#[table_name("your_name")]` derive attribute.
     fn table_name() -> &'static str;
 
-    /// When joining tables, use this function to create a fully-qualified column name, e.g.
-    /// instead "id", you'll get "users"."id".
+    /// Get the fully qualified column name for this table.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let column = User::column("email");
+    ///
+    /// assert_eq!(column.to_string(), r#""users"."email""#);
+    /// ```
     fn column(name: &str) -> Column {
         Column::new(Self::table_name(), name)
     }
 
-    /// List of columns in the table.
+    /// List of names of columns stored in the PostgreSQL table.
     ///
-    /// If you're using the derive macro, you don't need to specify these,
-    /// they will be inferred from the struct attributes.
+    /// Names must not be fully qualified or contain
+    /// double quotes, e.g. `"id"` is correct, while `"users"."id"` won't work.
+    ///
+    /// This method is implemented automatically by the [`rwf_macros::Model`] derive.
+    ///
+    /// # Example
+    /// ```
+    /// fn column_names() -> &'static [&'static str] {
+    ///     &["id", "email"]
+    /// }
+    /// ```
     fn column_names() -> &'static [&'static str];
 
-    /// The value of the primary key (id).
+    /// The primary key value, if one exists, for the instance of a model.
     ///
-    /// All models require an ID field. This makes things a lot easier for
-    /// not only day-to-day operations but also joins.
+    /// Primary keys are not required to use the ORM, but are generally needed to perform
+    /// updates and deletes. If the model doesn't have a primary key, you can return [`Value::Null`].
     ///
-    /// This method is implemented if the derive macro is used.
-    /// Otherwise, it should return the value of the `id` struct attribute.
+    /// This method is implemented automatically by the [`rwf_macros::Model`] derive.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::Value;
+    /// # use rwf::macros::FromRow;
+    /// # #[derive(Clone, FromRow)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// # impl Model for User {
+    /// # fn table_name() -> &'static str { "" }
+    /// # fn values(&self) -> Vec<Value> { vec![] }
+    /// # fn column_names() -> &'static [&'static str] { &[] }
+    /// # fn foreign_key() -> &'static str { "" }
+    /// fn id(&self) -> Value {
+    ///     self.id.to_value()
+    /// }
+    /// # }
+    /// ```
+    ///
     fn id(&self) -> Value;
 
-    /// Values is a list of all column values as mapped to the struct attributes.
+    /// List of column values for a particular instance of a model. The values must be in the same
+    /// order as the columns in [`Model::column_names`].
     ///
-    /// Should be in the same order as the [`Self::column_names`].
+    /// The values are Rust types converted to the [`Value`] enum. This conversion is required so
+    /// the ORM can then convert them to PostgreSQL types automatically. Most Rust types can be converted
+    /// to [`Value`] automatically as well with [`ToValue::to_value`].
+    ///
+    /// This method is implemented automatically by the [`rwf_macros::Model`] derive.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::Value;
+    /// # use rwf::macros::FromRow;
+    /// # #[derive(Clone, FromRow)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// # impl Model for User {
+    /// # fn table_name() -> &'static str { "" }
+    /// # fn id(&self) -> Value { Value::Null }
+    /// # fn column_names() -> &'static [&'static str] { &[] }
+    /// # fn foreign_key() -> &'static str { "" }
+    /// fn values(&self) -> Vec<Value> {
+    ///     vec![
+    ///         1_i64.to_value(),
+    ///         "test@test.com".to_value(),
+    ///     ]
+    /// }
+    /// # }
+    /// ```
     fn values(&self) -> Vec<Value>;
 
-    /// If this table is related to another table, this is the name of the foreign key.
+    /// The name of a column in another PostgreSQL table which refers to this model.
     ///
-    /// For example, if the primary key of this table is "id" and the name of the table is "users",
-    /// then the foreign key is "user_id".
+    /// For example, if the table name for this model is `"users"`, this method could return `"user_id"`.
+    ///
+    /// This method is implemented automatically by the [`rwf_macros::Model`] derive. If you wish to override
+    /// that implementation, use `#[foreign_key("your_fk")]` derive attribute.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// fn foreign_key() -> &'static str {
+    ///     "user_id"
+    /// }
+    /// ```
     fn foreign_key() -> &'static str;
 
-    /// Name of the primary key column. Expected to be "id".
+    /// Name of the primary key column in the database.
+    ///
+    /// This is typically `"id"`, but can be any other column as long as it has a `UNIQUE NOT NULL` constraint
+    /// and a default value produced from a sequence.
     fn primary_key() -> &'static str {
         "id"
     }
 
-    /// `LIMIT 1`
+    /// Select one record from the table. The row returned is determined by the database.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::take_one();
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" LIMIT 1"#);
+    /// ```
     fn take_one() -> Query<Self> {
         Query::select(Self::table_name()).take_one()
     }
 
-    /// `LIMIT n`
+    /// Select _n_ records from the table. The order of rows returned is determined by the database.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::take_many(25);
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" LIMIT 25"#);
+    /// ```
     fn take_many(n: i64) -> Query<Self> {
         Query::select(Self::table_name()).take_many(n)
     }
 
-    /// `ORDER BY id ASC LIMIT 1`
+    /// Select the first record from the table, ordered by primary key.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::first_one();
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 1"#);
+    /// ```
     fn first_one() -> Query<Self> {
         Query::select(Self::table_name()).first_one()
     }
 
-    /// `ORDER BY id ASC LIMIT n`
+    /// Select the first _n_ records from the table, ordered by primary key.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::first_many(25);
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 25"#);
+    /// ```
     fn first_many(n: i64) -> Query<Self> {
         Query::select(Self::table_name()).first_many(n)
     }
 
-    /// Get all rows. Good starting point for all queries.
+    /// Select all records from the table. Typically this is a starting point for filtering
+    /// by some column(s), but all records can also be returned. Order of records returned is
+    /// determined by the database, unless additional filters are specified.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::all();
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users""#);
+    /// ```
     fn all() -> Query<Self> {
         Query::select(Self::table_name())
     }
 
-    /// `WHERE column = value`
+    /// Filter table records by a column. Multiple calls to filter can be chained to filter by multiple columns.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::filter("email", "test@test.com");
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" WHERE "users"."email" = $1"#);
+    /// ```
     fn filter(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name()).filter(column, value)
     }
 
-    /// `WHERE column = value LIMIT 1`
+    /// Filter table records by a column and fetch the first matching record. The record will match
+    /// the filter, but if there are mulitple records that match, any one of them can be returned.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::find_by("email", "test@test.com");
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" WHERE "users"."email" = $1 LIMIT 1"#);
+    /// ```
     fn find_by(column: impl ToColumn, value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(column, value.to_value())
             .take_one()
     }
 
-    /// `WHERE id = value`
+    /// Filter by primary key and return the matching row, if any.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::find(1);
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// ```
     fn find(value: impl ToValue) -> Query<Self> {
         Query::select(Self::table_name())
             .find_by(Self::primary_key(), value.to_value())
             .take_one()
     }
 
-    /// Whatever you want.
+    /// Find records using an arbitrary SQL query. The caller must ensure that all required columns
+    /// are returned.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let query = User::find_by_sql("SELECT * FROM users WHERE email = ANY($1, $2) ORDER BY RANDOM()",
+    ///     &[
+    ///         "bob@test.com".into(),
+    ///         "alice@test.com".into(),
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM users WHERE email = ANY($1, $2) ORDER BY RANDOM()"#);
+    /// ```
     fn find_by_sql(query: impl ToString, values: &[Value]) -> Query<Self> {
         Query::Raw {
             query: query.to_string(),
@@ -788,14 +1028,88 @@ pub trait Model: FromRow {
         }
     }
 
+    /// Order records by a column. This method accepts any input type which implement
+    /// the [`ToOrderBy`] trait. Chaining this function allows to order by multiple columns.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let q1 = User::order("email");
+    /// let q2 = User::order("email DESC");
+    /// let q3 = User::order(("email", "DESC"));
+    /// let q4 = User::order((User::column("email"), "DESC"));
+    ///
+    /// assert_eq!(q1.to_sql(), r#"SELECT * FROM "users" ORDER BY email"#);
+    /// assert_eq!(q2.to_sql(), r#"SELECT * FROM "users" ORDER BY email DESC"#);
+    /// assert_eq!(q3.to_sql(), r#"SELECT * FROM "users" ORDER BY "email" DESC"#);
+    /// assert_eq!(q4.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."email" DESC"#);
+    /// ```
     fn order(order: impl ToOrderBy) -> Query<Self> {
         Self::all().order(order)
     }
 
+    /// Join this model to another model with which it has a relationship. The relationship should be declared
+    /// in advance using an annotation.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///    id: Option<i64>,
+    ///    email: String,
+    /// }
+    /// #[derive(Clone, macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String,
+    /// }
+    ///
+    /// let join = User::join::<Project>();
+    /// ```
     fn join<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_join())
     }
 
+    /// Filter all records which have a relationship to this model. Used for fetching multiple records at once
+    /// in order to avoid N+1 queries.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///    id: Option<i64>,
+    ///    email: String,
+    /// }
+    /// #[derive(Clone, macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String,
+    /// }
+    ///
+    /// let alice = User { id: Some(1), email: "alice@test.com".into() };
+    /// let bob = User { id: Some(2), email: "bob@test.com".into() };
+    ///
+    /// let projects = User::related::<Project>(&[alice, bob]);
+    ///
+    /// assert_eq!(
+    ///     projects.to_sql(),
+    ///     r#"SELECT * FROM "projects" WHERE "projects"."user_id" = ANY($1)"#
+    /// );
+    /// ```
     fn related<F: Association<Self>>(models: &[impl Model]) -> Query<F> {
         let fks = models
             .iter()
@@ -805,6 +1119,32 @@ pub trait Model: FromRow {
         F::all().filter(Self::foreign_key(), fks.as_slice())
     }
 
+    /// Save a model into the database. If a record already exists, it will be updated. If this is a new record,
+    /// it will be inserted.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// // Save an existing user.
+    /// let user = User { id: Some(1), email: "test@test.com".into() };
+    /// assert_eq!(
+    ///     user.save().to_sql(),
+    ///     r#"UPDATE "users" SET "email" = $2 WHERE "id" = $1 RETURNING *"#,
+    /// );
+    ///
+    /// // Create new user.
+    /// let new_user = User { id: None, email: "alice@test.com".into() };
+    /// assert_eq!(
+    ///     new_user.save().to_sql(),
+    ///     r#"INSERT INTO "users" ("email") VALUES ($1) RETURNING *"#,
+    /// );
+    /// ```
     fn save(self) -> Query<Self> {
         match self.id().is_null() {
             false => Query::Update(Update::new(self)),
@@ -812,6 +1152,27 @@ pub trait Model: FromRow {
         }
     }
 
+    /// Create new record of this model. All columns that have a `NOT NULL` constraint and
+    /// no default value should be provided.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let user = User::create(&[
+    ///     ("email", "bob@test.com"),
+    /// ]);
+    ///
+    /// assert_eq!(
+    ///     user.to_sql(),
+    ///     r#"INSERT INTO "users" ("email") VALUES ($1) RETURNING *"#,
+    /// );
+    /// ```
     fn create(attributes: &[(impl ToColumn, impl ToValue)]) -> Query<Self> {
         let columns = attributes
             .iter()
@@ -825,6 +1186,23 @@ pub trait Model: FromRow {
         Query::Insert(Insert::from_columns(&columns, &values))
     }
 
+    /// Find an existing record matching the column filters or create a new one
+    /// if none already exist. It's is equivalent to running [`Model::filter`]
+    /// and [`Model::create`] manually.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// User::find_or_create_by(&[
+    ///     ("email", "john@test.com"),
+    /// ]);
+    /// ```
     fn find_or_create_by(attributes: &[(impl ToColumn, impl ToValue)]) -> Query<Self> {
         let columns = attributes
             .iter()
@@ -855,14 +1233,80 @@ pub trait Model: FromRow {
         }
     }
 
+    /// Lock all records for the duration of the transaction. No other transaction will be able
+    /// to access those records until the current one is finished.
+    ///
+    /// It's not common to lock all rows in a table, so this function is typically chained with
+    /// [`Model::filter`].
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    ///
+    /// let lock = User::lock()
+    ///     .filter("email", "test@test.com");
+    ///
+    /// assert_eq!(
+    ///     lock.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."email" = $1 FOR UPDATE"#,
+    /// );
+    /// ```
     fn lock() -> Query<Self> {
         Self::all().lock()
     }
 
+    /// Refresh the record from the database. This is equivalent to calling [`Model::find`] with
+    /// the primary key as the parameter.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let user = User { id: Some(1), email: "test@test.com".into() };
+    ///
+    /// assert_eq!(
+    ///     User::find(1).to_sql(),
+    ///     user.reload().to_sql()
+    /// );
+    /// ```
     fn reload(self) -> Query<Self> {
         Self::find(self.id())
     }
 
+    /// Convert the model to JSON representation.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// use serde_json::json;
+    ///
+    /// let user = User { id: Some(1), email: "test@test.com".into() };
+    ///
+    /// assert_eq!(
+    ///     user.to_json().unwrap(),
+    ///     json!({
+    ///         "id": 1,
+    ///         "email": "test@test.com",
+    ///     }),
+    /// );
+    /// ```
     fn to_json(&self) -> Result<serde_json::Value, Error> {
         let columns = Self::column_names();
         let values = self.values();

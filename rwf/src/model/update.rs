@@ -81,7 +81,7 @@ impl<T: FromRow> ToSql for Update<T> {
             .join(", ");
 
         format!(
-            r#"UPDATE "{}" SET {} {} RETURNING *"#,
+            r#"UPDATE "{}" SET {}{} RETURNING *"#,
             self.table_name.escape(),
             sets,
             self.where_clause.to_sql(),
