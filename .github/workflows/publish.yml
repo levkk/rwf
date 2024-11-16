@@ -13,16 +13,24 @@ jobs:
 
       - name: Publish rwf-macros
         working-directory: rwf-macros
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: bash ../scripts/check_publish.sh
 
       - name: Publish rwf-ruby
         working-directory: rwf-ruby
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: bash ../scripts/check_publish.sh
 
       - name: Publish rwf
         working-directory: rwf
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: bash ../scripts/check_publish.sh
 
       - name: Publish rwf-cli
         working-directory: rwf-cli
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: bash ../scripts/check_publish.sh
