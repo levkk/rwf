@@ -1,6 +1,9 @@
 //! Rwf is a comprehensive framework for building web applications in Rust. Written using the classic MVC pattern
 //! (model-view-controller), Rwf comes standard with everything you need to easily build fast and secure web apps.
 //!
+//! This documentation serves primarily as a reference for methods and types provided by this
+//! and [`rwf_macros`] crates. For user guides, refer to the [documentation here](https://levkk.github.io/rwf/).
+//!
 //! # Getting started
 //!
 //! Rwf is a Rust library built on top of Tokio, and can be added to any binary or library Rust project:
@@ -76,12 +79,6 @@
 //!     .await
 //! }
 //! ```
-//!
-//! # Documentation
-//!
-//! Rwf docs are primarily [located here](https://levkk.github.io/rwf/). While maintaining two sets of documentation
-//! can be challenging, we'll make every effort to maintain both versions. Most public methods have some documentation
-//! and examples.
 //!
 pub mod analytics;
 pub mod colors;
