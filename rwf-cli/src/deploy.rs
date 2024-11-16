@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use rwf::config::ConfigFile;
+use rwf::config::Config;
 use tokio::process::Command;
 
 use crate::logging::*;
@@ -59,7 +59,7 @@ pub async fn package(
 
     if let Some(config) = config {
         if config.is_file() {
-            if let Err(_) = ConfigFile::load(&config) {
+            if let Err(_) = Config::load(&config) {
                 warning(format!(
                     "{} doesn't seem to be be valid Rwf config file, but we'll use it anyway",
                     config.display()

@@ -24,4 +24,8 @@ else
     echo "All checks passed, publishing crate"
 fi
 
+if [[ ! -z "${CRATES_IO_TOKEN}" ]]; then
+    cargo login "${CRATES_IO_TOKEN}"
+fi
+
 cargo publish

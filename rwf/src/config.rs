@@ -17,8 +17,9 @@ use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use thiserror::Error;
 
-static CONFIG: OnceCell<ConfigFile> = OnceCell::new();
+static CONFIG: OnceCell<Config> = OnceCell::new();
 
+/// Configuration error.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("config: {0}")]
@@ -40,26 +41,36 @@ pub enum Error {
     NoConfig,
 }
 
-pub fn get_config() -> &'static ConfigFile {
-    CONFIG.get_or_init(|| ConfigFile::load_default())
+/// Get application configuration.
+///
+/// Safe to call from anywhere.
+pub fn get_config() -> &'static Config {
+    CONFIG.get_or_init(|| Config::load_default())
 }
 
+/// Rwf configuration file. Can be deserialized
+/// from a TOML file, although any format supported by
+/// `serde` is possible.
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ConfigFile {
+pub struct Config {
+    /// Where the configuration file is located.
     #[serde(skip)]
     pub path: Option<PathBuf>,
 
+    /// General settings. Most settings are here.
     #[serde(default = "General::default")]
     pub general: General,
 
+    /// Database connection settings.
     #[serde(default = "DatabaseConfig::default")]
     pub database: DatabaseConfig,
 
+    /// WebSocket connections settings.
     #[serde(default = "WebsocketConfig::default")]
     pub websocket: WebsocketConfig,
 }
 
-impl Default for ConfigFile {
+impl Default for Config {
     fn default() -> Self {
         Self {
             path: None,
@@ -72,7 +83,16 @@ impl Default for ConfigFile {
     }
 }
 
-impl ConfigFile {
+impl Config {
+    /// Get the configuration.
+    ///
+    /// Safe to call from anywhere. Loads the
+    /// config if it's not loaded yet.
+    pub fn get() -> &'static Self {
+        get_config()
+    }
+
+    /// Load configuration file from default location(s).
     pub fn load_default() -> Self {
         for path in ["rwf.toml", "Rwf.toml", "Rum.toml"] {
             let path = Path::new(path);
@@ -84,7 +104,8 @@ impl ConfigFile {
         Self::default()
     }
 
-    pub fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
+    /// Load configuration file from a specific path.
+    pub fn load(path: impl AsRef<Path> + Copy) -> Result<Config, Error> {
         let file = read_to_string(path)?;
         let mut config: Self = toml::from_str(&file)?;
         config.path = Some(path.as_ref().to_owned());
@@ -117,6 +138,7 @@ impl ConfigFile {
         Ok(self)
     }
 
+    /// Log some information about the configuration file.
     pub fn log_info(&self) {
         if let Some(ref path) = self.path {
             info!("Configuration file \"{}\" loaded", path.display());
@@ -126,34 +148,53 @@ impl ConfigFile {
     }
 }
 
+/// General configuration. Most configuration settings
+/// are here.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct General {
+    /// On what address to run the HTTP server. Default: 0.0.0.0 (all interfaces).
+    #[serde(default = "General::default_host")]
+    pub host: String,
+    /// On what port to run the HTTP server. Default: 8000.
+    #[serde(default = "General::default_port")]
+    pub port: u16,
     #[serde(default = "General::default_secret_key")]
     secret_key: String,
+    /// AES-128 encryption key. Derived from the secret key. Used for encrypting cookies, sessions, and arbitrary user data.
     #[serde(skip)]
     pub aes_key: Key<AesGcmSiv<Aes128>>,
     #[serde(skip)]
     pub secure_id_key: Key<AesGcmSiv<Aes128>>,
+    /// Enable logging all queries executed by the ORM.
     #[serde(default = "General::default_log_queries")]
     pub log_queries: bool,
+    /// Enable caching templates at runtime.
     #[serde(default = "General::default_cache_templates")]
     pub cache_templates: bool,
+    /// Record HTTP requests made to the server in the database.
     #[serde(default = "General::default_track_requests")]
     pub track_requests: bool,
+    /// Enable CSRF attack protection.
     #[serde(default = "General::default_csrf_protection")]
     pub csrf_protection: bool,
     #[serde(default = "General::default_cookie_max_age")]
     cookie_max_age: usize,
     #[serde(default = "General::default_session_duration")]
     session_duration: usize,
+    /// The terminal where Rwf is running is TTY.
     #[serde(default = "General::default_tty")]
     pub tty: bool,
+    /// Maximum size allowed for an HTTP header.
     #[serde(default = "General::default_header_max_size")]
     pub header_max_size: usize,
+    /// Maximum size allowed for an HTTP request.
     #[serde(default = "General::default_max_request_size")]
     pub max_request_size: usize,
+    /// Global authentication handler. Used by default
+    /// in all controllers.
     #[serde(skip)]
     pub default_auth: AuthHandler,
+    /// Global middleware set. Used by default in all controllers.
     #[serde(skip)]
     pub default_middleware: MiddlewareSet,
 }
@@ -161,6 +202,8 @@ pub struct General {
 impl Default for General {
     fn default() -> Self {
         Self {
+            host: General::default_host(),
+            port: General::default_port(),
             secret_key: General::default_secret_key(),
             aes_key: Key::<AesGcmSiv<Aes128>>::default(),
             secure_id_key: Key::<AesGcmSiv<Aes128>>::default(),
@@ -188,6 +231,17 @@ fn true_from_env(name: &str) -> bool {
 }
 
 impl General {
+    fn default_host() -> String {
+        String::from("0.0.0.0")
+    }
+
+    fn default_port() -> u16 {
+        8000
+    }
+
+    /// Extract the secret key from configuration.
+    /// It should be provided as a base64 string
+    /// encoding 256 bits of entropy.
     pub fn secret_key(&self) -> Result<Vec<u8>, Error> {
         use base64::{engine::general_purpose, Engine as _};
         let bytes = general_purpose::STANDARD.decode(&self.secret_key)?;
@@ -249,10 +303,14 @@ impl General {
         Duration::days(30).whole_milliseconds() as usize
     }
 
+    /// Default `MaxAge` attribute to be set on
+    /// all cookies.
     pub fn cookie_max_age(&self) -> Duration {
         Duration::milliseconds(self.cookie_max_age as i64)
     }
 
+    /// Authenticated session duration. When the session
+    /// expires, user must re-authenticate.
     pub fn session_duration(&self) -> Duration {
         Duration::milliseconds(self.session_duration as i64)
     }
@@ -274,12 +332,23 @@ impl General {
     }
 }
 
+/// WebSocket connections configuration.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WebsocketConfig {
+    /// How long to wait for a ping to receive a pong.
+    /// Configured in milliseconds.
+    /// Use [`WebsocketConfig::ping_timeout`] to get a
+    ///  valid [`time::Duration`].
     #[serde(default = "WebsocketConfig::default_ping_timeout")]
     pub ping_timeout: usize,
+    /// How often to send pings.
+    /// Configured in milliseconds.
+    /// Use [`WebsocketConfig::ping_interval`] to get a
+    ///  valid [`time::Duration`].
     #[serde(default = "WebsocketConfig::default_ping_interval")]
     pub ping_interval: usize,
+    /// Allow this many unanswered pings before
+    /// closing the connection.
     #[serde(default = "WebsocketConfig::default_disconnect_count")]
     pub ping_disconnect_count: usize,
 }
@@ -299,6 +368,7 @@ impl WebsocketConfig {
         Duration::seconds(5).whole_milliseconds() as usize
     }
 
+    /// How long to wait for a ping to receive a pong.
     pub fn ping_timeout(&self) -> Duration {
         Duration::milliseconds(self.ping_timeout as i64)
     }
@@ -307,6 +377,7 @@ impl WebsocketConfig {
         Duration::seconds(60).whole_milliseconds() as usize
     }
 
+    /// How often to send pings.
     pub fn ping_interval(&self) -> Duration {
         Duration::milliseconds(self.ping_interval as i64)
     }
@@ -316,15 +387,26 @@ impl WebsocketConfig {
     }
 }
 
+/// Database connection configuration.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DatabaseConfig {
     url: Option<String>,
     name: Option<String>,
     user: Option<String>,
+    /// How long to wait before an idle connection is
+    /// automatically closed by the pool.
+    /// Configured in milliseconds.
+    /// Use [`DatabaseConfig::idle_timeout`] to get a valid [`Duration`] struct.
     #[serde(default = "DatabaseConfig::default_idle_timeout")]
     pub idle_timeout: usize,
+    /// Maximum amount of time to wait for a connection
+    /// from the pool.
+    /// Configured in milliseconds.
+    /// Use [`DatabaseConfig::checkout_timeout`] to get a valid [`Duration`] struct.
     #[serde(default = "DatabaseConfig::default_checkout_timeout")]
     pub checkout_timeout: usize,
+    /// Maximum number of database connections
+    /// in the pool.
     #[serde(default = "DatabaseConfig::default_pool_size")]
     pub pool_size: usize,
 }
@@ -347,6 +429,8 @@ impl DatabaseConfig {
         3600 * 1000
     }
 
+    /// How long to wait before an idle connection is
+    /// automatically closed by the pool.
     pub fn idle_timeout(&self) -> Duration {
         Duration::milliseconds(self.idle_timeout as i64)
     }
@@ -355,6 +439,8 @@ impl DatabaseConfig {
         5 * 1000
     }
 
+    /// Maximum amount of time to wait for a connection
+    /// from the pool.
     pub fn checkout_timeout(&self) -> Duration {
         Duration::milliseconds(self.checkout_timeout as i64)
     }
@@ -363,6 +449,9 @@ impl DatabaseConfig {
         10
     }
 
+    /// Convert the connection config to a valid
+    /// database URL as described by the
+    /// Twelve Factor Application.
     pub fn database_url(&self) -> String {
         match self.url {
             Some(ref url) => url.clone(),
@@ -413,7 +502,7 @@ name = "test"
             let mut file = File::create(path).unwrap();
             file.write_all(config.as_bytes()).unwrap();
 
-            let config = ConfigFile::load_default();
+            let config = Config::load_default();
             assert_eq!(config.path, Some(PathBuf::from(config_path)));
         }
     }

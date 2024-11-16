@@ -36,6 +36,8 @@ async fn main() -> Result<(), Error> {
     // Configure logging.
     Logger::init();
 
+    // Run migrations on app start.
+    // Not mandatory, but helpful for this demo.
     Migrations::migrate().await?;
 
     Server::new(vec![
