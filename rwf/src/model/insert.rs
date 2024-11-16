@@ -1,3 +1,4 @@
+//! Implements the `SELECT` query.
 use super::{Column, Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToValue};
 use std::marker::PhantomData;
 

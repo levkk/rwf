@@ -1,3 +1,4 @@
+//! Implements `FOR UPDATE` SQL locking primitive.
 use super::ToSql;
 
 #[derive(Debug, Default, Clone)]

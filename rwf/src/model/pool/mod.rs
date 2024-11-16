@@ -1,3 +1,29 @@
+//! Database connection pool.
+//!
+//! The pool is responsible for creating and maintaining connections to the database. Clients can request a connection
+//! by calling [`Pool::connection`] and awaiting the result. If a connection isn't available within a configurable
+//! amount of time, an error is returned.
+//!
+//! The pool manages transactions by starting one with [`Pool::begin`]. The returned struct can be used to execute all
+//! ORM methods, just like a regular connection. When the transaction is finished, the caller should execute
+//! the [`Transaction::commit`] method and await the result. If the transaction reference is dropped
+//! with an uncomitted transaction, it will be rolled back automatically.
+//!
+//! This implementation uses FIFO to increase connection re-use.
+//!
+//! ## Get a connection
+//!
+//! ```ignore
+//! let conn = Pool::connection().await?;
+//! ```
+//!
+//! ## Start a transaction
+//!
+//! ```ignore
+//! let transcation = Pool::begin().await?;
+//! // execute statements
+//! transaction.commit().await?;
+//! ```
 use tokio::sync::Notify;
 use tokio::task::spawn;
 use tokio::time::{sleep, timeout, Duration};
@@ -27,14 +53,23 @@ pub use transaction::Transaction;
 
 static POOL: OnceCell<Pool> = OnceCell::new();
 
+/// Get the connection pool.
+///
+/// Use [`Pool::pool`] instead.
 pub fn get_pool() -> Pool {
     POOL.get_or_init(|| Pool::from_env()).clone()
 }
 
+/// Get a connection from the pool.
+///
+/// Use [`Pool::connection`] instead.
 pub async fn get_connection() -> Result<ConnectionGuard, Error> {
     get_pool().get().await
 }
 
+/// Start a transaction.
+///
+/// Use [`Pool::begin`] instead.
 pub async fn start_transaction() -> Result<Transaction, Error> {
     get_pool().transaction().await
 }
@@ -67,16 +102,20 @@ impl ConnectionGuard {
         self.rollback = true;
     }
 
+    /// Get a reference to the underlying database connection.
     pub fn connection(&self) -> &Connection {
         self.connection.as_ref().unwrap()
     }
 
+    /// Get a mutable reference to the underlying database connection.
     pub fn connection_mut(&mut self) -> &mut Connection {
         self.connection.as_mut().unwrap()
     }
 }
 
 impl Drop for ConnectionGuard {
+    /// Return the connection to the pool, automatically
+    /// rolling back any unfinished transaction.
     fn drop(&mut self) {
         if let Some(mut connection) = self.connection.take() {
             connection.used();

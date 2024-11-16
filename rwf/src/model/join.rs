@@ -1,3 +1,4 @@
+//! Implements joining tables in a `SELECT` query.
 use super::{Column, Escape, Model, ToSql};
 use std::marker::PhantomData;
 

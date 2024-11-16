@@ -1,3 +1,4 @@
+//! Handles conversions between database types and Rust types.
 use bytes::BytesMut;
 use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::types::{to_sql_checked, IsNull, Type};
@@ -14,22 +15,29 @@ use super::{Column, Error, Escape, ToSql};
 /// and table columns.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    /// Regular string, e.g. `'hello'`.
+    /// `VARCHAR`, `TEXT`, regular string, e.g. `'hello'`.
     String(String),
-    /// Integer, e.g. `123`.
+    /// Default integer type used by the ORM, i.e. `BIGINT`.
     Integer(i64),
+    /// `BIGINT`, `i64`.
     BigInt(i64),
+    /// `INTEGER`, `i32`.
     Int(i32),
+    /// `SMALLINT`, `i16`.
     SmallInt(i16),
-    /// Floating point number, e.g. `3.14`.
+    /// `DOUBLE PRECISION`, `f64`.
     Float(f64),
+    /// `REAL`, `f32`
     Real(f32),
+    /// `BOOL`, `bool`.
     Boolean(bool),
-    /// Timestamp with time zone speficiation.
+    /// `TIMESTAMP WITH TIME ZONE`
     TimestampT(OffsetDateTime),
-    /// Timestamp without time zone.
+    /// `TIMESTAMP`
     Timestamp(PrimitiveDateTime),
+    /// `INET`
     IpAddr(IpAddr),
+    /// `UUID`
     Uuid(Uuid),
     /// List (Postgres array) of values, e.g. `{1, 2, 3}`.
     List(Vec<Value>),
@@ -41,13 +49,13 @@ pub enum Value {
     Range((Box<Value>, Box<Value>)),
     /// Table column, e.g. `"users"."id"`.
     Column(Column),
-
+    /// `JSON`, `JSONB`.
     Json(serde_json::Value),
     /// Nullable value of any of the above (which make sense).
     Optional(Box<Option<Value>>),
-
+    /// A database function, e.g. `now()`
     Function((String, Vec<Value>)),
-
+    /// `NULL`.
     Null,
 }
 
@@ -66,6 +74,8 @@ impl Value {
         value.to_value()
     }
 
+    /// Check if this value is null. Null values are treated special by the ORM, e.g.,
+    /// when doing equality checks.
     pub fn is_null(&self) -> bool {
         match self {
             Value::Optional(value) => value.is_none(),
@@ -74,6 +84,7 @@ impl Value {
         }
     }
 
+    /// Extract the value from an optional value. Will panic if the value is `None`.
     pub fn exists(self) -> Value {
         match self {
             Value::Optional(value) => value.unwrap(),
@@ -81,10 +92,22 @@ impl Value {
         }
     }
 
+    /// Create a database function call without arguments. This can be used
+    /// to safely execute functions from user-supplied data without worrying SQL injection attacks.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::model::{Value, ToSql};
+    /// let now = Value::function("now");
+    ///
+    /// assert_eq!(now.to_sql(), r#""now"()"#);
+    /// ```
     pub fn function(name: impl ToString) -> Self {
         Self::Function((name.to_string(), vec![]))
     }
 
+    /// Checks if this value is a placeholder, as opposed to an actual value.
     pub fn placeholder(&self) -> bool {
         match self {
             Value::Placeholder(_) => true,
@@ -93,10 +116,11 @@ impl Value {
     }
 }
 
-/// Convert anything to a [`Value`].
-///
-/// Implementation for many common types are provided, e.g. [`String`], [`i64`], [`OffsetDateTime`], and more.
+/// Convert a Rust type to a [`Value`]. Implementation for many common types
+/// are provided, e.g. [`String`], [`i64`], [`OffsetDateTime`], and more.
 pub trait ToValue {
+    /// Convert a Rust type to a [`Value`]. Data types have to have their own enum variant. Add one
+    /// if your data type is missing (and submit a [PR](https://github.com/levkk/rwf/pulls)).
     fn to_value(&self) -> Value;
 }
 

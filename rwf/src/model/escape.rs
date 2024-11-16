@@ -1,3 +1,4 @@
+//! Implements string escaping to prevent SQL injection attacks.
 use super::value::Value;
 
 /// Escape a user-provided value to prevent

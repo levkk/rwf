@@ -1,3 +1,4 @@
+//! Represents a single database row for raw queries.
 use super::{Error, FromRow, Model, Value};
 
 use std::{collections::HashMap, sync::Arc};

@@ -1,3 +1,4 @@
+//! Manages a transaction lifecycle.
 use super::{ConnectionGuard, Error};
 use crate::config::get_config;
 
@@ -12,7 +13,6 @@ pub struct Transaction {
 
 impl Transaction {
     /// Start a new transaction on the connection.
-    ///
     /// The transaction is automatically rolled back if it is not committed
     /// manually using [`Transaction::commit`].
     pub async fn new(mut connection: ConnectionGuard) -> Result<Self, Error> {
@@ -30,7 +30,6 @@ impl Transaction {
     }
 
     /// Commit the transaction to the database.
-    ///
     /// The connection is automatically returned into the pool.
     pub async fn commit(mut self) -> Result<(), Error> {
         self.rollback = false;
@@ -46,7 +45,6 @@ impl Transaction {
     }
 
     /// Rollback the transaction.
-    ///
     /// The connection is automatically returned into the pool.
     pub async fn rollback(mut self) -> Result<(), Error> {
         self.rollback = false;
@@ -66,6 +64,8 @@ impl Transaction {
 }
 
 impl Drop for Transaction {
+    /// Rollback the transaction and return the connection
+    /// to the pool.
     fn drop(&mut self) {
         if self.rollback {
             self.connection.rollback();

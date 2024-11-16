@@ -684,9 +684,7 @@ impl<T: Model> Query<T> {
 
 pub type Scope<T> = Query<T>;
 
-/// Convert a Rust struct into a database model.
-///
-/// This trait doesn't have to be implemented manually. Use the [`rwf_macros::Model`] macro instead, for example:
+/// Implements Object-relational mapping (ORM) methods for a Rust struct, turning it into a database model. This trait doesn't have to be implemented manually. You can use the [`rwf_macros::Model`] macro instead, for example:
 ///
 /// ```
 /// # use rwf::prelude::*;
@@ -697,17 +695,17 @@ pub type Scope<T> = Query<T>;
 /// }
 /// ```
 ///
-/// Structs that wish to implement this trait need to implement two more:
+/// Structs that wish to implement this trait need to implement two additional traits:
 ///
 /// - [`FromRow`]
 /// - [`Clone`]
 ///
-/// If using the [`rwf_macros::Model`] derive, [`FromRow`] is derived automatically.
+/// When usindg the [`rwf_macros::Model`] derive, [`FromRow`] is derived automatically.
 pub trait Model: FromRow {
-    /// Name of the PostgreSQL table where data for this model is stored.
+    /// Name of the PostgreSQL table where records for this model are stored.
     ///
     /// The name must not be fully qualified
-    /// or contain double quotes, e.g. `"users"` is correct, while `"public"."users"` won't work.
+    ///  e.g. `"users"` is correct, while `r#"public"."users"#` won't work.
     ///
     /// This method is implemented automatically by the [`rwf_macros::Model`] derive. If you wish to override
     /// that implementation, use `#[table_name("your_name")]` derive attribute.

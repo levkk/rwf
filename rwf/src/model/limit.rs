@@ -1,3 +1,4 @@
+//! Implements the `LIMIT` and `OFFSET` SQL entities.
 use super::ToSql;
 
 #[derive(Debug, Default, Clone)]

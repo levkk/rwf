@@ -1,3 +1,4 @@
+//! Implements the `SELECT` query.
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},

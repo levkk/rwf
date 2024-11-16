@@ -1,3 +1,4 @@
+//! Implements the `WHERE` clause for `SELECT`, `UPDATE`, and `DELETE` statements.
 use super::{Column, ToSql, ToValue, Value};
 
 /// The WHERE clause of a SQL query.

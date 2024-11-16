@@ -1,3 +1,4 @@
+//! Represents the database table column.
 use super::{Escape, ToSql, ToValue, Value};
 
 /// PostgreSQL table column.

@@ -1,4 +1,4 @@
-//! Single `tokio_postgres` connection manager.
+//! Wraps [`tokio_postgres::Client`].
 
 use tokio::select;
 use tokio::sync::Notify;
@@ -122,14 +122,18 @@ impl Connection {
         self.inner.bad.load(Ordering::Relaxed)
     }
 
+    /// Indicate the connection was last used now.
     pub fn used(&mut self) {
         self.last_used = Instant::now();
     }
 
+    /// Get the time when this connection was last used.
     pub fn last_used(&self) -> Instant {
         self.last_used
     }
 
+    /// Get the database driver reference to manually execute
+    /// queries against the database, bypassing the connection manager.
     pub fn client(&self) -> &Client {
         &self.client
     }

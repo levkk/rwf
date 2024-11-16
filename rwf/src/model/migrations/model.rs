@@ -1,3 +1,4 @@
+//! The `"rwf_migrations"` model record.
 use crate::model::{Error, FromRow, Model, ToValue, Value};
 use time::OffsetDateTime;
 
@@ -5,12 +6,16 @@ use std::path::PathBuf;
 
 use super::Direction;
 
+/// A record of a database migration.
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Migration {
     id: Option<i64>,
+    /// Migration version.
     pub version: i64,
+    /// Migration name.
     pub name: String,
+    /// When the migration was applied to the database.
     pub applied_at: Option<OffsetDateTime>,
 }
 
@@ -68,6 +73,8 @@ impl Migration {
         ))
     }
 
+    /// Get the name of the SQL file containing the migration,
+    /// without the down/up suffix.
     pub fn name(&self) -> String {
         format!("{}_{}", self.version, self.name)
     }

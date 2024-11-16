@@ -14,6 +14,119 @@ mod prelude;
 mod render;
 
 /// The `#[derive(Model)]` macro.
+///
+/// This derive generates code which implements the `rwf::model::Model` trait. It uses
+/// the struct name and fields to generate implementations for the following methods:
+///
+/// - `Model::table_name` returns the name of the struct, lowercased and pluralized
+/// - `Model::column_names` returns the list of struct fields, in the order they are defined
+/// - `Model::values`, given an instance of the struct, returns the list of field values, converted
+/// to `Value` in the order they are defined on the struct; the field values must implement the `ToValue` trait
+/// - `Model::id` returns the value of the primary key, which is assumed to be the `id` field
+/// - `Model::foreign_key` returns the name of the foreign key column refering to this model; this is stylized as struct name, lowercased, concatenated with `"_id"`
+///
+/// Using this derive removes a lot of boilerplate code required by `rwf::model::Model` trait. That being said, using
+/// this derive is not required, and implementing the trait manually is feasible.
+///
+/// # Attributes
+///
+/// This derive accepts several attributes:
+///
+/// - `table_name` overrides the value returned by `Model::table_name` implementation
+/// - `foreign_key` overrides the value returned by `Model::foreign_key` implementation
+/// - `belongs_to` annotates the struct with a "belongs to" relationship to anoter model
+/// - `has_many` annotates the struct with a "has many" relationship to another model
+///
+/// # Example
+///
+/// Let's take this struct as an example:
+///
+/// ```
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+///     admin: bool,
+/// }
+/// ```
+///
+/// Using the derive on this struct can be done like this:
+///
+/// ```ignore
+/// #[derive(rwf_macros::Model)]
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+///     admin: bool,
+/// }
+/// ```
+///
+/// This produces the following implementation of the `rwf::model::Model` trait:
+///
+/// ```ignore
+/// # struct User {
+/// #    id: Option<i64>,
+/// #    email: String,
+/// #    admin: bool,
+/// # }
+/// impl Model for User {
+///     fn table_name() -> &'static str {
+///         "users"
+///     }
+///
+///     fn column_names() -> &'static [&'static str] {
+///         &[
+///             "email",
+///             "admin",
+///             // The "id" column is excluded.
+///         ]
+///     }
+///
+///     fn values(&self) -> Vec<Value> {
+///         use rwf::model::ToValue;
+///         vec![
+///             self.email.to_value(),
+///             self.admin.to_value(),
+///             // The "id" column is excluded.
+///         ]
+///     }
+///
+///     fn id(&self) -> Value {
+///         self.id.to_value()
+///     }
+///
+///     fn foreign_key() -> &'static str {
+///         "user_id"
+///     }
+/// }
+/// ```
+///
+/// ## Overriding attributes
+///
+/// If you want to override a decision the derive makes, you can pass in an attribute with your desired value.
+/// For example, if you want to change the table name for this model, you can do so:
+///
+/// ```ignore
+/// #[derive(rwf_macros::Model)]
+/// #[table_name("my_users_table")]
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+///     admin: bool,
+/// }
+/// ```
+///
+/// This will produce the following implementation:
+///
+/// ```ignore
+/// impl Model for User {
+///     fn table_name() -> &'static str {
+///         "my_users_table"
+///     }
+///
+///     // The rest is omitted for brevity.
+/// }
+/// ```
+///
 #[proc_macro_derive(Model, attributes(belongs_to, has_many, table_name, foreign_key))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     model::impl_derive_model(input)

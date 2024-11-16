@@ -1,3 +1,4 @@
+//! Implements the `UPDATE` statement.
 use super::{
     Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue, WhereClause,
 };

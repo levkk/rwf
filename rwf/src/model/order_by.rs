@@ -1,3 +1,4 @@
+//! Implements the `ORDER BY` SQL primitive.
 use super::{Column, Escape, ToSql};
 
 #[derive(Debug, Clone)]

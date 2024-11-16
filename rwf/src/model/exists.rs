@@ -1,3 +1,4 @@
+//! Represents the result of `Query::exists`.
 use super::{Error, FromRow, Model, Value};
 
 #[derive(Debug, Clone)]

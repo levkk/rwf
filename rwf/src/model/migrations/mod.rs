@@ -1,3 +1,4 @@
+//! Implements database migrations, a deterministic mechanism to change the database schema.
 pub mod model;
 use crate::config::get_config;
 use crate::model::{get_connection, get_pool, start_transaction, Model};
@@ -15,6 +16,8 @@ use time::OffsetDateTime;
 use tokio::fs::{read_dir, read_to_string};
 use tracing::{error, info};
 
+/// Migrations found in the `"migrations"` folder. Some of them
+/// may not be applied yet.
 pub struct Migrations {
     migrations: Vec<Migration>,
 }
@@ -22,6 +25,7 @@ pub struct Migrations {
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("([0-9]+)_([a-zA-Z0-9_]+).(up|down).sql").expect("migration regex"));
 
+/// Migration direction: up means to apply the migration, down means to revert it.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Direction {
     Up,
@@ -115,6 +119,10 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
+    /// Read the `"migrations"` folder and sync all migrations
+    /// to the `"rwf_migrations"` table in the database. This does not
+    /// actually apply the migrations, only makes sure the entries in the folder
+    /// match the database table.
     pub async fn sync() -> Result<Self, Error> {
         let checks = if let Ok(root_path) = Self::root_path() {
             let mut checks = HashMap::new();
@@ -194,6 +202,10 @@ impl Migrations {
         Ok(Self { migrations })
     }
 
+    /// Apply the migrations, making changes to the database schema.
+    ///
+    /// The direction argument controllers if we are applying or reverting the migrations. The version
+    /// argument means to perform this action up to and including that version.
     pub async fn apply(self, direction: Direction, version: Option<i64>) -> Result<Self, Error> {
         let migrations = match direction {
             Direction::Up => self.migrations.into_iter().collect::<Vec<_>>(),
@@ -282,23 +294,30 @@ impl Migrations {
         Self::load().await
     }
 
+    /// Get a list of all migrations currently found in the `"migrations"` folder.
     pub fn migrations(&self) -> &[Migration] {
         &self.migrations
     }
 
+    /// Execute all migrations in the up direction.
     pub async fn migrate() -> Result<Migrations, Error> {
         Migrations::sync().await?.apply(Direction::Up, None).await
     }
 
+    /// Execute all migrations in the down direction. **This will effectively
+    /// destroy all tables and data in your database.**
     pub async fn flush() -> Result<Migrations, Error> {
         Migrations::sync().await?.apply(Direction::Down, None).await
     }
 }
 
+/// Execute all migrations in the up direction.
 pub async fn migrate() -> Result<Migrations, Error> {
     Migrations::sync().await?.apply(Direction::Up, None).await
 }
 
+/// Execute all migrations in the down direction. **This will effectively
+/// destroy all tables and data in your database.**
 pub async fn rollback() -> Result<Migrations, Error> {
     Migrations::sync().await?.apply(Direction::Down, None).await
 }

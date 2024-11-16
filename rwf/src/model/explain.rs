@@ -1,3 +1,4 @@
+//! Represents the result of executing `EXPLAIN <query>;`
 use super::{Error, FromRow, Model, Value};
 
 #[derive(Debug, Clone)]

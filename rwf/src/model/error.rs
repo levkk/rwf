@@ -1,3 +1,4 @@
+//! Errors returned by the ORM.
 use once_cell::sync::Lazy;
 use regex::Regex;
 use thiserror::Error;
