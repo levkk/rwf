@@ -132,6 +132,11 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
     model::impl_derive_model(input)
 }
 
+/// Create a WebSocket controller.
+///
+/// This implements mappings between the `Controller`
+/// trait and the struct implementing
+/// the `WebsocketController` trait.
 #[proc_macro_derive(WebsocketController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -159,6 +164,11 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+/// Create a Model controller.
+///
+/// This implements mappings between the `Controller`
+/// trait and the struct implementing
+/// the `ModelController` trait.
 #[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -250,6 +260,11 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
     }
 }
 
+/// Create a Page controller.
+///
+/// This implements mappings between the `Controller`
+/// trait and the struct implementing
+/// the `PageController` trait.
 #[proc_macro_derive(PageController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -273,6 +288,11 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+/// Create a REST controller.
+///
+/// This implements mappings between the `Controller`
+/// trait and the struct implementing
+/// the `RestController` trait.
 #[proc_macro_derive(RestController, attributes(auth, middleware, skip_csrf))]
 pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -296,6 +316,8 @@ pub fn derive_rest_controller(input: TokenStream) -> TokenStream {
     }.into()
 }
 
+/// Automatically implement the `FromRow` trait.
+/// Converts database rows to Rust struct fields.
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -328,6 +350,9 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
     }
 }
 
+/// Automatically implement the `ToTemplateValue` trait
+/// for the Rust struct. This allows to use the struct
+/// directly in template contexts.
 #[proc_macro_derive(TemplateValue)]
 pub fn derive_template_value(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -362,6 +387,9 @@ pub fn derive_template_value(input: TokenStream) -> TokenStream {
     }
 }
 
+/// Automatically implement the `FromFormData` trait.
+/// Allows to extract values from a HTTP form and
+/// convert it to a Rust struct.
 #[proc_macro_derive(Form)]
 pub fn derive_form(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -415,6 +443,9 @@ pub fn derive_form(input: TokenStream) -> TokenStream {
     }
 }
 
+/// Allows to automatically convert a Rust struct into a
+/// template context. Templates can then define
+/// strictly-typed contexts for additional type safety.
 #[proc_macro_derive(Context)]
 pub fn drive_context(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -464,6 +495,7 @@ pub fn drive_context(input: TokenStream) -> TokenStream {
     }
 }
 
+/// Not currently used.
 #[proc_macro]
 pub fn error(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -502,6 +534,10 @@ pub fn route(input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Create CRUD routes for the controller.
+///
+/// CRUD routes include multiple routes following the
+/// REST specification.
 #[proc_macro]
 pub fn crud(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
@@ -516,6 +552,7 @@ pub fn crud(input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Create REST routes for the controller.
 #[proc_macro]
 pub fn rest(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
@@ -530,6 +567,7 @@ pub fn rest(input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Create a route and mount an engine on it.
 #[proc_macro]
 pub fn engine(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
