@@ -137,21 +137,93 @@ pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
-/// The ORM query builder. All queries are constructed using this enum.
+/// The query builder. It constructs the actual queries,
+/// executes them against the database, and returns the results
+/// converted into Rust types.
+///
+/// The query builder should not be instantiated directly. Use the [`Model`] trait instead,
+/// implemented for your struct.
+///
+/// # Example
+///
+/// Let's define a struct implemeting the [`Model`] trait and use it as an example:
+///
+/// ```
+/// # use rwf::macros::Model;
+/// #[derive(Clone, Model)]
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+///     admin: bool,
+/// }
+/// ```
+///
+/// Calling any [`Model`] method, e.g., [`Model::all`], will return the query builder with the
+/// specified Rust type:
+///
+/// ```
+/// # use rwf::macros::Model;
+/// # use rwf::model::{Model, Query, Select};
+/// # #[derive(Clone, Debug, Model)]
+/// # struct User {
+/// #    id: Option<i64>,
+/// #    email: String,
+/// #    admin: bool,
+/// # }
+/// let query = User::all();
+///
+/// match query {
+///     Query::Select(Select::<User> { table_name, .. }) => {
+///         assert_eq!(table_name, User::table_name());
+///     }
+///     _ => unreachable!(),
+/// }
+/// ```
+///
+/// By itself the query builder object will not execute the query until [`Query::execute`] is called. This allows the
+/// query builder to be passed around the code base and modified depending on the context.
+///
+/// ## Scopes
+///
+/// Since the query builder represents a unexecuted query, it can be saved for later re-use. This allows us to implement
+/// "scopes", re-usable queries that can be modified or executed as-is. To make this more user-friendly, the [`Scope`]
+/// type is aliased to [`Query`], for example:
+///
+/// ```
+/// # use rwf::macros::Model;
+/// # use rwf::model::{Model, Query, Select, Scope};
+/// # #[derive(Clone, Debug, Model)]
+/// # struct User {
+/// #    id: Option<i64>,
+/// #    email: String,
+/// #    admin: bool,
+/// # }
+/// impl User {
+///     fn admins() -> Scope<User> {
+///         Self::filter("admin", true)
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub enum Query<T: FromRow + ?Sized = Row> {
+    /// Represents a `SELECT` query.
     Select(Select<T>),
+    /// Represents an `UPDATE` statement.
     Update(Update<T>),
+    /// Represents an `INSERT` statement.
     Insert(Insert<T>),
+    /// Implements [`Model::find_or_create_by`] by building a `SELECT` and an `INSERT` query.
     InsertIfNotExists {
         select: Select<T>,
         insert: Insert<T>,
         created: bool,
     },
+    /// An arbitrary query.
     Raw {
         query: String,
         placeholders: Placeholders,
     },
+    /// **WIP**: `SELECT` query with only specific columns.
     Picked(Picked<T>),
 }
 
@@ -173,19 +245,25 @@ impl<T: FromRow> ToSql for Query<T> {
 }
 
 impl<T: Model> Query<T> {
-    /// Start a SELECT query from the given relation.
+    /// Start a `SELECT` query for the given table. This method is mostly used internally.
     ///
     /// # Arguments
     ///
-    /// * `table_name` - The name of the relation.
+    /// * `table_name` - The name of the database table.
     ///
     /// # Example
     ///
     /// ```
-    /// use rwf::model::{Query, ToSql, Row};
-    ///
-    /// let query = Query::<Row>::select("users");
-    /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\"");
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = Query::<User>::select("users");
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users""#);
     /// ```
     pub fn select(table_name: impl ToString) -> Self {
         Query::Select(Select::new(
@@ -194,15 +272,21 @@ impl<T: Model> Query<T> {
         ))
     }
 
-    /// Create a query that selects one row from the relation.
+    /// Create a query that selects one row from the relation. The rows are not ordered and any row can be returned.
     ///
     /// # Example
     ///
     /// ```
-    /// use rwf::model::{Query, ToSql, Row};
-    ///
-    /// let query = Query::<Row>::select("users").take_one();
-    /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\" LIMIT 1");
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().take_one();
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" LIMIT 1"#);
     /// ```
     pub fn take_one(self) -> Self {
         use Query::*;
@@ -213,15 +297,21 @@ impl<T: Model> Query<T> {
         }
     }
 
-    /// Create a query that selects _n_ rows from the relation.
+    /// Create a query that selects _n_ rows from the relation. The order of rows is determined by the database.
     ///
     /// # Example
     ///
     /// ```
-    /// use rwf::model::{Query, ToSql, Row};
-    ///
-    /// let query = Query::<Row>::select("users").take_many(25);
-    /// assert_eq!(query.to_sql(), "SELECT * FROM \"users\" LIMIT 25");
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().take_many(25);
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" LIMIT 25"#);
     /// ```
     pub fn take_many(self, n: i64) -> Self {
         use Query::*;
@@ -232,6 +322,23 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Create a query that selects the first row from the database. The rows are ordered
+    ///  by primary key in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().first_one();
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 1"#);
+    /// ```
     pub fn first_one(self) -> Self {
         use Query::*;
 
@@ -241,6 +348,23 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Creates a query that selects first _n_ rows from the database. Rows are sorted
+    /// by primary key in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().first_many(25);
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" ASC LIMIT 25"#);
+    /// ```
     pub fn first_many(self, n: i64) -> Self {
         use Query::*;
 

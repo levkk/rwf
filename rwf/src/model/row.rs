@@ -14,7 +14,7 @@ impl Model for Row {
     }
 
     fn primary_key() -> &'static str {
-        "_id"
+        "id"
     }
 
     fn foreign_key() -> &'static str {
