@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use thiserror::Error;
 
-static CONFIG: OnceCell<ConfigFile> = OnceCell::new();
+static CONFIG: OnceCell<Config> = OnceCell::new();
 
 /// Configuration error.
 #[derive(Error, Debug)]
@@ -44,15 +44,15 @@ pub enum Error {
 /// Get application configuration.
 ///
 /// Safe to call from anywhere.
-pub fn get_config() -> &'static ConfigFile {
-    CONFIG.get_or_init(|| ConfigFile::load_default())
+pub fn get_config() -> &'static Config {
+    CONFIG.get_or_init(|| Config::load_default())
 }
 
 /// Rwf configuration file. Can be deserialized
 /// from a TOML file, although any format supported by
 /// `serde` is possible.
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ConfigFile {
+pub struct Config {
     /// Where the configuration file is located.
     #[serde(skip)]
     pub path: Option<PathBuf>,
@@ -70,7 +70,7 @@ pub struct ConfigFile {
     pub websocket: WebsocketConfig,
 }
 
-impl Default for ConfigFile {
+impl Default for Config {
     fn default() -> Self {
         Self {
             path: None,
@@ -83,7 +83,15 @@ impl Default for ConfigFile {
     }
 }
 
-impl ConfigFile {
+impl Config {
+    /// Get the configuration.
+    ///
+    /// Safe to call from anywhere. Loads the
+    /// config if it's not loaded yet.
+    pub fn get() -> &'static Self {
+        get_config()
+    }
+
     /// Load configuration file from default location(s).
     pub fn load_default() -> Self {
         for path in ["rwf.toml", "Rwf.toml", "Rum.toml"] {
@@ -97,7 +105,7 @@ impl ConfigFile {
     }
 
     /// Load configuration file from a specific path.
-    pub fn load(path: impl AsRef<Path> + Copy) -> Result<ConfigFile, Error> {
+    pub fn load(path: impl AsRef<Path> + Copy) -> Result<Config, Error> {
         let file = read_to_string(path)?;
         let mut config: Self = toml::from_str(&file)?;
         config.path = Some(path.as_ref().to_owned());
@@ -494,7 +502,7 @@ name = "test"
             let mut file = File::create(path).unwrap();
             file.write_all(config.as_bytes()).unwrap();
 
-            let config = ConfigFile::load_default();
+            let config = Config::load_default();
             assert_eq!(config.path, Some(PathBuf::from(config_path)));
         }
     }
