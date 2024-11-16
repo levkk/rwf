@@ -16,22 +16,30 @@ jobs:
         working-directory: rwf-macros
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: bash ../scripts/check_publish.sh
+        run: |
+          cargo login ${CRATES_IO_TOKEN}
+          cargo publish || true
 
       - name: Publish rwf-ruby
         working-directory: rwf-ruby
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: bash ../scripts/check_publish.sh
+        run: |
+          cargo login ${CRATES_IO_TOKEN}
+          cargo publish || true
 
       - name: Publish rwf
         working-directory: rwf
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: bash ../scripts/check_publish.sh
+        run: |
+          cargo login ${CRATES_IO_TOKEN}
+          cargo publish || true
 
       - name: Publish rwf-cli
         working-directory: rwf-cli
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: bash ../scripts/check_publish.sh
+        run: |
+          cargo login ${CRATES_IO_TOKEN}
+          cargo publish || true
