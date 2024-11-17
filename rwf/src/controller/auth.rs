@@ -55,6 +55,8 @@ pub trait Authentication: Sync + Send {
         Ok(Response::forbidden())
     }
 
+    /// Returns an authentication handler used when configuring
+    /// authentication on a controller.
     fn handler(self) -> AuthHandler
     where
         Self: Sized + 'static,

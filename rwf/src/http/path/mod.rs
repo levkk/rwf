@@ -43,6 +43,7 @@ impl Default for Path {
 }
 
 impl Path {
+    /// Construct Path from base URL and a parsed query string.
     pub fn from_parts(base: &str, query: &Query) -> Self {
         Self {
             base: base.to_string(),
@@ -60,14 +61,27 @@ impl Path {
         self.base.len()
     }
 
+    /// Get the parsed query.
     pub fn query(&self) -> &Query {
         &self.query
     }
 
+    /// Get the base path.
     pub fn path(&self) -> &str {
         &self.base
     }
 
+    /// Parse the path from a string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Path;
+    /// let path = Path::parse("/users?id=5").unwrap();
+    ///
+    /// assert_eq!(path.path(), "/users");
+    /// assert_eq!(path.query().get::<i64>("id").unwrap(), 5);
+    /// ```
     pub fn parse(path: &str) -> Result<Path, Error> {
         // All paths must be absolute.
         let path = if path.starts_with("/") {
@@ -92,10 +106,13 @@ impl Path {
         Ok(Path { base, query })
     }
 
+    /// Convert path to a path that can be read from the file system.
     pub fn to_std(&self) -> PathBuf {
         std::path::Path::new(&self.base).to_owned()
     }
 
+    /// Constuct a matching regex for this path. Used for matching of
+    /// incoming requests to a controller.
     pub fn with_regex(self, path_type: PathType) -> Result<PathWithRegex, Error> {
         PathWithRegex::new(self, path_type)
     }

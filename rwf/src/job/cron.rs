@@ -1,3 +1,4 @@
+//! Implements the UNIX cron syntax.
 use super::Error;
 use std::ops::Range;
 use time::OffsetDateTime;
@@ -11,6 +12,7 @@ enum CronValue {
 }
 
 impl CronValue {
+    /// Parse a cron syntax.
     pub fn parse(value: &str) -> Result<Self, Error> {
         match value.parse::<i64>() {
             Ok(value) => Ok(CronValue::Exact(value)),
@@ -48,6 +50,7 @@ impl CronValue {
         }
     }
 
+    /// Indicates the cron task should run at the specified time.
     pub fn matches(&self, time: i64) -> bool {
         match self {
             Self::Exact(value) => *value == time,
@@ -58,6 +61,7 @@ impl CronValue {
     }
 }
 
+/// UNIX cron syntax.
 #[derive(Clone, Debug)]
 pub struct Cron {
     second: CronValue,
@@ -69,6 +73,14 @@ pub struct Cron {
 }
 
 impl Cron {
+    /// Parse the UNIX cron syntax.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::job::Cron;
+    /// let cron = Cron::parse("* * * * *").unwrap();
+    /// ```
     pub fn parse(value: &str) -> Result<Self, Error> {
         let parts = value.split(" ").collect::<Vec<_>>();
 

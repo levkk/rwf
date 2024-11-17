@@ -15,12 +15,28 @@
 //! </form>
 //! ```
 //!
+//! If used via AJAX, include the CSRF token in the `X-CSRF-Token` header.
+//! You can obtain the token by calling the `csrf_token_raw` template function:
+//!
+//! ```html
+//! <script>
+//!     window.csrf_token = "<%= csrf_token_raw() %>";
+//! </script>
+//! ```
+//!
 //! ### Configuration
-//! Toggle `csrf_protection` in the configuration to enable/disable CSRF protection application-wide.
+//! Toggle `csrf_protection` in the configuration to enable/disable CSRF protection application-wide, e.g.:
+//!
+//! ```toml
+//! [general]
+//! csrf_protection = false
+//! ```
 use super::prelude::*;
 use crate::{crypto::csrf_token_validate, http::Method};
 
+/// CSRF HTTP header name.
 pub static CSRF_HEADER: &str = "X-CSRF-Token";
+/// CSRF HTTP form input name.
 pub static CSRF_INPUT: &str = "rwf_csrf_token";
 
 /// CSRF protection middleware.

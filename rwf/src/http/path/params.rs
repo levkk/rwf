@@ -1,3 +1,4 @@
+//! Handles HTTP URL parameters, e.g. '/users/:id`.
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -39,6 +40,7 @@ impl Params {
         None
     }
 
+    /// Get the regex that parsed the parameters.
     pub fn regex(&self) -> &Regex {
         &self.regex
     }

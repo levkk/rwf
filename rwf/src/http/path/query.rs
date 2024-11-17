@@ -1,3 +1,4 @@
+//! Handles parsing the URL query.
 use std::collections::{hash_map::IntoIter, HashMap};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
@@ -5,18 +6,34 @@ use std::str::FromStr;
 use crate::http::urldecode;
 use crate::http::Error;
 
+/// GET request query.
+///
+/// # Example
+///
+/// ```text
+/// page=5&page_size=25
+/// ```
 #[derive(Debug, Clone)]
 pub struct Query {
     query: HashMap<String, String>,
 }
 
 impl Query {
+    /// Create new empty query.
     pub fn new() -> Self {
         Self {
             query: HashMap::new(),
         }
     }
 
+    /// Parse query from a GET request.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Query;
+    /// let query = Query::parse("page=5&page_size=25");
+    /// ```
     pub fn parse(data: &str) -> Self {
         let mut query = Self::new();
 
@@ -40,6 +57,19 @@ impl Query {
         query
     }
 
+    /// Get a query parameter value. The parameter is converted
+    /// to a Rust type. If the conversion fails, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Query;
+    /// let query = Query::parse("page=5&page_size=25");
+    /// assert_eq!(
+    ///     query.get::<i64>("page"),
+    ///     Some(5)
+    /// );
+    /// ```
     pub fn get<T: FromStr>(&self, name: &str) -> Option<T> {
         match self.query.get(name) {
             Some(value) => match urldecode(value).parse::<T>() {
@@ -51,7 +81,9 @@ impl Query {
         }
     }
 
-    /// Get a parameter, returning HTTP 400 if it's not set.
+    /// Get a query parameter value. If it's not set, return an error.
+    /// When used with the `?` operator, the controller will automatically
+    /// return `400 - Bad Request`.
     pub fn get_required<T: FromStr>(&self, name: &str) -> Result<T, Error> {
         match self.get(name) {
             Some(value) => Ok(value),
@@ -59,11 +91,36 @@ impl Query {
         }
     }
 
+    /// Convert the query to JSON representation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Query;
+    /// assert_eq!(
+    ///     Query::parse("page=25&page_size=5").to_json(),
+    ///     serde_json::json!({
+    ///         "page": "25",
+    ///         "page_size": "5",
+    ///     })
+    /// )
+    /// ```
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(&self.query).unwrap_or(serde_json::Value::default())
     }
 
     /// An owning iterator over the query.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Query;
+    /// let query = Query::parse("page=25&page_size=5");
+    ///
+    /// for (key, value) in query.into_iter() {
+    ///     // ...
+    /// }
+    /// ```
     pub fn into_iter(self) -> IntoIter<String, String> {
         self.query.into_iter()
     }

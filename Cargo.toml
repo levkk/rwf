@@ -17,6 +17,7 @@ members = [
     "rwf-tests",
     "examples/request-tracking",
     "examples/engine",
-    "rwf-admin", "examples/files",
+    "rwf-admin",
+    "examples/files",
 ]
-exclude = ["examples/rails", "rwf-ruby", "examples/django"]
+exclude = ["examples/rails", "rwf-ruby", "examples/django", "rwf-fuzz"]

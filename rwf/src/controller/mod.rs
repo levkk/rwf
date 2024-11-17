@@ -322,10 +322,10 @@ pub trait Controller: Sync + Send {
 #[async_trait]
 #[allow(unused_variables)]
 pub trait PageController: Controller {
-    /// Respond to a GET request to this controller.
+    /// Respond to a `GET` request to this controller.
     async fn get(&self, request: &Request) -> Result<Response, Error>;
 
-    /// Respond to a POST request to this controller.
+    /// Respond to a `POST` request to this controller.
     /// By default, `405 - Method Not Allowed` is returned.
     async fn post(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
@@ -350,18 +350,18 @@ pub trait PageController: Controller {
 ///
 /// Available methods are:
 ///
-/// - list (GET /)
-/// - create (POST /)
-/// - get (GET /:id)
-/// - update (PUT /:id)
-/// - patch (PATCH /:id)
-/// - delete (DELETE /:id)
+/// - list (`GET /path`)
+/// - create (`POST /path`)
+/// - get (`GET /path/:id`)
+/// - update (`PUT /path/:id`)
+/// - patch (`PATCH /path/:id`)
+/// - delete (`DELETE /path/:id`)
 ///
 /// By default, all methods will respond with `501 - Not Implemented`. It's up to the user
 /// to implement each method according to their needs.
 ///
 /// The `:id` can be any value which implements the [`ToParameter`] trait.
-/// Common data types are implemented, e.g. [`i64`] and [`String`].
+/// Common data types are implemented, e.g., [`i64`] and [`String`].
 ///
 /// ### Example
 ///
@@ -412,6 +412,14 @@ pub trait RestController: Controller {
         }
     }
 
+    /// Get a route handler for this controller. Used when
+    /// adding this controller to the server with a route mapping.
+    ///
+    /// Use the `rest!` macro instead, e.g.:
+    ///
+    /// ```ignore
+    /// rest!("/path" => YourResetController)
+    /// ```
     fn rest(self, path: &str) -> Handler
     where
         Self: Sized + 'static,
@@ -419,26 +427,70 @@ pub trait RestController: Controller {
         Handler::rest(path, self)
     }
 
+    /// Responds to `GET /path`. List all available resources at this endpoint.
+    /// Pagination is allowed.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn list(&self, request: &Request) -> Result<Response, Error>;
+    /// ```
     async fn list(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
 
+    /// Responds to `GET /path/:id`. Fetch a specific resource, as identified
+    /// in the request.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn get(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error>;
+    /// ```
     async fn get(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
 
+    /// Responds to `POST /path`. Create a new resource.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn create(&self, request: &Request) -> Result<Response, Error>;
+    /// ```
     async fn create(&self, request: &Request) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
 
+    /// Responds to `PUT /path/:id`. Update an existing resource.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn update(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error>;
+    /// ```
     async fn update(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
 
+    /// Responds to `PATCH /path/:id`. Partially update an existing resource.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn patch(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error>;
+    /// ```
     async fn patch(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
 
+    /// Responds to `DELETE /path:id`. Deletes an existing resource.
+    ///
+    /// # Signature
+    ///
+    /// ```ignore
+    /// async fn delete(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error>;
+    /// ```
     async fn delete(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         Ok(Response::method_not_allowed())
     }
@@ -446,10 +498,35 @@ pub trait RestController: Controller {
 
 /// A controller that extends the [`RestController`] to
 /// automatically performs CRUD actions on database models.
+///
+/// # Example
+///
+/// ```
+/// # use rwf::prelude::*;
+/// use serde::{Serialize, Deserialize};
+///
+/// // The database model.
+/// #[derive(Clone, macros::Model, Serialize, Deserialize)]
+/// struct User {
+///     id: Option<i64>,
+///     email: String,
+/// }
+///
+/// // The controller.
+/// #[derive(macros::ModelController)]
+/// struct UserController;
+///
+/// #[rwf::async_trait]
+/// impl ModelController for UserController {
+///     type Model = User;
+/// }
+/// ```
 #[async_trait]
 pub trait ModelController: Controller {
+    /// The database model.
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;
 
+    /// Handle the request to this controller.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
         let parameter = request.parameter::<i64>("id");
@@ -473,6 +550,14 @@ pub trait ModelController: Controller {
         }
     }
 
+    /// Returns the controller route handler. Used when mapping this
+    /// controller to a path in the server.
+    ///
+    /// Use `crud!` instead:
+    ///
+    /// ```ignore
+    /// crud!("/path" => MyController)
+    /// ```
     fn crud(self, path: &str) -> Handler
     where
         Self: Sized + 'static,
@@ -480,6 +565,13 @@ pub trait ModelController: Controller {
         Handler::rest(path, self)
     }
 
+    /// List all records for the model. Supports pagination with `page` parameter. Supports number of records per page with `page_size` parameter.
+    ///
+    /// # Example
+    ///
+    /// ```text,ignore
+    /// GET /users?page=3&page_size=40
+    /// ```
     async fn list(&self, request: &Request) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
         let page_size = request.query().get::<i64>("page_size").unwrap_or(25);
@@ -499,6 +591,7 @@ pub trait ModelController: Controller {
         Ok(response)
     }
 
+    /// Fetch a model record identified by its primary key.
     async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
@@ -515,6 +608,7 @@ pub trait ModelController: Controller {
         }
     }
 
+    /// Create new model record.
     async fn create(&self, request: &Request) -> Result<Response, Error> {
         let model = match request.json::<Self::Model>() {
             Ok(model) => model,
@@ -536,6 +630,7 @@ pub trait ModelController: Controller {
         Ok(Response::new().code(201).json(model)?)
     }
 
+    /// Update existing model record.
     async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {
         // The REST spec requires the entire model to be sent over for a PUT.
         let model = request.json::<Self::Model>()?;
@@ -551,6 +646,7 @@ pub trait ModelController: Controller {
         Ok(Response::new().json(model)?)
     }
 
+    /// Partially update an existing model record.
     async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
         let exists = Self::Model::find(*id).count(&mut conn).await?;
@@ -587,6 +683,7 @@ pub trait ModelController: Controller {
 #[async_trait]
 #[allow(unused_variables)]
 pub trait WebsocketController: Controller {
+    /// Handle WebSocket connection.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         use base64::{engine::general_purpose, Engine as _};
         use sha1::{Digest, Sha1};
@@ -607,6 +704,7 @@ pub trait WebsocketController: Controller {
         Ok(Response::switching_protocols("websocket").header("sec-websocket-accept", base64))
     }
 
+    /// Handle an incoming client message.
     async fn client_message(
         &self,
         session_id: &SessionId,
@@ -615,10 +713,14 @@ pub trait WebsocketController: Controller {
         Ok(())
     }
 
+    /// Do something when a client creates a new WebSocket connection.
     async fn client_connected(&self, session_id: &SessionId) -> Result<(), Error> {
         Ok(())
     }
 
+    /// Handle the WebSocket TCP stream. Provides the WebSocket
+    /// protocol implementation. You may not want to override this unless you
+    /// want to change how WebSockets work in Rwf.
     async fn handle_stream(
         &self,
         request: &Request,

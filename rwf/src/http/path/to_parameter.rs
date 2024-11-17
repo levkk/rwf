@@ -1,7 +1,10 @@
+//! Conversion between URL parameters and Rust types.
 use super::Error;
 use std::fmt::Debug;
 
+/// Convert a URL parameter to a Rust type.
 pub trait ToParameter: Sync + Send + Debug {
+    /// Perform the type conversion.
     fn to_parameter(s: &str) -> Result<Self, Error>
     where
         Self: Sized;

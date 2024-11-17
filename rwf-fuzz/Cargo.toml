@@ -1,0 +1,15 @@
+[package]
+name = "rwf-fuzz"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+afl = "*"
+rwf = { version = "*", path = "../rwf" }
+tokio = "*"
+
+[[bin]]
+name = "path_fuzzer"
+
+[[bin]]
+name = "router_fuzzer"

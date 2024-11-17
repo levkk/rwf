@@ -1,3 +1,4 @@
+//! WebSocket protocol implementation.
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::Error;
@@ -5,6 +6,7 @@ use crate::view::TurboStream;
 
 use std::marker::Unpin;
 
+/// WebSocket headers.
 #[derive(Debug, Clone)]
 pub struct Headers {
     pub key: String,
@@ -12,6 +14,7 @@ pub struct Headers {
 }
 
 impl Headers {
+    /// Extract required WebSocket headers from the HTTP request.
     pub fn from_http_request(request: &super::Request) -> Result<Self, Error> {
         let key = match request.headers().get("sec-websocket-key") {
             Some(key) => key,
@@ -30,6 +33,7 @@ impl Headers {
     }
 }
 
+/// WebSocket message container.
 #[derive(Debug)]
 pub struct DataFrame {
     header: Header,
@@ -38,6 +42,7 @@ pub struct DataFrame {
 }
 
 impl DataFrame {
+    /// Read a WebSocket message from the TCP stream.
     pub async fn read(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
         let header = Header::read(stream).await?;
         let meta = Meta::read(stream).await?;
@@ -50,6 +55,7 @@ impl DataFrame {
         })
     }
 
+    /// Send a WebSocket message to the TCP stream.
     pub async fn send(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
         self.header.send(stream).await?;
         self.meta.send(stream).await?;
@@ -61,6 +67,7 @@ impl DataFrame {
         Ok(())
     }
 
+    /// Flush the stream ensuring all messages are delivered.
     pub async fn flush(self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
         self.send(stream).await?;
         stream.flush().await?;
@@ -68,14 +75,17 @@ impl DataFrame {
         Ok(())
     }
 
+    /// This is a pong message.
     pub fn is_pong(&self) -> bool {
         self.header.is_pong()
     }
 
+    /// This is a ping message.
     pub fn is_ping(&self) -> bool {
         self.header.is_ping()
     }
 
+    /// Create new pong message.
     pub fn new_pong(ping: DataFrame) -> Self {
         let meta = Meta {
             len: ping.message.as_ref().map(|m| m.len()).unwrap_or(0),
@@ -93,6 +103,7 @@ impl DataFrame {
         }
     }
 
+    /// Create new ping message.
     pub fn new_ping() -> Self {
         Self {
             header: Header {
@@ -104,6 +115,7 @@ impl DataFrame {
         }
     }
 
+    /// Get the message from the frame.
     pub fn message(self) -> Message {
         self.message.unwrap()
     }
@@ -270,17 +282,23 @@ impl Meta {
     }
 }
 
+/// WebSocket message.
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// Text message (UTF-8 encoding).
     Text(String),
+    /// Binary message, no encoding specified.
     Binary(Vec<u8>),
 }
 
 impl Message {
+    /// Create a WebSocket message from a TurboStream template.
+    /// This creates a text message.
     pub fn turbo_stream(turbo_stream: TurboStream) -> Self {
         Message::Text(turbo_stream.render())
     }
 
+    /// Get message length.
     pub fn len(&self) -> usize {
         match self {
             Self::Text(text) => text.as_bytes().len(),
@@ -317,6 +335,7 @@ impl Message {
         }
     }
 
+    /// Send message through the TCP stream.
     pub async fn send(&self, stream: &mut (impl AsyncWrite + Unpin)) -> Result<(), Error> {
         let header = Header {
             fin: true,
@@ -342,7 +361,9 @@ impl Message {
     }
 }
 
+/// Handle conversion from a Rust type to a WebSocket message.
 pub trait ToMessage: Clone {
+    /// Handle the conversion.
     fn to_message(self) -> Message;
 }
 

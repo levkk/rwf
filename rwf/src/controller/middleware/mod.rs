@@ -38,10 +38,53 @@ pub enum Outcome {
     Stop(Request, Response),
 }
 
+/// HTTP middleware, code which runs before a request is sent to a controller
+/// and after the controller has provided a response, allowing it to modify
+/// or interecept requests, and modify responses.
+///
+/// # Example
+///
+/// ```
+/// # use rwf::prelude::*;
+/// # use rwf::controller::middleware::prelude::*;
+/// struct RequireHeader;
+///
+/// #[async_trait]
+/// impl Middleware for  RequireHeader {
+///     // Process request and determine if it should be
+///     // allowed to proceed.
+///     async fn handle_request(
+///         &self,
+///         request: Request
+///     ) -> Result<Outcome, Error> {
+///         if request.header("X-Custom-Header").is_some() {
+///             Ok(Outcome::Forward(request))
+///         } else {
+///             Ok(Outcome::Stop(request, Response::forbidden()))
+///         }
+///     }
+///
+///     // Optionally, modify response returned by controller.
+///     async fn handle_response(
+///         &self,
+///         request: &Request,
+///         response: Response
+///     ) -> Result<Response, Error> {
+///         let response = response.header("X-Middleware", "1");
+///         Ok(response)
+///     }
+/// }
+/// ```
 #[async_trait]
 #[allow(unused_variables)]
 pub trait Middleware: Send + Sync {
+    /// Process the request before it reaches the controller. You can modify it,
+    /// forward it without modification, or block the request entirely
+    /// and return a response.
     async fn handle_request(&self, request: Request) -> Result<Outcome, Error>;
+
+    /// Process the response returned by a controller. You can modify it
+    /// or forward it without modification.
     async fn handle_response(
         &self,
         request: &Request,
@@ -50,6 +93,8 @@ pub trait Middleware: Send + Sync {
         Ok(response)
     }
 
+    /// Get the middleware handler. This method
+    /// is used when adding middleware to a [`MiddlewareSet`].
     fn middleware(self) -> MiddlewareHandler
     where
         Self: Sized + 'static,
@@ -57,6 +102,8 @@ pub trait Middleware: Send + Sync {
         MiddlewareHandler::new(self)
     }
 
+    /// Name of this middleware. It's globally unique
+    /// so it should not be overriden.
     fn middleware_name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }
@@ -64,7 +111,7 @@ pub trait Middleware: Send + Sync {
 
 /// Wrapper around a struct implementing the [`Middleware`] trait.
 ///
-/// The [`Middleware::middleware()`] method returns this wrapper, so you
+/// The [`Middleware::middleware`] method returns this wrapper, so you
 /// don't need to construct this manually.
 #[derive(Clone)]
 pub struct MiddlewareHandler {

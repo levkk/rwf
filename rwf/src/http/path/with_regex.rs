@@ -18,10 +18,14 @@ pub struct PathWithRegex {
     params: Arc<Params>,
 }
 
+/// Kind of path routing we are using for a controller.
 #[derive(PartialEq)]
 pub enum PathType {
+    /// Will match all 6 REST paths.
     Rest,
+    /// Will match all child paths and self.
     Wildcard,
+    /// Will only match the specific path.
     Route,
 }
 
