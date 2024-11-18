@@ -1,4 +1,12 @@
-//! Cron implementation.
+//! Scheduled jobs implementation.
+//!
+//! This is also known as a cron.
+//!
+//! #### TODO
+//!
+//! Currently, there is no synchronization between multiple instances of
+//! this clock. This cron isn't yet distributed, so only spawn one instance
+//! of this clock in your app infrastructure.
 use super::{Cron, Error, Job, JobHandler};
 use crate::colors::MaybeColorize;
 
@@ -66,7 +74,7 @@ impl Clock {
         }
     }
 
-    /// Run the clock. This is an infinite loop.
+    /// Run the clock. This blocks forever.
     pub async fn run(&self) {
         info!("Clock started");
 

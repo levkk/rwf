@@ -13,7 +13,7 @@ enum CronValue {
 
 impl CronValue {
     /// Parse a cron syntax.
-    pub fn parse(value: &str) -> Result<Self, Error> {
+    fn parse(value: &str) -> Result<Self, Error> {
         match value.parse::<i64>() {
             Ok(value) => Ok(CronValue::Exact(value)),
             Err(_) => {
@@ -109,6 +109,7 @@ impl Cron {
         }
     }
 
+    /// Should the cron execute at the provided time?
     pub fn should_run(&self, time: &OffsetDateTime) -> bool {
         let second = time.second();
         let minute = time.minute();

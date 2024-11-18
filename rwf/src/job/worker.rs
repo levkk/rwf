@@ -1,3 +1,6 @@
+//! Background job worker.
+//!
+//! Runs jobs in the background.
 use super::{
     clock::{Clock, ScheduledJob},
     Error, JobHandler, JobModel,
@@ -15,6 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Background job worker.
 #[derive(Clone)]
 pub struct Worker {
     jobs: Arc<HashMap<String, JobHandler>>,
@@ -22,6 +26,9 @@ pub struct Worker {
 }
 
 impl Worker {
+    /// Configure the worker to handle specified jobs.
+    ///
+    /// All other jobs will be ignored by this worker.
     pub fn new(jobs: Vec<JobHandler>) -> Self {
         let jobs = jobs
             .into_iter()
@@ -33,11 +40,16 @@ impl Worker {
         }
     }
 
+    /// Run the specified jobs on a schedule.
     pub fn clock(mut self, jobs: Vec<ScheduledJob>) -> Self {
         self.clock = Some(Clock::new(jobs));
         self
     }
 
+    /// Start the worker in an async task.
+    ///
+    /// This returns immediately. Callers can drop the variable, the worker
+    /// is running in a separate Tokio task.
     pub async fn start(self) -> Result<Self, Error> {
         let mut conn = get_connection().await?;
         JobModel::reschedule().execute(&mut conn).await?;
@@ -54,6 +66,9 @@ impl Worker {
         Ok(self)
     }
 
+    /// Run the background worker. Blocks forever. Use [`Self::start`] instead to start the worker.
+    ///
+    /// This implements the worker logic of fetching and running jobs.
     pub async fn run(&self) {
         info!("Background jobs worker started");
 
@@ -165,6 +180,8 @@ impl Worker {
         }
     }
 
+    /// Spawn an additional instance of this worker. Spawning more workers
+    /// creates more concurrency in the system but uses more system resources.
     pub fn spawn(&self) -> &Self {
         let worker = self.clone();
         tokio::spawn(async move {

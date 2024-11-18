@@ -1,3 +1,7 @@
+//! Job model.
+//!
+//! Used internally, but can be used externally by knowledgeable callers
+//! to schedule jobs or fetch statistics about the job queue.
 use crate::colors::MaybeColorize;
 use crate::job::{clock::ScheduledJob, Error};
 use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
@@ -58,13 +62,17 @@ impl JobModel {
             .skip_locked()
     }
 
+    /// Fetch jobs that should be rescheduled.
     ///
+    /// This happens if a worker crashed.
     pub fn reschedule() -> Scope<Self> {
         Self::filter("completed_at", Value::Null)
             .not("started_at", Value::Null)
             .update_all(&[("started_at", Value::Null)])
     }
 
+    /// Fetch all instances of this job that have been scheduled to run.
+    /// and should run now.
     pub fn scheduled(&self) -> Scope<Self> {
         Self::filter("completed_at", Value::Null)
             .filter("start_after", self.start_after)
@@ -72,14 +80,17 @@ impl JobModel {
             .filter("name", &self.name)
     }
 
+    /// Get all jobs that are currently running.
     pub fn running() -> Scope<Self> {
         Self::filter("completed_at", Value::Null).not("started_at", Value::Null)
     }
 
+    /// Get all jobs that are currently queued.
     pub fn queued() -> Scope<Self> {
         Self::filter("completed_at", Value::Null).filter("started_at", Value::Null)
     }
 
+    /// Get all jobs that had a problem.
     pub fn errors() -> Scope<Self> {
         Self::all()
             .not("completed_at", Value::Null)
