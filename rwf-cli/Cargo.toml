@@ -4,6 +4,7 @@ version = "0.1.6"
 edition = "2021"
 license = "MIT"
 description = "Rust Web Framework CLI"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

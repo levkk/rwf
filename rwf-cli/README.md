@@ -1,54 +1,27 @@
 # Rwf CLI
 
-Rwf comes with its own command-line interface (CLI) which helps managing projects.
+[![Documentation](https://img.shields.io/badge/documentation-blue?style=flat)](https://levkk.github.io/rwf/)
+[![Latest crate](https://img.shields.io/crates/v/rwf-cli.svg)](https://crates.io/crates/rwf-cli)
+
+[Rwf](https://levkk.github.io/rwf/) comes with its own command-line tool that helps managing projects. The CLI can generate code for controllers, models, and migrations, and
+deploy Rwf-powered applications to production.
 
 ## Installation
 
-Install the CLI using Cargo:
+You can install `rwf-cli` using `cargo`:
 
 ```
 $ cargo install rwf-cli
 ```
 
-If you have configured Cargo correctly, you should be able to use the CLI directly:
+The CLI should now be available globally. If not, make sure that `~/.cargo/bin/` is in your `PATH`.
+
+## Using the CLI
 
 ```
 $ rwf-cli --help
 ```
 
-If not, add `~/.cargo/bin/` to your `PATH`.
+## Documentation
 
-## Commands
-
-Rwf CLI supports the following features:
-
-- migrations
-- project setup
-
-### Migrations
-
-#### Adding a migration
-
-```
-$ rwf migrate add --name "name_of_your_migration"
-```
-
-#### Running migrations
-
-```
-$ rwf migrate run
-```
-
-#### Reverting the latest migration
-
-```
-$ rwf migrate revert
-```
-
-#### Re-create database
-
-This will revert all migrations (**deleting all data**) and re-create all tables and indexes:
-
-```
-$ rwf migrate flush
-```
+&#128216; The documentation **[is available here](https://levkk.github.io/rwf/)**.
