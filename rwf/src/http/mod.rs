@@ -1,10 +1,12 @@
-//! HTTP protocol implementation.
+//! HTTP protocol.
 //!
-//! Rwf comes with its own implementation, including routing of requests, and a tokio-based async server that can handle millions of
+//! Rwf comes with its own implementation, including routing of requests,
+//! and a tokio-based async server that can handle millions of
 //! concurrent connections.
 //!
 //! ##### Support for HTTP/2
-//! Currently, only HTTP/1.1 is supported. Support for HTTP/2 is a work in progress. You can put the Rwf application behind a load balancer (like nginx) that supports
+//! Currently, only HTTP/1.1 is supported. Support for HTTP/2 is a work in progress.
+//! You can put the Rwf application behind a load balancer (like nginx) that supports
 //! HTTP/2 to take advantage of its performance enhancements.
 #![allow(dead_code)]
 pub mod authorization;
@@ -44,7 +46,7 @@ pub use server::{Server, Stream};
 pub use url::{urldecode, urlencode};
 pub use websocket::{Message, ToMessage};
 
-/// HTTP version.
+/// HTTP protocol kind.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Protocol {
     /// HTTP/1.1

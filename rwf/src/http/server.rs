@@ -1,9 +1,9 @@
-//! Pretty simple HTTP server.
+//! Simple and performant HTTP server.
 //!
 //! Listens for requests and maps them to a handler, if any exists for the specified path.
-//! If no handler is matched, return 404 Not Found.
+//! If no handler is matched, return `404 - Not Found`.
 //!
-//! The server is using Tokio, so it can support millions of concurrent clients.
+//! The server is using Tokio and can support millions of concurrent clients.
 use super::{Error, Handler, Request, Response, Router};
 
 use crate::colors::MaybeColorize;
@@ -19,12 +19,15 @@ use tokio::signal::ctrl_c;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
 
+/// Type of TCP connection used by the client.
 #[derive(Debug)]
 pub enum Stream<'a> {
+    /// Plain text (not encrypted).
     Plain(&'a mut BufReader<BufWriter<TcpStream>>),
 }
 
 impl<'a> Stream<'a> {
+    /// Get the underlying TCP stream reader & writer.
     pub fn stream(&'a mut self) -> impl AsyncRead + AsyncWrite + 'a {
         match self {
             Stream::Plain(stream) => stream,
@@ -40,7 +43,7 @@ pub struct Server {
 impl Server {
     /// Create new HTTP server.
     ///
-    /// Accepts a list of handlers.
+    /// Accepts a list of routes and their handlers.
     // Duplicate handlers are overwritten without warning.
     pub fn new(handlers: Vec<Handler>) -> Self {
         Server {
@@ -48,7 +51,7 @@ impl Server {
         }
     }
 
-    /// Launch the server.
+    /// Launch the server. This blocks until the server is shut down (`SIGINT`/Ctrl-C).
     pub async fn launch(self, addr: impl ToSocketAddrs) -> Result<(), Error> {
         info!(
             "Starting {} {} {}",

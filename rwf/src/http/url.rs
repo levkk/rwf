@@ -1,21 +1,20 @@
 //! URL handling helpers.
+//!
+//! # Example
+//!
+//! ```
+//! use rwf::http::{urlencode, urldecode};
+//!
+//! let url = "?foo=bar&hello=world%20";
+//!
+//! let decoded = urldecode(url);
+//! let encoded = urlencode(&decoded);
+//!
+//! assert_eq!(decoded, "?foo=bar&hello=world ");
+//! assert_eq!(encoded, "%3Ffoo%3Dbar%26hello%3Dworld%20");
+//! ```
 
-/// Decode a string encoded with URL encoding.
-///
-/// # Arguments
-///
-/// * `s` - The string to decode.
-///
-/// # Example
-///
-/// ```
-/// use rwf::http::urldecode;
-///
-/// let url = "?foo=bar&hello=world%20";
-/// let decoded = urldecode(url);
-/// assert_eq!(decoded, "?foo=bar&hello=world ");
-/// ```
-///
+/// Decode a string encoded with percent-encoding, also known as URL encoding.
 pub fn urldecode(s: &str) -> String {
     let mut result = String::new();
     let mut iter = s.chars().peekable();
@@ -81,6 +80,7 @@ pub fn urldecode(s: &str) -> String {
     result
 }
 
+/// Encode a string using percent-encoding, also known as URL encoding.
 pub fn urlencode(s: &str) -> String {
     let mut result = String::new();
 
@@ -106,7 +106,7 @@ pub fn urlencode(s: &str) -> String {
             '=' => "%3D",
             '%' => "%25",
             ' ' => "%20",
-            '\n' => "0A",
+            '\n' => "%0A",
             c => {
                 result.push(c);
                 continue;
@@ -135,6 +135,12 @@ mod test {
 
         let url = "id%2Cpath%2Cmethod%2Cclient_ip";
         let decoded = urldecode(url);
-        assert_eq!(decoded, "id,path,method,client_ip")
+        assert_eq!(decoded, "id,path,method,client_ip");
+
+        let s = "hello&world=1234\nonetwo";
+        let encoded = urlencode(s);
+        let decoded = urldecode(&encoded);
+
+        assert_eq!(decoded, s);
     }
 }

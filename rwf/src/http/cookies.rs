@@ -1,4 +1,7 @@
-//! Browser cookies.
+//! HTTP cookies.
+//!
+//! This module handles decoding the `Cookie` header,
+//! and generating `Set-Cookie` headers.
 use std::collections::HashMap;
 use time::{Duration, OffsetDateTime};
 
@@ -8,7 +11,9 @@ use crate::config::get_config;
 use crate::controller::Session;
 use crate::crypto::{decrypt, encrypt};
 
-/// Cookies storage and interface.
+/// Cookies storage.
+///
+/// Supports both plain text and encrypted (private) cookies.
 #[derive(Debug, Clone, Default)]
 pub struct Cookies {
     cookies: HashMap<String, Cookie>,
@@ -23,6 +28,20 @@ impl Cookies {
     }
 
     /// Parse cookies from the `Cookie` header.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Cookies;
+    /// let cookies = Cookies::parse("rwf_aid=1234; rwf_session=foo");
+    /// assert_eq!(
+    ///     cookies
+    ///         .get("rwf_aid")
+    ///         .unwrap()
+    ///         .value(),
+    ///     "1234"
+    /// );
+    /// ```
     pub fn parse(value: &str) -> Cookies {
         let parts = value.split(";");
         let mut cookies = HashMap::new();
@@ -36,7 +55,10 @@ impl Cookies {
         Cookies { cookies }
     }
 
-    /// Add an encrypted cookie and send it to the client.
+    /// Add an encrypted cookie.
+    ///
+    /// If this is set on the [`rwf::http::Response`], this cookie will be sent
+    /// to the client.
     pub fn add_private(&mut self, cookie: impl ToCookie) -> Result<(), Error> {
         let mut cookie = cookie.to_cookie();
         cookie.value = encrypt(cookie.value.as_bytes())?;
@@ -45,9 +67,12 @@ impl Cookies {
         Ok(())
     }
 
-    /// Get an encrypted cookie received from the client. The value is decrypted on the fly.
-    /// If the decryption fails, `None` is returned. This indicates the encrypted cookie is faked,
-    /// or has been encrypted a different secret key. If the cookie isn't valid UTF-8, an error is returned.
+    /// Get an encrypted cookie received from the client. The value is decrypted automatically.
+    ///
+    /// If the decryption fails, `None` is returned. This indicates the encrypted cookie has been modified,
+    /// or has been encrypted with a different secret key.
+    ///
+    /// If the cookie isn't valid UTF-8, like the HTTP specification requires, an error is returned.
     pub fn get_private(&self, name: &str) -> Result<Option<Cookie>, Error> {
         if let Some(cookie) = self.cookies.get(name) {
             let mut cookie = cookie.clone();
@@ -61,7 +86,10 @@ impl Cookies {
         }
     }
 
-    /// Add a cookie to the response and send it to the client, using the `Set-Cookie` header.
+    /// Add a cookie.
+    ///
+    /// If this is done to the response, the cookie will be sent it to the client,
+    /// using the `Set-Cookie` header.
     pub fn add(&mut self, cookie: impl ToCookie) {
         let cookie = cookie.to_cookie();
         self.cookies.insert(cookie.name.clone(), cookie);
@@ -164,7 +192,7 @@ pub struct Cookie {
 
 impl Cookie {
     /// Parse a single cookie from the `Cookie` header.
-    pub fn parse(value: &str) -> Option<Self> {
+    fn parse(value: &str) -> Option<Self> {
         let mut parts = value.split(";");
         let mut builder = CookieBuilder::new();
         let _cookie = if let Some(cookie) = parts.next() {
@@ -225,7 +253,7 @@ impl Cookie {
     }
 
     /// Create new cookie with the name.
-    pub fn new(name: impl ToString) -> Self {
+    fn new(name: impl ToString) -> Self {
         Cookie {
             name: name.to_string(),
             max_age: Some(get_config().general.cookie_max_age()),
@@ -244,17 +272,17 @@ impl Cookie {
     }
 
     /// Check if the cookie is secure.
-    pub fn secure(&self) -> bool {
+    fn secure(&self) -> bool {
         self.secure
     }
 
     /// Check if the cookie is HTTP-only.
-    pub fn http_only(&self) -> bool {
+    fn http_only(&self) -> bool {
         self.http_only
     }
 
     /// Get the cookie's `MaxAge` attribute if any is set.
-    pub fn max_age(&self) -> Option<Duration> {
+    fn max_age(&self) -> Option<Duration> {
         self.max_age
     }
 }
@@ -309,6 +337,23 @@ impl std::fmt::Display for Cookie {
 }
 
 /// Cookie builder which helps with creating cookies with multiple attributes.
+///
+/// # Example
+///
+/// ```
+/// # use rwf::http::CookieBuilder;
+/// use time::Duration;
+///
+/// let cookie = CookieBuilder::new()
+///     .name("rwf_aid")
+///     .value("1234")
+///     .max_age(Duration::days(4))
+///     .secure()
+///     .http_only()
+///     .build();
+/// ```
+///
+/// The resulting cookie can be set on a response, which will send it to the client.
 #[derive(Clone, Debug)]
 pub struct CookieBuilder {
     cookie: Cookie,
@@ -334,7 +379,7 @@ impl CookieBuilder {
         self
     }
 
-    /// Set cookie expiration attribute.
+    /// Set cookie `Expiration` attribute.
     pub fn expiration(mut self, expiration: OffsetDateTime) -> Self {
         self.cookie.expiration = Some(expiration);
         self
@@ -346,43 +391,53 @@ impl CookieBuilder {
         self
     }
 
-    /// Set cookie path attribute.
+    /// Set cookie `Path` attribute.
     pub fn path(mut self, path: impl ToString) -> Self {
         self.cookie.path = Some(path.to_string());
         self
     }
 
-    /// Set cookie domain attribute.
+    /// Set cookie `Domain` attribute.
     pub fn domain(mut self, domain: impl ToString) -> Self {
         self.cookie.domain = Some(domain.to_string());
         self
     }
 
     /// Set the cookie to be only sent via plain HTTP requests (no AJAX).
+    /// This is the `HttpOnly` attribute.
     pub fn http_only(mut self) -> Self {
         self.cookie.http_only = true;
         self
     }
 
     /// Make sure the cookie is sent only via HTTPS connections.
+    /// This is the `Secure` attribute.
     pub fn secure(mut self) -> Self {
         self.cookie.secure = true;
         self
     }
 
     /// Set cookie `SameSite` attribute to `Lax`.
+    ///
+    /// This setting is desirable if you want
+    /// the cookie set on redirects from external sites.
     pub fn lax(mut self) -> Self {
         self.cookie.same_site = Some("Lax".to_string());
         self
     }
 
     /// Set cookie `SameSite` attribute to `Strict`.
+    ///
+    /// This cookie won't be set on redirects from external links, breaking
+    /// authentication.
     pub fn strict(mut self) -> Self {
         self.cookie.same_site = Some("Strict".to_string());
         self
     }
 
-    /// Create the cookie.
+    /// Build the cookie.
+    ///
+    /// This consumes the builder.
     pub fn build(self) -> Cookie {
         self.cookie
     }

@@ -167,7 +167,7 @@ impl MultipartEntry {
         &self.data
     }
 
-    /// Get the Content-Type header passed in the multipart form
+    /// Get the `Content-Type` header passed in the multipart form
     /// for this entry.
     pub fn content_type(&self) -> Option<String> {
         if let Some(ref content_type) = self.content_type {
@@ -200,8 +200,8 @@ macro_rules! read_line {
 ///
 /// The file is loaded into memory. Typically, you don't want to handle large file uploads via multipart forms.
 /// The browser doesn't provide a progress bar, so the user won't know how far along the upload is. This makes
-/// this method unreliable for anything beyond small files that can be uploaded almost instantly, and which can fit into memory
-/// without causing any issues.
+/// this method unreliable for anything beyond small files that can be uploaded almost instantly,
+/// and which can fit into memory without causing any issues.
 #[derive(Debug, Clone)]
 pub struct File<'a> {
     body: &'a [u8],

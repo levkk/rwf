@@ -1,9 +1,13 @@
-//! Handle parsing the `Authorization` header.
+//! Handles parsing the `Authorization` header.
 use base64::prelude::*;
 
+/// Authorization header.
 #[derive(Debug, PartialEq)]
 pub enum Authorization {
-    /// HTTP Basic authentication
+    /// HTTP Basic authentication.
+    ///
+    /// Basic auth uses a username and password. It's not very secure,
+    /// but it's good enough to protect against random visitors.
     Basic { user: String, password: String },
 
     /// See [`crate::controller::auth::Token`].
@@ -14,6 +18,19 @@ pub enum Authorization {
 }
 
 impl Authorization {
+    /// Parse the `Authorization` header value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Authorization;
+    /// let auth = Authorization::parse("Basic YWxpY2U6d29uZGVybGFuZA==");
+    ///
+    /// assert_eq!(auth, Some(Authorization::Basic {
+    ///     user: "alice".into(),
+    ///     password: "wonderland".into(),
+    /// }));
+    /// ```
     pub fn parse(header: &str) -> Option<Authorization> {
         let mut parts = header.split(" ");
         match parts.next() {

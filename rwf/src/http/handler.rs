@@ -1,5 +1,5 @@
-//! Wrapper around a [`Controller`], allowing it to be routed
-//! to at request time.
+//! Wrapper around a [`Controller`]. This wrapper decides if the request should be routed
+//! to the inner controller.
 //!
 //! See [`crate::http::router`] documentation for routing implementation details.
 use super::{

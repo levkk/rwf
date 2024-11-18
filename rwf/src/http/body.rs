@@ -29,18 +29,20 @@ pub enum Body {
 }
 
 impl Body {
-    /// Create new body with raw bytes.
+    /// Create new body from raw bytes.
     pub fn bytes(bytes: Vec<u8>) -> Self {
         Self::Bytes(bytes)
     }
 
-    /// Create new body with HTML.
+    /// Create new body from a string assumed to be HTML.
     pub fn html(text: impl ToString) -> Self {
         Self::Html(text.to_string())
     }
 
-    /// Send the body to the stream. This handles copying the file
-    /// using an efficient Tokio primitive.
+    /// Send the body to the stream. If the body is a file,
+    /// it will be sent efficiently using [`tokio::io::copy`].
+    /// The stream is not flushed, so if call `stream.flush().await`
+    /// to make sure the data reaches the client.
     pub async fn send(
         &mut self,
         mut stream: impl AsyncWrite + Unpin,
@@ -74,7 +76,15 @@ impl Body {
 
     /// Get the body's MIME type. This determines the value of the `Content-Type` header.
     ///
-    /// It attempts to detect the correct mime type of files based on their extension.
+    /// If the body is a file, this will guess the mime type from the file extension.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::Body;
+    /// let body = Body::html("<h1>Hello from Rwf!</h1>");
+    /// assert_eq!(body.mime_type(), "text/html");
+    /// ```
     pub fn mime_type(&self) -> &'static str {
         use Body::*;
 
@@ -84,10 +94,11 @@ impl Body {
                 let extension = match path.extension() {
                     Some(extension) => extension.to_str().expect("OsStr to_str"),
                     None => "",
-                };
+                }
+                .to_lowercase();
 
                 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-                match extension {
+                match extension.as_str() {
                     "aac" => "audio/aac",
                     "abw" => "application/x-abiword",
                     "arc" => "application/x-freearc",

@@ -12,13 +12,20 @@ use crate::config::get_config;
 /// HTTP method, e.g. GET, POST, etc.
 #[derive(PartialEq, Clone, Debug, Default)]
 pub enum Method {
+    /// `GET` request.
     #[default]
     Get,
+    /// `POST` request.
     Post,
+    /// `PUT` request.
     Put,
+    /// `DELETE` request.
     Delete,
+    /// `HEAD` request.
     Head,
+    /// `PATCH` request.
     Patch,
+    /// Some other request we don't have a name for.
     Other(String),
 }
 
@@ -59,9 +66,12 @@ impl std::fmt::Display for Method {
 /// HTTP version, e.g. HTTP/1.1 or HTTP/2.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Version {
+    /// HTTP/1.1.
     #[default]
     Http1,
+    /// HTTP/2.
     Http2,
+    /// Some other HTTP version we haven't even thought about.
     Unknown,
 }
 
@@ -153,7 +163,8 @@ impl Head {
         })
     }
 
-    /// Get the `Authorization` header if any is set.
+    /// Get the value of the `Authorization` header, if any is set. The header is parsed and if the
+    /// authorization type is supported, an [`rwf::http::Authorization`] is returned.
     pub fn authorization(&self) -> Option<Authorization> {
         Authorization::parse(match self.header("authorization") {
             Some(authorization) => authorization,
@@ -161,7 +172,9 @@ impl Head {
         })
     }
 
-    /// Get any cookies set on the request.
+    /// Get cookies manager for this request.
+    ///
+    /// Cookies storage is used to retrieve regular and encrypted cookies.
     pub fn cookies(&self) -> Cookies {
         if let Some(cookie) = self.headers.get("cookie") {
             Cookies::parse(&cookie)
@@ -180,17 +193,17 @@ impl Head {
         self.version == Version::Http1
     }
 
-    /// Request path, including query parameters, e.g. `/foo?hello=world`.
+    /// Get the request path, including query parameters, e.g., `/foo?hello=world`.
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    /// GET query, e,g, `hello=world`.
+    /// Retrieve just the request query, e,g, `hello=world`.
     pub fn query(&self) -> &Query {
         self.path().query()
     }
 
-    /// Request method, e.g. GET or POST.
+    /// Request method, e.g. `GET`, `POST`, etc.
     pub fn method(&self) -> &Method {
         &self.method
     }
@@ -206,6 +219,8 @@ impl Head {
     }
 
     /// The size of the request body in bytes. This is provided by the `Content-Length` header.
+    ///
+    /// This may not always be set, e.g., when using `Content-Encoding: chunked`.
     pub fn content_length(&self) -> Option<usize> {
         if let Some(cl) = self.headers.get("content-length") {
             if let Ok(cl) = cl.parse::<usize>() {
@@ -224,7 +239,7 @@ impl Head {
     }
 
     /// Get a mutable reference to the headers. This can be used to modify headers, e.g.
-    /// inside a middleware.
+    /// inside middleware.
     pub fn headers_mut(&mut self) -> &mut Headers {
         &mut self.headers
     }
@@ -236,7 +251,9 @@ impl Head {
         self.headers.get(name)
     }
 
-    /// Is the keep-alive flag set? Only for HTTP/1.1.
+    /// Is the keep-alive flag set?
+    ///
+    /// This only makes sense for for HTTP/1.1.
     /// HTTP/2 connections are keep-alive by design.
     pub fn keep_alive(&self) -> bool {
         self.http2()
@@ -283,7 +300,11 @@ impl Head {
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
 
-    /// Change the path of this request's head.
+    /// Change the path of this request. This is used mostly internally
+    /// to rewrite requests.
+    ///
+    /// Calling this from middleware does nothing since middleware is controller-specific
+    /// and the routing decision has already been made.
     pub fn replace_path(&mut self, path: Path) {
         self.path = path.clone();
     }

@@ -3,49 +3,67 @@ use thiserror::Error;
 
 use super::Head;
 
+/// Errors returned by the HTTP implementation.
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Input/output error.
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// The request we received is not formatted
+    /// according to the HTTP specification.
     #[error("malformed request: {0}")]
     MalformedRequest(&'static str),
 
+    /// Error encoding/decoding JSON.
     #[error("json")]
     Json(#[from] serde_json::Error),
 
+    /// Error returned by a controller.
     #[error("{0}")]
     Controller(crate::controller::Error),
 
+    /// Error returned by cryptographic functions.
     #[error("{0}")]
     Crypto(#[from] crate::crypto::Error),
 
+    /// Error encoding/decoding UTF-8.
+    /// All text used by Rwf must be UTF-8 encoded.
     #[error("{0}")]
     Utf8(#[from] std::string::FromUtf8Error),
 
+    /// A regex returned an error.
     #[error("{0}")]
     Regex(#[from] regex::Error),
 
+    /// Something wrong with a time, probably out of range.
     #[error("{0}")]
     Time(time::error::ComponentRange),
 
+    /// A required parameter is missing, e.g. from a `POST` form.
     #[error("parameter is missing")]
     MissingParameter,
 
+    /// Something took too long.
     #[error("timeout exceeded")]
     Timeout(#[from] tokio::time::error::Elapsed),
 
+    /// The ORM returned an error.
     #[error("database error: {0}")]
     Orm(#[from] crate::model::Error),
 
+    /// The user is not allowed to access the content.
     #[error("forbidden")]
     Forbidden,
 
+    /// HTTP request exceeds configured size.
     #[error("content too large")]
     ContentTooLarge(Head),
 }
 
 impl Error {
+    /// Get the HTTP error code
+    /// that should be sent to the client.
     pub fn code(&self) -> u16 {
         match self {
             Self::MissingParameter => 400,

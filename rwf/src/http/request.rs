@@ -1,5 +1,4 @@
 //! HTTP request.
-
 use std::fmt::Debug;
 use std::marker::Unpin;
 use std::net::SocketAddr;
@@ -19,9 +18,6 @@ use crate::{
 };
 
 /// HTTP request.
-///
-/// The request is fully loaded into memory. It's safe to clone
-/// since the contents are behind an [`std::sync::Arc`].
 #[derive(Debug, Clone)]
 pub struct Request {
     head: Head,
@@ -55,6 +51,11 @@ struct Inner {
 
 impl Request {
     /// Read the request in its entirety from a stream.
+    ///
+    /// #### Implementation note
+    ///
+    /// The request is fully received and loaded into memory before it's passed to a controller.
+    /// It's safe to clone since the contents are behind an [`std::sync::Arc`].
     pub async fn read(peer: SocketAddr, mut stream: impl AsyncRead + Unpin) -> Result<Self, Error> {
         let head = Head::read(&mut stream).await?;
         let content_length = head.content_length().unwrap_or(0);
@@ -99,7 +100,10 @@ impl Request {
         })
     }
 
-    /// Get the request's source IP address.
+    /// Get the request source IP address.
+    ///
+    /// This is the IP address of the TCP socket, and does
+    /// not have to be the actual client's IP address.
     pub fn peer(&self) -> &SocketAddr {
         self.inner
             .peer
@@ -113,17 +117,24 @@ impl Request {
         self
     }
 
-    /// Return requests' head (headers, method, etc.).
+    /// Return request head (headers, method, etc.).
+    ///
+    /// [`rwf::http::Head`] is dereferenced from this struct,
+    /// so all its public methods are available directly.
     pub fn head(&self) -> &Head {
         &self.head
     }
 
-    /// Get mutable reference to the requests' head.
+    /// Get mutable reference to the head.
     pub fn head_mut(&mut self) -> &mut Head {
         &mut self.head
     }
 
     /// Extract a parameter from the provided path.
+    ///
+    /// The parameter must be specified
+    /// in the path provided to the router at controller registration. The only exception
+    /// is the `id` parameter which is automatically configured on REST controllers.
     pub fn parameter<T: ToParameter>(&self, name: &str) -> Result<Option<T>, Error> {
         if let Some(ref params) = self.params {
             if let Some(parameter) = params.parameter(self.path().base(), name) {
@@ -134,20 +145,21 @@ impl Request {
         Ok(None)
     }
 
-    /// Request's body as bytes.
+    /// Retrieve the reequest body as bytes.
     ///
-    /// It's the job of the caller to handle encoding if any.
+    /// It's the job of the caller to handle encoding, if any.
     pub fn body(&self) -> &[u8] {
         &self.inner.body
     }
 
-    /// Request's body as JSON value.
+    /// Request body parsed JSON value. If the body isn't JSON, an error is returned.
     pub fn json_raw(&self) -> Result<Value, serde_json::Error> {
         self.json()
     }
 
-    /// Request's body as a UTF-8 string.
-    /// UTF-8 encoding is assumed, and all incompatible characters are dropped.
+    /// Request body, parsed as a UTF-8 string.
+    ///
+    /// The encoding is assumed to be valid, and all incompatible characters are dropped.
     pub fn string(&self) -> String {
         String::from_utf8_lossy(self.body()).to_string()
     }
@@ -155,16 +167,16 @@ impl Request {
     /// Return data submitted via a form.
     ///
     /// If no data is submitted or the encoding is incorrect,
-    /// an error is returned. If using the `?` operator, HTTP `400 - Bad Request`
-    /// is automatically returned to the client.
+    /// an error is returned. Combined with the `?` operator inside a controller,
+    /// this will automatically return `400 - Bad Request` to the client.
     pub fn form_data(&self) -> Result<FormData, Error> {
         FormData::from_request(self)
     }
 
     /// Return data submitted via a form, type checked
-    /// against a Rust struct.
+    /// with a Rust struct.
     ///
-    /// This allows to check inputs for complex forms easily,
+    /// This allows to check inputs of complex forms easily,
     /// or return a `400 - Bad Request` automatically if not (using the `?` operator).
     pub fn form<T: FromFormData>(&self) -> Result<T, Error> {
         T::from_form_data(&self.form_data()?)
@@ -178,19 +190,21 @@ impl Request {
     }
 
     /// Return cookies set on the request. If no cookies are set,
-    /// an empty `Cookies` container is returned.
+    /// an empty [`rwf::http::Cookies`] is returned.
     pub fn cookies(&self) -> &Cookies {
         &self.inner.cookies
     }
 
     /// Get the session set on the request, if any. While all requests served
-    /// by Rwf should have a session (guest or authenticated), the browser
+    /// by Rwf should have a session (guest or authenticated), some HTTP clients
     /// may not send the cookie back (e.g. cURL won't).
     pub fn session(&self) -> Option<&Session> {
         self.session.as_ref()
     }
 
-    /// Should the CSRF protection be bypassed on this request? Used internally, but
+    /// Was the CSRF protection bypassed on this request?
+    ///
+    /// Used internally to skip CSRF middleware, but
     /// can also be used to check if the request data is safe to use.
     pub fn skip_csrf(&self) -> bool {
         self.skip_csrf
@@ -203,8 +217,8 @@ impl Request {
 
     /// Get the session identifier.
     ///
-    /// This will be a random string if it's a guest
-    /// or a unique integer if logged in.
+    /// This should uniquely identify a browser if it's a guest session,
+    /// or a user if the user is logged in.
     pub fn session_id(&self) -> Option<SessionId> {
         self.session
             .as_ref()
@@ -212,7 +226,7 @@ impl Request {
     }
 
     /// Get the authenticated user's ID. Combined with the `?` operator,
-    /// will return HTTP `403 - Unauthorized` if not logged in.
+    /// will return `403 - Unauthorized` if not logged in.
     pub fn user_id(&self) -> Result<i64, Error> {
         if let Some(session_id) = self.session_id() {
             match session_id {
@@ -252,7 +266,7 @@ impl Request {
     }
 
     /// Same function as [`Request::user`], except if returns a [`Result`] instead of an [`Option`].
-    /// If used with the `?` operator, returns HTTP `403 - Unauthorized` automatically.
+    /// If used with the `?` operator, returns `403 - Unauthorized` automatically.
     pub async fn user_required<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<T, Error> {
         match self.user(conn).await? {
             Some(user) => Ok(user),
@@ -260,8 +274,9 @@ impl Request {
         }
     }
 
-    /// Set the session on the request.
-    /// *For internal use only.* This is automatically done by the HTTP server,
+    /// Set the session on the request. *For internal use only.*
+    ///
+    /// This is automatically done by the HTTP server,
     /// if the session is available.
     pub fn set_session(mut self, session: Option<Session>) -> Self {
         self.session = session;
@@ -269,14 +284,15 @@ impl Request {
     }
 
     /// Bypass CSRF protection. *For intenral use only.*
-    /// Setting this  on a response inside a controller does nothing since CSRF
+    ///
+    /// Setting this on a response inside a controller does nothing since CSRF
     /// protection is invoked before the request reaches a controller.
     pub fn set_skip_csrf(mut self, skip_csrf: bool) -> Self {
         self.skip_csrf = skip_csrf;
         self
     }
 
-    /// Is the client requesting a connection upgrade to WebSocket?
+    /// Did the client request a HTTP connection upgrade to WebSocket?
     pub fn upgrade_websocket(&self) -> bool {
         self.headers()
             .get("connection")

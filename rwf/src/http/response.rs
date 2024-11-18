@@ -29,15 +29,22 @@ static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
 /// Response status, e.g. 404, 200, etc.
 #[derive(Debug)]
 pub enum Status {
+    /// HTTP 404.
     NotFound,
+    /// HTTP 500.
     InternalServerError,
+    /// HTTP 405.
     MethodNotAllowed,
+    /// HTTP 200.
     Ok,
+    /// HTTP 201.
     Created,
+    /// Whatever code is passed in. Not checked.
     Code(u16),
 }
 
 impl Status {
+    /// Get HTTP code.
     pub fn code(&self) -> u16 {
         use Status::*;
 
@@ -51,6 +58,7 @@ impl Status {
         }
     }
 
+    /// Return true if this is HTTP 200.
     pub fn ok(&self) -> bool {
         self.code() < 300
     }
@@ -89,9 +97,10 @@ impl Default for Response {
 }
 
 impl Response {
-    /// Create empty response.
+    /// Create new response with an empty body.
     ///
-    /// Sets a few default headers as well.
+    /// By default the `Content-Type` header will be set to `text/plain`. This will also
+    /// set some other headers to their default values, e.g., `Server` and `Connection`.
     pub fn new() -> Self {
         Self {
             code: 200,
@@ -107,10 +116,9 @@ impl Response {
         }
     }
 
-    /// Create a response from a request.
+    /// Create a response from a request. *This is used internally automatically.*
     ///
-    /// This is used internally automatically. It makes sure a valid session cookie is
-    /// set on all responses.
+    /// This makes sure a valid session cookie is set on all responses.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
         // Set an anonymous session if none is set on the request.
         if self.session.is_none() && request.session().is_none() {
@@ -255,30 +263,65 @@ impl Response {
         self.body.send(stream).await
     }
 
-    /// Mutable reference to response cookies.
+    /// Mutable reference to response cookies. Used to set cookies on the response.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::http::{Response, CookieBuilder};
+    /// let mut response = Response::new();
+    /// response
+    ///     .cookies()
+    ///     .add(
+    ///         CookieBuilder::new()
+    ///             .name("rwf_aid")
+    ///             .value("1234")
+    ///             .build()
+    ///     );
+    /// ```
     pub fn cookies(&mut self) -> &mut Cookies {
         &mut self.cookies
     }
 
     /// Set a private (encrypted) cookie on the response.
+    ///
+    /// Works exactly the same way as [`Response::cookie`].
     pub fn private_cookie(mut self, cookie: Cookie) -> Result<Self, Error> {
         self.cookies.add_private(cookie)?;
         Ok(self)
     }
 
     /// Set a cookie on the response.
+    ///
+    /// This is more ergonomic that using [`Request::cookies`].
+    ///
+    /// ```
+    /// # use rwf::http::{Response, CookieBuilder};
+    /// let response = Response::new()
+    ///     .cookie(
+    ///         CookieBuilder::new()
+    ///             .name("my_cookie")
+    ///             .value("rwf")
+    ///             .build()
+    ///     );
+    /// ```
     pub fn cookie(mut self, cookie: Cookie) -> Self {
         self.cookies.add(cookie);
         self
     }
 
     /// Set the session on the response.
+    ///
+    /// The session is renewed automatically if it has expired.
     pub fn set_session(mut self, session: Session) -> Self {
         self.session = Some(session);
         self
     }
 
-    /// Get the response's session, if any is set.
+    /// Get the response session, if any is set.
+    ///
+    /// All requests should have a session unless the browser
+    /// doesn't respect cookies.
     pub fn session(&self) -> &Option<Session> {
         &self.session
     }
@@ -288,7 +331,8 @@ impl Response {
         self.code == 101 && self.headers.get("upgrade").map(|s| s == "websocket") == Some(true)
     }
 
-    /// Return a response containing one or multiple Turbo Streams.
+    /// Create a response containing turbo streams. This sets the correct
+    /// `Content-Type` headers to be parsed by Turbo.
     pub fn turbo_stream(self, body: &[TurboStream]) -> Self {
         let body = body
             .iter()
@@ -299,22 +343,22 @@ impl Response {
             .header("content-type", "text/vnd.turbo-stream.html")
     }
 
-    /// HTTP `404 - Not Found`.
+    /// Create a `404 - Not Found` response.
     pub fn not_found() -> Self {
         Self::error_pretty("404 - Not Found", "").code(404)
     }
 
-    /// HTTP `405 - Method Not Allowed`.
+    /// Create a `405 - Method Not Allowed` response.
     pub fn method_not_allowed() -> Self {
         Self::error_pretty("405 - Method Not Allowed", "").code(405)
     }
 
-    /// HTTP `400 - Bad Request`.
+    /// Create a `400 - Bad Request` response.
     pub fn bad_request() -> Self {
         Self::error_pretty("400 - Bad Request", "").code(400)
     }
 
-    /// CSRF token validation error. Returns `400 - Bad Request`.
+    /// Create CSRF token validation error. Returns `400 - Bad Request` response.
     pub fn csrf_error() -> Self {
         Self::error_pretty(
             "400 - CSRF Token Validation Failed",
@@ -323,23 +367,25 @@ impl Response {
         .code(400)
     }
 
-    /// HTTP `501 - Not Implemented`.
+    /// Create `501 - Not Implemented` response.
     pub fn not_implemented() -> Self {
         Self::error_pretty("501 - Not Implemented", "").code(501)
     }
 
-    /// HTTP `403 - Forbidden`.
+    /// Create `403 - Forbidden` response.
     pub fn forbidden() -> Self {
         Self::error_pretty("403 - Forbidden", "").code(403)
     }
 
-    /// HTTP `413 - Content Too Large`.
+    /// Create `413 - Content Too Large` response.
     pub fn content_too_large() -> Self {
         Self::error_pretty("413 - Content Too Large", "").code(413)
     }
 
-    /// HTTP `500 - Internal Server Error`. Requires the error that was caught,
-    /// for debugging purposes. The error is shown in development (debug) and hidden in production (release).
+    /// Create `500 - Internal Server Error` response.
+    ///
+    /// Requires the error that was returned for debugging purposes.
+    /// The error is shown in development (debug) and hidden in production (release).
     pub fn internal_error(err: impl std::error::Error) -> Self {
         // TODO:
         #[cfg(debug_assertions)]
@@ -355,7 +401,7 @@ impl Response {
     }
 
     /// Use the internal template to render a better looking error page.
-    /// Returns HTTP `500 - Internal Server Error`.
+    /// Returns `500 - Internal Server Error` response.
     pub fn error_pretty(title: &str, message: &str) -> Self {
         let body = ERROR_TEMPLATE
             .render([("title", title), ("message", message)])
@@ -364,19 +410,19 @@ impl Response {
         Self::new().html(body).code(500)
     }
 
-    /// HTTP `401 - Unauthorized`.
+    /// Create `401 - Unauthorized` response.
     pub fn unauthorized(auth: &str) -> Self {
         Self::error_pretty("401 - Unauthorized", "")
             .code(401)
             .header("www-authenticate", auth)
     }
 
-    /// HTTP `429 - Too Many`.
+    /// Create `429 - Too Many` response.
     pub fn too_many() -> Self {
         Self::error_pretty("429 - Too Many", "").code(429)
     }
 
-    /// HTTP `302 - Found`, also known as a redirect.
+    /// Create `302 - Found` response, also known as a redirect.
     pub fn redirect(self, to: impl ToString) -> Self {
         self.html("")
             .header("location", to)
@@ -385,8 +431,9 @@ impl Response {
             .header("cache-control", "no-cache")
     }
 
-    /// HTTP `101 - Switching Protocols`. Can be used for upgrading the connection
-    /// to HTTP/2 or WebSocket. The protocol argument isn't checked.
+    /// Create `101 - Switching Protocols`. Can be used for upgrading the connection
+    /// to HTTP/2 or WebSocket. The protocol argument isn't checked, so ideally this is used
+    /// internally only.
     pub fn switching_protocols(protocol: &str) -> Self {
         let mut response = Self::default();
         response.headers.clear();
