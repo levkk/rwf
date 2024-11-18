@@ -2,20 +2,18 @@
 //!
 //! This is also known as a cron.
 //!
-//! #### TODO
-//!
-//! Currently, there is no synchronization between multiple instances of
-//! this clock. This cron isn't yet distributed, so only spawn one instance
-//! of this clock in your app infrastructure.
 use super::{Cron, Error, Job, JobHandler};
-use crate::colors::MaybeColorize;
+use crate::{colors::MaybeColorize, model::Pool};
 
 use std::sync::Arc;
 use time::OffsetDateTime;
 
 use serde::Serialize;
-use tokio::time::{interval, Duration};
+use std::time::Instant;
+use tokio::time::{sleep, Duration};
 use tracing::{error, info};
+
+static LOCK: i64 = 4334345490663;
 
 /// A job that runs on a schedule.
 pub struct ScheduledJob {
@@ -75,15 +73,21 @@ impl Clock {
     }
 
     /// Run the clock. This blocks forever.
-    pub async fn run(&self) {
-        info!("Clock started");
+    pub async fn run(&self) -> Result<(), Error> {
+        info!("Clock is waiting for lock");
 
-        let mut clock = interval(Duration::from_secs(1));
+        let mut lock = Pool::connection().await?;
+        lock.leak();
+
+        lock.client()
+            .execute(&format!("SELECT pg_advisory_lock({})", LOCK), &[])
+            .await?;
+
+        info!("Clock is running");
 
         loop {
-            clock.tick().await;
+            let start = Instant::now();
             let now = OffsetDateTime::now_utc();
-
             let jobs = self.jobs.clone();
 
             tokio::spawn(async move {
@@ -102,6 +106,14 @@ impl Clock {
                     }
                 }
             });
+
+            // Make sure we still have a lock.
+            lock.query_cached(&format!("SELECT pg_advisory_lock({})", LOCK), &[])
+                .await?;
+
+            // Clock should strive to run once a second.
+            let remaining = Duration::from_secs(1).saturating_sub(start.elapsed());
+            sleep(remaining).await;
         }
     }
 }

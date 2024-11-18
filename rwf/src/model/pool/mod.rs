@@ -80,6 +80,7 @@ pub struct ConnectionGuard {
     connection: Option<Connection>,
     pool: Pool,
     rollback: bool,
+    leaked: bool,
 }
 
 impl ConnectionGuard {
@@ -95,6 +96,7 @@ impl ConnectionGuard {
             connection: Some(connection),
             pool,
             rollback: false,
+            leaked: false,
         }
     }
 
@@ -111,12 +113,30 @@ impl ConnectionGuard {
     pub fn connection_mut(&mut self) -> &mut Connection {
         self.connection.as_mut().unwrap()
     }
+
+    /// Take this connection from the pool forever. The pool will pretend
+    /// like this connection never existed.
+    ///
+    /// ### Note
+    ///
+    /// Leaking too many connections can increase the number of open connections
+    /// to your database beyond acceptable limits.
+    pub fn leak(&mut self) {
+        if !self.leaked {
+            self.pool.leak(self.connection());
+            self.leaked = true;
+        }
+    }
 }
 
 impl Drop for ConnectionGuard {
     /// Return the connection to the pool, automatically
     /// rolling back any unfinished transaction.
     fn drop(&mut self) {
+        if self.leaked {
+            return;
+        }
+
         if let Some(mut connection) = self.connection.take() {
             connection.used();
 
@@ -377,6 +397,14 @@ impl Pool {
         self.checkin_notify.notify_one();
     }
 
+    /// Take the connection from the pool forever.
+    ///
+    /// The caller is responsible for closing the connection. The pool
+    /// will pretend like this connection never existed.
+    fn leak(&self, _connection: &Connection) {
+        self.inner.lock().expected -= 1;
+    }
+
     #[allow(dead_code)]
     fn maintenance(&self) {
         let now = Instant::now();
@@ -418,10 +446,14 @@ impl Drop for Pool {
 
 #[cfg(test)]
 mod test {
+    use std::env;
+
     use super::*;
 
     #[tokio::test]
     async fn test_pool() -> Result<(), Error> {
+        env::set_var("RWF_DATABASE_CHECKOUT_TIMEOUT", "500");
+
         let pool = Pool::from_env();
         let conn = pool.get().await?;
         let row = conn.client().query("SELECT 1", &[]).await?;
@@ -437,6 +469,11 @@ mod test {
         assert!(pool.get().await.is_err());
 
         drop(conn);
+
+        let mut conn = pool.get().await?;
+        assert!(pool.get().await.is_err());
+
+        conn.leak();
         assert!(pool.get().await.is_ok());
 
         Ok(())

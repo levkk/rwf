@@ -436,7 +436,14 @@ impl DatabaseConfig {
     }
 
     fn default_checkout_timeout() -> usize {
-        5 * 1000
+        match var("RWF_DATABASE_CHECKOUT_TIMEOUT") {
+            Ok(timeout) => match timeout.parse() {
+                Ok(timeout) => timeout,
+                Err(_) => 5 * 1000,
+            },
+
+            Err(_) => 5 * 1000,
+        }
     }
 
     /// Maximum amount of time to wait for a connection

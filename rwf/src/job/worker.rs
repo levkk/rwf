@@ -59,7 +59,12 @@ impl Worker {
 
         if let Some(clock) = self.clock.clone() {
             tokio::spawn(async move {
-                clock.run().await;
+                loop {
+                    if let Err(err) = clock.run().await {
+                        error!("Clock crashed, restarting in 1 second. Error: {:?}", err);
+                        sleep(Duration::from_secs(1)).await;
+                    }
+                }
             });
         }
 
