@@ -1,3 +1,11 @@
+//! Implementation of the Rwf templating language.
+//!
+//! Templates are effectively
+//! a translation of predefined functions and operations into equivalent Rust code.
+//! Coupled with Rust memory management, this makes this template engine pretty fast.
+//!
+//! The interpreter has a lexer, parser, and an executor. For a language usage examples,
+//! see [documentation](https://levkk.github.io/rwf/).
 pub mod context;
 pub mod error;
 pub mod language;
@@ -18,7 +26,7 @@ use std::sync::Arc;
 
 /// Rwf template.
 ///
-/// Contains the AST for the template.
+/// Contains the executable AST.
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Template {
@@ -41,6 +49,16 @@ impl Template {
     }
 
     /// Read and compile a template from a string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::view::template::*;
+    /// let template = Template::from_str("<%= 1 + 5 %>").unwrap();
+    /// let result = template.render_default().unwrap();
+    ///
+    /// assert_eq!(result, "6");
+    /// ```
     pub fn from_str(template: &str) -> Result<Self, Error> {
         Ok(Template {
             program: Program::from_str(template)?,
@@ -48,7 +66,8 @@ impl Template {
         })
     }
 
-    /// Given a context, execute the template, producing a string.
+    /// Execute a template, provided with the context, and produce a rendering. The rendering
+    /// is a string.
     pub fn render(&self, context: impl TryInto<Context, Error = Error>) -> Result<String, Error> {
         let context: Context = context.try_into()?;
 
@@ -64,10 +83,14 @@ impl Template {
         }
     }
 
+    /// [`Self::render`] with an empty context. Used for templates that don't use any variables, or only
+    /// have globally defined variables.
     pub fn render_default(&self) -> Result<String, Error> {
         self.render(&Context::default())
     }
 
+    /// Fetch the template from cache. If the template is not in cache, load it
+    /// from disk and store it in the cache for future use.
     pub fn cached(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
         match Templates::cache().get(path) {
             Ok(template) => Ok(template),
@@ -75,6 +98,7 @@ impl Template {
         }
     }
 
+    /// Load the template from disk and store it in the cache for future use. Alias for [`Self::cached`].
     pub fn load(path: impl AsRef<Path> + Copy) -> Result<Arc<Self>, Error> {
         Self::cached(path)
     }
@@ -85,6 +109,12 @@ impl Template {
         Context::defaults(context);
     }
 
+    /// Render a static template (without variables). If the template doesn't exist
+    /// and combined with the `?` operator,
+    /// automatically return `500 - Internal Server Error`.
+    ///
+    /// Useful inside controllers.
+    ///
     pub fn cached_static(path: impl AsRef<Path> + Copy) -> Result<Response, Error> {
         match Self::cached(path) {
             Ok(template) => Ok(template.try_into()?),

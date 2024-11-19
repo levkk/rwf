@@ -1,3 +1,6 @@
+//! Implementation of the template language.
+//!
+//! Includes the parser and runtime.
 pub mod expression;
 pub mod op;
 pub mod program;

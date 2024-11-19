@@ -1,3 +1,4 @@
+//! Language statement, code which executes arbitrary instructions, like for loops or print to screen.
 use super::{
     super::Template,
     super::{Context, Error, Token, TokenWithContext, Tokenize, Value},
@@ -25,6 +26,7 @@ macro_rules! block_end {
     };
 }
 
+/// Program statement.
 #[derive(Debug, Clone)]
 pub enum Statement {
     // e.g. `<%= variable %>`
@@ -56,11 +58,13 @@ pub enum Statement {
 }
 
 impl Statement {
+    /// Compile statement from text.
     pub fn from_str(string: &str) -> Result<Self, Error> {
         let tokens = string.tokenize()?;
         Statement::parse(&mut tokens.into_iter().peekable())
     }
 
+    /// Evaluate a statement given the context.
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
             Statement::Render(path) => {
@@ -151,6 +155,7 @@ impl Statement {
         }
     }
 
+    /// Parse the statement from a stream of tokens. This consumes tokens from the stream.
     pub fn parse(
         iter: &mut Peekable<impl Iterator<Item = TokenWithContext>>,
     ) -> Result<Statement, Error> {

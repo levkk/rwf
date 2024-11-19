@@ -1,8 +1,11 @@
+//! Errors returned by the template engine.
+
 use super::{Token, TokenWithContext};
 use thiserror::Error;
 
 use std::path::{Path, PathBuf};
 
+/// Template error.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("syntax error")]
@@ -40,6 +43,7 @@ pub enum Error {
 }
 
 impl Error {
+    /// Render the template error in a human-readable way.
     // TODO: this function is iffy. Needs more work.
     pub fn pretty(self, source: &str, path: Option<impl AsRef<Path> + Copy>) -> Self {
         let token = match self {

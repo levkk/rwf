@@ -1,3 +1,14 @@
+//! Template context. Contains variable assignments.
+//!
+//! Most Rust data types can be converted to template data types
+//! automatically.
+//!
+//! Contexts can be created easily using the `context!` macro, for example:
+//!
+//! ```ignore
+//! let ctx = context!("var" => 1, "title" => "hello world!");
+//! ```
+//!
 use crate::view::template::{Error, ToTemplateValue, Value};
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -9,26 +20,31 @@ use once_cell::sync::Lazy;
 static DEFAULTS: Lazy<Arc<RwLock<Context>>> =
     Lazy::new(|| Arc::new(RwLock::new(Context::default())));
 
+/// Template context.
 #[derive(Debug, Default, Clone)]
 pub struct Context {
     values: HashMap<String, Value>,
 }
 
 impl Context {
+    /// Create new empty context.
     pub fn new() -> Self {
         DEFAULTS.read().clone()
     }
 
+    /// Get a variable value.
     pub fn get(&self, key: &str) -> Option<Value> {
         self.values.get(key).cloned()
     }
 
+    /// Set a variable value. Converts from Rust types to template types automatically.
     pub fn set(&mut self, key: &str, value: impl ToTemplateValue) -> Result<&mut Self, Error> {
         self.values
             .insert(key.to_string(), value.to_template_value()?);
         Ok(self)
     }
 
+    /// Set global variable defaults.
     pub fn defaults(context: Self) {
         (*DEFAULTS.write()) = context;
     }

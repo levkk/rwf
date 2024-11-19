@@ -1,3 +1,4 @@
+//! Language expression. When evaluated, produces a single value.
 use super::{
     super::lexer::{Token, TokenWithContext, Tokenize, Value},
     super::Context,
@@ -430,8 +431,12 @@ impl Expression {
     }
 }
 
+/// Evalute an expression given a context.
 pub trait Evaluate {
+    /// Evaluate expression given the context.
     fn evaluate(&self, context: &Context) -> Result<Value, Error>;
+
+    /// Evaluate expression with an empty context.
     fn evaluate_default(&self) -> Result<Value, Error> {
         self.evaluate(&Context::default())
     }

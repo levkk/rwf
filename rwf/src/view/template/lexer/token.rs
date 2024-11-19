@@ -1,3 +1,4 @@
+//! Known language tokens.
 use super::Value;
 
 /// A template language token, e.g. `if` or `for`.

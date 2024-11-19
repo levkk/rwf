@@ -1,9 +1,11 @@
+//! Expression term, a single entity in an expression.
 use super::super::{
     lexer::{Token, Value},
     Context,
 };
 use crate::view::template::error::Error;
 
+/// Expression term.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Constant(Value),
@@ -12,18 +14,22 @@ pub enum Term {
 }
 
 impl Term {
+    /// Convert a token into a term. If the token isn't a term, return `None`.
     pub fn from_token(token: Token) -> Option<Self> {
         Option::<Self>::from(token)
     }
 
+    /// Create a constant term from a value. Constant terms are evaluated to the value.
     pub fn constant(value: Value) -> Self {
         Term::Constant(value)
     }
 
+    /// Create a variable term. The term requires a context to be evaluated.
     pub fn variable(name: String) -> Self {
         Term::Variable(name)
     }
 
+    /// Evalutate the term given the context.
     pub fn evaluate(&self, context: &Context) -> Result<Value, Error> {
         match self {
             Term::Constant(value) => Ok(value.clone()),
@@ -34,6 +40,8 @@ impl Term {
         }
     }
 
+    /// Get the term name, i.e. what it's called in the code, variable or function name.
+    /// Constant terms don't have names.
     pub fn name(&self) -> &str {
         match self {
             Term::Variable(name) => name,

@@ -1,8 +1,10 @@
+//! Mathematical operation between data types.
 use super::super::lexer::{Token, Value};
 use super::super::Error;
 
 use std::cmp::Ordering;
 
+/// List of supported operations, e.g. addition, equality, etc.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Op {
     Not,
@@ -30,10 +32,13 @@ impl PartialOrd for Op {
 }
 
 impl Op {
+    /// Convert a language token to an op. If the token
+    /// isn't an op, `None` is returned.
     pub fn from_token(token: Token) -> Option<Self> {
         Option::<Self>::from(token)
     }
 
+    /// Is this a binary operator, i.e. an operation between two terms?
     pub fn binary(&self) -> bool {
         match self {
             Op::Not => false,
@@ -41,6 +46,7 @@ impl Op {
         }
     }
 
+    /// Evaluate the operation on a value.
     pub fn evaluate_unary(&self, value: &Value) -> Result<Value, Error> {
         match self {
             Op::Not => Ok(Value::Boolean(!value.truthy())),
@@ -54,6 +60,7 @@ impl Op {
         }
     }
 
+    /// Combinate two terms into one using the operation.
     pub fn evaluate_binary(&self, left: &Value, right: &Value) -> Result<Value, Error> {
         match self {
             Op::Equals => Ok(Value::Boolean(left == right)),
@@ -72,6 +79,8 @@ impl Op {
         }
     }
 
+    /// Calculate operator precendence, i.e. in an expression with multiple
+    /// operations, determine their order of execution.
     // Source: <https://en.cppreference.com/w/c/language/operator_precedence>
     pub fn precendence(&self) -> u8 {
         match self {

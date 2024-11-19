@@ -1,12 +1,17 @@
+//! Executable template.
+//!
+//! A program is a list of statements.
 use super::super::{Context, Error, TokenWithContext, Tokenize};
 use super::Statement;
 
+/// Executable program.
 #[derive(Debug, Clone)]
 pub struct Program {
     statements: Vec<Statement>,
 }
 
 impl Program {
+    /// Evaluate the program given the context. The context contains variable definitions.
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         let mut result = String::new();
         for statement in &self.statements {
@@ -16,6 +21,7 @@ impl Program {
         Ok(result)
     }
 
+    /// Parse the program from a list of tokens.
     pub fn parse(tokens: Vec<TokenWithContext>) -> Result<Self, Error> {
         let mut iter = tokens.into_iter().peekable();
         let mut statements = vec![];
@@ -28,6 +34,7 @@ impl Program {
         Ok(Program { statements })
     }
 
+    /// Compile the program from source.
     pub fn from_str(source: &str) -> Result<Self, Error> {
         let tokens = source.tokenize()?;
         Program::parse(tokens)

@@ -1,3 +1,4 @@
+//! Read text and transform it into a list of known language tokens.
 pub mod token;
 pub mod value;
 
@@ -6,6 +7,7 @@ pub use value::{ToTemplateValue, Value};
 
 use super::Error;
 
+/// Token with source code location context.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TokenWithContext {
     token: Token,
@@ -24,6 +26,7 @@ impl std::fmt::Display for TokenWithContext {
 }
 
 impl TokenWithContext {
+    /// Create new token with location context.
     pub fn new(token: Token, line: usize, column: usize) -> Self {
         Self {
             token,
@@ -32,14 +35,17 @@ impl TokenWithContext {
         }
     }
 
+    /// Get line.
     pub fn line(&self) -> usize {
         self.line
     }
 
+    /// Get column.
     pub fn column(&self) -> usize {
         self.column
     }
 
+    /// Get the token.
     pub fn token(&self) -> Token {
         self.token.clone()
     }
@@ -468,9 +474,9 @@ impl<'a> Lexer<'a> {
     }
 }
 
-// Easily tokenize strings.
+/// Easily tokenize strings.
 pub trait Tokenize {
-    // Parse a string and convert it to a list of tokens.
+    /// Parse a string and convert it to a list of tokens.
     fn tokenize(&self) -> Result<Vec<TokenWithContext>, Error>;
 }
 

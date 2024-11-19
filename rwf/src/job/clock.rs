@@ -13,7 +13,7 @@ use std::time::Instant;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
 
-static LOCK: i64 = 4334345490663;
+static LOCK: i64 = 4_334_345_490_663;
 
 /// A job that runs on a schedule.
 pub struct ScheduledJob {
