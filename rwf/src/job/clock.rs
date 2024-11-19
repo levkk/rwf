@@ -3,7 +3,10 @@
 //! This is also known as a cron.
 //!
 use super::{Cron, Error, Job, JobHandler};
-use crate::{colors::MaybeColorize, model::Pool};
+use crate::{
+    colors::MaybeColorize,
+    model::{ConnectionGuard, Pool},
+};
 
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -72,6 +75,18 @@ impl Clock {
         }
     }
 
+    async fn check_lock(conn: &ConnectionGuard) -> Result<bool, Error> {
+        let rows = conn
+            .client()
+            .query(&format!("SELECT pg_try_advisory_lock({})", LOCK), &[])
+            .await?;
+        if let Some(row) = rows.get(0) {
+            Ok(row.try_get::<_, bool>(0)?)
+        } else {
+            Ok(false)
+        }
+    }
+
     /// Run the clock. This blocks forever.
     pub async fn run(&self) -> Result<(), Error> {
         info!("Clock is waiting for lock");
@@ -79,9 +94,9 @@ impl Clock {
         let mut lock = Pool::connection().await?;
         lock.leak();
 
-        lock.client()
-            .execute(&format!("SELECT pg_advisory_lock({})", LOCK), &[])
-            .await?;
+        while !Self::check_lock(&lock).await? {
+            sleep(Duration::from_secs(1)).await;
+        }
 
         info!("Clock is running");
 
@@ -108,8 +123,10 @@ impl Clock {
             });
 
             // Make sure we still have a lock.
-            lock.query_cached(&format!("SELECT pg_advisory_lock({})", LOCK), &[])
-                .await?;
+            // This will error out if the connection broke and we lost the lock.
+            if !Self::check_lock(&lock).await? {
+                return Err(Error::CronConnectionError);
+            }
 
             // Clock should strive to run once a second.
             let remaining = Duration::from_secs(1).saturating_sub(start.elapsed());

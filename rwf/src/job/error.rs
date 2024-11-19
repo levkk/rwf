@@ -35,6 +35,9 @@ pub enum Error {
     /// Cron value specified for the schedule isn't valid.
     #[error("specified cron schedule is not valid")]
     CronValueError,
+
+    #[error("lost connection to cron database")]
+    CronConnectionError,
 }
 
 impl From<serde_json::Error> for Error {
