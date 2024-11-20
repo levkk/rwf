@@ -47,11 +47,52 @@ impl Templates {
         let template = Arc::new(Template::new(path)?);
 
         if cache_templates {
-            self.templates.insert(path.as_ref().to_owned(), template);
-            Ok(self.templates.get(path.as_ref()).unwrap().clone())
+            self.templates
+                .insert(path.as_ref().to_owned(), template.clone());
+            Ok(template)
         } else {
             Ok(template)
         }
+    }
+
+    /// Compile the template from source and store it in the cache. Requires a globally unique
+    /// path key, which doesn't have to point to anything that actually exists.
+    pub fn from_str(
+        &mut self,
+        path: impl AsRef<Path> + Copy,
+        src: &str,
+    ) -> Result<Arc<Template>, Error> {
+        let cache_templates = get_config().general.cache_templates;
+
+        if let Some(t) = self.templates.get(path.as_ref()) {
+            return Ok(t.clone());
+        }
+
+        let template = Arc::new(Template::from_str(src)?);
+
+        if cache_templates {
+            self.templates
+                .insert(path.as_ref().to_owned(), template.clone());
+            Ok(template)
+        } else {
+            Ok(template)
+        }
+    }
+
+    pub fn preload(&mut self, path: impl AsRef<Path> + Copy) -> Result<(), Error> {
+        let template = Arc::new(Template::new(path)?);
+        self.templates
+            .insert(path.as_ref().to_owned(), template.clone());
+
+        Ok(())
+    }
+
+    pub fn preload_str(&mut self, path: impl AsRef<Path> + Copy, src: &str) -> Result<(), Error> {
+        let template = Arc::new(Template::from_str(src)?);
+        self.templates
+            .insert(path.as_ref().to_owned(), template.clone());
+
+        Ok(())
     }
 
     /// Obtain a lock to the global template cache.

@@ -32,6 +32,7 @@ async fn main() -> Result<(), Error> {
         "rwf_stimulus_src" => "/static/js/stimulus.js",
         "rwf_turbo_src" => "/static/js/turbo.js",
     ));
+    rwf_admin::install()?;
 
     // Configure logging.
     Logger::init();
@@ -40,17 +41,19 @@ async fn main() -> Result<(), Error> {
     // Not mandatory, but helpful for this demo.
     Migrations::migrate().await?;
 
-    Server::new(vec![
+    let mut routes = vec![
         route!("/" => IndexController),
         route!("/turbo-stream" => TurboStreamController),
         route!("/signup" => SignupController),
         route!("/logout" => LogoutController),
         route!("/chat" => ChatController),
         route!("/chat/typing" => TypingController),
+        engine!("/admin" => rwf_admin::engine()),
         StaticFiles::serve("static")?,
-    ])
-    .launch("0.0.0.0:8000")
-    .await?;
+    ];
+    routes.extend(rwf_admin::routes()?);
+
+    Server::new(routes).launch("0.0.0.0:8000").await?;
 
     Ok(())
 }

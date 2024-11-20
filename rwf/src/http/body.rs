@@ -26,6 +26,24 @@ pub enum Body {
     Text(String),
     /// UTF-8 encoded JSON string.
     Json(Vec<u8>),
+    /// A file that's already read into memory.
+    FileInclude { path: PathBuf, bytes: Vec<u8> },
+}
+
+impl Clone for Body {
+    fn clone(&self) -> Self {
+        use Body::*;
+        match self {
+            FileInclude { path, bytes } => Body::FileInclude {
+                path: path.clone(),
+                bytes: bytes.clone(),
+            },
+
+            Html(html) => Html(html.clone()),
+            Text(text) => Text(text.clone()),
+            _ => todo!("http body clone"),
+        }
+    }
 }
 
 impl Body {
@@ -37,6 +55,14 @@ impl Body {
     /// Create new body from a string assumed to be HTML.
     pub fn html(text: impl ToString) -> Self {
         Self::Html(text.to_string())
+    }
+
+    /// Create a new static file that's already loaded into memory.
+    pub fn file_include(path: &PathBuf, bytes: Vec<u8>) -> Self {
+        Self::FileInclude {
+            path: path.to_owned(),
+            bytes,
+        }
     }
 
     /// Send the body to the stream. If the body is a file,
@@ -58,6 +84,7 @@ impl Body {
             Text(text) => Ok(stream.write_all(text.as_bytes()).await?),
             Html(html) => Ok(stream.write_all(html.as_bytes()).await?),
             Json(json) => Ok(stream.write_all(json.as_slice()).await?),
+            FileInclude { bytes, .. } => Ok(stream.write_all(bytes).await?),
         }
     }
 
@@ -71,6 +98,7 @@ impl Body {
             Html(html) => html.as_bytes().len(),
             Json(json) => json.len(),
             Text(text) => text.as_bytes().len(),
+            FileInclude { bytes, .. } => bytes.len(),
         }
     }
 
@@ -89,7 +117,7 @@ impl Body {
         use Body::*;
 
         match self {
-            File { path, .. } => {
+            File { path, .. } | FileInclude { path, .. } => {
                 // Guessing the mime by the extension.
                 let extension = match path.extension() {
                     Some(extension) => extension.to_str().expect("OsStr to_str"),

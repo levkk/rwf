@@ -14,3 +14,4 @@ rand = "0.8"
 serde_json = "1"
 serde = "1"
 time = "0.3"
+rwf-admin = { path = "../../rwf-admin" }

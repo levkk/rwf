@@ -615,6 +615,14 @@ pub fn render(input: TokenStream) -> TokenStream {
     render::render_impl(input)
 }
 
+/// Include the template into the executable at compile time and render it at runtime.
+/// Templates rendered this way don't have to be stored in the "templates" directory
+/// in production.
+#[proc_macro]
+pub fn render_include(input: TokenStream) -> TokenStream {
+    render::render_include_impl(input)
+}
+
 /// Render a Turbo Stream.
 ///
 /// ### Example

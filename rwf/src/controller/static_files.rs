@@ -6,8 +6,11 @@
 //! To change this behavior, create the controller with [`StaticFiles::serve`] and then call [`StaticFiles::prefix`] to set the URL prefix
 //! to whatever you want.
 use super::{Controller, Error};
-use crate::http::{Handler, Request, Response};
-use std::path::{Path, PathBuf};
+use crate::http::{Body, Handler, Request, Response};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
 use tokio::fs::File;
@@ -17,6 +20,7 @@ use tracing::debug;
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
+    preloads: HashMap<PathBuf, Body>,
 }
 
 impl StaticFiles {
@@ -24,6 +28,12 @@ impl StaticFiles {
     ///
     /// The path can be relative, or absolute.
     pub fn serve(path: &str) -> std::io::Result<Handler> {
+        let statics = Self::new(path)?;
+
+        Ok(statics.handler())
+    }
+
+    pub fn new(path: &str) -> std::io::Result<Self> {
         let root_path = Path::new(path);
         let root = if root_path.is_absolute() {
             root_path.to_owned()
@@ -35,9 +45,18 @@ impl StaticFiles {
         let statics = Self {
             prefix: PathBuf::from("/").join(path),
             root,
+            preloads: HashMap::new(),
         };
 
-        Ok(Handler::wildcard(path, statics))
+        Ok(statics)
+    }
+
+    pub fn preload(mut self, path: impl AsRef<Path> + Copy, bytes: &[u8]) -> Self {
+        self.preloads.insert(
+            path.as_ref().to_owned(),
+            Body::file_include(&path.as_ref().to_owned(), bytes.to_vec()),
+        );
+        self
     }
 
     /// Set the prefix used in URLs.
@@ -50,12 +69,20 @@ impl StaticFiles {
         self.prefix = PathBuf::from(prefix);
         self
     }
+
+    pub fn handler(self) -> Handler {
+        Handler::wildcard(self.prefix.display().to_string().as_str(), self)
+    }
 }
 
 #[async_trait]
 impl Controller for StaticFiles {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let path = request.path().to_std();
+
+        if let Some(body) = self.preloads.get(&path) {
+            return Ok(Response::new().body(body.clone()));
+        }
 
         // Remove the prefix from the request path.
         let path_components = path.components();

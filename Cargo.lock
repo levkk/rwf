@@ -1891,7 +1891,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-admin"
-version = "0.1.5"
+version = "0.1.10"
 dependencies = [
  "once_cell",
  "rwf",
@@ -2548,6 +2548,7 @@ version = "0.1.0"
 dependencies = [
  "rand 0.8.5",
  "rwf",
+ "rwf-admin",
  "serde",
  "serde_json",
  "time",
