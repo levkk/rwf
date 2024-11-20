@@ -27,35 +27,76 @@ static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
 });
 
 /// Response status, e.g. 404, 200, etc.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Status {
-    /// HTTP 404.
-    NotFound,
-    /// HTTP 500.
-    InternalServerError,
-    /// HTTP 405.
-    MethodNotAllowed,
-    /// HTTP 200.
-    Ok,
-    /// HTTP 201.
-    Created,
-    /// Whatever code is passed in. Not checked.
-    Code(u16),
+    Continue = 100,
+    SwitchingProtocols = 101,
+    Processing = 102,
+    EarlyHints = 103,
+    Ok = 200,
+    Created = 201,
+    Accepted = 202,
+    NonAuthoritativeInformation = 203,
+    NoContent = 204,
+    ResetContent = 205,
+    PartialContent = 206,
+    MultiStatus = 207,
+    AlreadyReported = 208,
+    IMUsed = 226,
+    MultipleChoices = 300,
+    MovedPermanently = 301,
+    Found = 302,
+    SeeOther = 303,
+    NotModified = 304,
+    UseProxy = 305,
+    TemporaryRedirect = 307,
+    PermanentRedirect = 308,
+    BadRequest = 400,
+    Unauthorized = 401,
+    PaymentRequired = 402,
+    Forbidden = 403,
+    NotFound = 404,
+    MethodNotAllowed = 405,
+    NotAcceptable = 406,
+    ProxyAuthenticationRequired = 407,
+    RequestTimeout = 408,
+    Conflict = 409,
+    Gone = 410,
+    LengthRequired = 411,
+    PreconditionFailed = 412,
+    PayloadTooLarge = 413,
+    URITooLong = 414,
+    UnsupportedMediaType = 415,
+    RangeNotSatisfiable = 416,
+    ExpectationFailed = 417,
+    ImATeapot = 418,
+    MisdirectedRequest = 421,
+    UnprocessableEntity = 422,
+    Locked = 423,
+    FailedDependency = 424,
+    TooEarly = 425,
+    UpgradeRequired = 426,
+    PreconditionRequired = 428,
+    TooManyRequests = 429,
+    RequestHeaderFieldsTooLarge = 431,
+    UnavailableForLegalReasons = 451,
+    InternalServerError = 500,
+    NotImplemented = 501,
+    BadGateway = 502,
+    ServiceUnavailable = 503,
+    GatewayTimeout = 504,
+    HTTPVersionNotSupported = 505,
+    VariantAlsoNegotiates = 506,
+    InsufficientStorage = 507,
+    LoopDetected = 508,
+    NotExtended = 510,
+    NetworkAuthenticationRequired = 511,
 }
 
 impl Status {
     /// Get HTTP code.
     pub fn code(&self) -> u16 {
-        use Status::*;
-
-        match self {
-            NotFound => 404,
-            InternalServerError => 500,
-            MethodNotAllowed => 405,
-            Ok => 200,
-            Created => 201,
-            Code(code) => *code,
-        }
+        *self as u16
     }
 
     /// Return true if this is HTTP 200.
@@ -63,18 +104,78 @@ impl Status {
         self.code() < 300
     }
 }
-
 impl From<u16> for Status {
-    fn from(code: u16) -> Status {
-        use Status::*;
-
+    fn from(code: u16) -> Self {
         match code {
-            404 => NotFound,
-            500 => InternalServerError,
-            405 => MethodNotAllowed,
-            200 => Ok,
-            201 => Created,
-            code => Code(code),
+            100 => Status::Continue,
+            101 => Status::SwitchingProtocols,
+            102 => Status::Processing,
+            103 => Status::EarlyHints,
+
+            200 => Status::Ok,
+            201 => Status::Created,
+            202 => Status::Accepted,
+            203 => Status::NonAuthoritativeInformation,
+            204 => Status::NoContent,
+            205 => Status::ResetContent,
+            206 => Status::PartialContent,
+            207 => Status::MultiStatus,
+            208 => Status::AlreadyReported,
+            226 => Status::IMUsed,
+
+            300 => Status::MultipleChoices,
+            301 => Status::MovedPermanently,
+            302 => Status::Found,
+            303 => Status::SeeOther,
+            304 => Status::NotModified,
+            305 => Status::UseProxy,
+            307 => Status::TemporaryRedirect,
+            308 => Status::PermanentRedirect,
+
+            400 => Status::BadRequest,
+            401 => Status::Unauthorized,
+            402 => Status::PaymentRequired,
+            403 => Status::Forbidden,
+            404 => Status::NotFound,
+            405 => Status::MethodNotAllowed,
+            406 => Status::NotAcceptable,
+            407 => Status::ProxyAuthenticationRequired,
+            408 => Status::RequestTimeout,
+            409 => Status::Conflict,
+            410 => Status::Gone,
+            411 => Status::LengthRequired,
+            412 => Status::PreconditionFailed,
+            413 => Status::PayloadTooLarge,
+            414 => Status::URITooLong,
+            415 => Status::UnsupportedMediaType,
+            416 => Status::RangeNotSatisfiable,
+            417 => Status::ExpectationFailed,
+            418 => Status::ImATeapot,
+            421 => Status::MisdirectedRequest,
+            422 => Status::UnprocessableEntity,
+            423 => Status::Locked,
+            424 => Status::FailedDependency,
+            425 => Status::TooEarly,
+            426 => Status::UpgradeRequired,
+            428 => Status::PreconditionRequired,
+            429 => Status::TooManyRequests,
+            431 => Status::RequestHeaderFieldsTooLarge,
+            451 => Status::UnavailableForLegalReasons,
+
+            500 => Status::InternalServerError,
+            501 => Status::NotImplemented,
+            502 => Status::BadGateway,
+            503 => Status::ServiceUnavailable,
+            504 => Status::GatewayTimeout,
+            505 => Status::HTTPVersionNotSupported,
+            506 => Status::VariantAlsoNegotiates,
+            507 => Status::InsufficientStorage,
+            508 => Status::LoopDetected,
+            510 => Status::NotExtended,
+            511 => Status::NetworkAuthenticationRequired,
+
+            // Fallback for unknown status codes
+            _ => panic!("Unknown HTTP status code: {}", code),
         }
     }
 }
