@@ -1,13 +1,20 @@
 [package]
 name = "rwf-admin"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
-include = ["/templates"]
+license = "MIT"
+description = "Admin panel for applications written with the Rust Web Framework"
+homepage = "https://levkk.github.io/rwf/"
+repository = "https://github.com/levkk/rwf"
+keywords = ["mvc", "web", "framework", "admin"]
+authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
+include = ["/templates", "/src", "/static"]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rwf = { path = "../rwf", version = ">=0.1" }
+rwf = { path = "../rwf", version = ">=0.1.11" }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
