@@ -49,5 +49,5 @@ Server::new(routes)
 
 ## Learn more
 
-- [exaples/turbo](https://github.com/levkk/rwf/tree/main/examples/turbo) app uses the admin panel
+- [examples/turbo](https://github.com/levkk/rwf/tree/main/examples/turbo) app uses the admin panel
 - [rwf-admin](https://github.com/levkk/rwf/tree/main/rwf-admin)
