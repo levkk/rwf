@@ -2,7 +2,7 @@
 
 [![Documentation](https://img.shields.io/badge/documentation-blue?style=flat)](https://levkk.github.io/rwf/)
 [![Latest crate](https://img.shields.io/crates/v/rwf-admin.svg)](https://crates.io/crates/rwf-admin)
-[![Reference docs](https://img.shields.io/docsrs/rwf-admin)](https://docs.rs/rwf/latest/rwf-admin/)
+[![Reference docs](https://img.shields.io/docsrs/rwf-admin)](https://docs.rs/rwf-admin)
 
 [Rwf](https://crates.io/crates/rwf) admin panel is a web application that provides a real time overview into web activity, background jobs queue insights, and allows to manipulate database models.
 
