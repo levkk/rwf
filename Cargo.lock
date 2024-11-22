@@ -1856,7 +1856,7 @@ checksum = "0e819f2bc632f285be6d7cd36e25940d45b2391dd6d9b939e79de557f7014248"
 
 [[package]]
 name = "rwf"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "aes",
  "aes-gcm-siv",
@@ -1891,7 +1891,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-admin"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "once_cell",
  "rwf",
