@@ -26,7 +26,7 @@
 //! Rwf is an MVC framework, so **C**ontrollers are fundamental to serving HTTP requests. Defining controllers requires
 //! imlementing the [`controller::Controller`] trait for a struct:
 //!
-//! ```rust
+//! ```
 //! use rwf::prelude::*;
 //!
 //! #[derive(Default)]
@@ -46,7 +46,7 @@
 //!
 //! Launching the Rwf HTTP server requires mapping routes to controllers, and can be done at application startup:
 //!
-//! ```rust
+//! ```
 //! use rwf::http::Server;
 //!
 //! # use rwf::prelude::*;
@@ -67,7 +67,7 @@
 //! With all the routes mapped to controllers, you can launch the server from anywhere in your app. Typically though,
 //! this is done from the main function:
 //!
-//! ```rust,ignore
+//! ```ignore
 //! use rwf::http::{Server, self};
 //!
 //! #[tokio::main]

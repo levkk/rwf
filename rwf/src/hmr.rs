@@ -18,6 +18,9 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Hot module reload loader.
+///
+/// All files that change under the specified path will trigger a page reload event.
 #[cfg(debug_assertions)]
 pub fn hmr(path: PathBuf) {
     use notify::event::ModifyKind;
@@ -36,8 +39,7 @@ pub fn hmr(path: PathBuf) {
 
                         if since_last_reload > Duration::from_millis(250) {
                             let everyone = Comms::notify();
-                            let reload = TurboStream::new("").action("reload-page").render();
-                            let _ = everyone.send(Message::Text(reload));
+                            let _ = everyone.send(TurboStream::new("").action("reload-page"));
                             info!("Starting hot reload");
                         }
                     }

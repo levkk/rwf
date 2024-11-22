@@ -20,8 +20,10 @@ use thiserror::Error;
 use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
 use tracing::debug;
 
+/// Error returned by comms.
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Error sending message through Tokio channel.
     #[error("{0}")]
     SendError(#[from] SendError<Message>),
 }
@@ -68,11 +70,13 @@ impl Websocket {
     }
 }
 
+/// Global messages channel.
 pub struct Messages {
     websocket: Arc<Mutex<HashMap<SessionId, Websocket>>>,
 }
 
 impl Messages {
+    /// Create new messages channel.
     pub fn new() -> Self {
         Self {
             websocket: Arc::new(Mutex::new(HashMap::new())),
@@ -84,10 +88,12 @@ impl Messages {
         self.websocket.lock().remove(session_id);
     }
 
+    /// Check that a session has an active WebSocket connection.
     pub fn websocket_connected(&self, session_id: &SessionId) -> bool {
         self.websocket.lock().get(session_id).is_some()
     }
 
+    /// Get a websocket message receiver. All messages sent from clients will be sent to the receiver.
     pub fn websocket_receiver(&self, session_id: &SessionId, _topic: &str) -> WebsocketReceiver {
         let mut guard = self.websocket.lock();
         let entry = guard
@@ -101,6 +107,8 @@ impl Messages {
         }
     }
 
+    /// Get a websocket message sender. This allows to send messages to all websocket connections
+    /// that this session has.
     pub fn websocket_sender(&self, session_id: &SessionId, _topic: &str) -> WebsocketSender {
         let mut guard = self.websocket.lock();
         let entry = guard
@@ -111,6 +119,7 @@ impl Messages {
         }
     }
 
+    /// Get a websocket message sender that will send messages to all _other_ sessions.
     pub fn websocket_broadcast(&self, session_id: &SessionId, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
         let entries = guard
@@ -122,6 +131,7 @@ impl Messages {
         Broadcast { everyone: entries }
     }
 
+    /// Get a websocket message sender that will send messages to _everyone_ connected.
     pub fn websocket_notify(&self, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
         let entries = guard
@@ -133,12 +143,14 @@ impl Messages {
     }
 }
 
+/// WebSocket message sender.
 #[derive(Debug)]
 pub struct WebsocketSender {
     sender: Sender<Message>,
 }
 
 impl WebsocketSender {
+    /// Send a message via WebSocket connection.
     pub fn send(&self, message: impl ToMessage) -> Result<usize, Error> {
         Ok(self.sender.send(message.to_message())?)
     }
