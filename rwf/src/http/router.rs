@@ -82,10 +82,16 @@ impl Router {
         let mut handlers = self.handlers.iter().map(|s| s).collect::<Vec<_>>();
         handlers.sort_by_key(|s| s.path().path());
         for handler in handlers {
+            // #[cfg(debug_assertions)]
+            // let regex = format!(" ({})", handler.path_with_regex().regex().as_str());
+
+            // #[cfg(not(debug_assertions))]
+            // let regex = "";
             info!(
                 ">> {} => {}",
                 handler.path().path().purple(),
-                handler.controller_name().green()
+                handler.controller_name().green(),
+                // regex,
             );
         }
     }

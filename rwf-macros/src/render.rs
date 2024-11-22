@@ -129,9 +129,7 @@ impl Parse for RenderInput {
     }
 }
 
-fn render_template(input: &RenderInput) -> proc_macro2::TokenStream {
-    let template_name = &input.template_name;
-
+fn render_call(input: &RenderInput) -> proc_macro2::TokenStream {
     let render_call = if input.context.is_empty() {
         vec![quote! {
             let html = template.render_default()?;
@@ -157,8 +155,30 @@ fn render_template(input: &RenderInput) -> proc_macro2::TokenStream {
     };
 
     quote! {
-        let template = rwf::view::template::Template::load(#template_name)?;
         #(#render_call)*
+    }
+}
+
+fn render_template_include(input: &RenderInput) -> proc_macro2::TokenStream {
+    let template_name = &input.template_name;
+    let render_call = render_call(input);
+
+    quote! {
+        let template = rwf::view::Templates::cache().from_str(
+            #template_name,
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", #template_name)),
+        )?;
+        #render_call
+    }
+}
+
+fn render_template(input: &RenderInput) -> proc_macro2::TokenStream {
+    let template_name = &input.template_name;
+    let render_call = render_call(input);
+
+    quote! {
+        let template = rwf::view::template::Template::load(#template_name)?;
+        #render_call
     }
 }
 
@@ -166,6 +186,31 @@ fn render_template(input: &RenderInput) -> proc_macro2::TokenStream {
 pub fn render_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as RenderInput);
     let render_call = render_template(&input);
+
+    let code = if let Some(code) = input.code {
+        quote! {
+            let response = response.code(#code);
+        }
+    } else {
+        quote! {}
+    };
+
+    quote! {
+        {
+            #render_call
+
+            let response = rwf::http::Response::new().html(html);
+            #code
+            return Ok(response)
+        }
+    }
+    .into()
+}
+
+/// `render_include!` implementation.
+pub fn render_include_impl(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as RenderInput);
+    let render_call = render_template_include(&input);
 
     let code = if let Some(code) = input.code {
         quote! {

@@ -56,6 +56,8 @@ impl JobsContext {
 impl Controller for Jobs {
     async fn handle(&self, _request: &Request) -> Result<Response, Error> {
         let template = Template::load("templates/rwf_admin/jobs.html")?;
-        Ok(Response::new().html(template.render(JobsContext::load().await?)?))
+        let context = JobsContext::load().await?;
+
+        Ok(Response::new().html(template.render(context)?))
     }
 }

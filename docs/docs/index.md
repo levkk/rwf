@@ -98,7 +98,7 @@ Once the server is running, you can visit the index page by pointing your browse
 
 The full code for this is available on GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
 
-## Learn more
+## Next steps
 
 - [Controllers](controllers/index.md)
 - [Models](models/index.md)
