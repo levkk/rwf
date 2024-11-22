@@ -2,6 +2,7 @@
 name = "rwf-admin"
 version = "0.1.10"
 edition = "2021"
+license = "MIT"
 description = "Admin panel for applications written with the Rust Web Framework"
 homepage = "https://levkk.github.io/rwf/"
 repository = "https://github.com/levkk/rwf"
