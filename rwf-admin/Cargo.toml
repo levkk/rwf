@@ -8,7 +8,7 @@ homepage = "https://levkk.github.io/rwf/"
 repository = "https://github.com/levkk/rwf"
 keywords = ["mvc", "web", "framework", "http", "orm", "admin"]
 authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
-include = ["/templates", "/src"]
+include = ["/templates", "/src", "/static"]
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
