@@ -33,10 +33,15 @@ impl Templates {
     /// Retrieve a template from the cache. If the template doesn't exist, it will be fetched
     /// from disk and compiled.
     ///
+    /// # Implementation note
+    ///
     /// While this has to be done while holding the global template lock, this operation will be
-    /// fast once most templates are cached.
-    /// Holding the global lock while reading the template from disk
-    /// prevents the thundering herd problem.
+    /// fast once most templates are cached. Holding the global lock while reading the template from disk
+    /// prevents the thundering herd problem in busy applications.
+    ///
+    /// # Preload templates
+    ///
+    /// To avoid cold start delays, preload your templates at runtime with [`Templates::preload`].
     pub fn get(&mut self, path: impl AsRef<Path> + Copy) -> Result<Arc<Template>, Error> {
         let cache_templates = get_config().general.cache_templates;
 
@@ -79,6 +84,8 @@ impl Templates {
         }
     }
 
+    /// Load and compile a template and store it in the cache. This will ensure
+    /// the template is loaded from cache at runtime.
     pub fn preload(&mut self, path: impl AsRef<Path> + Copy) -> Result<(), Error> {
         let template = Arc::new(Template::new(path)?);
         self.templates
@@ -87,6 +94,19 @@ impl Templates {
         Ok(())
     }
 
+    /// Load and compile a template from source. A template referenced with this path at runtime
+    /// will be fetched from cache.
+    ///
+    /// This method can be used to load templates that may not be available at runtime into memory.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::view::Templates;
+    /// Templates::cache()
+    ///     .preload_str("templates/index.html", "<h1><%= title %></h1>")
+    ///         .unwrap();
+    /// ```
     pub fn preload_str(&mut self, path: impl AsRef<Path> + Copy, src: &str) -> Result<(), Error> {
         let template = Arc::new(Template::from_str(src)?);
         self.templates

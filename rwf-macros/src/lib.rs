@@ -605,9 +605,7 @@ pub fn context(input: TokenStream) -> TokenStream {
 ///
 /// ### Example
 ///
-/// ```rust,ignore
-/// use rwf_macros::render;
-///
+/// ```ignore
 /// render!("templates/index.html", "title" => "Home page")
 /// ```
 #[proc_macro]
@@ -616,8 +614,15 @@ pub fn render(input: TokenStream) -> TokenStream {
 }
 
 /// Include the template into the executable at compile time and render it at runtime.
-/// Templates rendered this way don't have to be stored in the "templates" directory
-/// in production.
+/// Templates rendered this way don't have to be stored on disk in production.
+///
+/// This macro takes the same arguments as `render!`.
+///
+/// ### Example
+///
+/// ```ignore
+/// render_include!("templates/index.html")
+/// ```
 #[proc_macro]
 pub fn render_include(input: TokenStream) -> TokenStream {
     render::render_include_impl(input)

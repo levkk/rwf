@@ -31,6 +31,11 @@ pub enum Body {
 }
 
 impl Clone for Body {
+    /// Clone the body.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if [`Body::File`] is cloned.
     fn clone(&self) -> Self {
         use Body::*;
         match self {
@@ -38,10 +43,13 @@ impl Clone for Body {
                 path: path.clone(),
                 bytes: bytes.clone(),
             },
-
             Html(html) => Html(html.clone()),
             Text(text) => Text(text.clone()),
-            _ => todo!("http body clone"),
+            Json(json) => Json(json.clone()),
+            Bytes(bytes) => Bytes(bytes.clone()),
+            File { .. } => {
+                panic!("file body cannot be cloned, it contains an open file descriptor")
+            }
         }
     }
 }
