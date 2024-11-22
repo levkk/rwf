@@ -2,10 +2,7 @@
 name = "rwf-admin"
 version = "0.1.10"
 edition = "2021"
-include = ["/templates"]
-
-[lib]
-path = "src/lib.rs"
+include = ["/templates", "/src"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
