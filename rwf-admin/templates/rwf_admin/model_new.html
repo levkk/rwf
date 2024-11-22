@@ -17,6 +17,7 @@
 
     <div class="my-5">
         <form action="/admin/models/new" method="post">
+            <%= csrf_token() %>
             <input
                 type="hidden"
                 name="rwf_table_name"

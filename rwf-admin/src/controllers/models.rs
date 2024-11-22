@@ -122,7 +122,10 @@ impl PageController for NewModelController {
     }
 
     async fn post(&self, req: &Request) -> Result<Response, Error> {
-        let query = req.form_data()?.into_iter();
+        let query = req
+            .form_data()?
+            .into_iter()
+            .filter(|c| c.0 != "rwf_csrf_token");
         let mut columns = vec![];
         let mut values = vec![];
         let mut table_name = vec![];
