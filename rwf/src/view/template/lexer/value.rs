@@ -261,6 +261,7 @@ impl Value {
                 "capitalize" => Value::String(crate::capitalize(&value)),
                 "camelize" | "to_PascalCase" => Value::String(crate::pascal_case(&value)),
                 "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
+                "title" => Value::String(crate::title_case(&value)),
                 "urlencode" => Value::String(crate::http::urlencode(&value)),
                 "urldecode" => Value::String(crate::http::urldecode(&value)),
                 "len" => Value::Integer(value.len() as i64),
@@ -718,5 +719,13 @@ mod test {
             )
             .unwrap();
         assert_eq!(v, Value::String("Hey Alice, this is Alice".into()));
+    }
+
+    #[test]
+    fn test_title_case() {
+        let v = Value::String("hello world, how are you?".into())
+            .call("title", &[], &Context::default())
+            .unwrap();
+        assert_eq!(v, Value::String("Hello World, How Are You?".into()))
     }
 }

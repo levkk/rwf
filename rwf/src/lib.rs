@@ -138,6 +138,16 @@ pub fn capitalize(string: &str) -> String {
     uppercase
 }
 
+/// Convert string to title case.
+pub fn title_case(string: &str) -> String {
+    string
+        .split(" ")
+        .into_iter()
+        .map(|s| capitalize(s))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Convert string to PascalCase (often confused with camelCase).
 pub fn pascal_case(string: &str) -> String {
     string

@@ -174,3 +174,16 @@ This method accepts all data types, but it does convert them to their string rep
     ```
     1 two three
     ```
+
+### `title`
+
+Converts the string to "Title Case" formatting.
+
+=== "Template"
+    ```erb
+    <%= "hello world".title %>
+    ```
+=== "Output"
+    ```
+    Hello World
+    ```
