@@ -48,7 +48,7 @@ pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Sessio
 pub use engine::Engine;
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
-pub use static_files::StaticFiles;
+pub use static_files::{Cache, CacheControl, StaticFiles};
 pub use turbo_stream::TurboStream;
 
 use super::http::{
@@ -701,7 +701,10 @@ pub trait WebsocketController: Controller {
         let digest = Sha1::digest(accept.as_bytes());
         let base64 = general_purpose::STANDARD.encode(digest);
 
-        Ok(Response::switching_protocols("websocket").header("sec-websocket-accept", base64))
+        let response =
+            Response::switching_protocols("websocket").header("sec-websocket-accept", base64);
+
+        Ok(response)
     }
 
     /// Handle an incoming client message.

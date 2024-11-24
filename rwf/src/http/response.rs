@@ -233,7 +233,7 @@ impl Response {
             let session = request.session();
 
             if let Some(session) = session {
-                if !session.expired() {
+                if session.should_renew() {
                     let session = session
                         .clone()
                         .renew(get_config().general.session_duration());

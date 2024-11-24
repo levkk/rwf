@@ -219,7 +219,7 @@ impl Body {
                 }
             }
             Text(_) => "text/plain",
-            Html(_) => "text/html",
+            Html(_) => "text/html; charset=utf-8",
             Json(_) => "application/json",
             Bytes(_) => "application/octet-stream",
         }
