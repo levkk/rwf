@@ -9,6 +9,8 @@
 //! SELECT * FROM rwf_requests
 //! WHERE created_at > NOW() - INTERVAL '5 minutes';
 //! ```
+use base64::{engine::general_purpose, Engine as _};
+use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -18,6 +20,54 @@ use crate::http::CookieBuilder;
 use crate::model::{Model, Pool, ToValue};
 
 static COOKIE_NAME: &str = "rwf_aid";
+static COOKIE_DURATION: Duration = Duration::days(399);
+
+#[derive(Serialize, Deserialize)]
+struct AnalyticsCookie {
+    #[serde(rename = "u")]
+    uuid: String,
+    #[serde(rename = "e")]
+    expires: i64,
+}
+
+impl AnalyticsCookie {
+    fn uuid(&self) -> Option<Uuid> {
+        match Uuid::parse_str(&self.uuid) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => None,
+        }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            uuid: Uuid::new_v4().to_string(),
+            expires: (OffsetDateTime::now_utc() + COOKIE_DURATION).unix_timestamp(),
+        }
+    }
+
+    fn should_renew(&self) -> bool {
+        match OffsetDateTime::from_unix_timestamp(self.expires) {
+            Ok(timestamp) => timestamp - OffsetDateTime::now_utc() < Duration::days(7),
+            Err(_) => true,
+        }
+    }
+
+    fn to_network(&self) -> String {
+        let json = serde_json::to_string(self).unwrap();
+        general_purpose::STANDARD_NO_PAD.encode(&json)
+    }
+
+    fn from_network(s: &str) -> Option<Self> {
+        match general_purpose::STANDARD_NO_PAD.decode(s) {
+            Ok(v) => match serde_json::from_slice::<Self>(&v) {
+                Ok(cookie) => Some(cookie),
+                Err(_) => None,
+            },
+
+            Err(_) => None,
+        }
+    }
+}
 
 /// HTTP request tracker.
 pub struct RequestTracker {}
@@ -48,37 +98,39 @@ impl Middleware for RequestTracker {
             ((OffsetDateTime::now_utc() - request.received_at()).as_seconds_f64() * 1000.0) as f32;
         let client = request.peer().ip();
 
-        let (client_id, missing) = match request
+        let (create, cookie) = match request
             .cookies()
             .get(COOKIE_NAME)
-            .map(|cookie| Uuid::parse_str(cookie.value()))
+            .map(|cookie| AnalyticsCookie::from_network(&cookie.value()))
         {
-            Some(Ok(cookie)) => (cookie, false),
-            _ => (Uuid::new_v4(), true),
+            Some(Some(cookie)) => (cookie.should_renew(), cookie),
+            _ => (true, AnalyticsCookie::new()),
         };
 
-        if missing {
+        if create {
             let cookie = CookieBuilder::new()
                 .name(COOKIE_NAME)
-                .value(client_id.to_string())
-                .max_age(Duration::weeks(4))
+                .value(cookie.to_network())
+                .max_age(Duration::days(399))
                 .build();
 
             response = response.cookie(cookie);
         }
 
         if let Ok(mut conn) = Pool::connection().await {
-            let _ = AnalyticsRequest::create(&[
-                ("method", method.to_value()),
-                ("path", path.to_value()),
-                ("query", query.to_value()),
-                ("client_ip", client.to_value()),
-                ("client_id", client_id.to_value()),
-                ("code", code.to_value()),
-                ("duration", duration.to_value()),
-            ])
-            .execute(&mut conn)
-            .await;
+            if let Some(client_id) = cookie.uuid() {
+                let _ = AnalyticsRequest::create(&[
+                    ("method", method.to_value()),
+                    ("path", path.to_value()),
+                    ("query", query.to_value()),
+                    ("client_ip", client.to_value()),
+                    ("client_id", client_id.to_value()),
+                    ("code", code.to_value()),
+                    ("duration", duration.to_value()),
+                ])
+                .execute(&mut conn)
+                .await;
+            }
         }
 
         Ok(response)

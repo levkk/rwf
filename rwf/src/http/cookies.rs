@@ -290,6 +290,7 @@ impl Cookie {
 impl std::fmt::Display for Cookie {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}={}", self.name, self.value)?;
+
         if let Some(ref max_age) = self.max_age {
             write!(f, "; Max-Age: {}", max_age.whole_seconds())?;
         }
@@ -316,10 +317,6 @@ impl std::fmt::Display for Cookie {
             write!(f, "; SameSite={}", same_site)?;
         } else {
             write!(f, "; SameSite=Lax")?;
-        }
-
-        if let Some(ref max_age) = self.max_age {
-            write!(f, "; Max-Age={}", max_age.whole_seconds())?;
         }
 
         if let Some(ref expiration) = self.expiration {
