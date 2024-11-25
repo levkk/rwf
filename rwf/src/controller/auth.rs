@@ -324,3 +324,26 @@ impl Authentication for SessionAuth {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_should_renew() {
+        let mut session = Session::default();
+        assert!(!session.should_renew());
+
+        assert_eq!(get_config().general.session_duration(), Duration::weeks(4));
+
+        session.expiration = (OffsetDateTime::now_utc() + Duration::weeks(2)
+            - Duration::seconds(5))
+        .unix_timestamp();
+        assert!(session.should_renew());
+
+        session.expiration =
+            (OffsetDateTime::now_utc() + Duration::weeks(2) + Duration::seconds(5))
+                .unix_timestamp();
+        assert!(!session.should_renew());
+    }
+}

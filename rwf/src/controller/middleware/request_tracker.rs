@@ -84,3 +84,20 @@ impl Middleware for RequestTracker {
         Ok(response)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_request_tracker() {
+        let request = Request::default();
+        let response = Response::default();
+
+        let mut response = RequestTracker::new()
+            .handle_response(&request, response)
+            .await
+            .unwrap();
+        assert!(response.cookies().get(COOKIE_NAME).is_some());
+    }
+}

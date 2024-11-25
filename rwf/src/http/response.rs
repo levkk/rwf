@@ -543,6 +543,16 @@ impl Response {
             .header("upgrade", protocol)
             .code(101)
     }
+
+    /// Response headers.
+    pub fn headers(&self) -> &Headers {
+        &self.headers
+    }
+
+    /// Mutable response headers.
+    pub fn headers_mut(&mut self) -> &mut Headers {
+        &mut self.headers
+    }
 }
 
 impl From<serde_json::Value> for Response {
