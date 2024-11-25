@@ -242,7 +242,6 @@ pub fn random_string(n: usize) -> String {
 /// let token = csrf_token("1234").unwrap();
 /// ```
 pub fn csrf_token(session_id: &str) -> Result<String, Error> {
-    // Our encryption is salted, re-using some known plain text isn't an issue.
     let token = format!(
         "{}_{}",
         OffsetDateTime::now_utc().unix_timestamp(),
