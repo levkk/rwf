@@ -606,7 +606,7 @@ pub fn context(input: TokenStream) -> TokenStream {
 /// ### Example
 ///
 /// ```ignore
-/// render!("templates/index.html", "title" => "Home page")
+/// render!(request, "templates/index.html", "title" => "Home page")
 /// ```
 #[proc_macro]
 pub fn render(input: TokenStream) -> TokenStream {

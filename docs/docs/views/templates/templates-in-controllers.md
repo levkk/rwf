@@ -26,7 +26,7 @@ Since it's very common to render templates inside controllers, Rwf has the `rend
 #[async_trait]
 impl Controller for Index {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        render!("templates/index.html", "title" => "Home page")
+        render!(request, "templates/index.html", "title" => "Home page")
     }
 }
 ```
@@ -36,7 +36,7 @@ The `render!` macro takes the template path as the first argument, and optionall
 If the template doesn't have any variables, you can use `render!` with just the template name:
 
 ```rust
-render!("templates/index.html")
+render!(request, "templates/index.html")
 ```
 
 ### Response code
@@ -44,5 +44,5 @@ render!("templates/index.html")
 By default, the `render!` macro returns the rendered template with HTTP code `200 OK`. If you want to return a different code, pass it as the last argument to the macro:
 
 ```rust
-render!("templates/index.html", "title" => "Home page", 201)
+render!(request, "templates/index.html", "title" => "Home page", 201)
 ```

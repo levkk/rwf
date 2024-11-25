@@ -61,9 +61,13 @@ impl Middleware for Csrf {
         }
 
         let header = request.header(CSRF_HEADER);
+        let session_id = match request.session_id() {
+            Some(session_id) => session_id.to_string(),
+            None => return Ok(Outcome::Stop(request, Response::csrf_error())),
+        };
 
         if let Some(header) = header {
-            if csrf_token_validate(header) {
+            if csrf_token_validate(header, &session_id) {
                 return Ok(Outcome::Forward(request));
             }
         }
@@ -71,7 +75,7 @@ impl Middleware for Csrf {
         match request.form_data() {
             Ok(form_data) => {
                 if let Some(token) = form_data.get::<String>(CSRF_INPUT) {
-                    if csrf_token_validate(&token) {
+                    if csrf_token_validate(&token, &session_id) {
                         return Ok(Outcome::Forward(request));
                     }
                 }

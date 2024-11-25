@@ -15,7 +15,7 @@ impl Controller for TypingController {
 
         if let Some(user) = user {
             let broadcast = Comms::broadcast(&user);
-            broadcast.send(state.render(&user)?)?;
+            broadcast.send(state.render(request, &user)?)?;
 
             Ok(serde_json::json!({
                 "status": "success",
@@ -33,8 +33,9 @@ pub struct TypingState {
 }
 
 impl TypingState {
-    pub fn render(&self, user: &User) -> Result<TurboStream, Error> {
+    pub fn render(&self, request: &Request, user: &User) -> Result<TurboStream, Error> {
         let stream = turbo_stream!(
+            request,
             "templates/typing.html",
             "typing-indicators"
             "user" => user.clone()

@@ -185,6 +185,14 @@ impl Value {
         args: &[Value],
         context: &Context,
     ) -> Result<Self, Error> {
+        let session_id = match context.get("request") {
+            Some(Value::Hash(hash)) => hash
+                .get("session_id")
+                .unwrap_or(&Value::String("".into()))
+                .to_string(),
+
+            _ => "".to_string(),
+        };
         match method_name {
             "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
             "integer" => {
@@ -378,11 +386,11 @@ impl Value {
                     }
                 },
 
-                "csrf_token_raw" => Value::SafeString(crypto::csrf_token().unwrap()),
+                "csrf_token_raw" => Value::SafeString(crypto::csrf_token(&session_id).unwrap()),
                 "csrf_token" => Value::SafeString(format!(
                     r#"<input type="hidden" name="{}" value="{}">"#,
                     CSRF_INPUT,
-                    crypto::csrf_token().unwrap(),
+                    crypto::csrf_token(&session_id).unwrap(),
                 )),
 
                 "render" => match &args {
@@ -462,6 +470,15 @@ pub trait ToTemplateValue: Clone {
 impl ToTemplateValue for String {
     fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::String(self.clone()))
+    }
+}
+
+impl ToTemplateValue for Option<String> {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        match self {
+            Some(s) => Ok(s.to_template_value()?),
+            None => Ok(Value::Null),
+        }
     }
 }
 

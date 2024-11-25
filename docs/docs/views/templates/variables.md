@@ -79,7 +79,7 @@ async fn main() {
 You can override default variables in each template, by specifying the variable value when rendering the template:
 
 ```rust
-render!("templates/index.html", "global_var" => "Another value")
+render!(request, "templates/index.html", "global_var" => "Another value")
 ```
 
 

@@ -18,7 +18,7 @@ if request.get() {
 
 To avoid doing this and cluttering your codebase, Rwf comes with the [`PageController`](https://docs.rs/rwf/latest/rwf/controller/trait.PageController.html). This controller trait implements the `GET`/`POST` split automatically and routes requests to two separate methods: `async fn get` and `async fn post`.
 
-  Let's use the example of a login page and implement the `PageController` for it:
+Let's use the example of a login page built using the `PageController`:
 
 ```rust
 use rwf::prelude::*;
@@ -29,7 +29,7 @@ struct Login;
 impl PageController for Login {
     // Handle GET and show the login form.
     async fn get(&self, request: &Request) -> Result<Response, Error> {
-        render!("templates/login.html")
+        render!(request, "templates/login.html")
     }
 
     // Handle POST, receive form data, check information, and

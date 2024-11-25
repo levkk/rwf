@@ -9,6 +9,7 @@
 //! let ctx = context!("var" => 1, "title" => "hello world!");
 //! ```
 //!
+use crate::http::Request;
 use crate::view::template::{Error, ToTemplateValue, Value};
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -30,6 +31,14 @@ impl Context {
     /// Create new empty context.
     pub fn new() -> Self {
         DEFAULTS.read().clone()
+    }
+
+    /// Create template context from request.
+    pub fn from_request(request: &Request) -> Result<Self, Error> {
+        let mut ctx = Self::new();
+        ctx.set("request", request.to_template_value()?)?;
+
+        Ok(ctx)
     }
 
     /// Get a variable value.

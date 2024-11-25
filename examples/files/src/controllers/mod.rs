@@ -6,8 +6,8 @@ pub struct Upload;
 #[async_trait]
 impl PageController for Upload {
     /// Upload page.
-    async fn get(&self, _req: &Request) -> Result<Response, Error> {
-        render!("templates/upload.html")
+    async fn get(&self, req: &Request) -> Result<Response, Error> {
+        render!(req, "templates/upload.html")
     }
 
     /// Handle upload file.
@@ -16,7 +16,7 @@ impl PageController for Upload {
         let comment = form_data.get_required::<String>("comment")?;
 
         if let Some(file) = form_data.file("file") {
-            render!("templates/ok.html",
+            render!(req, "templates/ok.html",
                 "name" => file.name(),
                 "size" => file.body().len() as i64,
                 "content_type" => file.content_type(),

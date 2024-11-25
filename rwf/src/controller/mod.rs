@@ -300,7 +300,7 @@ pub trait Controller: Sync + Send {
 /// impl PageController for MyPage {
 ///     // Respond to a GET request.
 ///     async fn get(&self, request: &Request) -> Result<Response, Error> {
-///         render!("templates/my_page.html")
+///         render!(request, "templates/my_page.html")
 ///     }
 /// }
 /// ```

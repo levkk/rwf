@@ -1,13 +1,17 @@
 use crate::prelude::*;
 
 struct RenderInput {
+    request: Expr,
+    _comma_0: Token![,],
     template_name: LitStr,
-    _comma: Option<Token![,]>,
+    _comma_1: Option<Token![,]>,
     context: Vec<ContextInput>,
     code: Option<LitInt>,
 }
 
 struct TurboStreamInput {
+    request: Expr,
+    _comma_0: Token![,],
     template_name: LitStr,
     _comma_1: Token![,],
     id: Expr,
@@ -18,8 +22,10 @@ struct TurboStreamInput {
 impl TurboStreamInput {
     fn render_input(&self) -> RenderInput {
         RenderInput {
+            request: self.request.clone(),
+            _comma_0: self._comma_0.clone(),
             template_name: self.template_name.clone(),
-            _comma: self._comma_2.clone(),
+            _comma_1: self._comma_2.clone(),
             context: self.context.clone(),
             code: None,
         }
@@ -28,6 +34,8 @@ impl TurboStreamInput {
 
 impl Parse for TurboStreamInput {
     fn parse(input: ParseStream) -> Result<Self> {
+        let request: Expr = input.parse()?;
+        let _comma_0: Token![,] = input.parse()?;
         let template_name: LitStr = input.parse()?;
         let _comma_1: Token![,] = input.parse()?;
         let id: Expr = input.parse()?;
@@ -43,6 +51,8 @@ impl Parse for TurboStreamInput {
         }
 
         Ok(TurboStreamInput {
+            request,
+            _comma_0,
             template_name,
             _comma_1,
             id,
@@ -61,11 +71,15 @@ struct ContextInput {
 }
 
 struct Context {
+    // request: Expr,
+    // _comma_0: Token![,],
     values: Vec<ContextInput>,
 }
 
 impl Parse for Context {
     fn parse(input: ParseStream) -> Result<Self> {
+        // let request: Expr = input.parse()?;
+        // let _comma_0: Token![,] = input.parse()?;
         let mut values = vec![];
         loop {
             let context: Result<ContextInput> = input.parse();
@@ -77,7 +91,11 @@ impl Parse for Context {
             }
         }
 
-        Ok(Context { values })
+        Ok(Context {
+            // request,
+            // _comma_0,
+            values,
+        })
     }
 }
 
@@ -94,11 +112,13 @@ impl Parse for ContextInput {
 
 impl Parse for RenderInput {
     fn parse(input: ParseStream) -> Result<Self> {
+        let request: Expr = input.parse()?;
+        let _comma_0: Token![,] = input.parse()?;
         let template_name: LitStr = input.parse()?;
-        let _comma: Option<Token![,]> = input.parse()?;
+        let _comma_1: Option<Token![,]> = input.parse()?;
         let mut code = None;
 
-        let context = if _comma.is_some() {
+        let context = if _comma_1.is_some() {
             let mut result = vec![];
             loop {
                 if input.peek(LitInt) {
@@ -121,8 +141,10 @@ impl Parse for RenderInput {
         };
 
         Ok(RenderInput {
+            request,
+            _comma_0,
             template_name,
-            _comma,
+            _comma_1,
             context,
             code,
         })
@@ -130,13 +152,15 @@ impl Parse for RenderInput {
 }
 
 fn render_call(input: &RenderInput) -> proc_macro2::TokenStream {
+    let request = &input.request;
     let render_call = if input.context.is_empty() {
         vec![quote! {
-            let html = template.render_default()?;
+            let context = rwf::view::template::Context::from_request(#request)?;
+            let html = template.render(&context)?;
         }]
     } else {
         let mut values = vec![quote! {
-            let mut context = rwf::view::template::Context::new();
+            let mut context = rwf::view::template::Context::from_request(#request)?;
         }];
 
         for value in &input.context {

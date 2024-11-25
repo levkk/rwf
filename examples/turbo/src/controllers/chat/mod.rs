@@ -33,8 +33,14 @@ impl Default for ChatController {
 }
 
 impl ChatController {
-    fn chat_message(user: &User, message: &ChatMessage, mine: bool) -> Result<TurboStream, Error> {
+    fn chat_message(
+        request: &Request,
+        user: &User,
+        message: &ChatMessage,
+        mine: bool,
+    ) -> Result<TurboStream, Error> {
         Ok(turbo_stream!(
+            request,
             "templates/chat_message.html",
             "messages",
             "message" => UserMessage {
@@ -73,7 +79,7 @@ impl PageController for ChatController {
             })
             .collect::<Vec<_>>();
 
-        render!("templates/chat.html",
+        render!(request, "templates/chat.html",
             "title" => "rwf + Turbo = chat",
             "messages" => messages,
             "user" => user
@@ -99,16 +105,17 @@ impl PageController for ChatController {
         // Broadcast the message to everyone else.
         {
             let broadcast = Comms::broadcast(&user);
-            let message = Self::chat_message(&user, &message, false)?.render();
+            let message = Self::chat_message(request, &user, &message, false)?.render();
 
             broadcast.send(message)?;
-            broadcast.send(TypingState { typing: false }.render(&user)?)?;
+            broadcast.send(TypingState { typing: false }.render(request, &user)?)?;
         }
 
         // Display the message for the user.
-        let chat_message = Self::chat_message(&user, &message, true)?;
+        let chat_message = Self::chat_message(request, &user, &message, true)?;
 
         let form = turbo_stream!(
+            request,
             "templates/chat_form.html",
             "form",
             "user" => user,

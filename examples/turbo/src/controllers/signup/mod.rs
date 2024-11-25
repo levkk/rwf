@@ -29,8 +29,8 @@ impl Default for SignupController {
 #[async_trait]
 impl PageController for SignupController {
     /// Respond to GET request.
-    async fn get(&self, _request: &Request) -> Result<Response, Error> {
-        render!("templates/signup.html", "title" => "Signup")
+    async fn get(&self, request: &Request) -> Result<Response, Error> {
+        render!(request, "templates/signup.html", "title" => "Signup")
     }
 
     /// Respond to POST request.
