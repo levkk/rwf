@@ -119,7 +119,7 @@ impl Body {
     /// ```
     /// # use rwf::http::Body;
     /// let body = Body::html("<h1>Hello from Rwf!</h1>");
-    /// assert_eq!(body.mime_type(), "text/html");
+    /// assert_eq!(body.mime_type(), "text/html; charset=utf-8");
     /// ```
     pub fn mime_type(&self) -> &'static str {
         use Body::*;
@@ -219,7 +219,7 @@ impl Body {
                 }
             }
             Text(_) => "text/plain",
-            Html(_) => "text/html",
+            Html(_) => "text/html; charset=utf-8",
             Json(_) => "application/json",
             Bytes(_) => "application/octet-stream",
         }

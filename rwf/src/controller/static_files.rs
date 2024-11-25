@@ -15,14 +15,59 @@ use std::{
 };
 
 use async_trait::async_trait;
+use time::Duration;
 use tokio::fs::File;
 use tracing::debug;
+
+/// Cache behavior.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Cache {
+    Public,
+    Private,
+}
+
+impl std::fmt::Display for Cache {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Cache::*;
+        let s = match self {
+            Public => "public",
+            Private => "private".into(),
+        };
+
+        write!(f, "{}", s)
+    }
+}
+
+/// Cache control header.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum CacheControl {
+    NoStore,
+    MaxAge(Duration),
+    Private,
+    NoCache,
+}
+
+impl std::fmt::Display for CacheControl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use CacheControl::*;
+        let s = match self {
+            NoStore => "no-store".into(),
+            MaxAge(duration) => format!("max-age={}", duration.whole_seconds()),
+            Private => "private".into(),
+            NoCache => "no-cache".into(),
+        };
+
+        write!(f, "{}", s)
+    }
+}
 
 /// Static files controller.
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
     preloads: HashMap<PathBuf, Body>,
+    cache_control: CacheControl,
+    cache: Cache,
 }
 
 impl StaticFiles {
@@ -48,9 +93,19 @@ impl StaticFiles {
             prefix: PathBuf::from("/").join(path),
             root,
             preloads: HashMap::new(),
+            cache_control: CacheControl::NoStore,
+            cache: Cache::Public,
         };
 
         Ok(statics)
+    }
+
+    /// Serve static files with the specified `Cache-Control: max-age` attribute.
+    pub fn cached(path: &str, duration: Duration) -> std::io::Result<Handler> {
+        Ok(Self::new(path)?
+            .cache_control(CacheControl::MaxAge(duration))
+            .cache(Cache::Public)
+            .handler())
     }
 
     /// Preload a static file into memory. This allows static files to load and serve files
@@ -69,6 +124,18 @@ impl StaticFiles {
             path.as_ref().to_owned(),
             Body::file_include(&path.as_ref().to_owned(), bytes.to_vec()),
         );
+        self
+    }
+
+    /// Set the `Cache-Control` header.
+    pub fn cache_control(mut self, cache_control: CacheControl) -> Self {
+        self.cache_control = cache_control;
+        self
+    }
+
+    /// Set the `Cache` header.
+    pub fn cache(mut self, cache: Cache) -> Self {
+        self.cache = cache;
         self
     }
 
@@ -140,7 +207,9 @@ impl Controller for StaticFiles {
                     return Ok(Response::not_found());
                 }
 
-                let response = Response::new();
+                let response = Response::new()
+                    .header("cache-control", self.cache_control.to_string())
+                    .header("cache", self.cache.to_string());
 
                 Ok(response.body((path, file, metadata)))
             }

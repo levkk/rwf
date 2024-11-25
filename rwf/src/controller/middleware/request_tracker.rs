@@ -48,22 +48,24 @@ impl Middleware for RequestTracker {
             ((OffsetDateTime::now_utc() - request.received_at()).as_seconds_f64() * 1000.0) as f32;
         let client = request.peer().ip();
 
-        let client_id = match request
+        let (client_id, missing) = match request
             .cookies()
             .get(COOKIE_NAME)
             .map(|cookie| Uuid::parse_str(cookie.value()))
         {
-            Some(Ok(cookie)) => cookie,
-            _ => Uuid::new_v4(),
+            Some(Ok(cookie)) => (cookie, false),
+            _ => (Uuid::new_v4(), true),
         };
 
-        let cookie = CookieBuilder::new()
-            .name(COOKIE_NAME)
-            .value(client_id.to_string())
-            .max_age(Duration::weeks(4))
-            .build();
+        if missing {
+            let cookie = CookieBuilder::new()
+                .name(COOKIE_NAME)
+                .value(client_id.to_string())
+                .max_age(Duration::weeks(4))
+                .build();
 
-        response = response.cookie(cookie);
+            response = response.cookie(cookie);
+        }
 
         if let Ok(mut conn) = Pool::connection().await {
             let _ = AnalyticsRequest::create(&[
@@ -80,5 +82,22 @@ impl Middleware for RequestTracker {
         }
 
         Ok(response)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_request_tracker() {
+        let request = Request::default();
+        let response = Response::default();
+
+        let mut response = RequestTracker::new()
+            .handle_response(&request, response)
+            .await
+            .unwrap();
+        assert!(response.cookies().get(COOKIE_NAME).is_some());
     }
 }

@@ -41,6 +41,11 @@ async fn main() -> Result<(), Error> {
     // Not mandatory, but helpful for this demo.
     Migrations::migrate().await?;
 
+    #[cfg(debug_assertions)]
+    let static_files = StaticFiles::serve("static")?;
+    #[cfg(not(debug_assertions))]
+    let static_files = StaticFiles::cached("static", Duration::hours(1))?;
+
     let mut routes = vec![
         route!("/" => IndexController),
         route!("/turbo-stream" => TurboStreamController),
@@ -49,7 +54,7 @@ async fn main() -> Result<(), Error> {
         route!("/chat" => ChatController),
         route!("/chat/typing" => TypingController),
         engine!("/admin" => rwf_admin::engine()),
-        StaticFiles::serve("static")?,
+        static_files,
     ];
     routes.extend(rwf_admin::routes()?);
 

@@ -42,11 +42,21 @@ impl Default for Request {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 struct Inner {
     body: Vec<u8>,
     cookies: Cookies,
-    peer: Option<SocketAddr>,
+    peer: SocketAddr,
+}
+
+impl Default for Inner {
+    fn default() -> Inner {
+        Inner {
+            body: Vec::default(),
+            cookies: Cookies::default(),
+            peer: "127.0.0.1:8000".parse().unwrap(), // Just used for testing.
+        }
+    }
 }
 
 impl Request {
@@ -92,7 +102,7 @@ impl Request {
             session: cookies.get_session()?,
             inner: Arc::new(Inner {
                 body,
-                peer: Some(peer),
+                peer,
                 cookies,
             }),
             received_at: OffsetDateTime::now_utc(),
@@ -105,10 +115,7 @@ impl Request {
     /// This is the IP address of the TCP socket, and does
     /// not have to be the actual client's IP address.
     pub fn peer(&self) -> &SocketAddr {
-        self.inner
-            .peer
-            .as_ref()
-            .expect("peer is not set on the request")
+        &self.inner.peer
     }
 
     /// Set params on the request.

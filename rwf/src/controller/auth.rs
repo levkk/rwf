@@ -250,6 +250,18 @@ impl Session {
         self
     }
 
+    /// The session is close to being expired and should be renewed automatically.
+    pub fn should_renew(&self) -> bool {
+        if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
+            let now = OffsetDateTime::now_utc();
+            let remains = expiration - now;
+            let session_duration = get_config().general.session_duration();
+            remains < session_duration / 2 && remains.is_positive() // not expired
+        } else {
+            true
+        }
+    }
+
     /// Check if the session has expired.
     pub fn expired(&self) -> bool {
         if let Ok(expiration) = OffsetDateTime::from_unix_timestamp(self.expiration) {
@@ -310,5 +322,28 @@ impl Authentication for SessionAuth {
         } else {
             Ok(Response::forbidden())
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_should_renew() {
+        let mut session = Session::default();
+        assert!(!session.should_renew());
+
+        assert_eq!(get_config().general.session_duration(), Duration::weeks(4));
+
+        session.expiration = (OffsetDateTime::now_utc() + Duration::weeks(2)
+            - Duration::seconds(5))
+        .unix_timestamp();
+        assert!(session.should_renew());
+
+        session.expiration =
+            (OffsetDateTime::now_utc() + Duration::weeks(2) + Duration::seconds(5))
+                .unix_timestamp();
+        assert!(!session.should_renew());
     }
 }
