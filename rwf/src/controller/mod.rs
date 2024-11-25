@@ -701,10 +701,7 @@ pub trait WebsocketController: Controller {
         let digest = Sha1::digest(accept.as_bytes());
         let base64 = general_purpose::STANDARD.encode(digest);
 
-        let response =
-            Response::switching_protocols("websocket").header("sec-websocket-accept", base64);
-
-        Ok(response)
+        Ok(Response::switching_protocols("websocket").header("sec-websocket-accept", base64))
     }
 
     /// Handle an incoming client message.
