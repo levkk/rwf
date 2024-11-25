@@ -35,10 +35,13 @@ impl Context {
 
     /// Create template context from request.
     pub fn from_request(request: &Request) -> Result<Self, Error> {
-        let mut ctx = Self::new();
-        ctx.set("request", request.to_template_value()?)?;
+        Self::new().with_request(request)
+    }
 
-        Ok(ctx)
+    /// Add request to context.
+    pub fn with_request(mut self, request: &Request) -> Result<Self, Error> {
+        self.set("request", request.to_template_value()?)?;
+        Ok(self)
     }
 
     /// Get a variable value.
