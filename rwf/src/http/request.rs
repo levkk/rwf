@@ -1,9 +1,9 @@
 //! HTTP request.
-use std::fmt::Debug;
 use std::marker::Unpin;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::{collections::HashMap, fmt::Debug};
 
 use serde::Deserialize;
 use serde_json::{Deserializer, Value};
@@ -15,6 +15,7 @@ use crate::{
     config::get_config,
     controller::{Session, SessionId},
     model::{ConnectionGuard, Model},
+    view::ToTemplateValue,
 };
 
 /// HTTP request.
@@ -351,6 +352,26 @@ impl Deref for Request {
 
     fn deref(&self) -> &Self::Target {
         &self.head
+    }
+}
+
+impl ToTemplateValue for Request {
+    fn to_template_value(&self) -> Result<crate::view::Value, crate::view::Error> {
+        use crate::view::Value;
+
+        let mut hash = HashMap::new();
+        hash.insert(
+            "path".to_string(),
+            self.path().to_string().to_template_value()?,
+        );
+        hash.insert(
+            "session".to_string(),
+            match self.session() {
+                Some(session) => session.to_template_value()?,
+                None => Value::Null,
+            },
+        );
+        Ok(Value::Hash(hash))
     }
 }
 

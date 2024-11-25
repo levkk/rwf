@@ -378,11 +378,13 @@ impl Value {
                     }
                 },
 
-                "csrf_token_raw" => Value::SafeString(crypto::csrf_token().unwrap()),
+                "csrf_token_raw" => {
+                    Value::SafeString(crypto::csrf_token(&context.session_id()?).unwrap())
+                }
                 "csrf_token" => Value::SafeString(format!(
                     r#"<input type="hidden" name="{}" value="{}">"#,
                     CSRF_INPUT,
-                    crypto::csrf_token().unwrap(),
+                    crypto::csrf_token(&context.session_id()?).unwrap(),
                 )),
 
                 "render" => match &args {
@@ -462,6 +464,15 @@ pub trait ToTemplateValue: Clone {
 impl ToTemplateValue for String {
     fn to_template_value(&self) -> Result<Value, Error> {
         Ok(Value::String(self.clone()))
+    }
+}
+
+impl ToTemplateValue for Option<String> {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        match self {
+            Some(s) => Ok(s.to_template_value()?),
+            None => Ok(Value::Null),
+        }
     }
 }
 

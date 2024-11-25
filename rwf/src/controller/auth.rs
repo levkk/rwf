@@ -7,11 +7,13 @@ use super::Error;
 use crate::comms::WebsocketSender;
 use crate::config::get_config;
 use crate::http::{Authorization, Request, Response};
+use crate::view::{ToTemplateValue, Value};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -212,6 +214,23 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         Self::new(serde_json::json!({})).expect("json")
+    }
+}
+
+impl ToTemplateValue for Session {
+    fn to_template_value(&self) -> Result<Value, crate::view::Error> {
+        let mut hash = HashMap::new();
+        hash.insert("expiration".into(), Value::Integer(self.expiration));
+        hash.insert(
+            "session_id".into(),
+            Value::String(self.session_id.to_string()),
+        );
+        hash.insert(
+            "payload".into(),
+            Value::String(serde_json::to_string(&self.payload).unwrap()),
+        );
+
+        Ok(Value::Hash(hash))
     }
 }
 

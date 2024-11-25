@@ -239,11 +239,14 @@ pub fn random_string(n: usize) -> String {
 /// ```
 /// use rwf::crypto::csrf_token;
 ///
-/// let token = csrf_token().unwrap();
+/// let token = csrf_token("1234").unwrap();
 /// ```
-pub fn csrf_token() -> Result<String, Error> {
-    // Our encryption is salted, re-using some known plain text isn't an issue.
-    let token = format!("{}_csrf", OffsetDateTime::now_utc().unix_timestamp());
+pub fn csrf_token(session_id: &str) -> Result<String, Error> {
+    let token = format!(
+        "{}_{}",
+        OffsetDateTime::now_utc().unix_timestamp(),
+        session_id
+    );
     encrypt(token.as_bytes())
 }
 
@@ -254,10 +257,10 @@ pub fn csrf_token() -> Result<String, Error> {
 ///
 /// ```
 /// # use rwf::crypto::{csrf_token, csrf_token_validate};
-/// let token = csrf_token().unwrap();
-/// assert!(csrf_token_validate(&token));
+/// let token = csrf_token("1234").unwrap();
+/// assert!(csrf_token_validate(&token, "1234"));
 /// ```
-pub fn csrf_token_validate(token: &str) -> bool {
+pub fn csrf_token_validate(token: &str, session_id: &str) -> bool {
     match decrypt(token) {
         Ok(value) => {
             let value = String::from_utf8_lossy(&value).to_string();
@@ -277,7 +280,7 @@ pub fn csrf_token_validate(token: &str) -> bool {
                 return false;
             };
 
-            if marker.is_none() {
+            if marker != Some(session_id) {
                 return false;
             }
 

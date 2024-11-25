@@ -15,6 +15,7 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::marker::Unpin;
+use time::OffsetDateTime;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
@@ -209,6 +210,12 @@ impl Response {
                 ("content-type".to_string(), "text/plain".to_string()),
                 ("server".to_string(), "rwf".to_string()),
                 ("connection".to_string(), "keep-alive".to_string()),
+                (
+                    "date".to_string(),
+                    OffsetDateTime::now_utc()
+                        .format(&time::format_description::well_known::Rfc2822)
+                        .unwrap(),
+                ),
             ])),
             body: Body::bytes(vec![]),
             version: Version::Http1,

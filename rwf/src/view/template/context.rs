@@ -9,6 +9,7 @@
 //! let ctx = context!("var" => 1, "title" => "hello world!");
 //! ```
 //!
+use crate::http::Request;
 use crate::view::template::{Error, ToTemplateValue, Value};
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -32,6 +33,14 @@ impl Context {
         DEFAULTS.read().clone()
     }
 
+    /// Create template context from request.
+    pub fn from_request(request: &Request) -> Result<Self, Error> {
+        let mut ctx = Self::new();
+        ctx.set("request", request.to_template_value()?)?;
+
+        Ok(ctx)
+    }
+
     /// Get a variable value.
     pub fn get(&self, key: &str) -> Option<Value> {
         self.values.get(key).cloned()
@@ -47,6 +56,24 @@ impl Context {
     /// Set global variable defaults.
     pub fn defaults(context: Self) {
         (*DEFAULTS.write()) = context;
+    }
+
+    /// Get the request session ID from the context, if any.
+    pub fn session_id(&self) -> Result<String, Error> {
+        match self.get("request") {
+            Some(Value::Hash(hash)) => match hash.get("session") {
+                Some(Value::Hash(session)) => match session.get("session_id") {
+                    Some(session_id) => Ok(session_id.to_string()),
+                    None => Err(Error::Runtime(
+                        "session_id is missing from the context".into(),
+                    )),
+                },
+
+                _ => Err(Error::Runtime("session is missing from the context".into())),
+            },
+
+            _ => Err(Error::Runtime("request is missing from the context".into())),
+        }
     }
 }
 
