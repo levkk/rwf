@@ -357,18 +357,21 @@ impl Deref for Request {
 
 impl ToTemplateValue for Request {
     fn to_template_value(&self) -> Result<crate::view::Value, crate::view::Error> {
+        use crate::view::Value;
+
         let mut hash = HashMap::new();
         hash.insert(
             "path".to_string(),
             self.path().to_string().to_template_value()?,
         );
         hash.insert(
-            "session_id".to_string(),
-            self.session()
-                .map(|s| s.session_id.to_string())
-                .to_template_value()?,
+            "session".to_string(),
+            match self.session() {
+                Some(session) => session.to_template_value()?,
+                None => Value::Null,
+            },
         );
-        Ok(crate::view::Value::Hash(hash))
+        Ok(Value::Hash(hash))
     }
 }
 

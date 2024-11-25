@@ -185,14 +185,20 @@ impl Value {
         args: &[Value],
         context: &Context,
     ) -> Result<Self, Error> {
+        let default_session_id = "".to_string();
         let session_id = match context.get("request") {
-            Some(Value::Hash(hash)) => hash
-                .get("session_id")
-                .unwrap_or(&Value::String("".into()))
-                .to_string(),
+            Some(Value::Hash(hash)) => match hash.get("session") {
+                Some(Value::Hash(session)) => match session.get("session_id") {
+                    Some(session_id) => session_id.to_string(),
+                    None => default_session_id,
+                },
 
-            _ => "".to_string(),
+                _ => default_session_id,
+            },
+
+            _ => default_session_id,
         };
+
         match method_name {
             "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
             "integer" => {
