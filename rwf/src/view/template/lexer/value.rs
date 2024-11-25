@@ -185,20 +185,6 @@ impl Value {
         args: &[Value],
         context: &Context,
     ) -> Result<Self, Error> {
-        let default_session_id = "".to_string();
-        let session_id = match context.get("request") {
-            Some(Value::Hash(hash)) => match hash.get("session") {
-                Some(Value::Hash(session)) => match session.get("session_id") {
-                    Some(session_id) => session_id.to_string(),
-                    None => default_session_id,
-                },
-
-                _ => default_session_id,
-            },
-
-            _ => default_session_id,
-        };
-
         match method_name {
             "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
             "integer" => {
@@ -392,11 +378,13 @@ impl Value {
                     }
                 },
 
-                "csrf_token_raw" => Value::SafeString(crypto::csrf_token(&session_id).unwrap()),
+                "csrf_token_raw" => {
+                    Value::SafeString(crypto::csrf_token(&context.session_id()?).unwrap())
+                }
                 "csrf_token" => Value::SafeString(format!(
                     r#"<input type="hidden" name="{}" value="{}">"#,
                     CSRF_INPUT,
-                    crypto::csrf_token(&session_id).unwrap(),
+                    crypto::csrf_token(&context.session_id()?).unwrap(),
                 )),
 
                 "render" => match &args {

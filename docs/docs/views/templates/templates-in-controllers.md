@@ -31,13 +31,15 @@ impl Controller for Index {
 }
 ```
 
-The `render!` macro takes the template path as the first argument, and optionally, a mapping of variable names and values as subsequent arguments. It returns a [`Response`](../../controllers/response.md) automatically.
+The `render!` macro takes the request as the first argument, the template path, and optionally a mapping of variable names and values. It returns a [`Response`](../../controllers/response.md) automatically.
 
-If the template doesn't have any variables, you can use `render!` with just the template name:
+If the template doesn't have any variables, you can omit them:
 
 ```rust
 render!(request, "templates/index.html")
 ```
+
+Passing the request into the macro ensures that secure [CSRF](../../security/CSRF.md) protection tokens are generated automatically.
 
 ### Response code
 

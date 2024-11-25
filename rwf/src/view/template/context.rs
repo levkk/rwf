@@ -57,6 +57,24 @@ impl Context {
     pub fn defaults(context: Self) {
         (*DEFAULTS.write()) = context;
     }
+
+    /// Get the request session ID from the context, if any.
+    pub fn session_id(&self) -> Result<String, Error> {
+        match self.get("request") {
+            Some(Value::Hash(hash)) => match hash.get("session") {
+                Some(Value::Hash(session)) => match session.get("session_id") {
+                    Some(session_id) => Ok(session_id.to_string()),
+                    None => Err(Error::Runtime(
+                        "session_id is missing from the context".into(),
+                    )),
+                },
+
+                _ => Err(Error::Runtime("session is missing from the context".into())),
+            },
+
+            _ => Err(Error::Runtime("request is missing from the context".into())),
+        }
+    }
 }
 
 impl ToTemplateValue for Context {
