@@ -363,13 +363,7 @@ impl ToTemplateValue for Request {
         hash.insert("path".to_string(), self.path().base().to_template_value()?);
         hash.insert(
             "query".to_string(),
-            self.path()
-                .query()
-                .to_string()
-                .chars()
-                .skip(1) // Don't include the ?
-                .collect::<String>()
-                .to_template_value()?,
+            self.path().query().to_string().to_template_value()?,
         );
         hash.insert(
             "session".to_string(),
