@@ -43,3 +43,11 @@ jobs:
         run: |
           cargo login ${CRATES_IO_TOKEN}
           cargo publish || true
+
+      - name: Publish rwf-admin
+        working-directory: rwf-admin
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          cargo login ${CRATES_IO_TOKEN}
+          cargo publish || true

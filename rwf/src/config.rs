@@ -68,6 +68,10 @@ pub struct Config {
     /// WebSocket connections settings.
     #[serde(default = "WebsocketConfig::default")]
     pub websocket: WebsocketConfig,
+
+    /// Packaging configuration.
+    #[serde(default = "PackageConfig::default")]
+    pub package: PackageConfig,
 }
 
 impl Default for Config {
@@ -77,6 +81,7 @@ impl Default for Config {
             general: General::default(),
             database: DatabaseConfig::default(),
             websocket: WebsocketConfig::default(),
+            package: PackageConfig::default(),
         }
         .transform()
         .unwrap()
@@ -512,5 +517,41 @@ name = "test"
             let config = Config::load_default();
             assert_eq!(config.path, Some(PathBuf::from(config_path)));
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PackageConfig {
+    /// Paths to include into the build. Default: migrations, static, templates.
+    /// If overriding, don't forget to add the default paths above.
+    #[serde(default = "PackageConfig::default_include")]
+    pub include: Vec<PathBuf>,
+
+    /// Additional paths to include into the build. Paths can be absolute
+    /// or relative.
+    #[serde(default = "PackageConfig::default_include_additional")]
+    pub include_additional: Vec<PathBuf>,
+}
+
+impl Default for PackageConfig {
+    fn default() -> Self {
+        Self {
+            include: Self::default_include(),
+            include_additional: Self::default_include_additional(),
+        }
+    }
+}
+
+impl PackageConfig {
+    fn default_include() -> Vec<PathBuf> {
+        vec![
+            PathBuf::from("migrations"),
+            PathBuf::from("static"),
+            PathBuf::from("templates"),
+        ]
+    }
+
+    fn default_include_additional() -> Vec<PathBuf> {
+        vec![]
     }
 }
