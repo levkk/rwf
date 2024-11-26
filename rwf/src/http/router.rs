@@ -84,7 +84,13 @@ impl Router {
         for handler in handlers {
             let indicator = match handler.path_with_regex().path_type() {
                 PathType::Route | PathType::Rest => "",
-                PathType::Wildcard => "/*",
+                PathType::Wildcard => {
+                    if handler.path().base().ends_with("/") {
+                        "*"
+                    } else {
+                        "/*"
+                    }
+                }
             };
             info!(
                 ">> {}{}{} => {}",
