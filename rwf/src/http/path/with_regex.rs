@@ -16,10 +16,11 @@ use std::sync::Arc;
 pub struct PathWithRegex {
     path: Path,
     params: Arc<Params>,
+    path_type: PathType,
 }
 
 /// Kind of path routing we are using for a controller.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum PathType {
     /// Will match all 6 REST paths.
     Rest,
@@ -81,6 +82,7 @@ impl PathWithRegex {
         Ok(Self {
             path,
             params: Arc::new(Params::new(regex, params)),
+            path_type,
         })
     }
 
@@ -104,6 +106,11 @@ impl PathWithRegex {
     /// Get the regex used to route to this path.
     pub fn regex(&self) -> &Regex {
         self.params.regex()
+    }
+
+    /// Get the path type.
+    pub fn path_type(&self) -> &PathType {
+        &self.path_type
     }
 }
 

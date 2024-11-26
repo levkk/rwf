@@ -24,7 +24,7 @@
 //! in the future.
 //!
 use super::{Error, Handler, Path};
-use crate::colors::MaybeColorize;
+use crate::{colors::MaybeColorize, http::path::PathType};
 
 use regex::RegexSet;
 use tracing::info;
@@ -82,14 +82,18 @@ impl Router {
         let mut handlers = self.handlers.iter().map(|s| s).collect::<Vec<_>>();
         handlers.sort_by_key(|s| s.path().path());
         for handler in handlers {
-            // #[cfg(debug_assertions)]
-            // let regex = format!(" ({})", handler.path_with_regex().regex().as_str());
-
-            // #[cfg(not(debug_assertions))]
-            // let regex = "";
+            let indicator = match handler.path_with_regex().path_type() {
+                PathType::Route | PathType::Rest => "",
+                PathType::Wildcard => "/*",
+            };
             info!(
-                ">> {} => {}",
+                ">> {}{}{} => {}",
                 handler.path().path().purple(),
+                indicator.purple(),
+                match handler.rank() {
+                    0 => "".into(),
+                    rank => format!(" [{}]", rank),
+                },
                 handler.controller_name().green(),
                 // regex,
             );
