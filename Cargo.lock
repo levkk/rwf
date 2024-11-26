@@ -1891,7 +1891,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-admin"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "once_cell",
  "rwf",
