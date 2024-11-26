@@ -125,6 +125,11 @@ impl Connection {
         self.inner.bad.load(Ordering::Relaxed)
     }
 
+    /// Forcibly close the connection once it's returned to the pool.
+    pub fn close(&self) {
+        self.inner.bad.store(true, Ordering::Relaxed);
+    }
+
     /// Indicate the connection was last used now.
     pub fn used(&mut self) {
         self.last_used = Instant::now();

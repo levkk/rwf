@@ -153,7 +153,7 @@ impl Server {
 
                         // Calculate duration.
                         // We include the time to find the handler in the duration.
-                        let duration = Instant::now() - start;
+                        let duration = start.elapsed();
 
                         // Log request.
                         Self::log(&request, handler.controller_name(), &response, duration);

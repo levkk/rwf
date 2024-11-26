@@ -24,6 +24,7 @@
 //! // execute statements
 //! transaction.commit().await?;
 //! ```
+use tokio::select;
 use tokio::sync::Notify;
 use tokio::task::spawn;
 use tokio::time::{sleep, timeout, Duration};
@@ -251,8 +252,15 @@ impl Pool {
         let maintenance = pool.clone();
         tokio::spawn(async move {
             loop {
-                maintenance.maintenance();
-                sleep(Duration::from_secs(1)).await;
+                select! {
+                    _ = sleep(Duration::from_secs(1)) => {
+                        maintenance.maintenance();
+                    }
+
+                    _ = maintenance.shutdown.notified() => {
+                        break;
+                    }
+                }
             }
         });
 
@@ -350,6 +358,8 @@ impl Pool {
                     if let Some(candidate) = candidate {
                         if !candidate.bad() {
                             return Ok(ConnectionGuard::new(candidate, self.clone()));
+                        } else {
+                            inner.expected -= 1;
                         }
                         // Drop (close) all bad connections.
                     }
@@ -458,23 +468,64 @@ mod test {
         let row = conn.client().query("SELECT 1", &[]).await?;
 
         assert_eq!(row.len(), 1);
+        assert_eq!(pool.inner.lock().expected, 1);
 
         let mut consume = vec![];
 
-        for _ in 0..9 {
+        for i in 0..9 {
             consume.push(pool.get().await);
+            let expected = { pool.inner.lock().expected };
+            let conns = { pool.inner.lock().connections.len() };
+            assert_eq!(expected, 1 + i + 1);
+            assert_eq!(conns, 0); // All are checked out.
         }
 
         assert!(pool.get().await.is_err());
 
-        drop(conn);
+        assert_eq!(pool.inner.lock().connections.len(), 0);
+        drop(conn); // Conn returned to pool
 
         let mut conn = pool.get().await?;
         assert!(pool.get().await.is_err());
 
+        assert_eq!(pool.inner.lock().expected, 10);
+
         conn.leak();
+        assert_eq!(pool.inner.lock().expected, 9);
         assert!(pool.get().await.is_ok());
 
+        assert_eq!(pool.inner.lock().expected, 10);
+        assert_eq!(pool.inner.lock().connections.len(), 1);
+        consume.clear();
+        assert_eq!(pool.inner.lock().connections.len(), 10);
+        assert_eq!(pool.inner.lock().expected, 10);
+
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bad_pool() {
+        env::set_var("RWF_DATABASE_CHECKOUT_TIMEOUT", "500");
+
+        let pool = Pool::from_env();
+        assert_eq!(pool.inner.lock().expected, 0);
+
+        {
+            let conn = pool.get().await.unwrap();
+            assert_eq!(pool.inner.lock().expected, 1);
+            conn.close();
+        }
+
+        assert_eq!(pool.inner.lock().expected, 0);
+
+        {
+            let _conn = pool.get().await.unwrap();
+            assert_eq!(pool.inner.lock().expected, 1);
+        }
+
+        assert_eq!(pool.inner.lock().expected, 1);
+        let _conn = pool.get().await.unwrap();
+        let _conn = pool.get().await.unwrap();
+        assert_eq!(pool.inner.lock().expected, 2);
     }
 }
