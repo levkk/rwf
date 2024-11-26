@@ -7,14 +7,17 @@ pub struct Requests;
 #[async_trait]
 impl Controller for Requests {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        let minutes = request.query().get::<i64>("minutes").unwrap_or(60);
         let requests = {
             let mut conn = Pool::connection().await?;
-            RequestByCode::count(60).fetch_all(&mut conn).await?
+            RequestByCode::count(minutes).fetch_all(&mut conn).await?
         };
 
         let duration = {
             let mut conn = Pool::connection().await?;
-            RequestsDuration::count(60).fetch_all(&mut conn).await?
+            RequestsDuration::count(minutes)
+                .fetch_all(&mut conn)
+                .await?
         };
 
         let requests = serde_json::to_string(&requests)?;
@@ -24,6 +27,12 @@ impl Controller for Requests {
             "title" => "Requests | Rust Web Framework",
             "requests" => requests,
             "duration" => duration,
+            "interval" => match minutes {
+                60 => "Last hour".into(),
+                180 => "Last 3 hours".into(),
+                1440 => "Last 24 hours".into(),
+                m => format!("Last {} minutes", m)
+            }
         )
     }
 }

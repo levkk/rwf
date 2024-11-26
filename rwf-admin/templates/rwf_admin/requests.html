@@ -5,6 +5,18 @@
     <% for name in ["requests"] %>
         <%% "templates/rwf_admin/reload.html" %>
     <% end %>
+    <div class="d-flex justify-content-end">
+        <div class="dropdown">
+            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <%= interval %>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/admin/requests?minutes=60">Last hour</a></li>
+                <li><a class="dropdown-item" href="/admin/requests?minutes=180">Last 3 hours</a></li>
+                <li><a class="dropdown-item" href="/admin/requests?minutes=1440">Last 24 hours</a></li>
+            </ul>
+        </div>
+    </div>
     <div>
         <canvas id="requests" data-requests-target="chart"></canvas>
         <script type="application/json" data-requests-target="requests">

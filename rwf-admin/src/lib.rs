@@ -94,6 +94,10 @@ pub fn static_files() -> Result<Handler, Error> {
             include_bytes!("../static/rwf_admin/js/bootstrap.min.js.map"),
         )
         .preload(
+            "/static/rwf_admin/js/popper.min.js",
+            include_bytes!("../static/rwf_admin/js/popper.min.js"),
+        )
+        .preload(
             "/static/rwf_admin/css/bootstrap.min.css.map",
             include_bytes!("../static/rwf_admin/css/bootstrap.min.css.map"),
         )
