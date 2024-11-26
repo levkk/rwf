@@ -1,10 +1,10 @@
 //! Handles parsing the URL query.
-use std::collections::{hash_map::IntoIter, HashMap};
+use std::collections::btree_map::{BTreeMap, IntoIter};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-use crate::http::urldecode;
 use crate::http::Error;
+use crate::http::{urldecode, urlencode};
 
 /// GET request query.
 ///
@@ -15,14 +15,14 @@ use crate::http::Error;
 /// ```
 #[derive(Debug, Clone)]
 pub struct Query {
-    query: HashMap<String, String>,
+    query: BTreeMap<String, String>,
 }
 
 impl Query {
     /// Create new empty query.
     pub fn new() -> Self {
         Self {
-            query: HashMap::new(),
+            query: BTreeMap::new(),
         }
     }
 
@@ -41,15 +41,15 @@ impl Query {
         let without_anchor = data.split("#").next().expect("path anchor");
         let query_parts = without_anchor.split("&");
         for part in query_parts {
-            let key_value = part.split("=").collect::<Vec<_>>();
+            let mut key_value = part.split("=").collect::<Vec<_>>().into_iter();
 
             if key_value.len() > 2 {
                 continue;
             }
 
             // Decode any URL-encoded values back into UTF-8.
-            let key = urldecode(&key_value.first().expect("path query key"));
-            let value = urldecode(&key_value.last().unwrap_or(&"")); // ?key=&value=two
+            let key = urldecode(&key_value.next().expect("path query key"));
+            let value = urldecode(&key_value.next().unwrap_or(&"")); // ?key=&value=two
 
             query.insert(key, value);
         }
@@ -130,15 +130,15 @@ impl std::fmt::Display for Query {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut params = vec![];
         for (key, value) in &self.query {
-            params.push(format!("{}={}", key, value));
+            params.push(format!("{}={}", urlencode(key), urlencode(value)));
         }
 
-        write!(f, "?{}", params.join("&"))
+        write!(f, "{}", params.join("&"))
     }
 }
 
 impl Deref for Query {
-    type Target = HashMap<String, String>;
+    type Target = BTreeMap<String, String>;
 
     fn deref(&self) -> &Self::Target {
         &self.query

@@ -360,9 +360,16 @@ impl ToTemplateValue for Request {
         use crate::view::Value;
 
         let mut hash = HashMap::new();
+        hash.insert("path".to_string(), self.path().base().to_template_value()?);
         hash.insert(
-            "path".to_string(),
-            self.path().to_string().to_template_value()?,
+            "query".to_string(),
+            self.path()
+                .query()
+                .to_string()
+                .chars()
+                .skip(1) // Don't include the ?
+                .collect::<String>()
+                .to_template_value()?,
         );
         hash.insert(
             "session".to_string(),

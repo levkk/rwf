@@ -29,7 +29,11 @@ pub struct Path {
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.base)?;
-        write!(f, "{}", self.query)
+        if !self.query.is_empty() {
+            write!(f, "?{}", self.query)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -144,6 +148,15 @@ mod test {
         let path = Path::parse(path).unwrap();
         assert_eq!(path.path(), "/hello");
         assert_eq!(path.query().get("foo"), Some("bar".to_string()));
+        assert_eq!(path.query().get("hello=world"), Some("".to_string()));
+        assert_eq!(path.to_string(), "/hello?foo=bar&hello%3Dworld=");
+        assert_eq!(path.query().to_string(), "foo=bar&hello%3Dworld=");
+
+        let path = "/blog";
+        let path = Path::parse(path).unwrap();
+        assert_eq!(path.to_string(), "/blog");
+        assert!(path.query().is_empty());
+        assert_eq!(path.query().to_string(), "");
     }
 
     #[test]

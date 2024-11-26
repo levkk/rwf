@@ -4,7 +4,7 @@
 use super::{urldecode, Error, Query, Request};
 use std::str::FromStr;
 
-use std::collections::hash_map::{HashMap, IntoIter};
+use std::collections::btree_map::{BTreeMap, IntoIter};
 
 /// Data stored in the form.
 #[derive(Clone, Debug)]
@@ -118,7 +118,7 @@ impl FormData {
                     .filter(|entry| entry.1.content_disposition.filename.is_none())
                     .map(|entry| (entry.0, entry.1.to_string().unwrap_or("".to_string())))
                     .into_iter()
-                    .collect::<HashMap<String, String>>();
+                    .collect::<BTreeMap<String, String>>();
                 entries.into_iter()
             }
         }
@@ -145,7 +145,7 @@ impl FormData {
 /// Form encoded with `multipart/form-data` format.
 #[derive(Debug, Clone)]
 pub struct Multipart {
-    entries: HashMap<String, MultipartEntry>,
+    entries: BTreeMap<String, MultipartEntry>,
 }
 
 /// Multipart form submission entry.
@@ -233,7 +233,7 @@ impl File<'_> {
 impl Multipart {
     /// Read multi-part body from request's body.
     fn read(body: &[u8], boundary: &str) -> Result<Self, Error> {
-        let mut entries = HashMap::new();
+        let mut entries = BTreeMap::new();
         let mut reader = body.into_iter();
 
         let start_boundary = format!("--{}", boundary).as_bytes().to_vec();
