@@ -6,3 +6,4 @@ track_requests = true
 
 [database]
 name = "rwf_turbo"
+idle_timeout = 1000

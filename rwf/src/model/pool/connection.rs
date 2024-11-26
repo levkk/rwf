@@ -1,5 +1,6 @@
 //! Wraps [`tokio_postgres::Client`].
 
+use time::Duration;
 use tokio::select;
 use tokio::sync::Notify;
 use tokio::task::spawn;
@@ -31,6 +32,7 @@ pub struct Connection {
     client: Client,
     inner: Arc<ConnectionInner>,
     last_used: Instant,
+    created_at: Instant,
     cache: HashMap<String, Statement>,
 }
 
@@ -53,6 +55,7 @@ impl Connection {
             client,
             inner: inner.clone(),
             last_used: Instant::now(),
+            created_at: Instant::now(),
             cache: HashMap::new(),
         };
 
@@ -146,6 +149,13 @@ impl Connection {
 impl Drop for Connection {
     fn drop(&mut self) {
         self.shutdown();
-        info!("Connection to PostgreSQL closed");
+        let elapsed = self.created_at.elapsed();
+        let duration = Duration::try_from(elapsed).unwrap_or(Duration::seconds(0));
+        info!(
+            "Connection to database closed (age: {:0>2}h{:0>2}m{:0>2}s)",
+            duration.whole_hours(),
+            duration.whole_minutes(),
+            duration.whole_seconds(),
+        );
     }
 }

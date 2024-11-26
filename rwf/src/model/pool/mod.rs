@@ -405,7 +405,6 @@ impl Pool {
         self.inner.lock().expected -= 1;
     }
 
-    #[allow(dead_code)]
     fn maintenance(&self) {
         let now = Instant::now();
         let mut inner = self.inner.lock();
