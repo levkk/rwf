@@ -8,6 +8,7 @@ pub trait MaybeColorize {
     fn red(&self) -> String;
     fn purple(&self) -> String;
     fn yellow(&self) -> String;
+    fn bold(&self) -> String;
 }
 
 impl MaybeColorize for &str {
@@ -50,6 +51,16 @@ impl MaybeColorize for &str {
             self.to_string()
         }
     }
+
+    fn bold(&self) -> String {
+        let config = get_config();
+
+        if config.general.tty {
+            Colorize::bold(*self).to_string()
+        } else {
+            self.to_string()
+        }
+    }
 }
 
 impl MaybeColorize for String {
@@ -67,6 +78,10 @@ impl MaybeColorize for String {
 
     fn yellow(&self) -> String {
         MaybeColorize::yellow(&self.as_str())
+    }
+
+    fn bold(&self) -> String {
+        MaybeColorize::bold(&self.as_str())
     }
 }
 
