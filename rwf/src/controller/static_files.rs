@@ -19,25 +19,6 @@ use time::Duration;
 use tokio::fs::File;
 use tracing::debug;
 
-/// Cache behavior.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Cache {
-    Public,
-    Private,
-}
-
-impl std::fmt::Display for Cache {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use Cache::*;
-        let s = match self {
-            Public => "public",
-            Private => "private".into(),
-        };
-
-        write!(f, "{}", s)
-    }
-}
-
 /// Cache control header.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CacheControl {
@@ -67,7 +48,6 @@ pub struct StaticFiles {
     root: PathBuf,
     preloads: HashMap<PathBuf, Body>,
     cache_control: CacheControl,
-    cache: Cache,
 }
 
 impl StaticFiles {
@@ -94,7 +74,6 @@ impl StaticFiles {
             root,
             preloads: HashMap::new(),
             cache_control: CacheControl::NoStore,
-            cache: Cache::Public,
         };
 
         Ok(statics)
@@ -104,7 +83,6 @@ impl StaticFiles {
     pub fn cached(path: &str, duration: Duration) -> std::io::Result<Handler> {
         Ok(Self::new(path)?
             .cache_control(CacheControl::MaxAge(duration))
-            .cache(Cache::Public)
             .handler())
     }
 
@@ -130,12 +108,6 @@ impl StaticFiles {
     /// Set the `Cache-Control` header.
     pub fn cache_control(mut self, cache_control: CacheControl) -> Self {
         self.cache_control = cache_control;
-        self
-    }
-
-    /// Set the `Cache` header.
-    pub fn cache(mut self, cache: Cache) -> Self {
-        self.cache = cache;
         self
     }
 
@@ -207,9 +179,8 @@ impl Controller for StaticFiles {
                     return Ok(Response::not_found());
                 }
 
-                let response = Response::new()
-                    .header("cache-control", self.cache_control.to_string())
-                    .header("cache", self.cache.to_string());
+                let response =
+                    Response::new().header("cache-control", self.cache_control.to_string());
 
                 Ok(response.body((path, file, metadata)))
             }

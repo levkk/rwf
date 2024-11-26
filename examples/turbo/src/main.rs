@@ -44,7 +44,7 @@ async fn main() -> Result<(), Error> {
     #[cfg(debug_assertions)]
     let static_files = StaticFiles::serve("static")?;
     #[cfg(not(debug_assertions))]
-    let static_files = StaticFiles::cached("static", Duration::hours(1))?;
+    let static_files = StaticFiles::cached("static", Duration::minutes(1))?;
 
     let mut routes = vec![
         route!("/" => IndexController),

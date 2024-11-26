@@ -48,7 +48,7 @@ pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Sessio
 pub use engine::Engine;
 pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
-pub use static_files::{Cache, CacheControl, StaticFiles};
+pub use static_files::{CacheControl, StaticFiles};
 pub use turbo_stream::TurboStream;
 
 use super::http::{
