@@ -1904,7 +1904,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-cli"
-version = "0.1.6"
+version = "0.1.14"
 dependencies = [
  "clap",
  "flate2",
