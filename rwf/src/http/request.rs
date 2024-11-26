@@ -419,7 +419,9 @@ pub mod test {
 
     #[tokio::test]
     async fn test_basic_req() {
-        let normal = "GET / HTTP/1.1\r\n".to_owned() + "Content-Length: 5\r\n\r\n" + "12345";
+        let normal = "GET /apples?hello=world HTTP/1.1\r\n".to_owned()
+            + "Content-Length: 5\r\n\r\n"
+            + "12345";
         let req = Request::read(dummy_ip(), normal.as_bytes()).await.unwrap();
         assert_eq!(req.body(), "12345".as_bytes());
         assert_eq!(req.content_length(), Some(5));
@@ -432,6 +434,19 @@ pub mod test {
         assert_eq!(req.string(), "12345".to_string());
         assert!(req.form_data().is_err());
         assert!(req.session_id().is_none());
+        assert_eq!(req.query().len(), 1);
+        assert_eq!(req.path().base(), "/apples");
+
+        let template_value = req.to_template_value().unwrap();
+        use crate::view::Value;
+        match template_value {
+            Value::Hash(req) => {
+                assert_eq!(req["query"], Value::String("hello=world".into()));
+                assert_eq!(req["path"], Value::String("/apples".into()));
+            }
+
+            _ => panic!("request should be a hash"),
+        };
     }
 
     #[tokio::test]
