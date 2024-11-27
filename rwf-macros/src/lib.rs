@@ -3,8 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, Meta, Token,
-    Type,
+    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
+    Token, Type,
 };
 
 use quote::quote;
@@ -655,4 +655,41 @@ fn snake_case(string: &str) -> String {
     }
 
     result
+}
+
+/// Create an Rwf controller from an async function. The function must accept a `&Request` argument
+/// and return a `Result<Response, Error>`, just like the `async fn handle` method from the `Controller` trait.
+///
+/// # Example
+///
+/// ```ignore
+/// use rwf_macros::controller;
+///
+/// #[controller]
+/// async fn my_controller(request: &Request) -> Result<Response, Error> {
+///     Ok(Response::new().html("<h1>my controller</h1>"));
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemFn);
+    let name = &input.sig.ident;
+    quote! {
+        #[derive(Default)]
+        #[allow(non_camel_case_types)]
+        pub struct #name;
+
+        #[rwf::async_trait]
+        impl rwf::controller::Controller for #name {
+            async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
+                use rwf::http::{Request, Response};
+                use rwf::controller::Error;
+
+                #input
+
+                #name(request).await
+            }
+        }
+    }
+    .into()
 }
