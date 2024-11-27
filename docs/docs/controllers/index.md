@@ -8,7 +8,18 @@ The controller is the **C** in MVC: it handles user interactions with the web ap
 
 ## Writing a controller
 
-A controller is a plain Rust struct that implements the [`Controller`](https://docs.rs/rwf/latest/rwf/controller/trait.Controller.html) trait. As an example, let's write a controller that returns the current time in UTC.
+Simple controllers can be written using the `#[controller]` macro, which accepts any async function that returns a [`Response`](response.md), for example:
+
+```rust
+#[controller]
+async fn my_controller() -> Response {
+    Response::new().html("<h1>My controller is working!</h1>")
+}
+```
+
+Internally, the macro is generating a Rust struct that implements the [`Controller`](https://docs.rs/rwf/latest/rwf/controller/trait.Controller.html) trait. While simple controllers can use the macro, more complex controllers can be built by defining a struct and implementing the trait manually.
+
+As an example, let's write a controller that returns the current time in UTC.
 
 #### Import types
 
@@ -16,7 +27,7 @@ A controller is a plain Rust struct that implements the [`Controller`](https://d
 use rwf::prelude::*;
 ```
 
-The prelude module contains most of the types and traits necessary to work with Rwf. Including it will save you time and effort when writing code, but it's not required.
+The prelude module contains most of the types and traits necessary to work with Rwf. Including it will save you time and effort when writing code.
 
 #### Define the struct
 
@@ -46,11 +57,11 @@ impl Controller for CurrentTime {
 }
 ```
 
-The `Controller` trait is asynchronous. Support for async traits in Rust is still incomplete, so we use the [`async_trait`](https://docs.rs/async_trait) library to make it easy to use. The trait itself has a few methods, most of which have reasonable defaults. The only method that needs to be written by hand is `async fn handle()`.
+The `Controller` trait is asynchronous. Support for async traits in Rust is still incomplete, so we use the [`async_trait`](https://docs.rs/async_trait) library to make it easy to use. The trait itself has a few methods, most of which have reasonable defaults. The only method that needs to be written by hand is `async fn handle`.
 
-#### `handle`
+#### `async fn handle`
 
-The `handle` method accepts a [`Request`](request.md) and must return a [`Response`](response.md). The response can be any valid HTTP response, including `404` or even `500`.
+This method accepts a [`Request`](request.md) and must return a [`Response`](response.md). The response can be any valid HTTP response, including `404` or even `500`.
 
 ##### Errors
 

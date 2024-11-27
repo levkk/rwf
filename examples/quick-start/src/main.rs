@@ -29,7 +29,7 @@ impl Controller for CurrentTime {
 }
 
 /// Simple controller.
-#[macros::controller]
+#[controller]
 async fn current_time() -> Response {
     let time = OffsetDateTime::now_utc();
 
