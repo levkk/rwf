@@ -5,6 +5,7 @@ site_description: "Rust Web Framework - A comprehensive framework for building w
 theme:
   name: material
   features:
+    - content.code.copy
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"

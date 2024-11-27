@@ -1,9 +1,8 @@
 # Getting started
 
-Rust Web Framework (Rwf for short) is a set of libraries and tools to build web applications using the Rust programming language. It aims to be comprehensive by providing all features
-for you to build modern, fast, and secure web apps out of the box.
+Rust Web Framework (Rwf for short) is a framework for building web applications using the Rust programming language. It aims to be comprehensive by providing all necessary features for building modern, fast, and secure web apps.
 
-Rwf has very few dependencies and is easy to install and use within new or existing Rust applications.
+Rwf has very few dependencies and is easy use with new or existing Rust applications.
 
 ## Install Rust
 
@@ -12,93 +11,78 @@ so the stable version of the compiler will work.
 
 ## Create a project
 
-Rwf can be used inside any Rust binary or library project. If you don't have a project already, you can create one with Cargo:
+Rwf can be used with any Rust binary or library project. If you don't have one already, you can create it with Cargo[^1]:
 
 ```bash
-cargo init --bin rwf-web-app
+cargo init --bin rwf-web-app &&
+cd rwf-web-app
 ```
 
-## Install Rwf
+[^1]: [Cargo](https://doc.rust-lang.org/cargo/) is the package manager for the Rust programming language. It can install any open source library available on [crates.io](https://crates.io).
 
-Rwf has two packages:
+## Add Rwf
 
-* `rwf` which is the Rust crate[^1] used to build web apps
-* `rwf-cli` which is a binary application that helps manage Rust projects built with Rwf
-
-To install them, run the following while inside the root directory of your Cargo-created project:
+Rwf primarily consists of the [`rwf`](https://crates.io/crates/rwf) crate[^2]. You can add it to your project with Cargo:
 
 ```
 cargo add rwf
-cargo install rwf-cli
 ```
 
-[^1]: A "crate" is a Rust package used as a dependency in other packages. It's analogous to "package" in JavaScript or Python.
+[^2]: A crate is a library that can be used in Rust applications. It's similar to packages in JavaScript or Python.
 
-## Building the app
+## Build an application
 
-With the packages installed, you're ready to launch your first web app in Rust. Rwf is built using the [MVC](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) (Model-view-controller) design pattern,
-so to get started, let's create a simple controller that will serve the index page (`/`) of your app:
+With the [`rwf`](https://crates.io/crates/rwf) crate added, you're ready to build your first web application in Rust.
+Rwf is [MVC](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) (model-view-controller),
+so to get started let's create a simple controller:
 
 ```rust
 use rwf::prelude::*;
 
-#[derive(Default)]
-struct Index;
-
-#[async_trait]
-impl Controller for Index {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::new().html("<h1>My first Rwf app!</h1>"))
-    }
+#[controller]
+async fn index() -> Response {
+    Response::new().html("<h1>My first Rwf app!</h1>")
 }
 ```
 
-`rwf::prelude::*` includes the vast majority of types, structs, traits and functions you'll be using when building controllers with Rwf.
-Adding this declaration to your source files will make handling imports easier, but it's not required.
+`rwf::prelude::*` includes most types, traits and functions you'll need to build applications.
+Adding this declaration to your source code will make things easier, but it's not required.
 
-Rwf controllers are defined as Rust structs that implement the [`Controller`](controllers/index.md) trait. The trait is asynchronous, hence the `#[async_trait]` macro[^2],
-and has only one method you need to implement: `async fn handle`. This method
-accepts a [`Request`](controllers/request.md), and must return a [`Response`](controllers/response.md).
+`#[controller]` macro creates a controller from any async function that returns a [`Response`](controllers/response.md).
 
-In this example, we are returning HTTP `200 - OK` with the body `<h1>My first Rwf app</h1>`. This is not strictly valid HTML,
-but it'll work in all browsers for our demo purposes.
+## Launch the server
 
-[^2]: The Rust language support for async traits is still incomplete. The `async_trait` crate helps with writing async traits in an ergonomic way.
-
-## Launching the server
-
-Once you have at least one controller, you can add it to the Rwf HTTP server and launch it at the address and port of your choosing:
+With a controller ready to go, let's create a route and launch the Rwf HTTP server:
 
 ```rust
 use rwf::http::{self, Server};
 
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
-    // Configure then logger (stderr with colors by default)
+    // Configure then logger.
     Logger::init();
 
-    Server::new(vec![
-        route!("/" => Index),
-    ])
-    .launch("0.0.0.0:8000")
-    .await
+    // Define routes.
+    let routes = vec![
+        route!("/" => index),
+    ];
+
+    // Launch the HTTP server.
+    Server::new(routes)
+        .launch("0.0.0.0:8000")
+        .await
 }
 ```
 
-Rwf uses the `tracing` crate for logging. `Logger::init()` automatically configures it for your app using `tracing-subscriber`, but if you prefer, you can configure logging yourself
-using the crate of your choosing.
-
-Launching the server can be done with Cargo:
+Your application is ready. You can launch it with Cargo:
 
 ```
 cargo run
 ```
 
-Once the server is running, you can visit the index page by pointing your browser to [http://localhost:8000](http://localhost:8000).
+Once the server is running, your web application will be available at [http://localhost:8000](http://localhost:8000). The full code for this is available on [GitHub](https://github.com/levkk/rwf/tree/main/examples/quick-start).
 
-The full code for this is available on GitHub in [examples/quick-start](https://github.com/levkk/rwf/tree/main/examples/quick-start).
-
-## Next steps
+## Learn more
 
 - [Controllers](controllers/index.md)
 - [Models](models/index.md)
