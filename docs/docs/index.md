@@ -22,7 +22,7 @@ cd rwf-web-app
 
 ## Add Rwf
 
-Rwf primarily consists of the [`rwf`](https://crates.io/crates/rwf) crate[^2]. Add it to your project with Cargo:
+Rwf primarily consists of the [`rwf`](https://crates.io/crates/rwf) crate[^2]. You can add it to your project with Cargo:
 
 ```
 cargo add rwf
@@ -87,4 +87,3 @@ Once the server is running, your web application will be available at [http://lo
 - [Controllers](controllers/index.md)
 - [Models](models/index.md)
 - [Views](views/index.md)
-- [Logging](logging.md)
