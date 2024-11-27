@@ -54,7 +54,6 @@ async fn main() -> Result<(), Error> {
         route!("/chat" => ChatController),
         route!("/chat/typing" => TypingController),
         engine!("/admin" => rwf_admin::engine()),
-        route!("/test" => test_controller),
         static_files,
     ];
     routes.extend(rwf_admin::routes()?);
@@ -62,9 +61,4 @@ async fn main() -> Result<(), Error> {
     Server::new(routes).launch("0.0.0.0:8000").await?;
 
     Ok(())
-}
-
-#[macros::controller]
-async fn test_controller(_request: &Request) -> Result<Response, Error> {
-    Ok(Response::new().html("test controller"))
 }

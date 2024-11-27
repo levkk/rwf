@@ -28,11 +28,23 @@ impl Controller for CurrentTime {
     }
 }
 
+/// Simple controller.
+#[macros::controller]
+async fn current_time() -> Response {
+    let time = OffsetDateTime::now_utc();
+
+    Response::new().text(format!("The current time is: {:?}", time))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
     Logger::init();
 
-    Server::new(vec![route!("/" => Index), route!("/time" => CurrentTime)])
-        .launch("0.0.0.0:8001")
-        .await
+    Server::new(vec![
+        route!("/" => Index),
+        route!("/time" => CurrentTime),
+        route!("/current-time" => current_time),
+    ])
+    .launch("0.0.0.0:8001")
+    .await
 }

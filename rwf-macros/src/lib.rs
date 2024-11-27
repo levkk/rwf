@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 
 use syn::{
     parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
-    Token, Type,
+    ReturnType, Token, Type,
 };
 
 use quote::quote;
@@ -674,6 +674,47 @@ fn snake_case(string: &str) -> String {
 pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let name = &input.sig.ident;
+
+    let result = match input.sig.output {
+        ReturnType::Type(_, ref typ) => match *typ.clone() {
+            Type::Path(path) => {
+                if let Some(output) = path.path.segments.last() {
+                    output.ident.to_string() == "Result"
+                } else {
+                    true
+                }
+            }
+
+            _ => true,
+        },
+
+        _ => true,
+    };
+
+    let call = if input.sig.inputs.is_empty() {
+        if result {
+            quote! {
+                drop(request);
+                std::result::Result::Ok(#name().await?)
+            }
+        } else {
+            quote! {
+                drop(request);
+                std::result::Result::Ok(#name().await)
+            }
+        }
+    } else {
+        if result {
+            quote! {
+                std::result::Result::Ok(#name(request).await?)
+            }
+        } else {
+            quote! {
+                std::result::Result::Ok(#name(request).await)
+            }
+        }
+    };
+
     quote! {
         #[derive(Default)]
         #[allow(non_camel_case_types)]
@@ -687,7 +728,7 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
 
                 #input
 
-                #name(request).await
+                #call
             }
         }
     }
