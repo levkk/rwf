@@ -80,7 +80,7 @@ Your application is ready. You can launch it with Cargo:
 cargo run
 ```
 
-Once the server is running, your web application will be available on [http://localhost:8000](http://localhost:8000). The full code for this is available on [GitHub](https://github.com/levkk/rwf/tree/main/examples/quick-start).
+Once the server is running, your web application will be available at [http://localhost:8000](http://localhost:8000). The full code for this is available on [GitHub](https://github.com/levkk/rwf/tree/main/examples/quick-start).
 
 ## Learn more
 

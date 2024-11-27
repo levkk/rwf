@@ -1,7 +1,0 @@
-[package]
-name = "rwf-web-app"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-rwf = { version = "0.1.14", path = "../../rwf" }
