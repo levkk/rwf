@@ -1,6 +1,6 @@
 [package]
 name = "rwf"
-version = "0.1.14"
+version = "0.1.15"
 edition = "2021"
 license = "MIT"
 description = "Framework for building web applications in the Rust programming language"
