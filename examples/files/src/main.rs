@@ -9,6 +9,6 @@ async fn main() -> Result<(), http::Error> {
     Logger::init();
 
     Server::new(vec![route!("/" => controllers::Upload)])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
 }

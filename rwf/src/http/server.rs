@@ -7,13 +7,14 @@
 use super::{Error, Handler, Request, Response, Router};
 
 use crate::colors::MaybeColorize;
+use crate::config::get_config;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
-use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use tokio::signal::ctrl_c;
 use tokio::task::JoinHandle;
@@ -52,7 +53,9 @@ impl Server {
     }
 
     /// Launch the server. This blocks until the server is shut down (`SIGINT`/Ctrl-C).
-    pub async fn launch(self, addr: impl ToSocketAddrs) -> Result<(), Error> {
+    pub async fn launch(self) -> Result<(), Error> {
+        let config = get_config();
+        let addr = format!("{}:{}", config.general.host, config.general.port);
         info!(
             "Starting {} {} {}",
             "Rwf".green(),

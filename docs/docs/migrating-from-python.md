@@ -32,7 +32,7 @@ async fn main() {
         WsgiController::new("project.wsgi")
             .wildcard("/"),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
     .unwrap();
 }
@@ -58,7 +58,7 @@ async fn main() {
             .wildcard("/"),
         route!("/users" => Users),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
     .unwrap()
 }

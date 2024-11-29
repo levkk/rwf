@@ -41,7 +41,7 @@ async fn main() -> Result<(), Error> {
         middleware: MiddlewareSet::new(vec![BlockBadHeader::default().middleware()]),
     }
     .route("/")])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await?;
 
     Ok(())

@@ -9,7 +9,7 @@ async fn main() -> Result<(), http::Error> {
     let controller = RackController::new("todo");
 
     Server::new(vec![route!("/rust" => Index), controller.wildcard("/")])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
 }
 

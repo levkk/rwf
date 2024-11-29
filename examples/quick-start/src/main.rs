@@ -30,6 +30,6 @@ async fn main() -> Result<(), http::Error> {
     Logger::init();
 
     Server::new(vec![route!("/" => index), route!("/time" => CurrentTime)])
-        .launch("0.0.0.0:8001")
+        .launch()
         .await
 }

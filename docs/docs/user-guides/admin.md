@@ -43,7 +43,7 @@ routes.extend(rwf_admin::routes());
 
 // Launch the server.
 Server::new(routes)
-    .launch("0.0.0.0:8000")
+    .launch()
     .await?;
 ```
 

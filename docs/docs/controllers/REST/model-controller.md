@@ -40,7 +40,7 @@ async fn main() {
     Server::new(vec![
         crud!("/users" => Users),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
     .unwrap()
 }

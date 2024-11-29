@@ -51,7 +51,7 @@ async fn main() {
     Server::new(vec![
         UsersController::default().crud("/api/users"),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .expect("failed to shut down server");
 }
 ```

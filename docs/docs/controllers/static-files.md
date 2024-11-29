@@ -17,7 +17,7 @@ async fn main() -> Result<(), http::Error> {
     let server = Server::new(vec![
         StaticFiles::serve("static")?,
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 }
 ```

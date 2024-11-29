@@ -46,7 +46,7 @@ async fn main() {
     Logger::init();
 
     Server::new(vec![IndexController::default().route("/")])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
         .expect("error shutting down server");
 }

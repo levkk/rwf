@@ -117,7 +117,7 @@ async fn main() -> Result<(), http::Error> {
     let server = Server::new(vec![
         route!("/websocket" => Echo),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 }
 ```

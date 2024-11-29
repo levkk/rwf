@@ -53,7 +53,7 @@ Once you register this controller with the server, one route will handle `GET` a
 
 ```rust
 Server::new(vec![route!("/login" => Login)])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 ```
 

@@ -96,7 +96,7 @@ async fn main() -> Result<(), Error> {
         ProtectedAreaController::new().route("/protected"),
         LogoutController::default().route("/logout"),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await?;
 
     Ok(())

@@ -34,7 +34,5 @@ async fn main() -> Result<(), http::Error> {
     Logger::init();
     Migrations::migrate().await?;
 
-    Server::new(vec![route!("/" => Index)])
-        .launch("0.0.0.0:8000")
-        .await
+    Server::new(vec![route!("/" => Index)]).launch().await
 }

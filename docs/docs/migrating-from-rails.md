@@ -55,7 +55,7 @@ async fn main() -> Result<(), http::Error> {
         RackController::new("path/to/your/rails/app")
             .wildcard("/")
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 }
 ```

@@ -84,7 +84,7 @@ async fn main() -> Result<(), http::Error> {
         // Map the `/time` route to the `CurrentTime` controller.
         route!("/time" => CurrentTime),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 }
 ```

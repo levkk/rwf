@@ -26,7 +26,7 @@ async fn main() -> Result<(), Error> {
     routes.extend(rwf_admin::routes());
 
     Server::new(routes)
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
 }
 ```

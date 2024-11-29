@@ -7,7 +7,7 @@ async fn main() -> Result<(), Error> {
     Logger::init();
 
     Server::new(vec![StaticFiles::serve("static")?])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await?;
 
     Ok(())

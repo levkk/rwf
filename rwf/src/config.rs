@@ -431,7 +431,14 @@ impl Default for DatabaseConfig {
 
 impl DatabaseConfig {
     fn default_idle_timeout() -> usize {
-        3600 * 1000
+        match var("RWF_DATABASE_IDLE_TIMEOUT") {
+            Ok(timeout) => match timeout.parse() {
+                Ok(timeout) => timeout,
+                Err(_) => 3600 * 1000,
+            },
+
+            Err(_) => 3600 * 1000,
+        }
     }
 
     /// How long to wait before an idle connection is

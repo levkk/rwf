@@ -16,7 +16,7 @@ async fn main() {
     Server::new(vec![
         route!("/turbo-stream" => TurboStream),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
     .unwrap()
 }

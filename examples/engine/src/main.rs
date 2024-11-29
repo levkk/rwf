@@ -20,6 +20,6 @@ async fn main() -> Result<(), http::Error> {
 
     let engine = Engine::new(vec![route!("/index" => Index)]);
     Server::new(vec![engine!("/engine" => engine)])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
 }

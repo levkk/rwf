@@ -60,7 +60,7 @@ async fn main() {
     Server::new(vec![
         route!("/" => IndexController),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
     .unwrap();
 }

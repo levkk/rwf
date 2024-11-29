@@ -50,7 +50,7 @@ async fn main() -> Result<(), Error> {
         .await?;
 
     Server::new(vec![IndexController::default().route("/")])
-        .launch("0.0.0.0:8000")
+        .launch()
         .await?;
 
     Ok(())

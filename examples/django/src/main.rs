@@ -51,7 +51,7 @@ async fn main() {
         // Serve every other path with Django.
         WsgiController::new("todo.wsgi").wildcard("/"),
     ])
-    .launch("0.0.0.0:8002")
+    .launch()
     .await
     .unwrap();
 }

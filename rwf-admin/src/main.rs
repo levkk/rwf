@@ -37,6 +37,6 @@ async fn main() -> Result<(), http::Error> {
         route!("/turbo-stream" => TurboStream),
         StaticFiles::serve("static")?,
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await
 }

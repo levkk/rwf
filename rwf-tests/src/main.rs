@@ -407,7 +407,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         .route("/orders"),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await?;
 
     Ok(())

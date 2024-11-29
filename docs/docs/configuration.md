@@ -18,6 +18,8 @@ section configures database connection settings, like the database URL, connecti
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| `host` | Address of the network interface to launch Rwf on, e.g. `0.0.0.0`. | `0.0.0.0` |
+| `port` | Network port Rwf server will listen on for HTTP connections. | `8000` |
 | `log_queries` | Toggles logging of all SQL queries executed by the [ORM](models/index.md). | `false` |
 | `secret_key` | Secret key, encoded using base64, used for [encryption](security/encryption.md). | Randomly generated |
 | `cache_templates` | Toggle caching of [dynamic templates](views/templates/index.md). | `false` in debug, `true` in release |
@@ -52,6 +54,8 @@ If you have Python installed on your system, you can generate a secret key for R
 | `name`  | Name of the database to connect to. | Same as the `$USER` shell variable. If not set, default is `postgres`. |
 | `user`  | Name of the user to connect with to the database. | `$USER`, or `postgres` if not set. |
 | `url` | Fully-qualified database connection string. | `postgresql://{user}/localhost:5432/{name}`, where `{user}` and `{name}` are `name` and `user` configuration values. |
+| `checkout_timeout` | Amount of time to wait for a connection from the pool before returning an error (in milliseconds). | `5000` (5 seconds) |
+| `idle_timeout` | Amount of time to wait before closing an idle database connection. | `3600000` (1 hour) |
 
 #### `url`
 

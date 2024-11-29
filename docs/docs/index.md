@@ -69,7 +69,7 @@ async fn main() -> Result<(), http::Error> {
 
     // Launch the HTTP server.
     Server::new(routes)
-        .launch("0.0.0.0:8000")
+        .launch()
         .await
 }
 ```

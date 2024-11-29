@@ -48,7 +48,7 @@ async fn main() -> Result<(), Error> {
         crud!("/api/users/secure" => SecureUserController),
         rest!("/api/rest" => MyController),
     ])
-    .launch("0.0.0.0:8000")
+    .launch()
     .await?;
 
     Ok(())
