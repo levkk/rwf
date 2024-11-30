@@ -187,6 +187,9 @@ RackResponse rwf_rack_response_new(VALUE value) {
     return response;
 }
 
+/*
+ * Convert bytes to a StringIO wrapped into a Rack InputWrapper expected by Rails.
+*/
 static VALUE rwf_request_body(const char *body) {
     VALUE rb_str = rb_str_new_cstr(body);
     VALUE str_io = rwf_get_class("StringIO");
@@ -263,6 +266,11 @@ void rwf_clear_error_state() {
     rb_set_errinfo(Qnil);
 }
 
+/*
+ * Print and clear an exception.
+ * Used for debugging. We don't really expect Rack to throw an exception; that would
+ * mean there is a bug in Rails exception handling.
+*/
 int rwf_print_error() {
     VALUE error = rb_errinfo();
 
