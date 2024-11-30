@@ -130,7 +130,10 @@ mod test {
     fn test_paramters() {
         let path = Path::parse("/api/orders/:name/receipt").unwrap();
         let with_regex = PathWithRegex::rest(path).unwrap();
-        println!("{}", with_regex.regex().as_str());
+        assert_eq!(
+            r#"^\/api\/orders\/([a-zA-Z0-9_-]+)\/receipt(\/[a-zA-Z0-9_-]+)?\/?$"#,
+            with_regex.regex().as_str()
+        );
         let params = with_regex.params();
 
         let url = "/api/orders/apple_bees/receipt/5";
