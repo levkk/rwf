@@ -1931,7 +1931,7 @@ dependencies = [
 
 [[package]]
 name = "rwf-ruby"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bindgen 0.68.1",
  "cc",

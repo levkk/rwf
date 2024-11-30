@@ -1,9 +1,14 @@
 [package]
 name = "rwf-ruby"
 license = "MIT"
-description = "Ruby (specifically Rack/Rails) bindings for Rwf"
-version = "0.1.0"
+description = "Ruby (specifically Rack/Rails) bindings for the Rust Web Framework"
+version = "0.1.1"
 edition = "2021"
+readme = "README.md"
+homepage = "https://levkk.github.io/rwf/"
+repository = "https://github.com/levkk/rwf"
+keywords = ["rwf", "web", "framework", "ruby", "bindings"]
+authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
 
 [dependencies]
 libc = "0.2"
