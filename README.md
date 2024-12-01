@@ -36,7 +36,6 @@ To add Rwf to your stack, create a Rust binary application and add `rwf` and `to
 
 ```bash
 cargo add rwf
-cargo add tokio@1 --features full
 ```
 
 Building an app is then as simple as:
@@ -45,20 +44,15 @@ Building an app is then as simple as:
 use rwf::prelude::*;
 use rwf::http::Server;
 
-#[derive(Default)]
-struct IndexController;
-
-#[async_trait]
-impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::new().html("<h1>Hey Rwf!</h1>"))
-    }
+#[controller]
+async fn index() -> Response {
+    Response::new().html("<h1>Welcome to Rwf!</h1>")
 }
 
 #[tokio::main]
 async fn main() {
     Server::new(vec![
-        route!("/" => IndexController),
+        route!("/" => index),
     ])
     .launch()
     .await
