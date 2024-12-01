@@ -66,8 +66,8 @@ See [examples](https://github.com/levkk/rwf/tree/main/examples) for common use c
 
 ## &#128678; Status &#128678;
 
-Rwf is in beta and looking for early adopters. Most features are in a good state and documentation is in a decent state.
+Rwf is in beta and looking for early adopters. Most features are in a good state and documentation is usable.
 
-### &#128295; Contributions &#128295;
+### &#128295; Contributions
 
 Contributions are welcome. Please see [CONTRIBUTING](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md) for guidelines, [ARCHITECTURE](https://github.com/levkk/rwf/tree/main/ARCHITECTURE.md) for a tour of the code, and [ROADMAP](https://github.com/levkk/rwf/tree/main/ROADMAP.md) for a non-exhaustive list of desired features.
