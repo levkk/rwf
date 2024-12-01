@@ -97,10 +97,10 @@ impl Controller for RackController {
             // We only have one thread in Rust, so there is no race.
             // Besides, if you try this from multiple threads, you'll segfault.
             if !loaded.load(Ordering::Relaxed) {
-                info!("Loading the Rack app, hold your horses...");
+                info!("Loading the Rack application, this may take a while...");
                 Ruby::load_app(&path).unwrap();
                 loaded.store(true, Ordering::Relaxed);
-                info!("Rack app loaded, let's go!");
+                info!("Rack application loaded");
             }
 
             let response = RackRequest::send(env, &body).unwrap();

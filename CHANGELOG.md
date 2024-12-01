@@ -1,5 +1,3 @@
 # Changelog
 
-## 0.1.3
-
-- Initial release
+See [Releases](https://github.com/levkk/rwf/releases).

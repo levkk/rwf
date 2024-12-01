@@ -16,8 +16,6 @@ Thank you! Happy coding.
 
 ## Philosophy
 
-### Usability over micro-optimizations
-
 Rwf prioritizes user ergonomics over _bleeding_ edge runtime performance. Rust already runs at native speed (think x86/ARM instructions, not an interpreter with a slow GC), and most code will fetch bytes from the network, so a few allocations and clones aren't going to make a difference. When designing APIs, please prioritize making them easy to use. Concretely, if lifetimes are giving you grief, just clone the struct.
 
 Functions should accept the most inputs possible, for example:
@@ -29,7 +27,7 @@ fn do_stuff(s: impl ToString) -> String;
 is much better than
 
 ```rust
-fn do_stuff(s: &'a str) -> &'a str;
+fn do_stuff(s: &'a str) -> String;
 ```
 
-because the first version can accept `String`, `&String`, `&str` and any other data type that implements the `ToString` (or `Display`) trait, which is most of them, while the second function will require the novice (and even experienced) user to scratch their head for a minute.
+because the first version can accept `String`, `&String`, `&str` and any other data type that implements the `ToString` (or `Display`) trait, which is most of them.

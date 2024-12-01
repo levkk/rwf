@@ -1,13 +1,15 @@
 //! Rust wrapper over the C bindings to Ruby.
 use libc::uintptr_t;
 use once_cell::sync::OnceCell;
+
+use std::collections::HashMap;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::fs::canonicalize;
 use std::mem::MaybeUninit;
 use std::path::Path;
+use std::time::Instant;
 
-use std::collections::HashMap;
-use tracing::info;
+use tracing::{debug, info};
 
 // Make sure the Ruby VM is initialized only once.
 static RUBY_INIT: OnceCell<Ruby> = OnceCell::new();
@@ -97,7 +99,14 @@ impl RackRequest {
 
         let mut response: RackResponse = unsafe { MaybeUninit::zeroed().assume_init() };
 
+        let start = Instant::now();
+
         let result = unsafe { rwf_app_call(req, app_name.as_ptr(), &mut response) };
+
+        debug!(
+            "Rack request finished in {:.2}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
 
         if result != 0 {
             return Err(Error::App);
@@ -355,7 +364,7 @@ impl Ruby {
         let path = path.as_ref();
 
         let version = Self::eval("RUBY_VERSION").unwrap().to_string();
-        info!("Using {}", version);
+        info!("Using Ruby v{}", version);
 
         if path.exists() {
             // We use `require`, which only works with abslute paths.
