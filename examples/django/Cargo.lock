@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "rwf"
-version = "0.1.15"
+version = "0.2.0"
 dependencies = [
  "aes",
  "aes-gcm-siv",

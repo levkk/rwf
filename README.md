@@ -64,6 +64,10 @@ async fn main() {
 
 See [examples](https://github.com/levkk/rwf/tree/main/examples) for common use cases.
 
-## &#128679; Status &#128679;
+## &#128678; Status &#128678;
 
-Rwf is in early development and not ready for production. Many features and documentation are incomplete. Contributions are welcome. Please see [CONTRIBUTING](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md) for guidelines, [ARCHITECTURE](https://github.com/levkk/rwf/tree/main/ARCHITECTURE.md) for a tour of the code, and [ROADMAP](https://github.com/levkk/rwf/tree/main/ROADMAP.md) for a non-exhaustive list of desired features.
+Rwf is in beta and looking for early adopters. Most features are in a good state and documentation is in a decent state.
+
+### &#128295; Contributions &#128295;
+
+Contributions are welcome. Please see [CONTRIBUTING](https://github.com/levkk/rwf/tree/main/CONTRIBUTING.md) for guidelines, [ARCHITECTURE](https://github.com/levkk/rwf/tree/main/ARCHITECTURE.md) for a tour of the code, and [ROADMAP](https://github.com/levkk/rwf/tree/main/ROADMAP.md) for a non-exhaustive list of desired features.
