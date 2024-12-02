@@ -210,7 +210,7 @@ accessed while you're doing something to it, for example updating it with new va
     transaction.commit().await?;
     ```
 === "SQL"
-    ```
+    ```postgresql
     BEGIN;
     SELECT * FRON "users" WHERE "id" = $1 FOR UPDATE;
     COMMIT;

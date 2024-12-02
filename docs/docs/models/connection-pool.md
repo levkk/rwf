@@ -25,7 +25,7 @@ Returning the connection to the pool is done automatically when the `conn` varia
 ```rust
 let users = {
     let mut conn = Pool::connection().await?;
-    let users = User::all()
+    User::all()
         .fetch_all(&mut conn)
         .await?
 };
@@ -33,7 +33,7 @@ let users = {
 
 ## Transactions
 
-All queries are executed inside implicit transactions. If you need to execute multiple queries inside a single transaction, you need to start one explicitly:
+All queries are executed inside their own implicit transactions by default. If you need to execute multiple queries inside a single transaction, you need to start one explicitly:
 
 ```rust
 let mut transaction = Pool::transaction().await?;
@@ -58,4 +58,4 @@ let user = User::find(15)
 
 ## Waiting for connections
 
-When all available connections are checked out, the call to `Pool::connection()` will wait (and asynchronously block) until a connection is returned to the pool. If a connection is not returned in time, an timeout error will be returned, unblocking the request and allowing it to handle the situation gracefully.
+When all available connections are checked out, the call to `Pool::connection()` will wait (and asynchronously block) until a connection is returned to the pool. If a connection is not returned in time, a timeout error will be returned, unblocking the request and allowing it to handle the situation gracefully.
