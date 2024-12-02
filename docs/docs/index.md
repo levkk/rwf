@@ -59,7 +59,7 @@ use rwf::http::{self, Server};
 
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
-    // Configure then logger.
+    // Configure the logger.
     Logger::init();
 
     // Define routes.
