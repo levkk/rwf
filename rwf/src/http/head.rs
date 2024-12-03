@@ -164,7 +164,7 @@ impl Head {
     }
 
     /// Get the value of the `Authorization` header, if any is set. The header is parsed and if the
-    /// authorization type is supported, an [`rwf::http::Authorization`] is returned.
+    /// authorization type is supported, an [`crate::http::Authorization`] is returned.
     pub fn authorization(&self) -> Option<Authorization> {
         Authorization::parse(match self.header("authorization") {
             Some(authorization) => authorization,

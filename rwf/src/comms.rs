@@ -164,6 +164,10 @@ impl std::ops::Deref for WebsocketSender {
     }
 }
 
+/// Receiver for WebSocket messages.
+///
+/// Once this receiver is created, all subsequent messages will be sent to this
+/// receiver as well as all others.
 #[derive(Debug)]
 pub struct WebsocketReceiver {
     receiver: Option<Receiver<Message>>,
@@ -172,6 +176,7 @@ pub struct WebsocketReceiver {
 }
 
 impl WebsocketReceiver {
+    /// Get the session ID for this WebSocket receiver.
     pub fn session_id(&self) -> &SessionId {
         &self.session_id
     }
@@ -200,11 +205,14 @@ impl Drop for WebsocketReceiver {
     }
 }
 
+/// Send messages to every single connected
+/// WebSocket session.
 pub struct Broadcast {
     everyone: Vec<Websocket>,
 }
 
 impl Broadcast {
+    /// Send a message to all connected sessions.
     pub fn send(&self, message: impl ToMessage) -> Result<(), Error> {
         for socket in &self.everyone {
             socket.sender.send(message.clone().to_message())?;
@@ -218,6 +226,7 @@ impl Broadcast {
 ///
 /// If a model is passed in, the `id` field is used.
 pub trait IntoSessionId {
+    /// Convert a struct to a session identifier.
     fn into_session_id(self) -> SessionId;
 }
 

@@ -57,7 +57,7 @@ impl Cookies {
 
     /// Add an encrypted cookie.
     ///
-    /// If this is set on the [`rwf::http::Response`], this cookie will be sent
+    /// If this is set on the [`crate::http::Response`], this cookie will be sent
     /// to the client.
     pub fn add_private(&mut self, cookie: impl ToCookie) -> Result<(), Error> {
         let mut cookie = cookie.to_cookie();

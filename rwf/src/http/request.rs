@@ -127,7 +127,7 @@ impl Request {
 
     /// Return request head (headers, method, etc.).
     ///
-    /// [`rwf::http::Head`] is dereferenced from this struct,
+    /// [`crate::http::Head`] is dereferenced from this struct,
     /// so all its public methods are available directly.
     pub fn head(&self) -> &Head {
         &self.head
@@ -198,7 +198,7 @@ impl Request {
     }
 
     /// Return cookies set on the request. If no cookies are set,
-    /// an empty [`rwf::http::Cookies`] is returned.
+    /// an empty [`crate::http::Cookies`] is returned.
     pub fn cookies(&self) -> &Cookies {
         &self.inner.cookies
     }
@@ -326,6 +326,45 @@ impl Request {
             .unwrap_or(Session::empty());
         session.session_id = SessionId::Authenticated(user_id);
         Response::new().set_session(session).html("")
+    }
+
+    /// Log the user in. Unlike [`Self::login`], this accepts any database model,
+    /// and creates a response with the session cookie set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::prelude::*;
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String,
+    /// }
+    ///
+    /// let user = User { id: Some(25), email: "test@test.com".into() };
+    /// # let request = Request::default();
+    /// let response = request.login_user(&user).unwrap();
+    /// ```
+    pub fn login_user(&self, user: &impl Model) -> Result<Response, Error> {
+        use crate::model::Value;
+
+        let get_user_id = |value: Value| -> Result<Response, Error> {
+            match value {
+                Value::Integer(user_id) => Ok(self.login(user_id)),
+                Value::BigInt(user_id) => Ok(self.login(user_id)),
+                Value::Int(user_id) => Ok(self.login(user_id as i64)),
+                Value::SmallInt(user_id) => Ok(self.login(user_id as i64)),
+                _ => Err(Error::UserIdNotAnInteger),
+            }
+        };
+
+        match user.id() {
+            Value::Optional(value) => match *value {
+                Some(user_id) => get_user_id(user_id),
+                None => Err(Error::UserIdIsNull),
+            },
+            value => get_user_id(value),
+        }
     }
 
     /// Log the user out. This overwrites the session cookie with a guest session.

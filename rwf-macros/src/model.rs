@@ -1,4 +1,6 @@
 use super::*;
+use parse::Parse;
+use syn::*;
 
 pub fn impl_derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -181,6 +183,36 @@ fn handle_override(
     }
 }
 
+struct Relationships {
+    relationships: Vec<Relationship>,
+}
+
+impl Parse for Relationships {
+    fn parse(input: parse::ParseStream) -> Result<Self> {
+        let mut relationships = Vec::new();
+        while let Ok(relationship) = input.parse() {
+            relationships.push(relationship);
+        }
+
+        Ok(Self { relationships })
+    }
+}
+
+struct Relationship {
+    path: Path,
+    #[allow(dead_code)]
+    comma: Option<Token![,]>,
+}
+
+impl Parse for Relationship {
+    fn parse(input: parse::ParseStream) -> Result<Self> {
+        Ok(Self {
+            path: input.parse()?,
+            comma: input.parse()?,
+        })
+    }
+}
+
 fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_macro2::TokenStream {
     let ident = match &input.data {
         Data::Struct(_data) => input.ident.clone(),
@@ -220,16 +252,20 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
                 };
 
                 if let Some(association) = association {
-                    let associations = list.tokens.clone().into_iter().map(|token| {
-                        quote! {
-                            #[automatically_derived]
-                            impl rwf::model::Association<#token> for #ident {
-                                fn association_type() -> rwf::model::AssociationType {
-                                    #association
+                    let relationships = syn::parse2::<Relationships>(list.tokens.clone()).unwrap();
+
+                    let associations =
+                        relationships.relationships.into_iter().map(|relationship| {
+                            let token = relationship.path;
+                            quote! {
+                                #[automatically_derived]
+                                impl rwf::model::Association<#token> for #ident {
+                                    fn association_type() -> rwf::model::AssociationType {
+                                        #association
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
 
                     quote! {
                         #(#associations)*
@@ -244,5 +280,14 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
 
     quote! {
         #(#rels)*
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_relationsips() {
+        macrotest::expand("tests/model/relationship.rs");
     }
 }

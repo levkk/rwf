@@ -38,9 +38,9 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install cargo-nextest
-        run: cargo install cargo-nextest
-      - name: Test
+      - name: Install test dependencies
+        run: cargo install cargo-nextest cargo-expand
+      - name: Run tests
         run: cargo nextest run
-      - name: Documentation tests
+      - name: Run documentation tests
         run: cargo test --doc
