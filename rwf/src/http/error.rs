@@ -59,6 +59,12 @@ pub enum Error {
     /// HTTP request exceeds configured size.
     #[error("content too large")]
     ContentTooLarge(Head),
+
+    #[error("user model id is not an integer")]
+    UserIdNotAnInteger,
+
+    #[error("user model is is null")]
+    UserIdIsNull,
 }
 
 impl Error {
