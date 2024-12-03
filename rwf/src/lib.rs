@@ -80,7 +80,7 @@
 //! }
 //! ```
 //!
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 pub mod analytics;
 pub mod colors;
 pub mod comms;
