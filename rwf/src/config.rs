@@ -22,21 +22,28 @@ static CONFIG: OnceCell<Config> = OnceCell::new();
 /// Configuration error.
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Config file is not valid TOML.
     #[error("config: {0}")]
     Toml(#[from] toml::de::Error),
 
+    /// Configuration file doesn't exist or something went wrong
+    /// while reading it.
     #[error("config file not found")]
     Io(#[from] std::io::Error),
 
+    /// Secret key is not encoded using correct Base64 encoding.
     #[error("secret key is not valid")]
     Base64(#[from] base64::DecodeError),
 
+    /// Secret key is not correctly created.
     #[error("secret key is incorrect length")]
     SecretKey,
 
+    /// Configuration is already loaded.
     #[error("config is already loaded")]
     ConfigLoaded,
 
+    /// Configuration was not loaded.
     #[error("config not found")]
     NoConfig,
 }
@@ -168,6 +175,7 @@ pub struct General {
     /// AES-128 encryption key. Derived from the secret key. Used for encrypting cookies, sessions, and arbitrary user data.
     #[serde(skip)]
     pub aes_key: Key<AesGcmSiv<Aes128>>,
+    /// AES key used for encrypting secure identifiers.
     #[serde(skip)]
     pub secure_id_key: Key<AesGcmSiv<Aes128>>,
     /// Enable logging all queries executed by the ORM.
@@ -527,6 +535,8 @@ name = "test"
     }
 }
 
+/// Configuration for packaging Rwf apps built
+/// with `rwf-cli`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PackageConfig {
     /// Paths to include into the build. Default: migrations, static, templates.

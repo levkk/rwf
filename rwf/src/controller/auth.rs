@@ -120,6 +120,7 @@ impl Authentication for BasicAuth {
 /// Not very secure since the token can leak, but helpful if you need
 /// to quickly protect an endpoint.
 pub struct Token {
+    /// A token string.
     pub token: String,
 }
 

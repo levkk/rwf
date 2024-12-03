@@ -3,11 +3,17 @@
 use crate::config::get_config;
 use colored::Colorize;
 
+/// Use terminal colors only if terminal is TTY.
 pub trait MaybeColorize {
+    /// Make text green.
     fn green(&self) -> String;
+    /// Make text red.
     fn red(&self) -> String;
+    /// Make text purple.
     fn purple(&self) -> String;
+    /// Make text yellow.
     fn yellow(&self) -> String;
+    /// Make text bold.
     fn bold(&self) -> String;
 }
 
