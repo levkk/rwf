@@ -60,9 +60,11 @@ pub enum Error {
     #[error("content too large")]
     ContentTooLarge(Head),
 
+    /// Model used as user doesn't have an integer id column.
     #[error("user model id is not an integer")]
     UserIdNotAnInteger,
 
+    /// Model used as user has null id column.
     #[error("user model is is null")]
     UserIdIsNull,
 }
