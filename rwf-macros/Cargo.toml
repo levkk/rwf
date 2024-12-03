@@ -23,4 +23,3 @@ pluralizer = "0.4"
 
 [dev-dependencies]
 macrotest = "1"
-# rwf = { path = "../rwf" }
