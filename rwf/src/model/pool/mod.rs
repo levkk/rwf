@@ -75,6 +75,59 @@ pub async fn start_transaction() -> Result<Transaction, Error> {
     get_pool().transaction().await
 }
 
+/// State of database connection.
+///
+/// If the caller is passing in the connection pool, the connection
+/// needs to be obtained from the database. If the caller already has
+/// a connection, by virtue of requesting it manually or starting a transaction,
+/// the pool will use it.
+pub enum ConnectionRequest<'a> {
+    /// Connection request is already fulfilled.
+    Fulfilled(&'a mut ConnectionGuard),
+
+    /// The pool still needs to obtain a connection.
+    Pool(Pool),
+}
+
+impl<'a> ConnectionRequest<'a> {
+    pub(crate) fn connection(self) -> Option<&'a mut ConnectionGuard> {
+        match self {
+            ConnectionRequest::Fulfilled(conn) => Some(conn),
+            ConnectionRequest::Pool(_) => None,
+        }
+    }
+
+    pub(crate) async fn get(&self) -> Result<Option<ConnectionGuard>, Error> {
+        match self {
+            ConnectionRequest::Fulfilled(_) => Ok(None),
+            ConnectionRequest::Pool(pool) => Ok(Some(pool.get().await?)),
+        }
+    }
+}
+
+/// Convert an object to a connection request, fulfilled or otherwise.
+pub trait ToConnectionRequest<'a> {
+    fn to_connection_request(self) -> Result<ConnectionRequest<'a>, Error>;
+}
+
+impl<'a> ToConnectionRequest<'a> for &'a mut ConnectionGuard {
+    fn to_connection_request(self) -> Result<ConnectionRequest<'a>, Error> {
+        Ok(ConnectionRequest::Fulfilled(self))
+    }
+}
+
+impl<'a> ToConnectionRequest<'a> for &'a mut Transaction {
+    fn to_connection_request(self) -> Result<ConnectionRequest<'a>, Error> {
+        Ok(ConnectionRequest::Fulfilled(self.deref_mut()))
+    }
+}
+
+impl<'a> ToConnectionRequest<'a> for Pool {
+    fn to_connection_request(self) -> Result<ConnectionRequest<'a>, Error> {
+        Ok(ConnectionRequest::Pool(self))
+    }
+}
+
 /// Smart pointer that automatically checks in the connection
 /// back into the pool when the connection is dropped.
 pub struct ConnectionGuard {

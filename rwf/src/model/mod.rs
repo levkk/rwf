@@ -4,6 +4,7 @@
 use crate::colors::MaybeColorize;
 use crate::config::get_config;
 
+use pool::{ConnectionRequest, ToConnectionRequest};
 use std::time::{Duration, Instant};
 use tracing::{error, info};
 
@@ -613,8 +614,16 @@ impl<T: Model> Query<T> {
 
     async fn execute_internal(
         &self,
-        client: &mut ConnectionGuard,
+        client: impl ToConnectionRequest<'_>,
     ) -> Result<Vec<tokio_postgres::Row>, Error> {
+        let request = client.to_connection_request()?;
+        let mut conn = request.get().await?;
+
+        let client = match request.connection() {
+            Some(conn) => conn,
+            None => conn.as_mut().unwrap(),
+        };
+
         let result = match self {
             Query::Select(select) => {
                 let query = self.to_sql();
@@ -684,14 +693,17 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute the query and fetch the first row from the database.
-    pub async fn fetch(self, conn: &mut ConnectionGuard) -> Result<T, Error> {
+    pub async fn fetch(self, conn: impl ToConnectionRequest<'_>) -> Result<T, Error> {
         match self.execute(conn).await?.first().cloned() {
             Some(row) => Ok(row),
             None => Err(Error::RecordNotFound),
         }
     }
 
-    pub async fn fetch_optional(self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
+    pub async fn fetch_optional(
+        self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<Option<T>, Error> {
         match self.fetch(conn).await {
             Ok(row) => Ok(Some(row)),
             Err(Error::RecordNotFound) => Ok(None),
@@ -700,14 +712,14 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute the query and fetch all rows from the database.
-    pub async fn fetch_all(self, conn: &mut ConnectionGuard) -> Result<Vec<T>, Error> {
+    pub async fn fetch_all(self, conn: impl ToConnectionRequest<'_>) -> Result<Vec<T>, Error> {
         self.execute(conn).await
     }
 
     /// Get the query plan from Postgres.
     ///
     /// Take the actual query, prepend `EXPLAIN` and execute.
-    pub async fn explain(self, conn: &mut ConnectionGuard) -> Result<Explain, Error> {
+    pub async fn explain(self, conn: impl ToConnectionRequest<'_>) -> Result<Explain, Error> {
         let query = format!("EXPLAIN {}", self.to_sql());
         let placeholders = match self {
             Query::Select(select) => select.placeholders,
@@ -727,11 +739,11 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub async fn exists(self, conn: &mut ConnectionGuard) -> Result<bool, Error> {
+    pub async fn exists(self, conn: impl ToConnectionRequest<'_>) -> Result<bool, Error> {
         Ok(self.count(conn).await? > 0)
     }
 
-    pub async fn count(self, conn: &mut ConnectionGuard) -> Result<i64, Error> {
+    pub async fn count(self, conn: impl ToConnectionRequest<'_>) -> Result<i64, Error> {
         let query = match self {
             Query::Select(select) => Query::Select(select.exists()),
             _ => self,
@@ -749,7 +761,7 @@ impl<T: Model> Query<T> {
     }
 
     /// Execute a query and return an optional result.
-    pub async fn execute(self, conn: &mut ConnectionGuard) -> Result<Vec<T>, Error> {
+    pub async fn execute(self, conn: impl ToConnectionRequest<'_>) -> Result<Vec<T>, Error> {
         let start = Instant::now();
         let mut results = vec![];
         let rows = self.execute_internal(conn).await?;

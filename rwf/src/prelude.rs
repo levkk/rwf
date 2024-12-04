@@ -15,7 +15,7 @@ pub use crate::controller::{
 pub use crate::http::{Cookie, CookieBuilder, Message, Method, Request, Response, ToMessage};
 pub use crate::job::{queue_async, queue_delay, Job};
 pub use crate::logging::Logger;
-pub use crate::model::{Migrations, Model, Pool, Scope, ToSql, ToValue};
+pub use crate::model::{pool::ToConnectionRequest, Migrations, Model, Pool, Scope, ToSql, ToValue};
 pub use crate::view::{Template, ToTemplateValue, TurboStream};
 
 /// A macro to easily implement async traits methods.
