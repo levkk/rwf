@@ -329,11 +329,7 @@ impl SessionAuth {
 #[async_trait]
 impl Authentication for SessionAuth {
     async fn authorize(&self, request: &Request) -> Result<bool, Error> {
-        if let Some(session) = request.session() {
-            Ok(session.authenticated())
-        } else {
-            Ok(false)
-        }
+        Ok(request.session().authenticated())
     }
 
     async fn denied(&self, _request: &Request) -> Result<Response, Error> {

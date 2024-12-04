@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Request {
     head: Head,
-    session: Option<Session>,
+    session: Session,
     inner: Arc<Inner>,
     params: Option<Arc<Params>>,
     received_at: OffsetDateTime,
@@ -35,7 +35,7 @@ impl Default for Request {
     fn default() -> Self {
         Self {
             head: Head::default(),
-            session: None,
+            session: Session::default(),
             inner: Arc::new(Inner::default()),
             params: None,
             received_at: OffsetDateTime::now_utc(),
@@ -100,8 +100,8 @@ impl Request {
         let cookies = head.cookies();
 
         let (session, renew_session) = match cookies.get_session()? {
-            Some(session) => (Some(session), false),
-            None => (Some(Session::anonymous()), true),
+            Some(session) => (session, false),
+            None => (Session::anonymous(), true),
         };
 
         Ok(Request {
@@ -214,8 +214,8 @@ impl Request {
     /// Get the session set on the request, if any. While all requests served
     /// by Rwf should have a session (guest or authenticated), some HTTP clients
     /// may not send the cookie back (e.g. cURL won't).
-    pub fn session(&self) -> Option<&Session> {
-        self.session.as_ref()
+    pub fn session(&self) -> &Session {
+        &self.session
     }
 
     /// Was the CSRF protection bypassed on this request?
@@ -235,22 +235,16 @@ impl Request {
     ///
     /// This should uniquely identify a browser if it's a guest session,
     /// or a user if the user is logged in.
-    pub fn session_id(&self) -> Option<SessionId> {
-        self.session
-            .as_ref()
-            .map(|session| session.session_id.clone())
+    pub fn session_id(&self) -> SessionId {
+        self.session.session_id.clone()
     }
 
     /// Get the authenticated user's ID. Combined with the `?` operator,
     /// will return `403 - Unauthorized` if not logged in.
     pub fn user_id(&self) -> Result<i64, Error> {
-        if let Some(session_id) = self.session_id() {
-            match session_id {
-                SessionId::Authenticated(id) => Ok(id),
-                _ => Err(Error::Forbidden),
-            }
-        } else {
-            Err(Error::Forbidden)
+        match self.session_id() {
+            SessionId::Authenticated(id) => Ok(id),
+            _ => Err(Error::Forbidden),
         }
     }
 
@@ -273,9 +267,7 @@ impl Request {
     /// ```
     pub async fn user<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
         match self.session_id() {
-            Some(SessionId::Authenticated(user_id)) => {
-                Ok(Some(T::find(user_id).fetch(conn).await?))
-            }
+            SessionId::Authenticated(user_id) => Ok(Some(T::find(user_id).fetch(conn).await?)),
 
             _ => Ok(None),
         }
@@ -294,8 +286,9 @@ impl Request {
     ///
     /// This is automatically done by the HTTP server,
     /// if the session is available.
-    pub fn set_session(mut self, session: Option<Session>) -> Self {
+    pub(crate) fn set_session(mut self, session: Session) -> Self {
         self.session = session;
+        self.renew_session = true;
         self
     }
 
@@ -328,10 +321,7 @@ impl Request {
     /// let response = request.login(1234);
     /// ```
     pub fn login(&self, user_id: i64) -> Response {
-        let mut session = self
-            .session()
-            .map(|s| s.clone())
-            .unwrap_or(Session::empty());
+        let mut session = self.session.clone();
         session.session_id = SessionId::Authenticated(user_id);
         Response::new().set_session(session).html("")
     }
@@ -385,12 +375,7 @@ impl Request {
     /// let response = request.logout();
     /// ```
     pub fn logout(&self) -> Response {
-        let mut session = self
-            .session()
-            .map(|s| s.clone())
-            .unwrap_or(Session::empty());
-        session.session_id = SessionId::default();
-        Response::new().set_session(session).html("")
+        Response::new().set_session(Session::anonymous()).html("")
     }
 
     pub(crate) fn renew_session(&self) -> bool {
@@ -416,13 +401,7 @@ impl ToTemplateValue for Request {
             "query".to_string(),
             self.path().query().to_string().to_template_value()?,
         );
-        hash.insert(
-            "session".to_string(),
-            match self.session() {
-                Some(session) => session.to_template_value()?,
-                None => Value::Null,
-            },
-        );
+        hash.insert("session".to_string(), self.session().to_template_value()?);
         Ok(Value::Hash(hash))
     }
 }
@@ -479,12 +458,11 @@ pub mod test {
         assert_eq!(req.peer(), &dummy_ip());
         assert_eq!(req.upgrade_websocket(), false);
         assert_eq!(req.skip_csrf(), false);
-        assert_eq!(req.session(), None);
+        assert!(!req.session().authenticated());
         assert!(req.user_id().is_err());
         assert_eq!(req.body(), b"12345");
         assert_eq!(req.string(), "12345".to_string());
         assert!(req.form_data().is_err());
-        assert!(req.session_id().is_none());
         assert_eq!(req.query().len(), 1);
         assert_eq!(req.path().base(), "/apples");
 

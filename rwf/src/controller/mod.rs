@@ -728,11 +728,7 @@ pub trait WebsocketController: Controller {
     ) -> Result<bool, Error> {
         use tokio::sync::broadcast::error::RecvError;
 
-        let session_id = if let Some(session) = request.session() {
-            session.session_id.clone()
-        } else {
-            return Err(Error::SessionMissingError);
-        };
+        let session_id = request.session().session_id.clone();
 
         info!(
             "{} {} {} connected",

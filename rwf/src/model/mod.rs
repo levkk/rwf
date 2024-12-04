@@ -4,7 +4,7 @@
 use crate::colors::MaybeColorize;
 use crate::config::get_config;
 
-use pool::{ConnectionRequest, ToConnectionRequest};
+use pool::ToConnectionRequest;
 use std::time::{Duration, Instant};
 use tracing::{error, info};
 
