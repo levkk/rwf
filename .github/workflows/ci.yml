@@ -39,6 +39,7 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - uses: Swatinem/rust-cache@v2
       - name: Install test dependencies
         run: cargo install cargo-nextest cargo-expand
       - name: Run tests
