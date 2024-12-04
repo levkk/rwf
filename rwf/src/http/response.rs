@@ -240,7 +240,7 @@ impl Response {
             let session = request.session();
 
             if let Some(session) = session {
-                if session.should_renew() {
+                if session.should_renew() || request.renew_session() {
                     let session = session
                         .clone()
                         .renew(get_config().general.session_duration());

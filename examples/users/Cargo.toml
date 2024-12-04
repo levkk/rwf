@@ -1,0 +1,9 @@
+[package]
+name = "users"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rwf = { path = "../../rwf" }
+time = "0.3"
+argon2 = "0.5"

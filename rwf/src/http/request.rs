@@ -28,6 +28,7 @@ pub struct Request {
     received_at: OffsetDateTime,
     // Don't check for valid CSRF token.
     skip_csrf: bool,
+    renew_session: bool,
 }
 
 impl Default for Request {
@@ -39,6 +40,7 @@ impl Default for Request {
             params: None,
             received_at: OffsetDateTime::now_utc(),
             skip_csrf: false,
+            renew_session: false,
         }
     }
 }
@@ -97,10 +99,15 @@ impl Request {
 
         let cookies = head.cookies();
 
+        let (session, renew_session) = match cookies.get_session()? {
+            Some(session) => (Some(session), false),
+            None => (Some(Session::anonymous()), true),
+        };
+
         Ok(Request {
             head,
             params: None,
-            session: cookies.get_session()?,
+            session,
             inner: Arc::new(Inner {
                 body,
                 peer,
@@ -108,6 +115,7 @@ impl Request {
             }),
             received_at: OffsetDateTime::now_utc(),
             skip_csrf: false,
+            renew_session,
         })
     }
 
@@ -383,6 +391,10 @@ impl Request {
             .unwrap_or(Session::empty());
         session.session_id = SessionId::default();
         Response::new().set_session(session).html("")
+    }
+
+    pub(crate) fn renew_session(&self) -> bool {
+        self.renew_session
     }
 }
 

@@ -230,7 +230,7 @@ pub trait Controller: Sync + Send {
                         .await?
                 }
                 Err(err) => {
-                    error!("{}", err);
+                    error!("{:?}", err);
 
                     let response = match err {
                         Error::HttpError(err) => match err.code() {

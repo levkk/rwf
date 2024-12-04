@@ -8,7 +8,7 @@ use std::env::var;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use time::Duration;
-use tracing::info;
+use tracing::{error, info, warn};
 
 use crate::controller::middleware::csrf::Csrf;
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
@@ -58,11 +58,14 @@ pub fn get_config() -> &'static Config {
 /// Rwf configuration file. Can be deserialized
 /// from a TOML file, although any format supported by
 /// `serde` is possible.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     /// Where the configuration file is located.
     #[serde(skip)]
     pub path: Option<PathBuf>,
+
+    #[serde(skip)]
+    error: Option<Error>,
 
     /// General settings. Most settings are here.
     #[serde(default = "General::default")]
@@ -85,6 +88,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             path: None,
+            error: None,
             general: General::default(),
             database: DatabaseConfig::default(),
             websocket: WebsocketConfig::default(),
@@ -109,7 +113,14 @@ impl Config {
         for path in ["rwf.toml", "Rwf.toml", "Rum.toml"] {
             let path = Path::new(path);
             if path.is_file() {
-                return Self::load(path).unwrap_or_default();
+                return match Self::load(path) {
+                    Ok(config) => config,
+                    Err(err) => {
+                        let mut config = Config::default();
+                        config.error = Some(err);
+                        config
+                    }
+                };
             }
         }
 
@@ -154,6 +165,9 @@ impl Config {
     pub fn log_info(&self) {
         if let Some(ref path) = self.path {
             info!("Configuration file \"{}\" loaded", path.display());
+        } else if let Some(error) = &self.error {
+            error!("Configuration file failed to load: {:?}", error);
+            warn!("Loading configuration from environment");
         } else {
             info!("Configuration file missing, loaded from environment instead");
         }
