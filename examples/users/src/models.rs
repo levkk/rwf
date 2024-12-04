@@ -27,13 +27,11 @@ impl User {
             _ => (),
         }
 
-        let mut conn = Pool::connection().await?;
-
         let user = User::create(&[
             ("email", email.to_value()),
             ("password", encrypted_password.to_value()),
         ])
-        .fetch(&mut conn)
+        .fetch(Pool::pool())
         .await?;
 
         Ok(UserLogin::Ok(user))
@@ -44,10 +42,8 @@ impl User {
     /// Return a user if one exists and the passwords match.
     /// Return `None` otherwise.
     pub async fn login(email: &str, password: &str) -> Result<UserLogin, Error> {
-        let mut conn = Pool::connection().await?;
-
         if let Some(user) = User::filter("email", email)
-            .fetch_optional(&mut conn)
+            .fetch_optional(Pool::pool())
             .await?
         {
             if hash_validate(password.as_bytes(), &user.password)? {

@@ -13,10 +13,7 @@ pub struct Signup;
 #[async_trait]
 impl PageController for Signup {
     async fn get(&self, request: &Request) -> Result<Response, Error> {
-        let user = {
-            let mut conn = Pool::connection().await?;
-            request.user::<User>(&mut conn).await?
-        };
+        let user = request.user::<User>(Pool::pool()).await?;
 
         if let Some(_) = user {
             return Ok(Response::new().redirect("/profile"));

@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
+use crate::prelude::ToConnectionRequest;
 use crate::{
     config::get_config,
     controller::{Session, SessionId},
@@ -265,7 +266,10 @@ impl Request {
     /// let conn = Pool::connection().await?;
     /// let user = request.user::<User>(&mut conn).await?;
     /// ```
-    pub async fn user<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<Option<T>, Error> {
+    pub async fn user<T: Model>(
+        &self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<Option<T>, Error> {
         match self.session_id() {
             SessionId::Authenticated(user_id) => Ok(Some(T::find(user_id).fetch(conn).await?)),
 
@@ -275,7 +279,10 @@ impl Request {
 
     /// Same function as [`Request::user`], except if returns a [`Result`] instead of an [`Option`].
     /// If used with the `?` operator, returns `403 - Unauthorized` automatically.
-    pub async fn user_required<T: Model>(&self, conn: &mut ConnectionGuard) -> Result<T, Error> {
+    pub async fn user_required<T: Model>(
+        &self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<T, Error> {
         match self.user(conn).await? {
             Some(user) => Ok(user),
             None => Err(Error::Forbidden),
