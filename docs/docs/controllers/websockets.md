@@ -95,11 +95,10 @@ to send a [`Message`](https://docs.rs/rwf/latest/rwf/http/websocket/enum.Message
 All WebSocket clients have a unique [session](sessions.md) identifier. Sending a message to a client only requires that you know their session ID, which you can obtain from the [`Request`](request.md), for example:
 
 ```rust
-if let Some(session_id) = request.session_id() {
-    let client = Comms::websocket(&session_id);
+let session_id = request.session_id();
+let websocket = Comms::websocket(&session_id);
 
-    client.send("hey there")?;
-}
+websocket.send("hey there")?;
 ```
 
 WebSocket messages can be delivered to any client from anywhere in the application, including [controllers](index.md) and [background jobs](../background-jobs/index.md).

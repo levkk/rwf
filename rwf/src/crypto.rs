@@ -334,7 +334,7 @@ pub fn hash(data: &[u8]) -> Result<String, Error> {
 ///
 /// ```
 /// # use rwf::crypto::{hash, hash_validate};
-/// let hash = hash("password".as_bytes());
+/// let hash = hash("password".as_bytes()).unwrap();
 /// let valid = hash_validate("password".as_bytes(), &hash).unwrap();
 ///
 /// assert!(valid)

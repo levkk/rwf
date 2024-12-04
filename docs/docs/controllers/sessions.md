@@ -32,11 +32,7 @@ async fn handle(&self, request: &Request) -> Result<Response, Error> {
 All [controllers](index.md) can check for the presence of a valid session:
 
 ```rust
-let session = request.session();
-
-let valid = session
-    .map(|session| !session.expired())
-    .unwrap_or(false);
+let valid = !request.session().expired();
 ```
 
 Unless the session cookie is set and has been encrypted using the correct algorithm and secret key, calling [`session`](https://docs.rs/rwf/latest/rwf/http/request/struct.Request.html#method.session) will return `None`.

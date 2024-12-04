@@ -15,7 +15,7 @@ use crate::prelude::ToConnectionRequest;
 use crate::{
     config::get_config,
     controller::{Session, SessionId},
-    model::{ConnectionGuard, Model},
+    model::Model,
     view::ToTemplateValue,
 };
 
@@ -212,9 +212,10 @@ impl Request {
         &self.inner.cookies
     }
 
-    /// Get the session set on the request, if any. While all requests served
-    /// by Rwf should have a session (guest or authenticated), some HTTP clients
-    /// may not send the cookie back (e.g. cURL won't).
+    /// Get the session set on the request, if any.
+    ///
+    /// All Rwf requests will have a session. If a browser doesn't save cookies (e.g. cURL doesn't),
+    /// a new session will be generated for each request.
     pub fn session(&self) -> &Session {
         &self.session
     }
