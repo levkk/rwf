@@ -9,7 +9,7 @@ In this guide, we'll cover the most popular and simple way to create user accoun
 
 ## Username and password
 
-Allowing your users to create accounts in your application using a username and password is pretty universal. Implementing this system requires using all 3 components of the MVC framework: creating a database model to store usernames and password hashes, controllers to process signup and login requests, and views to serve signup and login forms.
+Allowing your users to create accounts in your application using a username and password is pretty universal. Implementing this system requires using all 3 components of the MVC framework: creating a database model to store usernames and password hashes, controllers to process sign up and login requests, and views to serve sign up and login forms.
 
 Rwf supports all three components natively.
 
