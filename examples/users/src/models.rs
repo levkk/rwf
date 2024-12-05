@@ -1,6 +1,7 @@
 // use rwf::model::Error;
 use rwf::crypto::{hash, hash_validate};
 use rwf::prelude::*;
+use tokio::task::spawn_blocking;
 
 pub enum UserLogin {
     NoSuchUser,
@@ -19,7 +20,10 @@ pub struct User {
 impl User {
     /// Create new user with email and password.
     pub async fn signup(email: &str, password: &str) -> Result<UserLogin, Error> {
-        let encrypted_password = hash(password.as_bytes())?;
+        let hash_password = password.to_owned();
+        let encrypted_password = spawn_blocking(move || hash(hash_password.as_bytes()))
+            .await
+            .unwrap()?;
 
         match Self::login(email, password).await? {
             UserLogin::Ok(user) => return Ok(UserLogin::Ok(user)),
