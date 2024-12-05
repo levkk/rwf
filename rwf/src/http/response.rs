@@ -228,28 +228,21 @@ impl Response {
     ///
     /// This makes sure a valid session cookie is set on all responses.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
-        // Set an anonymous session if none is set on the request.
-        if self.session.is_none() && request.session().is_none() {
-            self.session = Some(Session::anonymous());
-        }
-
         // Session set manually on the request already.
         if let Some(ref session) = self.session {
             self.cookies.add_session(&session)?;
         } else {
             let session = request.session();
 
-            if let Some(session) = session {
-                if session.should_renew() {
-                    let session = session
-                        .clone()
-                        .renew(get_config().general.session_duration());
-                    self.cookies.add_session(&session)?;
+            if session.should_renew() || request.renew_session() {
+                let session = session
+                    .clone()
+                    .renew(get_config().general.session_duration());
+                self.cookies.add_session(&session)?;
 
-                    // Set the session on the response, so it can be
-                    // passed down in handle_stream.
-                    self.session = Some(session);
-                }
+                // Set the session on the response, so it can be
+                // passed down in handle_stream.
+                self.session = Some(session);
             }
         }
 

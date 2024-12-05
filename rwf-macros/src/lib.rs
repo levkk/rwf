@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 
 use syn::{
     parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
-    ReturnType, Token, Type,
+    ReturnType, Token, Type, Visibility,
 };
 
 use quote::quote;
@@ -672,7 +672,7 @@ fn snake_case(string: &str) -> String {
 /// ```
 #[proc_macro_attribute]
 pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as ItemFn);
+    let mut input = parse_macro_input!(input as ItemFn);
     let name = &input.sig.ident;
 
     let result = match input.sig.output {
@@ -715,10 +715,13 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
+    let vis = input.vis.clone();
+    input.vis = Visibility::Inherited;
+
     quote! {
         #[derive(Default)]
         #[allow(non_camel_case_types)]
-        pub struct #name;
+        #vis struct #name;
 
         #[rwf::async_trait]
         impl rwf::controller::Controller for #name {

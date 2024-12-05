@@ -660,6 +660,15 @@ impl<T: Model> ToTemplateValue for T {
     }
 }
 
+impl<T: Model> ToTemplateValue for Option<T> {
+    fn to_template_value(&self) -> Result<Value, Error> {
+        match self {
+            Some(model) => model.to_template_value(),
+            None => Ok(Value::Null),
+        }
+    }
+}
+
 impl<T: ToTemplateValue> ToTemplateValue for Vec<T> {
     fn to_template_value(&self) -> Result<Value, Error> {
         let mut list = vec![];

@@ -59,7 +59,7 @@ impl Controller for ProtectedAreaController {
     }
 
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        let session = request.session().unwrap();
+        let session = request.session();
         let welcome = format!("<h1>Welcome, user {:?}</h1>", session.session_id);
         Ok(Response::new().html(welcome))
     }

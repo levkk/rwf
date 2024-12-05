@@ -61,10 +61,7 @@ impl Middleware for Csrf {
         }
 
         let header = request.header(CSRF_HEADER);
-        let session_id = match request.session_id() {
-            Some(session_id) => session_id.to_string(),
-            None => return Ok(Outcome::Stop(request, Response::csrf_error())),
-        };
+        let session_id = request.session_id().to_string();
 
         if let Some(header) = header {
             if csrf_token_validate(header, &session_id) {

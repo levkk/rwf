@@ -1,5 +1,7 @@
 nav:
   - 'index.md'
+  - 'build-your-app'
   - 'hot-reload.md'
+  - '...'
   - 'deploy-to-prod.md'
   - 'admin.md'

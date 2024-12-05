@@ -61,21 +61,16 @@ let session_id = request.session_id();
 Once you have the ID, you can send an update directly to that user:
 
 ```rust
-use rwf::prelude::*;
+// Create the update.
+let update = TurboStream::new(r#"
+    <div id="messages">
+        <p>Hi Alice!</p>
+        <p>Hello Bob!</p>
+    </div>
+"#).action("replace").target("messages");
 
-// Not all requests will have a session.
-if let Some(session_id) = session_id {
-    // Create the update.
-    let update = TurboStream::new(r#"
-        <div id="messages">
-            <p>Hi Alice!</p>
-            <p>Hello Bob!</p>
-        </div>
-    "#).action("replace").target("messages");
-
-    // Send it via a WebSocket connection.
-    Comms::websocket(&session_id).send(update)?;
-}
+// Send it via a WebSocket connection.
+Comms::websocket(&session_id).send(update)?;
 ```
 
 If you need to send updates to the client from somewhere else besides a controller, e.g. from a [background job](../../background-jobs/index.md), pass the session identifier to that code as an argument. The session identifier is unique and unlikely to change.

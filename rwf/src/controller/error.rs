@@ -31,6 +31,9 @@ pub enum Error {
     #[error("view error: {0}")]
     ViewError(#[from] crate::view::Error),
 
+    #[error("crypto error: {0}")]
+    CryptoError(#[from] crate::crypto::Error),
+
     #[error("{0}")]
     Error(#[from] Box<dyn std::error::Error + Sync + Send>),
 

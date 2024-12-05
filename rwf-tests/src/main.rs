@@ -104,11 +104,10 @@ impl RestController for BasePlayerController {
     type Resource = i64;
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-        if let Some(session) = request.session() {
-            session
-                .websocket()
-                .send(websocket::Message::Text("controller websocket".into()))?;
-        }
+        request
+            .session()
+            .websocket()
+            .send(websocket::Message::Text("controller websocket".into()))?;
         Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
     }
 

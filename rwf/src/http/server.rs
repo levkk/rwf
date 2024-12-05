@@ -151,7 +151,10 @@ impl Server {
 
                         // Set the session on the request before we pass it down
                         // to the stream handler.
-                        let request = request.set_session(response.session().clone());
+                        let request = match response.session().clone() {
+                            Some(session) => request.set_session(session),
+                            None => request,
+                        };
                         let ok = response.status().ok();
 
                         // Calculate duration.

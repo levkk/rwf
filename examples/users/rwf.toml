@@ -1,0 +1,6 @@
+[general]
+secret_key = "9Sk2t2G40QC3QrdVr6e6RzYAKJLGTFjpDiRrmA7eGQk="
+log_queries = true
+
+[database]
+name = "rwf_users"

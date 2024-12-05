@@ -5,6 +5,10 @@ use aes_gcm_siv::{
     aead::{Aead, KeyInit},
     Aes128GcmSiv, Nonce,
 };
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
 use base64::{engine::general_purpose, Engine as _};
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
@@ -31,11 +35,29 @@ pub enum Error {
     /// Some other error happened. See contents for description.
     #[error("{0}")]
     Generic(&'static str),
+
+    #[error("argon2 error: {0}")]
+    ArgonHash(password_hash::Error),
+
+    #[error("argon2 error: {0}")]
+    Argon(argon2::Error),
 }
 
 impl From<aes_gcm_siv::Error> for Error {
     fn from(error: aes_gcm_siv::Error) -> Error {
         Error::AesError(error)
+    }
+}
+
+impl From<password_hash::Error> for Error {
+    fn from(error: password_hash::Error) -> Self {
+        Self::ArgonHash(error)
+    }
+}
+
+impl From<argon2::Error> for Error {
+    fn from(error: argon2::Error) -> Self {
+        Self::Argon(error)
     }
 }
 
@@ -288,6 +310,40 @@ pub fn csrf_token_validate(token: &str, session_id: &str) -> bool {
         }
         Err(_) => false,
     }
+}
+
+/// Hash some bytes with Argon2.
+///
+/// # Example
+///
+/// ```
+/// # use rwf::crypto::hash;
+/// let hash = hash("password".as_bytes()).unwrap();
+/// ```
+pub fn hash(data: &[u8]) -> Result<String, Error> {
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2.hash_password(data, &salt)?.to_string();
+
+    Ok(password_hash)
+}
+
+/// Validate that a hash matches the bytes.
+///
+/// # Example
+///
+/// ```
+/// # use rwf::crypto::{hash, hash_validate};
+/// let hash = hash("password".as_bytes()).unwrap();
+/// let valid = hash_validate("password".as_bytes(), &hash).unwrap();
+///
+/// assert!(valid)
+/// ```
+pub fn hash_validate(data: &[u8], hash: &str) -> Result<bool, Error> {
+    let parsed_hash = PasswordHash::new(hash)?;
+    Ok(Argon2::default()
+        .verify_password(data, &parsed_hash)
+        .is_ok())
 }
 
 #[cfg(test)]

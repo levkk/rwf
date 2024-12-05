@@ -7,6 +7,7 @@ struct RenderInput {
     _comma_1: Option<Token![,]>,
     context: Vec<ContextInput>,
     code: Option<LitInt>,
+    _comma_2: Option<Token![,]>,
 }
 
 struct TurboStreamInput {
@@ -28,6 +29,7 @@ impl TurboStreamInput {
             _comma_1: self._comma_2.clone(),
             context: self.context.clone(),
             code: None,
+            _comma_2: None,
         }
     }
 }
@@ -117,6 +119,7 @@ impl Parse for RenderInput {
         let template_name: LitStr = input.parse()?;
         let _comma_1: Option<Token![,]> = input.parse()?;
         let mut code = None;
+        let mut _comma_2 = None;
 
         let context = if _comma_1.is_some() {
             let mut result = vec![];
@@ -124,6 +127,7 @@ impl Parse for RenderInput {
                 if input.peek(LitInt) {
                     let c: LitInt = input.parse().unwrap();
                     code = Some(c);
+                    _comma_2 = input.parse().unwrap();
                 } else {
                     let context: Result<ContextInput> = input.parse();
 
@@ -147,6 +151,7 @@ impl Parse for RenderInput {
             _comma_1,
             context,
             code,
+            _comma_2,
         })
     }
 }

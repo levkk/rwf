@@ -32,12 +32,14 @@ jobs:
           sudo service postgresql restart
           sudo -u postgres createuser --superuser --login $USER
           createdb $USER
+          createdb rwf_users
           psql postgres://$USER@127.0.0.1:5432/$USER -c "SELECT 1" > /dev/null
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+      - uses: Swatinem/rust-cache@v2
       - name: Install test dependencies
         run: cargo install cargo-nextest cargo-expand
       - name: Run tests
