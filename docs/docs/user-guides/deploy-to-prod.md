@@ -22,12 +22,12 @@ The Rwf CLI can package your application with a single command:
     created build.tar.gz
     ```
 
-This will build your application in release mode and bundle the binary, templates, static files and migrations into a single archive called `bundle.tar.gz`. 
+This will build your application in release mode and bundle the binary, templates, static files and migrations into a single archive called `bundle.tar.gz`.
 
 Since Rust applications are compiled, they don't require any additional dependencies to run. You can copy the bundle onto your production machine(s), untar it and run the app:
 
 ```bash
-tar xvf bundle.tar.tz
+tar xvf bundle.tar.gz
 ./app
 ```
 
