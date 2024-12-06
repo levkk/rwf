@@ -5,14 +5,22 @@
 </head>
 <body>
     <div class="container pt-5">
-        <h1 class="mb-4">Create account</h1>
-        <form method="post" action="/signup">
-            <% if error_user_exists %>
+        <h1 class="mb-4">Login</h1>
+        <form method="post" action="/login">
+            <%= csrf_token() %>
+
+            <% if error_user_does_not_exist %>
             <div class="alert alert-danger">
-                Account with this email already exists.
+                Account with this email doesn't exist or the password is incorrect.
             </div>
             <% end %>
-            <%= csrf_token() %>
+
+            <% if error_password %>
+            <div class="alert alert-danger">
+                Wrong password.
+            </div>
+            <% end %>
+
             <div class="mb-3">
                 <label class="form-label">Email</label>
                 <input class="form-control" type="email" placeholder="Your email, e.g. user@example.com" required autocomplete="off" name="identifier">

@@ -67,26 +67,29 @@ pub trait UserModel: Model + Sync {
         identifier: impl ToValue + Send,
         password: impl ToString + Send,
     ) -> Result<Self, Error> {
-        let user = Row::filter(Self::identifier_column(), identifier.to_value())
+        let user = Self::filter(Self::identifier_column(), identifier.to_value())
             .not(Self::password_column(), Value::Null) // Make sure column exists
             .take_one()
             .fetch_optional(Pool::pool())
             .await?;
 
         if let Some(user) = user {
-            let column: String = user.try_get(&Self::password_column()).unwrap();
+            let key_values = user.to_hashmap();
+            let column: String = key_values
+                .get(Self::password_column())
+                .map(|v| v.clone().string().unwrap())
+                .unwrap();
 
             let password = password.to_string();
 
             let valid =
-                spawn_blocking(move || crate::crypto::hash_validate(column.as_bytes(), &password))
+                spawn_blocking(move || crate::crypto::hash_validate(password.as_bytes(), &column))
                     .await
                     .unwrap()
                     .unwrap();
 
             if valid {
-                let row = user.into_inner().unwrap();
-                Ok(Self::from_row(row)?)
+                Ok(user)
             } else {
                 Err(Error::WrongPassword)
             }

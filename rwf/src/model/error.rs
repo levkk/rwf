@@ -50,6 +50,9 @@ pub enum Error {
 
     #[error("value is not an integer")]
     NotAnInteger,
+
+    #[error("value is not a string")]
+    NotAString,
 }
 
 impl Error {

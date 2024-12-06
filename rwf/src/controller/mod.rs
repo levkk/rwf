@@ -51,7 +51,7 @@ pub use error::Error;
 pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
 pub use static_files::{CacheControl, StaticFiles};
 pub use turbo_stream::TurboStream;
-pub use user::LoginController;
+pub use user::{LoginController, LogoutController, SignupController};
 
 use super::http::{
     websocket::{self, DataFrame},

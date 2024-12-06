@@ -132,6 +132,14 @@ impl Value {
             _ => Err(Error::NotAnInteger),
         }
     }
+
+    /// Convert the value to a string.
+    pub fn string(self) -> Result<String, Error> {
+        match self {
+            Value::String(val) => Ok(val),
+            _ => Err(Error::NotAString),
+        }
+    }
 }
 
 /// Convert a Rust type to a [`Value`]. Implementation for many common types

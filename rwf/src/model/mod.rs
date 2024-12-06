@@ -5,7 +5,10 @@ use crate::colors::MaybeColorize;
 use crate::config::get_config;
 
 use pool::ToConnectionRequest;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use tracing::{error, info};
 
 pub mod callbacks;
@@ -1457,6 +1460,19 @@ pub trait Model: FromRow {
         map.insert("id".into(), self.id().into());
 
         Ok(serde_json::Value::Object(map))
+    }
+
+    /// Concert model to a column names -> values map.
+    fn to_hashmap(&self) -> HashMap<String, Value> {
+        let columns = Self::column_names();
+        let values = self.values();
+        let mut result = HashMap::new();
+
+        for (column, value) in columns.iter().zip(values.iter()) {
+            result.insert(column.to_string(), value.clone());
+        }
+
+        result
     }
 }
 
