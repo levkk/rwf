@@ -4,7 +4,7 @@
   <%% "templates/head.html" %>
 </head>
 <body>
-    <div class="container pt-5">
+    <div class="container pt-5 col-lg-6 col-12">
         <h1 class="mb-4">Create account</h1>
         <form method="post" action="/signup">
             <% if error_user_exists %>
@@ -23,9 +23,14 @@
                 <input class="form-control" type="password" placeholder="A secure password" required autocomplete="off" name="password">
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Password again</label>
+                <input class="form-control" type="password" placeholder="A secure password" required autocomplete="off" name="password2">
+            </div>
+
             <div class="d-flex justify-content-end">
                 <button type="submit" class="btn btn-primary">
-                    Signup
+                    Create account
                 </button>
             </div>
         </form>

@@ -1,4 +1,4 @@
-use super::{Model, Pool, Row, ToValue, Value};
+use super::{Model, Pool, ToValue, Value};
 use async_trait::async_trait;
 use tokio::task::spawn_blocking;
 

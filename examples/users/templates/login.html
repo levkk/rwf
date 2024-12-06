@@ -4,7 +4,7 @@
   <%% "templates/head.html" %>
 </head>
 <body>
-    <div class="container pt-5">
+    <div class="container pt-5 col-lg-6 col-12">
         <h1 class="mb-4">Login</h1>
         <form method="post" action="/login">
             <%= csrf_token() %>
@@ -33,7 +33,7 @@
 
             <div class="d-flex justify-content-end">
                 <button type="submit" class="btn btn-primary">
-                    Signup
+                    Login
                 </button>
             </div>
         </form>
