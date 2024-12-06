@@ -3,13 +3,22 @@ use rwf::crypto::{hash, hash_validate};
 use rwf::prelude::*;
 use tokio::task::spawn_blocking;
 
+#[derive(Clone, macros::Model, macros::UserModel)]
+#[user_model(email, password_hash)]
+pub struct User2 {
+    id: Option<i64>,
+    email: String,
+    password_hash: String,
+}
+
 pub enum UserLogin {
     NoSuchUser,
     WrongPassword,
     Ok(User),
 }
 
-#[derive(Clone, macros::Model)]
+#[derive(Clone, macros::Model, macros::UserModel)]
+#[user_model(email, password)]
 pub struct User {
     id: Option<i64>,
     email: String,

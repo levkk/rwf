@@ -114,6 +114,24 @@ impl Value {
             _ => false,
         }
     }
+
+    /// Convert the value to an integer if it is one.
+    pub fn integer(self) -> Result<i64, Error> {
+        match self {
+            Value::Int(i) => Ok(i as i64),
+            Value::Integer(i) => Ok(i),
+            Value::BigInt(i) => Ok(i),
+            Value::SmallInt(i) => Ok(i as i64),
+            Value::Optional(value) => match *value {
+                Some(Value::Int(i)) => Ok(i as i64),
+                Some(Value::Integer(i)) => Ok(i),
+                Some(Value::BigInt(i)) => Ok(i),
+                Some(Value::SmallInt(i)) => Ok(i as i64),
+                _ => Err(Error::NotAnInteger),
+            },
+            _ => Err(Error::NotAnInteger),
+        }
+    }
 }
 
 /// Convert a Rust type to a [`Value`]. Implementation for many common types

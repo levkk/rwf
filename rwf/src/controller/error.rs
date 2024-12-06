@@ -48,6 +48,9 @@ pub enum Error {
 
     #[error("timeout exceeded")]
     TimeoutError(#[from] tokio::time::error::Elapsed),
+
+    #[error("user error: {0}")]
+    UserError(#[from] crate::model::user::Error),
 }
 
 impl Error {
