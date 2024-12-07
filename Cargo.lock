@@ -1974,6 +1974,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rwf-auth"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+]
+
+[[package]]
 name = "rwf-cli"
 version = "0.1.14"
 dependencies = [
