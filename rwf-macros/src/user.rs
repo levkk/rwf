@@ -25,23 +25,23 @@ pub(crate) fn impl_derive_user_model(input: TokenStream) -> TokenStream {
     if let Some(attr) = input.attrs.first() {
         match attr.meta {
             Meta::List(ref attrs) => {
-                let attrs = syn::parse2::<UserModel>(attrs.tokens.clone()).unwrap();
+                if let Ok(attrs) = syn::parse2::<UserModel>(attrs.tokens.clone()) {
+                    let identifier = attrs.identifier.to_string();
+                    let password = attrs.password.to_string();
 
-                let identifier = attrs.identifier.to_string();
-                let password = attrs.password.to_string();
+                    return quote! {
+                        impl rwf::model::UserModel for #ident {
+                            fn identifier_column() -> &'static str {
+                                #identifier
+                            }
 
-                return quote! {
-                    impl rwf::model::UserModel for #ident {
-                        fn identifier_column() -> &'static str {
-                            #identifier
-                        }
-
-                        fn password_column() -> &'static str {
-                            #password
+                            fn password_column() -> &'static str {
+                                #password
+                            }
                         }
                     }
+                    .into();
                 }
-                .into();
             }
 
             _ => (),

@@ -5,10 +5,20 @@ use time::OffsetDateTime;
 use regex::Regex;
 use tokio::fs::{create_dir, File};
 
-use crate::logging::created;
+use crate::{logging::created, util::package_info};
 
 pub async fn migrate(version: Option<i64>) {
-    let migrations = Migrations::sync().await.expect("failed to sync migrations");
+    let info = package_info().await.expect("couldn't get package info");
+
+    if info.rwf_auth {
+        rwf_auth::migrate()
+            .await
+            .expect("rwf-auth migrations failed to apply");
+    }
+
+    let migrations = Migrations::sync(None)
+        .await
+        .expect("failed to sync migrations");
 
     migrations
         .apply(Direction::Up, version)
@@ -17,7 +27,9 @@ pub async fn migrate(version: Option<i64>) {
 }
 
 pub async fn revert(version: Option<i64>) {
-    let migrations = Migrations::sync().await.expect("failed to sync migrations");
+    let migrations = Migrations::sync(None)
+        .await
+        .expect("failed to sync migrations");
     let version = if let Some(version) = version {
         Some(version)
     } else {

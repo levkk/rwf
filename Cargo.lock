@@ -1989,6 +1989,7 @@ dependencies = [
  "log",
  "regex",
  "rwf",
+ "rwf-auth",
  "serde_json",
  "tar",
  "time",
@@ -2691,6 +2692,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "rwf",
+ "rwf-auth",
  "time",
 ]
 

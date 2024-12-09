@@ -7,6 +7,7 @@ mod models;
 #[tokio::main]
 async fn main() {
     Logger::init();
+    rwf_auth::migrate().await.expect("rwf-auth migrations");
 
     let signup: SignupController<models::User> =
         SignupController::new("templates/signup.html").redirect("/profile");

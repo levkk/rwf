@@ -20,6 +20,7 @@ use tracing::{error, info};
 /// may not be applied yet.
 pub struct Migrations {
     migrations: Vec<Migration>,
+    root_path: Option<PathBuf>,
 }
 
 static RE: Lazy<Regex> =
@@ -99,8 +100,15 @@ impl MigrationFile {
 }
 
 impl Migrations {
-    fn root_path() -> Result<PathBuf, Error> {
-        let path = PathBuf::from(current_dir()?.join(Path::new("migrations")));
+    fn root_path(path: Option<PathBuf>) -> Result<PathBuf, Error> {
+        let path = PathBuf::from(
+            if let Some(path) = path {
+                path
+            } else {
+                current_dir()?
+            }
+            .join(Path::new("migrations")),
+        );
 
         if !path.is_dir() {
             info!(r#"No migrations available, skipping"#);
@@ -112,19 +120,22 @@ impl Migrations {
         }
     }
 
-    async fn load() -> Result<Self, Error> {
+    async fn load(root_path: Option<PathBuf>) -> Result<Self, Error> {
         let mut conn = get_connection().await?;
         let migrations = Migration::all().fetch_all(&mut conn).await?;
 
-        Ok(Self { migrations })
+        Ok(Self {
+            migrations,
+            root_path,
+        })
     }
 
     /// Read the `"migrations"` folder and sync all migrations
     /// to the `"rwf_migrations"` table in the database. This does not
     /// actually apply the migrations, only makes sure the entries in the folder
     /// match the database table.
-    pub async fn sync() -> Result<Self, Error> {
-        let checks = if let Ok(root_path) = Self::root_path() {
+    pub async fn sync(root_path: Option<PathBuf>) -> Result<Self, Error> {
+        let checks = if let Ok(root_path) = Self::root_path(root_path.clone()) {
             let mut checks = HashMap::new();
 
             let mut dir_entries = read_dir(root_path).await?;
@@ -199,7 +210,10 @@ impl Migrations {
 
         conn.commit().await?;
 
-        Ok(Self { migrations })
+        Ok(Self {
+            migrations,
+            root_path,
+        })
     }
 
     /// Apply the migrations, making changes to the database schema.
@@ -240,7 +254,7 @@ impl Migrations {
                 migration.name()
             );
 
-            let path = Self::root_path()?.join(migration.path(direction));
+            let path = Self::root_path(self.root_path.clone())?.join(migration.path(direction));
 
             let sql = read_to_string(path).await?;
             let queries = sql
@@ -291,7 +305,7 @@ impl Migrations {
             .await?;
         }
 
-        Self::load().await
+        Self::load(self.root_path).await
     }
 
     /// Get a list of all migrations currently found in the `"migrations"` folder.
@@ -301,25 +315,42 @@ impl Migrations {
 
     /// Execute all migrations in the up direction.
     pub async fn migrate() -> Result<Migrations, Error> {
-        Migrations::sync().await?.apply(Direction::Up, None).await
+        Migrations::sync(None)
+            .await?
+            .apply(Direction::Up, None)
+            .await
     }
 
     /// Execute all migrations in the down direction. **This will effectively
     /// destroy all tables and data in your database.**
     pub async fn flush() -> Result<Migrations, Error> {
-        Migrations::sync().await?.apply(Direction::Down, None).await
+        Migrations::sync(None)
+            .await?
+            .apply(Direction::Down, None)
+            .await
     }
 }
 
 /// Execute all migrations in the up direction.
-pub async fn migrate() -> Result<Migrations, Error> {
-    Migrations::sync().await?.apply(Direction::Up, None).await
+///
+/// # Arguments
+///
+/// - `root_path`: Folder where the `migrations` folder is located.
+///
+pub async fn migrate(root_path: Option<PathBuf>) -> Result<Migrations, Error> {
+    Migrations::sync(root_path)
+        .await?
+        .apply(Direction::Up, None)
+        .await
 }
 
 /// Execute all migrations in the down direction. **This will effectively
 /// destroy all tables and data in your database.**
 pub async fn rollback() -> Result<Migrations, Error> {
-    Migrations::sync().await?.apply(Direction::Down, None).await
+    Migrations::sync(None)
+        .await?
+        .apply(Direction::Down, None)
+        .await
 }
 
 #[cfg(test)]
