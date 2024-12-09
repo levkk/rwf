@@ -2,6 +2,7 @@ use rwf::model::migrations::{Direction, Migrations};
 use std::path::Path;
 use time::OffsetDateTime;
 
+use log::info;
 use regex::Regex;
 use tokio::fs::{create_dir, File};
 
@@ -10,10 +11,16 @@ use crate::{logging::created, util::package_info};
 pub async fn migrate(version: Option<i64>) {
     let info = package_info().await.expect("couldn't get package info");
 
+    info!("Installing migrations from rwf");
+    Migrations::install(rwf::migrations_path())
+        .await
+        .expect("install rwf migrations failed");
+
     if info.rwf_auth {
-        rwf_auth::migrate()
+        info!("Installing migrations from rwf-auth");
+        Migrations::install(rwf_auth::migrations_path())
             .await
-            .expect("rwf-auth migrations failed to apply");
+            .expect("install rwf-auth migrations failed");
     }
 
     let migrations = Migrations::sync(None)

@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use time::OffsetDateTime;
-use tokio::fs::{read_dir, read_to_string};
+use tokio::fs::{copy, read_dir, read_to_string};
 use tracing::{error, info};
 
 /// Migrations found in the `"migrations"` folder. Some of them
@@ -100,7 +100,8 @@ impl MigrationFile {
 }
 
 impl Migrations {
-    fn root_path(path: Option<PathBuf>) -> Result<PathBuf, Error> {
+    /// Get the migrations folder.
+    pub fn root_path(path: Option<PathBuf>) -> Result<PathBuf, Error> {
         let path = PathBuf::from(
             if let Some(path) = path {
                 path
@@ -118,6 +119,19 @@ impl Migrations {
         } else {
             Ok(path)
         }
+    }
+
+    /// Install migrations from specified path.
+    pub async fn install(from_path: PathBuf) -> Result<(), Error> {
+        let migrations_path = Self::root_path(None)?;
+        let mut entries = read_dir(from_path).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let src = entry.path();
+            let dest = migrations_path.join(entry.path().file_name().unwrap());
+            copy(src, dest).await.expect("copy");
+        }
+
+        Ok(())
     }
 
     async fn load(root_path: Option<PathBuf>) -> Result<Self, Error> {
