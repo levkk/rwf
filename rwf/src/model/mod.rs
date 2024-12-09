@@ -5,7 +5,10 @@ use crate::colors::MaybeColorize;
 use crate::config::get_config;
 
 use pool::ToConnectionRequest;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use tracing::{error, info};
 
 pub mod callbacks;
@@ -28,6 +31,7 @@ pub mod prelude;
 pub mod row;
 pub mod select;
 pub mod update;
+pub mod user;
 pub mod value;
 
 pub use column::{Column, Columns, ToColumn};
@@ -48,6 +52,7 @@ pub use pool::{get_connection, get_pool, start_transaction, Connection, Connecti
 pub use row::Row;
 pub use select::Select;
 pub use update::Update;
+pub use user::UserModel;
 pub use value::{ToValue, Value};
 
 /// Convert a PostgreSQL row to a Rust struct. Type conversions are handled by `tokio_postgres`. This only
@@ -593,6 +598,8 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// If a unique constraint on any of these columns is triggered,
+    /// the row will be automatically updated.
     pub fn unique_by(self, columns: &[impl ToColumn]) -> Self {
         match self {
             Query::Insert(insert) => Query::Insert(insert.unique_by(columns)),
@@ -1453,6 +1460,19 @@ pub trait Model: FromRow {
         map.insert("id".into(), self.id().into());
 
         Ok(serde_json::Value::Object(map))
+    }
+
+    /// Concert model to a column names -> values map.
+    fn to_hashmap(&self) -> HashMap<String, Value> {
+        let columns = Self::column_names();
+        let values = self.values();
+        let mut result = HashMap::new();
+
+        for (column, value) in columns.iter().zip(values.iter()) {
+            result.insert(column.to_string(), value.clone());
+        }
+
+        result
     }
 }
 

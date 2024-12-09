@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS rwf_requests;
+
+DROP TABLE IF EXISTS rwf_jobs;

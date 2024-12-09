@@ -49,10 +49,12 @@ impl std::ops::Deref for Row {
 }
 
 impl Row {
+    /// Create new row.
     pub fn new(row: tokio_postgres::Row) -> Self {
         Self { row: Arc::new(row) }
     }
 
+    /// Convert the row to a map of column names and values.
     pub fn values(self) -> Result<HashMap<String, Value>, Error> {
         let mut result = HashMap::new();
         for column in self.columns() {
@@ -61,6 +63,12 @@ impl Row {
         }
 
         Ok(result)
+    }
+
+    /// Consume the row and return the inner `tokio_postgres::Row` if there
+    /// are no more references to this row.
+    pub fn into_inner(self) -> Option<tokio_postgres::Row> {
+        Arc::into_inner(self.row)
     }
 }
 

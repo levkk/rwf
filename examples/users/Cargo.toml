@@ -7,3 +7,4 @@ edition = "2021"
 rwf = { path = "../../rwf" }
 time = "0.3"
 argon2 = "0.5"
+rwf-auth = { path = "../../rwf-auth" }
