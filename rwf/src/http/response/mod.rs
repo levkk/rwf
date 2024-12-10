@@ -11,19 +11,26 @@
 //!     .html("<h1>Hello world!</h1>");
 //! ```
 
+mod encoder;
+
+use brotli::CompressorWriter;
+use flate2::write::{DeflateEncoder, GzEncoder};
+use flate2::Compression;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::io::Write;
 use std::marker::Unpin;
 use time::OffsetDateTime;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
+use crate::http::response::encoder::{Encoder, EncodingAlgorithm};
 use crate::view::{Template, TurboStream};
 use crate::{config::get_config, controller::Session};
 
 static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
-    let template = include_str!("error.html");
+    let template = include_str!("../error.html");
     Template::from_str(template).unwrap()
 });
 
@@ -552,6 +559,36 @@ impl Response {
     /// Mutable response headers.
     pub fn headers_mut(&mut self) -> &mut Headers {
         &mut self.headers
+    }
+
+    /// Compresses the http response specified by the [EncodingAlgorithm].
+    pub fn compress(mut self, algorithm: EncodingAlgorithm) -> Result<Self, Error> {
+        let original_body_bytes: &[u8] = match &self.body {
+            Body::File { .. } => {
+                return Ok(self);
+            }
+            Body::Html(html) => html.as_bytes(),
+            Body::Bytes(bytes) => bytes,
+            Body::Text(text) => text.as_bytes(),
+            Body::Json(json) => json,
+            Body::FileInclude { .. } => {
+                return Ok(self);
+            }
+        };
+        match algorithm {
+            EncodingAlgorithm::Gzip => {
+                self.headers.insert("Content-Encoding", "gzip");
+            }
+            EncodingAlgorithm::Deflate => {
+                self.headers.insert("Content-Encoding", "deflate");
+            }
+            EncodingAlgorithm::Brotli => {
+                self.headers.insert("Content-Encoding", "brotli");
+            }
+        };
+        let compressed_body = Encoder::encoder(algorithm).encode(original_body_bytes)?;
+        self.body = Body::Bytes(compressed_body);
+        Ok(self)
     }
 }
 
