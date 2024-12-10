@@ -724,7 +724,7 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
-#[proc_macro_derive(UserModel, attributes(user_model))]
+#[proc_macro_derive(UserModel, attributes(user_model, rwf))]
 pub fn derive_user_model(input: TokenStream) -> TokenStream {
     user::impl_derive_user_model(input)
 }

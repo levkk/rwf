@@ -6,7 +6,7 @@
 <body>
     <div class="container pt-5 col-lg-6 col-12">
         <h1 class="mb-4">Login</h1>
-        <form method="post" action="/login">
+        <form method="post" action="/auth">
             <%= csrf_token() %>
 
             <% if error_user_does_not_exist %>

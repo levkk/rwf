@@ -22,7 +22,7 @@ pub(crate) fn impl_derive_user_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let ident = &input.ident;
 
-    if let Some(attr) = input.attrs.first() {
+    for attr in input.attrs {
         match attr.meta {
             Meta::List(ref attrs) => {
                 if let Ok(attrs) = syn::parse2::<UserModel>(attrs.tokens.clone()) {
