@@ -13,9 +13,6 @@
 
 mod encoder;
 
-use brotli::CompressorWriter;
-use flate2::write::{DeflateEncoder, GzEncoder};
-use flate2::Compression;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
