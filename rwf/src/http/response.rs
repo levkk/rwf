@@ -11,21 +11,15 @@
 //!     .html("<h1>Hello world!</h1>");
 //! ```
 
-mod encoder;
-
-use brotli::CompressorWriter;
-use flate2::write::{DeflateEncoder, GzEncoder};
-use flate2::Compression;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::io::Write;
 use std::marker::Unpin;
 use time::OffsetDateTime;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
-use crate::http::response::encoder::{Encoder, EncodingAlgorithm};
+use crate::http::encoder::{Encoder, EncodingAlgorithm};
 use crate::view::{Template, TurboStream};
 use crate::{config::get_config, controller::Session};
 
@@ -197,6 +191,7 @@ pub struct Response {
     body: Body,
     cookies: Cookies,
     session: Option<Session>,
+    encoding: EncodingAlgorithm,
 }
 
 impl Default for Response {
@@ -228,6 +223,7 @@ impl Response {
             version: Version::Http1,
             cookies: Cookies::new(),
             session: None,
+            encoding: EncodingAlgorithm::Identity,
         }
     }
 
@@ -310,7 +306,7 @@ impl Response {
     /// ```
     pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(self.body(Body::Json(body)))
+        Ok(self.body(Body::Json(body, false)))
     }
 
     /// Create a response with an HTML body.
@@ -323,7 +319,7 @@ impl Response {
     /// let response = Response::new().html("<h1>Hello world</h1>");
     /// ```
     pub fn html(self, body: impl ToString) -> Self {
-        self.body(Body::Html(body.to_string()))
+        self.body(Body::Html(body.to_string(), false))
     }
 
     /// Create a response with a plain text body.
@@ -336,7 +332,7 @@ impl Response {
     /// let response = Response::new().text("Hello world");
     /// ```
     pub fn text(self, body: impl ToString) -> Self {
-        self.body(Body::Text(body.to_string()))
+        self.body(Body::Text(body.to_string(), false))
     }
 
     /// Add a header to the response.
@@ -368,7 +364,25 @@ impl Response {
         response.extend_from_slice(b"\r\n");
 
         stream.write_all(&response).await?;
-        self.body.send(stream).await
+        if self.body.is_compressed() {
+            match self.encoding {
+                EncodingAlgorithm::Gzip => {
+                    self.headers.insert("Content-Encoding", "gzip");
+                }
+                EncodingAlgorithm::Deflate => {
+                    self.headers.insert("Content-Encoding", "deflate");
+                }
+                EncodingAlgorithm::Brotli => {
+                    self.headers.insert("Content-Encoding", "brotli");
+                }
+                EncodingAlgorithm::Identity => {}
+            };
+            let encoder = Encoder::encoder(self.encoding);
+            self.body.send(stream, encoder).await
+        } else {
+            let encoder = Encoder::encoder(self.encoding);
+            self.body.send(stream, encoder).await
+        }
     }
 
     /// Mutable reference to response cookies. Used to set cookies on the response.
@@ -563,31 +577,8 @@ impl Response {
 
     /// Compresses the http response specified by the [EncodingAlgorithm].
     pub fn compress(mut self, algorithm: EncodingAlgorithm) -> Result<Self, Error> {
-        let original_body_bytes: &[u8] = match &self.body {
-            Body::File { .. } => {
-                return Ok(self);
-            }
-            Body::Html(html) => html.as_bytes(),
-            Body::Bytes(bytes) => bytes,
-            Body::Text(text) => text.as_bytes(),
-            Body::Json(json) => json,
-            Body::FileInclude { .. } => {
-                return Ok(self);
-            }
-        };
-        match algorithm {
-            EncodingAlgorithm::Gzip => {
-                self.headers.insert("Content-Encoding", "gzip");
-            }
-            EncodingAlgorithm::Deflate => {
-                self.headers.insert("Content-Encoding", "deflate");
-            }
-            EncodingAlgorithm::Brotli => {
-                self.headers.insert("Content-Encoding", "brotli");
-            }
-        };
-        let compressed_body = Encoder::encoder(algorithm).encode(original_body_bytes)?;
-        self.body = Body::Bytes(compressed_body);
+        self.encoding = algorithm;
+        self.body.enable_compression();
         Ok(self)
     }
 }
