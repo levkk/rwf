@@ -2,12 +2,13 @@
 //!
 //! The body can be text, HTML, raw bytes, JSON and a static file. The `Content-Type` and `Content-Length` headers
 //! are set automatically.
+use crate::http::encoder::Encoder;
 use std::fmt::Debug;
 use std::fs::Metadata;
 use std::marker::Unpin;
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::{copy, AsyncWrite, AsyncWriteExt};
+use tokio::io::{copy, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
 /// Response body.
 #[derive(Debug)]
@@ -17,17 +18,22 @@ pub enum Body {
         path: PathBuf,
         file: File,
         metadata: Metadata,
+        compressed: bool,
     },
     /// UTF-8 encoded HTML.
-    Html(String),
+    Html(String, bool),
     /// Raw bytes.
-    Bytes(Vec<u8>),
+    Bytes(Vec<u8>, bool),
     /// UTF-8 encoded text.
-    Text(String),
+    Text(String, bool),
     /// UTF-8 encoded JSON string.
-    Json(Vec<u8>),
+    Json(Vec<u8>, bool),
     /// A file that's already read into memory.
-    FileInclude { path: PathBuf, bytes: Vec<u8> },
+    FileInclude {
+        path: PathBuf,
+        bytes: Vec<u8>,
+        compressed: bool,
+    },
 }
 
 impl Clone for Body {
@@ -39,14 +45,19 @@ impl Clone for Body {
     fn clone(&self) -> Self {
         use Body::*;
         match self {
-            FileInclude { path, bytes } => Body::FileInclude {
+            FileInclude {
+                path,
+                bytes,
+                compressed,
+            } => Body::FileInclude {
                 path: path.clone(),
                 bytes: bytes.clone(),
+                compressed: *compressed,
             },
-            Html(html) => Html(html.clone()),
-            Text(text) => Text(text.clone()),
-            Json(json) => Json(json.clone()),
-            Bytes(bytes) => Bytes(bytes.clone()),
+            Html(html, compressed) => Html(html.clone(), *compressed),
+            Text(text, compressed) => Text(text.clone(), *compressed),
+            Json(json, compressed) => Json(json.clone(), *compressed),
+            Bytes(bytes, compressed) => Bytes(bytes.clone(), *compressed),
             File { .. } => {
                 panic!("file body cannot be cloned, it contains an open file descriptor")
             }
@@ -57,12 +68,12 @@ impl Clone for Body {
 impl Body {
     /// Create new body from raw bytes.
     pub fn bytes(bytes: Vec<u8>) -> Self {
-        Self::Bytes(bytes)
+        Self::Bytes(bytes, false)
     }
 
     /// Create new body from a string assumed to be HTML.
     pub fn html(text: impl ToString) -> Self {
-        Self::Html(text.to_string())
+        Self::Html(text.to_string(), false)
     }
 
     /// Create a new static file that's already loaded into memory.
@@ -70,6 +81,7 @@ impl Body {
         Self::FileInclude {
             path: path.to_owned(),
             bytes,
+            compressed: false,
         }
     }
 
@@ -80,19 +92,54 @@ impl Body {
     pub async fn send(
         &mut self,
         mut stream: impl AsyncWrite + Unpin,
+        encoder: Encoder,
     ) -> Result<(), std::io::Error> {
         use Body::*;
 
         match self {
-            File { file, .. } => {
-                copy(file, &mut stream).await?;
-                Ok(())
+            File {
+                file, compressed, ..
+            } => {
+                if *compressed {
+                    let mut buffer = Vec::new();
+                    BufReader::new(file).read_to_end(&mut buffer).await?;
+                    let encoded_bytes = encoder.encode(&buffer)?;
+                    stream.write_all(&encoded_bytes).await?;
+                    Ok(())
+                } else {
+                    copy(file, &mut stream).await?;
+                    Ok(())
+                }
             }
-            Bytes(bytes) => Ok(stream.write_all(bytes).await?),
-            Text(text) => Ok(stream.write_all(text.as_bytes()).await?),
-            Html(html) => Ok(stream.write_all(html.as_bytes()).await?),
-            Json(json) => Ok(stream.write_all(json.as_slice()).await?),
-            FileInclude { bytes, .. } => Ok(stream.write_all(bytes).await?),
+            Bytes(bytes, compressed) => {
+                Self::send_maybe_compressed(bytes, *compressed, stream, encoder).await
+            }
+            Text(text, compressed) => {
+                Self::send_maybe_compressed(text.as_bytes(), *compressed, stream, encoder).await
+            }
+            Html(html, compressed) => {
+                Self::send_maybe_compressed(html.as_bytes(), *compressed, stream, encoder).await
+            }
+            Json(json, compressed) => {
+                Self::send_maybe_compressed(json, *compressed, stream, encoder).await
+            }
+            FileInclude {
+                bytes, compressed, ..
+            } => Self::send_maybe_compressed(bytes, *compressed, stream, encoder).await,
+        }
+    }
+
+    async fn send_maybe_compressed(
+        bytes: &[u8],
+        compressed: bool,
+        mut stream: impl AsyncWrite + Unpin,
+        encoder: Encoder,
+    ) -> Result<(), std::io::Error> {
+        if compressed {
+            let encoded_bytes = encoder.encode(bytes)?;
+            Ok(stream.write_all(&encoded_bytes).await?)
+        } else {
+            Ok(stream.write_all(bytes).await?)
         }
     }
 
@@ -102,10 +149,10 @@ impl Body {
 
         match self {
             File { metadata, .. } => metadata.len() as usize,
-            Bytes(bytes) => bytes.len(),
-            Html(html) => html.as_bytes().len(),
-            Json(json) => json.len(),
-            Text(text) => text.as_bytes().len(),
+            Bytes(bytes, _) => bytes.len(),
+            Html(html, _) => html.as_bytes().len(),
+            Json(json, _) => json.len(),
+            Text(text, _) => text.as_bytes().len(),
             FileInclude { bytes, .. } => bytes.len(),
         }
     }
@@ -218,23 +265,46 @@ impl Body {
                     _ => "application/octet-stream",
                 }
             }
-            Text(_) => "text/plain",
-            Html(_) => "text/html; charset=utf-8",
-            Json(_) => "application/json",
-            Bytes(_) => "application/octet-stream",
+            Text(_, _) => "text/plain",
+            Html(_, _) => "text/html; charset=utf-8",
+            Json(_, _) => "application/json",
+            Bytes(_, _) => "application/octet-stream",
+        }
+    }
+
+    pub fn enable_compression(&mut self) -> &mut Self {
+        match self {
+            Body::File { compressed, .. } => *compressed = true,
+            Body::Html(_, compressed) => *compressed = true,
+            Body::Bytes(_, compressed) => *compressed = true,
+            Body::Text(_, compressed) => *compressed = true,
+            Body::Json(_, compressed) => *compressed = true,
+            Body::FileInclude { compressed, .. } => *compressed = true,
+        }
+        self
+    }
+
+    pub fn is_compressed(&self) -> bool {
+        match self {
+            Body::File { compressed, .. } => *compressed,
+            Body::Html(_, compressed) => *compressed,
+            Body::Bytes(_, compressed) => *compressed,
+            Body::Text(_, compressed) => *compressed,
+            Body::Json(_, compressed) => *compressed,
+            Body::FileInclude { compressed, .. } => *compressed,
         }
     }
 }
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self::Bytes(body)
+        Self::Bytes(body, false)
     }
 }
 
 impl From<&[u8]> for Body {
     fn from(body: &[u8]) -> Self {
-        Self::Bytes(body.to_vec())
+        Self::Bytes(body.to_vec(), false)
     }
 }
 
@@ -244,6 +314,7 @@ impl From<(PathBuf, File, Metadata)> for Body {
             path: file.0,
             file: file.1,
             metadata: file.2,
+            compressed: false,
         }
     }
 }
@@ -252,6 +323,6 @@ impl TryFrom<serde_json::Value> for Body {
     type Error = serde_json::Error;
 
     fn try_from(json: serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(Self::Json(serde_json::to_vec(&json)?))
+        Ok(Self::Json(serde_json::to_vec(&json)?, false))
     }
 }

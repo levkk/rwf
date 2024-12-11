@@ -26,6 +26,7 @@ pub mod server;
 pub mod url;
 pub mod websocket;
 
+pub(crate) mod encoder;
 #[cfg(feature = "wsgi")]
 pub mod wsgi;
 
