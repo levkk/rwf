@@ -1,4 +1,5 @@
 use rwf::{http::Server, prelude::*};
+use rwf_auth::controllers::{LogoutController, PasswordController};
 
 mod controllers;
 mod models;
@@ -8,8 +9,11 @@ async fn main() {
     Logger::init();
 
     Server::new(vec![
-        route!("/signup" => controllers::Signup),
-        route!("/login" => controllers::login),
+        route!("/auth" => {
+            PasswordController::template("templates/login.html")
+                .redirect("/profile")
+        }),
+        route!("/logout" => { LogoutController::redirect("/") }),
         route!("/profile" => controllers::profile),
     ])
     .launch()

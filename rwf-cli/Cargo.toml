@@ -1,6 +1,6 @@
 [package]
 name = "rwf-cli"
-version = "0.1.14"
+version = "0.2.2"
 edition = "2021"
 license = "MIT"
 description = "Rust Web Framework CLI"
@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 clap = { version = "4.5.18", features = ["derive"] }
 rwf = { path = "../rwf", version = "0.2" }
+rwf-auth = { path = "../rwf-auth", version = "0.1.0" }
 tokio = { version = "1", features = ["full"] }
 log = "0.4"
 time = "0.3"

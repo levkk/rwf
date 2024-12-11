@@ -108,7 +108,7 @@ pub use tokio;
 /// Asynchronous PostgreSQL driver.
 pub use tokio_postgres;
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 /// Convert text to snake_case.
 pub fn snake_case(string: &str) -> String {
@@ -175,4 +175,9 @@ pub fn peer_addr(addr: &str) -> Option<SocketAddr> {
     }
 
     None
+}
+
+/// Migrations path for rwf.
+pub fn migrations_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("migrations")
 }
