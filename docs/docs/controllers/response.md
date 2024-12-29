@@ -95,7 +95,7 @@ Commonly used when some resource doesn't exist, HTTP response code `404 - Not Fo
 let response = Response::not_found();
 ```
 
-HTTP 404 is returned automatically by Rwf when a user requests a route that doens't have a controller.
+HTTP 404 is returned automatically by Rwf when a user requests a route that doesn't have a controller.
 
 ##### 403 - Forbidden
 
