@@ -36,7 +36,7 @@ struct Echo;
 
 #[async_trait]
 impl WebsocketController for Echo {
-    /// Run some code when a new client connects to the WebScoket server.
+    /// Run some code when a new client connects to the WebSocket server.
     async fn handle_connection(
         &self,
         client: &SessionId,
@@ -53,7 +53,7 @@ impl WebsocketController for Echo {
         message: Message,
     ) -> Result<(), Error> {
         // Get an app-wide WebSocket channel to the client.
-        // This will send a message to the client via WebScoket
+        // This will send a message to the client via WebSocket
         // connection from anywhere in the code.
         let comms = Comms::websocket(client);
 
