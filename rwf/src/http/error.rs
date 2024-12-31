@@ -52,9 +52,9 @@ pub enum Error {
     #[error("database error: {0}")]
     Orm(#[from] crate::model::Error),
 
-    /// The user is not allowed to access the content.
-    #[error("forbidden")]
-    Forbidden,
+    /// The user isn't logged in.
+    #[error("unauthorized")]
+    Unauthorized,
 
     /// HTTP request exceeds configured size.
     #[error("content too large")]
@@ -75,7 +75,7 @@ impl Error {
     pub fn code(&self) -> u16 {
         match self {
             Self::MissingParameter => 400,
-            Self::Forbidden => 403,
+            Self::Unauthorized => 401,
             Self::ContentTooLarge(_) => 413,
             _ => 500,
         }

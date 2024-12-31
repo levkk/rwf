@@ -235,7 +235,7 @@ pub trait Controller: Sync + Send {
                     let response = match err {
                         Error::HttpError(err) => match err.code() {
                             400 => Response::bad_request(),
-                            403 => Response::forbidden(),
+                            401 => Response::unauthorized(None),
                             413 => Response::content_too_large(),
                             _ => Response::internal_error(err),
                         },

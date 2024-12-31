@@ -1,7 +1,7 @@
 
 # Authentication & sessions
 
-Rwf has a customizable authentication and authorization system. All HTTP requests can be checked against some conditions, e.g. a header or a cookie value, and allowed access to a controller. If authorization fails, a default HTTP response, like a redirect or a `403 - Forbidden` can be returned.
+Rwf has a customizable authentication and authorization system. All HTTP requests can be checked against some conditions, e.g. a header or a cookie value, and allowed access to a controller. If authorization fails, a default HTTP response, like a redirect or a `401 - Unauthorized` can be returned.
 
 ## Included authentication
 
@@ -133,7 +133,7 @@ impl Authentication for NoWorkSundays {
     }
 
     /// Optional access denied response.
-    /// The default is 403 - Forbidden.
+    /// The default is 401 - Unauthorized
     async fn denied(&self) -> Result<Response, Error> {
         Ok(Response::redirect("https://www.nps.gov"))
     }
