@@ -87,6 +87,24 @@ This automatically sets the `Location` and `Cache-Control` headers, and returns 
 
 Common errors have their own methods which will return the correct HTTP response code and built-in response body.
 
+##### 401 - Unauthorized
+
+When your users have failed some authentication challenge, you can block access to a resource with HTTP response code `401 - Unauthorized`:
+
+```rust
+let resonse = Response::unauthorized();
+```
+
+Use this one if your frontend can handle it gracefully. If not, a gentle [redirect](#redirect) to your login page may be preferable.
+
+##### 403 - Forbidden
+
+When your user is logged in, but doesn't have access to the request resource, you can block access to it with HTTP response code `403 - Forbidden`:
+
+```rust
+let resonse = Response::forbidden();
+```
+
 ##### 404 - Not found
 
 Commonly used when some resource doesn't exist, HTTP response code `404 - Not Found` can be returned with:
@@ -96,16 +114,6 @@ let response = Response::not_found();
 ```
 
 HTTP 404 is returned automatically by Rwf when a user requests a route that doesn't have a controller.
-
-##### 403 - Forbidden
-
-When your users have failed some authentication challenge, you can block access to a resource with HTTP response code `403 - Forbidden`:
-
-```rust
-let resonse = Response::forbidden();
-```
-
-Use this one if your frontend can handle it gracefully. If not, a gentle [redirect](#redirect) to your login page may be preferable.
 
 ## Syntactic sugar
 

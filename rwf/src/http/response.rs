@@ -512,10 +512,12 @@ impl Response {
     }
 
     /// Create `401 - Unauthorized` response.
-    pub fn unauthorized(auth: &str) -> Self {
-        Self::error_pretty("401 - Unauthorized", "")
-            .code(401)
-            .header("www-authenticate", auth)
+    pub fn unauthorized(auth: Option<&str>) -> Self {
+        let response = Self::error_pretty("401 - Unauthorized", "").code(401);
+        match auth {
+            Some(auth) => response.header("www-authenticate", auth),
+            None => response,
+        }
     }
 
     /// Create `429 - Too Many` response.

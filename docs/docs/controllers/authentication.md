@@ -4,7 +4,7 @@ Rwf has multiple authentication and authorization mechanisms. Different kinds of
 
 ## Session authentication
 
-[Session](sessions.md) authentication checks that the user-supplied session cookie is valid (not expired) and contains an authenticated session. If that's not the case, the request is either rejected with a `403 - Forbidden` or provided an endpoint to re-authenticate, e.g., using a username and password, with a `302 - Found` redirect.
+[Session](sessions.md) authentication checks that the user-supplied session cookie is valid (not expired) and contains an authenticated session. If that's not the case, the request is either rejected with a `401 - Unauthorized` or provided an endpoint to re-authenticate, e.g., using a username and password, with a `302 - Found` redirect.
 
 ### Enable session authentication
 

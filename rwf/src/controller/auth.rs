@@ -52,9 +52,9 @@ pub trait Authentication: Sync + Send {
     async fn authorize(&self, request: &Request) -> Result<bool, Error>;
 
     /// If the request is denied, return a specific response.
-    /// Default is `403 - Forbidden`.
+    /// Default is `401 - Unauthorized`.
     async fn denied(&self, request: &Request) -> Result<Response, Error> {
-        Ok(Response::forbidden())
+        Ok(Response::unauthorized(None))
     }
 
     /// Returns an authentication handler used when configuring
@@ -111,7 +111,7 @@ impl Authentication for BasicAuth {
     }
 
     async fn denied(&self, _request: &Request) -> Result<Response, Error> {
-        Ok(Response::unauthorized("Basic"))
+        Ok(Response::unauthorized(Some("Basic")))
     }
 }
 
@@ -318,7 +318,7 @@ pub struct SessionAuth {
 
 impl SessionAuth {
     /// Create session authentication which redirects to this URL instead
-    /// of just returning `403 - Unauthorized`.
+    /// of just returning `401 - Unauthorized`.
     pub fn redirect(url: impl ToString) -> Self {
         Self {
             redirect: Some(url.to_string()),
@@ -336,7 +336,7 @@ impl Authentication for SessionAuth {
         if let Some(ref redirect) = self.redirect {
             Ok(Response::new().redirect(redirect))
         } else {
-            Ok(Response::forbidden())
+            Ok(Response::unauthorized(None))
         }
     }
 }

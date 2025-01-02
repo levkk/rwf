@@ -242,11 +242,11 @@ impl Request {
     }
 
     /// Get the authenticated user's ID. Combined with the `?` operator,
-    /// will return `403 - Unauthorized` if not logged in.
+    /// will return `401 - Unauthorized` if not logged in.
     pub fn user_id(&self) -> Result<i64, Error> {
         match self.session_id() {
             SessionId::Authenticated(id) => Ok(id),
-            _ => Err(Error::Forbidden),
+            _ => Err(Error::Unauthorized),
         }
     }
 
@@ -279,14 +279,14 @@ impl Request {
     }
 
     /// Same function as [`Request::user`], except if returns a [`Result`] instead of an [`Option`].
-    /// If used with the `?` operator, returns `403 - Unauthorized` automatically.
+    /// If used with the `?` operator, returns `401 - Unauthorized` automatically.
     pub async fn user_required<T: Model>(
         &self,
         conn: impl ToConnectionRequest<'_>,
     ) -> Result<T, Error> {
         match self.user(conn).await? {
             Some(user) => Ok(user),
-            None => Err(Error::Forbidden),
+            None => Err(Error::Unauthorized),
         }
     }
 
