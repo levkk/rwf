@@ -51,7 +51,8 @@ notify = "7"
 rwf-ruby = { path = "../rwf-ruby", optional = true, version = "0.1.1" }
 argon2 = { version = "0.5", features = ["password-hash"] }
 password-hash = "0.5"
-
+flate2 = "1.0.35"
+brotli = "7.0.0"
 [dev-dependencies]
 tempdir = "0.3"
 

@@ -19,11 +19,12 @@ use time::OffsetDateTime;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{head::Version, Body, Cookie, Cookies, Error, Headers, Request};
+use crate::http::encoder::{Encoder, EncodingAlgorithm};
 use crate::view::{Template, TurboStream};
 use crate::{config::get_config, controller::Session};
 
 static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
-    let template = include_str!("error.html");
+    let template = include_str!("../error.html");
     Template::from_str(template).unwrap()
 });
 
@@ -190,6 +191,7 @@ pub struct Response {
     body: Body,
     cookies: Cookies,
     session: Option<Session>,
+    encoding: EncodingAlgorithm,
 }
 
 impl Default for Response {
@@ -221,6 +223,7 @@ impl Response {
             version: Version::Http1,
             cookies: Cookies::new(),
             session: None,
+            encoding: EncodingAlgorithm::Identity,
         }
     }
 
@@ -303,7 +306,7 @@ impl Response {
     /// ```
     pub fn json(self, body: impl Serialize) -> Result<Self, Error> {
         let body = serde_json::to_vec(&body)?;
-        Ok(self.body(Body::Json(body)))
+        Ok(self.body(Body::Json(body, false)))
     }
 
     /// Create a response with an HTML body.
@@ -316,7 +319,7 @@ impl Response {
     /// let response = Response::new().html("<h1>Hello world</h1>");
     /// ```
     pub fn html(self, body: impl ToString) -> Self {
-        self.body(Body::Html(body.to_string()))
+        self.body(Body::Html(body.to_string(), false))
     }
 
     /// Create a response with a plain text body.
@@ -329,7 +332,7 @@ impl Response {
     /// let response = Response::new().text("Hello world");
     /// ```
     pub fn text(self, body: impl ToString) -> Self {
-        self.body(Body::Text(body.to_string()))
+        self.body(Body::Text(body.to_string(), false))
     }
 
     /// Add a header to the response.
@@ -361,7 +364,25 @@ impl Response {
         response.extend_from_slice(b"\r\n");
 
         stream.write_all(&response).await?;
-        self.body.send(stream).await
+        if self.body.is_compressed() {
+            match self.encoding {
+                EncodingAlgorithm::Gzip => {
+                    self.headers.insert("Content-Encoding", "gzip");
+                }
+                EncodingAlgorithm::Deflate => {
+                    self.headers.insert("Content-Encoding", "deflate");
+                }
+                EncodingAlgorithm::Brotli => {
+                    self.headers.insert("Content-Encoding", "brotli");
+                }
+                EncodingAlgorithm::Identity => {}
+            };
+            let encoder = Encoder::encoder(self.encoding);
+            self.body.send(stream, encoder).await
+        } else {
+            let encoder = Encoder::encoder(self.encoding);
+            self.body.send(stream, encoder).await
+        }
     }
 
     /// Mutable reference to response cookies. Used to set cookies on the response.
@@ -554,6 +575,13 @@ impl Response {
     /// Mutable response headers.
     pub fn headers_mut(&mut self) -> &mut Headers {
         &mut self.headers
+    }
+
+    /// Compresses the http response specified by the [EncodingAlgorithm].
+    pub fn compress(mut self, algorithm: EncodingAlgorithm) -> Result<Self, Error> {
+        self.encoding = algorithm;
+        self.body.enable_compression();
+        Ok(self)
     }
 }
 
