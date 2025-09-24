@@ -10,6 +10,7 @@ homepage = "https://levkk.github.io/rwf/"
 repository = "https://github.com/levkk/rwf"
 keywords = ["mvc", "web", "framework", "http", "orm"]
 authors = ["Lev Kokotov <lev.kokotov@gmail.com>"]
+include = ["src/", "migrations/"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

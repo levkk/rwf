@@ -2,13 +2,30 @@ use rwf::model::migrations::{Direction, Migrations};
 use std::path::Path;
 use time::OffsetDateTime;
 
+use log::info;
 use regex::Regex;
 use tokio::fs::{create_dir, File};
 
-use crate::logging::created;
+use crate::{logging::created, util::package_info};
 
 pub async fn migrate(version: Option<i64>) {
-    let migrations = Migrations::sync().await.expect("failed to sync migrations");
+    let info = package_info().await.expect("couldn't get package info");
+
+    info!("Installing migrations from rwf");
+    Migrations::install(rwf::migrations_path())
+        .await
+        .expect("install rwf migrations failed");
+
+    if info.rwf_auth {
+        info!("Installing migrations from rwf-auth");
+        Migrations::install(rwf_auth::migrations_path())
+            .await
+            .expect("install rwf-auth migrations failed");
+    }
+
+    let migrations = Migrations::sync(None)
+        .await
+        .expect("failed to sync migrations");
 
     migrations
         .apply(Direction::Up, version)
@@ -17,7 +34,9 @@ pub async fn migrate(version: Option<i64>) {
 }
 
 pub async fn revert(version: Option<i64>) {
-    let migrations = Migrations::sync().await.expect("failed to sync migrations");
+    let migrations = Migrations::sync(None)
+        .await
+        .expect("failed to sync migrations");
     let version = if let Some(version) = version {
         Some(version)
     } else {

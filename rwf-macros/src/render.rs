@@ -3,7 +3,7 @@ use crate::prelude::*;
 struct RenderInput {
     request: Expr,
     _comma_0: Token![,],
-    template_name: LitStr,
+    template_name: Expr,
     _comma_1: Option<Token![,]>,
     context: Vec<ContextInput>,
     code: Option<LitInt>,
@@ -13,7 +13,7 @@ struct RenderInput {
 struct TurboStreamInput {
     request: Expr,
     _comma_0: Token![,],
-    template_name: LitStr,
+    template_name: Expr,
     _comma_1: Token![,],
     id: Expr,
     _comma_2: Option<Token![,]>,
@@ -38,7 +38,7 @@ impl Parse for TurboStreamInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let request: Expr = input.parse()?;
         let _comma_0: Token![,] = input.parse()?;
-        let template_name: LitStr = input.parse()?;
+        let template_name: Expr = input.parse()?;
         let _comma_1: Token![,] = input.parse()?;
         let id: Expr = input.parse()?;
         let _comma_2: Option<Token![,]> = input.parse()?;
@@ -116,7 +116,7 @@ impl Parse for RenderInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let request: Expr = input.parse()?;
         let _comma_0: Token![,] = input.parse()?;
-        let template_name: LitStr = input.parse()?;
+        let template_name: Expr = input.parse()?;
         let _comma_1: Option<Token![,]> = input.parse()?;
         let mut code = None;
         let mut _comma_2 = None;

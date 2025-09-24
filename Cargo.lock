@@ -1974,14 +1974,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "rwf-auth"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+]
+
+[[package]]
 name = "rwf-cli"
-version = "0.1.14"
+version = "0.2.2"
 dependencies = [
  "clap",
  "flate2",
  "log",
  "regex",
  "rwf",
+ "rwf-auth",
  "serde_json",
  "tar",
  "time",
@@ -2684,6 +2692,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "rwf",
+ "rwf-auth",
  "time",
 ]
 

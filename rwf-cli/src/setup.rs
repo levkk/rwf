@@ -73,15 +73,6 @@ pub async fn setup() {
     // Add rwf dependencies
     Command::new("cargo")
         .arg("add")
-        .arg("tokio@1")
-        .arg("--features")
-        .arg("full")
-        .status()
-        .await
-        .unwrap();
-
-    Command::new("cargo")
-        .arg("add")
         .arg("rwf")
         .status()
         .await

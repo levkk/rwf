@@ -1,17 +1,12 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-
-use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
-    ReturnType, Token, Type, Visibility,
-};
-
-use quote::quote;
-
 mod model;
 mod prelude;
 mod render;
+mod route;
+mod user;
+
+use prelude::*;
 
 /// The `#[derive(Model)]` macro.
 ///
@@ -522,16 +517,7 @@ pub fn error(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn route(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input with Punctuated<Expr, Token![=>]>::parse_terminated);
-    let mut iter = input.into_iter();
-
-    let route = iter.next().unwrap();
-    let controller = iter.next().unwrap();
-
-    quote! {
-        #controller::default().route(#route)
-    }
-    .into()
+    route::route_impl(input)
 }
 
 /// Create CRUD routes for the controller.
@@ -736,4 +722,9 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+#[proc_macro_derive(UserModel, attributes(user_model, rwf))]
+pub fn derive_user_model(input: TokenStream) -> TokenStream {
+    user::impl_derive_user_model(input)
 }

@@ -47,6 +47,12 @@ pub enum Error {
         "column \"{0}\" is missing from the row returned by the database,\ndid you forget to specify it in the query?"
     )]
     Column(String),
+
+    #[error("value is not an integer")]
+    NotAnInteger,
+
+    #[error("value is not a string")]
+    NotAString,
 }
 
 impl Error {
