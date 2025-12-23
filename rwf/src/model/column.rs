@@ -53,11 +53,6 @@ macro_rules! impl_aggregation {
         }
 
     };
-    ($opt:ident) => {
-        stringify($opt) => Self::$opt,
-        stringify($opt).to_lowercase().as_str() => Self::$opt,
-        crate::capitalize($opt.to_lowercase().as_str()).as_str() => Self::$opt,
-    }
 }
 
 impl_aggregation!(SUM, AVG, COUNT, MIN, MAX);
@@ -67,20 +62,7 @@ impl Default for Aggregation {
         Self::NONE
     }
 }
-/*
-impl std::fmt::Display for Aggregation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SUM => write!(f, "SUM"),
-            Self::MIN => write!(f, "MIN"),
-            Self::MAX => write!(f, "MAX"),
-            Self::AVG => write!(f, "AVG"),
-            Self::COUNT => write!(f, "COUNT"),
-            Self::NONE => write!(f, "NONE"),
-        }
-    }
-}
-*/
+
 pub trait ToAggregation {
     fn to_agg(&self) -> Aggregation;
 }
@@ -229,6 +211,7 @@ impl Column {
         self.alias = alias.to_string();
         self
     }
+    pub fn get_alias(&self) -> &String {&self.alias}
 }
 
 #[derive(Debug, Clone)]

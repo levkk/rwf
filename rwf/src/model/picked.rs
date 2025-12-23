@@ -30,6 +30,11 @@ impl<T: FromRow> Picked<T> {
         self.columns.into_iter().zip(self.data.into_iter()).collect()
     }
 
+    pub fn get_entry(&self, alias: impl ToString) -> Option<(&Column, &Value)> {
+        let alias = alias.to_string();
+        self.columns.iter().zip(self.data.iter()).find(|(c,v)| alias.eq(c.get_alias()))
+    }
+
     pub fn add_column(mut self, column: impl ToColumn, agg: impl ToAggregation) -> Self {
         let column = column.to_column();
         let column =  if !column.qualified() {column.qualify(self.select.table_name.as_str())} else {column};
