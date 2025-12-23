@@ -28,8 +28,8 @@ pub struct Select<T: FromRow + ?Sized> {
     pub placeholders: Placeholders,
     pub where_clause: WhereClause,
     pub joins: Joins,
-    lock: Lock,
-    group: bool,
+    pub(super) lock: Lock,
+    pub(super) group: bool,
     _phantom: PhantomData<T>,
 }
 

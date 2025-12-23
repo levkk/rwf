@@ -1,13 +1,113 @@
 //! Represents the database table column.
+
 use super::{Escape, ToSql, ToValue, Value};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum Aggregation {
+    SUM,
+    AVG, 
+    MIN,
+    MAX,
+    COUNT,
+    NONE
+}
+
+impl Default for Aggregation {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
+impl std::fmt::Display for Aggregation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SUM => write!(f, "SUM"),
+            Self::MIN => write!(f, "MIN"),
+            Self::MAX => write!(f, "MAX"),
+            Self::AVG => write!(f, "AVG"),
+            Self::COUNT => write!(f, "COUNT"),
+            Self::NONE => write!(f, "NONE"),
+        }
+    }
+}
+
+pub trait ToAggregation {
+    fn to_agg(&self) -> Aggregation;
+}
+
+impl ToAggregation for str {
+    fn to_agg(&self) -> Aggregation {
+        match self {
+            "sum" => Aggregation::SUM,
+            "Sum" => Aggregation::SUM,
+            "SUM" => Aggregation::SUM,
+            "min" => Aggregation::MIN,
+            "Min" => Aggregation::MIN,
+            "MIN" => Aggregation::MIN,
+            "max" => Aggregation::MAX,
+            "Max" => Aggregation::MAX,
+            "MAX" => Aggregation::MAX,
+            "avg" => Aggregation::AVG,
+            "Avg" => Aggregation::AVG,
+            "AVG" => Aggregation::AVG,
+            "count" => Aggregation::COUNT,
+            "Count" => Aggregation::COUNT,
+            "COUNT" => Aggregation::COUNT,
+            _ => Aggregation::NONE
+        }
+    }
+}
+
+impl ToAggregation for &str {
+    fn to_agg(&self) -> Aggregation {
+        (*self).to_agg()
+    }
+}
+impl ToAggregation for String {
+    fn to_agg(&self) -> Aggregation {
+        self.as_str().to_agg()
+    }
+}
+impl ToAggregation for Aggregation {
+    fn to_agg(&self) -> Aggregation {
+       *self
+    }
+}
+
+
+impl Aggregation {
+    pub fn is_none(&self) -> bool {self.eq(&Self::NONE)}
+    pub fn is_agg(&self) -> bool {!self.is_none()}
+}
+
+impl<T: ToAggregation + Sized> ToAggregation for &T {
+    fn to_agg(&self) -> Aggregation {
+        (*self).to_agg()
+    }
+}
+
 /// PostgreSQL table column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash)]
 pub struct Column {
     table_name: String,
     column_name: String,
     as_value: Option<Box<Value>>,
+    agg: Aggregation
 }
+
+impl PartialEq for Column {
+    fn eq(&self, other: &Self) -> bool {
+        if self.as_value.is_some() == other.as_value.is_none() {
+            false
+        } else if self.as_value.is_some() && other.as_value.is_some() {
+            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.as_value.as_ref().unwrap().eq(&other.as_value.as_ref().unwrap())
+
+        } else {
+            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg)
+        }
+    }
+}
+impl Eq for Column {}
 
 impl std::fmt::Display for Column {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -22,8 +122,7 @@ impl ToSql for Column {
         } else {
             "".to_string()
         };
-
-        if self.table_name.is_empty() {
+        let sql = if self.table_name.is_empty() {
             format!(r#"{}"{}""#, as_value, self.column_name.escape())
         } else {
             format!(
@@ -32,6 +131,11 @@ impl ToSql for Column {
                 self.table_name.escape(),
                 self.column_name.escape(),
             )
+        };
+        if self.agg.is_none() {
+            sql
+        } else {
+            format!(r#"{}({}) as "{}""#, self.agg, sql, self.column_name.escape())
         }
     }
 }
@@ -46,6 +150,7 @@ impl Column {
             table_name: table_name.to_string(),
             column_name: column_name.to_string(),
             as_value: None,
+            agg: Aggregation::default(),
         }
     }
 
@@ -76,6 +181,14 @@ impl Column {
         self.as_value = Some(Box::new(value.to_value()));
         self
     }
+    pub fn agg(mut self, value: impl ToAggregation) -> Self {
+        self.agg = value.to_agg();
+        self
+    }
+    pub fn aggregation(&self) -> &Aggregation {&self.agg}
+
+    pub fn get_name(&self) -> &str {self.column_name.as_str()}
+    pub fn get_table_name(&self) -> &str {self.table_name.as_str()}
 }
 
 #[derive(Debug, Clone)]
@@ -156,10 +269,8 @@ impl ToSql for Columns {
                     columns.push("*".to_string());
                 }
             }
+            self.columns.iter().map(|col| col.to_sql()).collect::<Vec<_>>().join(", ")
 
-            columns.extend(self.columns.iter().map(|column| column.to_sql()));
-
-            columns.join(", ")
         }
     }
 }
@@ -185,3 +296,8 @@ impl ToColumn for Column {
         self.clone()
     }
 }
+impl<T: ToColumn> ToColumn for &T {
+    fn to_column(&self) -> Column {
+        (**self).to_column()
+    }
+}   
