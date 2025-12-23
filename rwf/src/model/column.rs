@@ -1,23 +1,73 @@
 //! Represents the database table column.
 
 use super::{Escape, ToSql, ToValue, Value};
+use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum Aggregation {
-    SUM,
-    AVG, 
-    MIN,
-    MAX,
-    COUNT,
-    NONE
+
+/// Possible Aggregation to execute
+
+macro_rules! impl_aggregation {
+    ($($opts:ident),*)  => {
+        #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, crate::prelude::Serialize, crate::prelude::Deserialize)]
+        pub enum Aggregation {
+            $(
+                $opts
+            ),*
+                ,NONE
+        }
+        impl std::fmt::Display for Aggregation {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$opts => write!(f, stringify!($opts))
+                    ),*
+                        , Self::NONE => write!(f, "NONE"),
+                }
+            }
+        }
+        impl FromStr for Aggregation {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(match s.to_uppercase().as_str() {
+                    $(
+                        stringify!($opts) => Self::$opts,
+                    )*
+                        _ => Self::NONE
+                })
+            }
+        }
+        impl From<&str> for Aggregation {
+           fn from(value: &str) -> Self {
+                Self::from_str(value).unwrap()
+            }
+        }
+        impl From<String> for Aggregation {
+            fn from(value: String) -> Self {
+                Self::from(value.as_str())
+            }
+        }
+        impl From<&String> for Aggregation {
+            fn from(value: &String) -> Self {
+                Self::from(value.as_str())
+            }
+        }
+
+    };
+    ($opt:ident) => {
+        stringify($opt) => Self::$opt,
+        stringify($opt).to_lowercase().as_str() => Self::$opt,
+        crate::capitalize($opt.to_lowercase().as_str()).as_str() => Self::$opt,
+    }
 }
+
+impl_aggregation!(SUM, AVG, COUNT, MIN, MAX);
 
 impl Default for Aggregation {
     fn default() -> Self {
         Self::NONE
     }
 }
-
+/*
 impl std::fmt::Display for Aggregation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -30,31 +80,18 @@ impl std::fmt::Display for Aggregation {
         }
     }
 }
-
+*/
 pub trait ToAggregation {
     fn to_agg(&self) -> Aggregation;
 }
-
 impl ToAggregation for str {
     fn to_agg(&self) -> Aggregation {
-        match self {
-            "sum" => Aggregation::SUM,
-            "Sum" => Aggregation::SUM,
-            "SUM" => Aggregation::SUM,
-            "min" => Aggregation::MIN,
-            "Min" => Aggregation::MIN,
-            "MIN" => Aggregation::MIN,
-            "max" => Aggregation::MAX,
-            "Max" => Aggregation::MAX,
-            "MAX" => Aggregation::MAX,
-            "avg" => Aggregation::AVG,
-            "Avg" => Aggregation::AVG,
-            "AVG" => Aggregation::AVG,
-            "count" => Aggregation::COUNT,
-            "Count" => Aggregation::COUNT,
-            "COUNT" => Aggregation::COUNT,
-            _ => Aggregation::NONE
-        }
+        Aggregation::from(self)
+    }
+}
+impl ToAggregation for String {
+    fn to_agg(&self) -> Aggregation {
+        Aggregation::from(self)
     }
 }
 
@@ -63,17 +100,11 @@ impl ToAggregation for &str {
         (*self).to_agg()
     }
 }
-impl ToAggregation for String {
-    fn to_agg(&self) -> Aggregation {
-        self.as_str().to_agg()
-    }
-}
 impl ToAggregation for Aggregation {
     fn to_agg(&self) -> Aggregation {
        *self
     }
 }
-
 
 impl Aggregation {
     pub fn is_none(&self) -> bool {self.eq(&Self::NONE)}
@@ -92,7 +123,8 @@ pub struct Column {
     table_name: String,
     column_name: String,
     as_value: Option<Box<Value>>,
-    agg: Aggregation
+    agg: Aggregation,
+    alias: String,
 }
 
 impl PartialEq for Column {
@@ -100,10 +132,9 @@ impl PartialEq for Column {
         if self.as_value.is_some() == other.as_value.is_none() {
             false
         } else if self.as_value.is_some() && other.as_value.is_some() {
-            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.as_value.as_ref().unwrap().eq(&other.as_value.as_ref().unwrap())
-
+            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.as_value.as_ref().unwrap().eq(&other.as_value.as_ref().unwrap()) && self.alias.eq(&other.alias)
         } else {
-            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg)
+            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.alias.eq(&other.alias)
         }
     }
 }
@@ -132,10 +163,14 @@ impl ToSql for Column {
                 self.column_name.escape(),
             )
         };
-        if self.agg.is_none() {
+        if self.agg.is_none() && self.column_name.eq(&self.alias) {
             sql
         } else {
-            format!(r#"{}({}) as "{}""#, self.agg, sql, self.column_name.escape())
+            if self.agg.is_none() {
+                format!(r#"{} as "{}""#, sql, self.alias.escape())
+            } else {
+                format!(r#"{}({}) as "{}""#, self.agg, sql, self.alias.escape())
+            }
         }
     }
 }
@@ -151,6 +186,7 @@ impl Column {
             column_name: column_name.to_string(),
             as_value: None,
             agg: Aggregation::default(),
+            alias: column_name.to_string()
         }
     }
 
@@ -189,6 +225,10 @@ impl Column {
 
     pub fn get_name(&self) -> &str {self.column_name.as_str()}
     pub fn get_table_name(&self) -> &str {self.table_name.as_str()}
+    pub fn alias(mut self, alias: impl ToString) -> Self {
+        self.alias = alias.to_string();
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -269,7 +309,8 @@ impl ToSql for Columns {
                     columns.push("*".to_string());
                 }
             }
-            self.columns.iter().map(|col| col.to_sql()).collect::<Vec<_>>().join(", ")
+            columns.extend(self.columns.iter().map(|col| col.to_sql()));
+            columns.join(", ")
 
         }
     }

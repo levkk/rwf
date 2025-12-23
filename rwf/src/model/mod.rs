@@ -1853,9 +1853,10 @@ mod test {
         let query = OrderItem::all().group_by(&["order_id"]).select_aggregated(&[("id", "Count")]);
         let res = query.fetch_all_picked(&mut conn).await;
         assert!(res.is_ok());
-        let res = res.unwrap();
+        let mut res = res.unwrap();
         assert_eq!(res.len(), 1);
-        assert_eq!(res.first().unwrap().map().values().next().unwrap(), Value::Int(1)); 
+        let mut res = res.into_iter().next().unwrap();
+        assert_eq!(res.clone().map().values().next().unwrap(), &Value::Int(1)); 
     }
 
     #[tokio::test]
