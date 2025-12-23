@@ -30,6 +30,7 @@ pub mod row;
 pub mod select;
 pub mod update;
 pub mod value;
+mod view;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;

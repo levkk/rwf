@@ -29,6 +29,8 @@ impl<T: FromRow> Picked<T> {
     pub fn map(self) -> HashMap<Column, Value> {
         self.columns.into_iter().zip(self.data.into_iter()).collect()
     }
+    pub fn columns(self) -> Vec<Column> {self.columns}
+    pub fn merge(mut self, mut columns: Vec<Column>) -> Self {self.columns.append(&mut columns); self}
 
     pub fn get_entry(&self, alias: impl ToString) -> Option<(&Column, &Value)> {
         let alias = alias.to_string();
