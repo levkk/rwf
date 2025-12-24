@@ -211,7 +211,7 @@ impl Column {
         self.alias = alias.to_string();
         self
     }
-    pub fn get_alias(&self) -> &String {&self.alias}
+    pub fn get_alias(&self) -> &str {&self.alias.as_str()}
 }
 
 #[derive(Debug, Clone)]
