@@ -613,14 +613,15 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn select_aggregated(self, columns: &[(impl ToColumn, impl ToAggregation)]) -> Self {
+    pub fn select_aggregated(self, columns: &[(impl ToColumn, impl ToAggregation, Option<impl ToString>)]) -> Self {
         match self {
             Query::Select(select) => {
                 return Query::Picked(Picked::from(select)).select_aggregated(columns)
             },
             Query::Picked(mut picked) => {
-                for (col, agg) in columns {
-                    picked = picked.add_column(col, agg);
+                for (col, agg, alias) in columns {
+                    let alias = alias.as_ref().map(|alias| alias.to_string());
+                    picked = picked.add_column(col, agg,alias);
                 };
                 return Query::Picked(picked)
             },
@@ -630,7 +631,7 @@ impl<T: Model> Query<T> {
     }
 
     pub fn select_columns(self, columns: &[impl ToColumn]) -> Self {
-        self.select_aggregated(columns.iter().map(|col| (col.to_column(), "")).collect::<Vec<(Column, &str)>>().as_slice())
+        self.select_aggregated(columns.iter().map(|col| (col.to_column(), "", None)).collect::<Vec<(Column, &str, Option<String>)>>().as_slice())
     }
 
     pub fn group_by(self, columns: &[impl ToColumn]) -> Self {
@@ -1826,13 +1827,13 @@ mod test {
     }
     #[test]
     fn test_picked_agg() {
-        let query = User::all().select_aggregated(&[("id", "sum")]);
+        let query = User::all().select_aggregated(&[("id", "sum", None::<String>)]);
         assert_eq!(query.to_sql(), r#"SELECT SUM("users"."id") as "id" FROM "users""#);
     }
     #[test]
     fn test_pick_agg_group() {
-        let query = OrderItem::all().select_aggregated(&[("id", "count")]).group_by(&["order_id"]);
-        assert_eq!(query.to_sql(), r#"SELECT COUNT("order_items"."id") as "id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#);
+        let query = OrderItem::all().select_aggregated(&[("id", "count", Some("cnt_id"))]).group_by(&["order_id"]);
+        assert_eq!(query.to_sql(), r#"SELECT COUNT("order_items"."id") as "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#);
     }
 
     #[tokio::test]
@@ -1850,8 +1851,10 @@ mod test {
     #[tokio::test]
     async fn test_fetch_aggregated() {
         let mut conn = get_connection().await.unwrap();
-        let query = OrderItem::all().group_by(&["order_id"]).select_aggregated(&[("id", "Count")]);
+        let query = OrderItem::all().group_by(&["order_id"]).select_aggregated(&[("id", "Count", Some("cnt"))]);
+        eprint!("{}", query.to_sql());
         let res = query.fetch_all_picked(&mut conn).await;
+        eprintln!("{:?}", res);
         assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.len(), 1);
@@ -1862,7 +1865,7 @@ mod test {
         let (_c, v) = oid.unwrap();
         assert_eq!(v, &Value::Integer(1));
 
-        let cid = res.get_entry("id");
+        let cid = res.get_entry("cnt");
         assert!(cid.is_some());
         let (_c, v) = cid.unwrap();
         assert_eq!(v, &Value::Integer(2));
