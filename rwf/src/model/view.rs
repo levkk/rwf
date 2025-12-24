@@ -1,4 +1,6 @@
-use crate::model::ToColumn;
+use std::fmt::write;
+
+use crate::model::{Error, Escape, ToColumn, ToSql};
 use crate::model::column::ToAggregation;
 
 use super::select::Select;
@@ -7,7 +9,7 @@ use super::join::{Join, Joins, Association};
 use super::picked::Picked;
 
 #[derive(Debug,Clone)]
-struct View<T> where T: Model {
+pub struct View<T> where T: Model {
     pivot: Picked<T>
 }
 
@@ -28,12 +30,28 @@ impl<T> View<T> where T: Model {
         let alias: Option<String> = None;
         self.add_aggregated_column(column, "", alias)
     }
-    pub fn join<U: Association<T>>(self, other:View<U>) -> Self {
-        T::join::<U>().into().joins().into_iter().for_each(|j| {
-            self.pivot.select.joins.add(j.clone());
-        });
+    pub fn join<U: Association<T>>(mut self, other:View<U>) -> Self {
+        self.pivot.select.joins = self.pivot.select.joins.add(U::construct_join());
         Self::from(self.pivot.merge(other.pivot.columns()))
-
-
+    }
+    pub fn from_row(&self, row: tokio_postgres::Row) -> Result<Self, Error> {
+        self.pivot.from_row(row).map(|pick| Self::from(pick))
+    }
+    pub fn create_view(&self, name: impl ToString) -> String {
+        format!(r#"CREATE VIEW "{}" AS ({})"#, name.to_string().escape(), self)
     }
 }
+
+impl<T> ToSql for View<T> where T: Model {
+    fn to_sql(&self) -> String {
+        self.pivot.to_sql()
+    }
+}
+
+impl<T> std::fmt::Display for View<T> where T: Model {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_sql())
+    }
+}
+
+
