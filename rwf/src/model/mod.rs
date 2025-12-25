@@ -30,7 +30,6 @@ pub mod row;
 pub mod select;
 pub mod update;
 pub mod value;
-pub mod view;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
@@ -51,7 +50,6 @@ pub use row::Row;
 pub use select::Select;
 pub use update::Update;
 pub use value::{ToValue, Value};
-pub use view::View;
 
 /// Convert a PostgreSQL row to a Rust struct. Type conversions are handled by `tokio_postgres`. This only
 /// creates a mapping between columns and struct fields.
@@ -1880,16 +1878,46 @@ mod test {
         );
     }
 
-    #[test]
-    fn test_join_view() {
-        let query = view::View::<Order>::use_all_pivot().join(view::View::<User>::use_all());
-        let cmp = r#"SELECT "orders"."id", "orders"."user_id", "orders"."amount", "users"."email", "users"."password" FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id""#;
-        assert_eq!(query.to_sql(), cmp);
+    #[tokio::test]
+    async fn test_fetch_picked() {
+        let mut conn = get_connection().await.unwrap();
+        let query = User::take_one().select_columns(&["name"]);
+        let res = query.fetch_picked(&mut conn).await;
+        eprintln!("{:?}", res);
+        assert!(res.is_ok());
+        let res = res.unwrap().map();
+        assert_eq!(res.len(), 1);
         assert_eq!(
-            query.create_view("test"),
-            format!("CREATE VIEW \"test\" AS ({})", cmp)
+            res.values().next().unwrap(),
+            &Value::String("test".to_string())
         );
     }
+
+    #[tokio::test]
+    async fn test_fetch_aggregated() {
+        let mut conn = get_connection().await.unwrap();
+        let query = OrderItem::all()
+            .group_by(&["order_id"])
+            .select_aggregated(&[("id", "Count", Some("cnt"))]);
+        eprint!("{}", query.to_sql());
+        let res = query.fetch_all_picked(&mut conn).await;
+        eprintln!("{:?}", res);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.into_iter().next().unwrap();
+
+        let oid = res.get_entry("order_id");
+        assert!(oid.is_some());
+        let (_c, v) = oid.unwrap();
+        assert_eq!(v, &Value::Integer(1));
+
+        let cid = res.get_entry("cnt");
+        assert!(cid.is_some());
+        let (_c, v) = cid.unwrap();
+        assert_eq!(v, &Value::Integer(2));
+    }
+>>>>>>> main
 
     #[tokio::test]
     async fn test_fetch() -> Result<(), Error> {
