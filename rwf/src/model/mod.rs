@@ -3,6 +3,7 @@
 //! See [documentation](https://levkk.github.io/rwf/models/) for detailed examples on how to use the ORM.
 use crate::colors::MaybeColorize;
 use crate::config::get_config;
+use crate::model::column::ToAggregation;
 
 use pool::ToConnectionRequest;
 use std::time::{Duration, Instant};
@@ -240,7 +241,7 @@ impl<T: FromRow> ToSql for Query<T> {
             InsertIfNotExists { select, insert, .. } => {
                 format!("{}; {};", select.to_sql(), insert.to_sql())
             }
-            Picked(picked) => picked.select.to_sql(),
+            Picked(picked) => picked.to_sql(),
         }
     }
 }
@@ -612,6 +613,54 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn select_aggregated(
+        self,
+        columns: &[(impl ToColumn, impl ToAggregation, Option<impl ToString>)],
+    ) -> Self {
+        match self {
+            Query::Select(select) => {
+                return Query::Picked(Picked::from(select)).select_aggregated(columns)
+            }
+            Query::Picked(mut picked) => {
+                for (col, agg, alias) in columns {
+                    let alias = alias.as_ref().map(|alias| alias.to_string());
+                    picked = picked.add_column(col, agg, alias);
+                }
+                return Query::Picked(picked);
+            }
+            _ => self,
+        }
+    }
+
+    pub fn select_columns(self, columns: &[impl ToColumn]) -> Self {
+        self.select_aggregated(
+            columns
+                .iter()
+                .map(|col| (col.to_column(), "", None))
+                .collect::<Vec<(Column, &str, Option<String>)>>()
+                .as_slice(),
+        )
+    }
+
+    pub fn group_by(self, columns: &[impl ToColumn]) -> Self {
+        let columns = columns
+            .iter()
+            .map(|col| {
+                let col = col.to_column();
+                if !col.qualified() {
+                    col.qualify(T::table_name())
+                } else {
+                    col
+                }
+            })
+            .collect::<Vec<Column>>();
+        match self {
+            Query::Select(select) => Query::Select(select.group(columns.as_slice())),
+            Query::Picked(picked) => Query::Picked(picked.group(columns.as_slice())),
+            _ => self,
+        }
+    }
+
     async fn execute_internal(
         &self,
         client: impl ToConnectionRequest<'_>,
@@ -676,7 +725,7 @@ impl<T: Model> Query<T> {
 
             Query::Picked(picked) => {
                 let select = &picked.select;
-                let query = select.to_sql();
+                let query = picked.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
                 client.query_cached(&query, &values).await
@@ -773,6 +822,46 @@ impl<T: Model> Query<T> {
         self.log(time);
 
         Ok(results)
+    }
+
+    pub async fn fetch_picked(
+        self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<Picked<T>, Error> {
+        if let Query::Picked(ref picked) = self {
+            let start = Instant::now();
+            if let Some(row) = self.execute_internal(conn).await?.pop() {
+                let result = picked.from_row(row);
+                self.log(start.elapsed());
+                result
+            } else {
+                Err(Error::RecordNotFound)
+            }
+        } else {
+            Err(Error::QueryError(
+                "Expected Picked Query".to_string(),
+                self.to_sql(),
+            ))
+        }
+    }
+    pub async fn fetch_all_picked(
+        self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<Vec<Picked<T>>, Error> {
+        if let Query::Picked(ref picked) = self {
+            let start = Instant::now();
+            let mut result = Vec::new();
+            for row in self.execute_internal(conn).await? {
+                result.push(picked.from_row(row)?);
+            }
+            self.log(start.elapsed());
+            Ok(result)
+        } else {
+            Err(Error::QueryError(
+                "Expected Picked Query".to_string(),
+                self.to_sql(),
+            ))
+        }
     }
 
     fn type_name() -> String {
@@ -1761,6 +1850,72 @@ mod test {
             query.to_sql(),
             r#"SELECT * FROM "users" WHERE "users"."email" = $1 LIMIT 1"#
         );
+    }
+    #[test]
+    fn test_picked_single_user_single_col() {
+        let query = User::take_one().select_columns(&["email"]);
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT "users"."email" FROM "users" LIMIT 1"#
+        );
+    }
+    #[test]
+    fn test_picked_agg() {
+        let query = User::all().select_aggregated(&[("id", "sum", None::<String>)]);
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT SUM("users"."id") as "id" FROM "users""#
+        );
+    }
+    #[test]
+    fn test_pick_agg_group() {
+        let query = OrderItem::all()
+            .select_aggregated(&[("id", "count", Some("cnt_id"))])
+            .group_by(&["order_id"]);
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT COUNT("order_items"."id") as "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#
+        );
+    }
+
+    #[tokio::test]
+    async fn test_fetch_picked() {
+        let mut conn = get_connection().await.unwrap();
+        let query = User::take_one().select_columns(&["name"]);
+        let res = query.fetch_picked(&mut conn).await;
+        eprintln!("{:?}", res);
+        assert!(res.is_ok());
+        let res = res.unwrap().map();
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res.values().next().unwrap(),
+            &Value::String("test".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_fetch_aggregated() {
+        let mut conn = get_connection().await.unwrap();
+        let query = OrderItem::all()
+            .group_by(&["order_id"])
+            .select_aggregated(&[("id", "Count", Some("cnt"))]);
+        eprint!("{}", query.to_sql());
+        let res = query.fetch_all_picked(&mut conn).await;
+        eprintln!("{:?}", res);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.into_iter().next().unwrap();
+
+        let oid = res.get_entry("order_id");
+        assert!(oid.is_some());
+        let (_c, v) = oid.unwrap();
+        assert_eq!(v, &Value::Integer(1));
+
+        let cid = res.get_entry("cnt");
+        assert!(cid.is_some());
+        let (_c, v) = cid.unwrap();
+        assert_eq!(v, &Value::Integer(2));
     }
 
     #[tokio::test]

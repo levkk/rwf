@@ -1,13 +1,140 @@
 //! Represents the database table column.
+
 use super::{Escape, ToSql, ToValue, Value};
+use std::str::FromStr;
+
+/// Possible Aggregation to execute
+
+macro_rules! impl_aggregation {
+    ($($opts:ident),*)  => {
+        #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, crate::prelude::Serialize, crate::prelude::Deserialize)]
+        pub enum Aggregation {
+            $(
+                $opts
+            ),*
+                ,NONE
+        }
+        impl std::fmt::Display for Aggregation {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$opts => write!(f, stringify!($opts))
+                    ),*
+                        , Self::NONE => write!(f, "NONE"),
+                }
+            }
+        }
+        impl FromStr for Aggregation {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(match s.to_uppercase().as_str() {
+                    $(
+                        stringify!($opts) => Self::$opts,
+                    )*
+                        _ => Self::NONE
+                })
+            }
+        }
+        impl From<&str> for Aggregation {
+           fn from(value: &str) -> Self {
+                Self::from_str(value).unwrap()
+            }
+        }
+        impl From<String> for Aggregation {
+            fn from(value: String) -> Self {
+                Self::from(value.as_str())
+            }
+        }
+        impl From<&String> for Aggregation {
+            fn from(value: &String) -> Self {
+                Self::from(value.as_str())
+            }
+        }
+
+    };
+}
+
+impl_aggregation!(SUM, AVG, COUNT, MIN, MAX);
+
+impl Default for Aggregation {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
+pub trait ToAggregation {
+    fn to_agg(&self) -> Aggregation;
+}
+impl ToAggregation for str {
+    fn to_agg(&self) -> Aggregation {
+        Aggregation::from(self)
+    }
+}
+impl ToAggregation for String {
+    fn to_agg(&self) -> Aggregation {
+        Aggregation::from(self)
+    }
+}
+
+impl ToAggregation for &str {
+    fn to_agg(&self) -> Aggregation {
+        (*self).to_agg()
+    }
+}
+impl ToAggregation for Aggregation {
+    fn to_agg(&self) -> Aggregation {
+        *self
+    }
+}
+
+impl Aggregation {
+    pub fn is_none(&self) -> bool {
+        self.eq(&Self::NONE)
+    }
+    pub fn is_agg(&self) -> bool {
+        !self.is_none()
+    }
+}
+
+impl<T: ToAggregation + Sized> ToAggregation for &T {
+    fn to_agg(&self) -> Aggregation {
+        (*self).to_agg()
+    }
+}
 
 /// PostgreSQL table column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash)]
 pub struct Column {
     table_name: String,
     column_name: String,
     as_value: Option<Box<Value>>,
+    agg: Aggregation,
+    alias: String,
 }
+
+impl PartialEq for Column {
+    fn eq(&self, other: &Self) -> bool {
+        if self.as_value.is_some() == other.as_value.is_none() {
+            false
+        } else if self.as_value.is_some() && other.as_value.is_some() {
+            self.table_name.eq(&other.table_name)
+                && self.column_name.eq(&other.column_name)
+                && self.agg.eq(&other.agg)
+                && self
+                    .as_value
+                    .as_ref()
+                    .unwrap()
+                    .eq(&other.as_value.as_ref().unwrap())
+                && self.alias.eq(&other.alias)
+        } else {
+            self.table_name.eq(&other.table_name)
+                && self.column_name.eq(&other.column_name)
+                && self.agg.eq(&other.agg)
+                && self.alias.eq(&other.alias)
+        }
+    }
+}
+impl Eq for Column {}
 
 impl std::fmt::Display for Column {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -22,8 +149,7 @@ impl ToSql for Column {
         } else {
             "".to_string()
         };
-
-        if self.table_name.is_empty() {
+        let sql = if self.table_name.is_empty() {
             format!(r#"{}"{}""#, as_value, self.column_name.escape())
         } else {
             format!(
@@ -32,6 +158,15 @@ impl ToSql for Column {
                 self.table_name.escape(),
                 self.column_name.escape(),
             )
+        };
+        if self.agg.is_none() && self.column_name.eq(&self.alias) {
+            sql
+        } else {
+            if self.agg.is_none() {
+                format!(r#"{} as "{}""#, sql, self.alias.escape())
+            } else {
+                format!(r#"{}({}) as "{}""#, self.agg, sql, self.alias.escape())
+            }
         }
     }
 }
@@ -46,6 +181,8 @@ impl Column {
             table_name: table_name.to_string(),
             column_name: column_name.to_string(),
             as_value: None,
+            agg: Aggregation::default(),
+            alias: column_name.to_string(),
         }
     }
 
@@ -75,6 +212,27 @@ impl Column {
     pub fn as_value(mut self, value: impl ToValue) -> Self {
         self.as_value = Some(Box::new(value.to_value()));
         self
+    }
+    pub fn agg(mut self, value: impl ToAggregation) -> Self {
+        self.agg = value.to_agg();
+        self
+    }
+    pub fn aggregation(&self) -> &Aggregation {
+        &self.agg
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.column_name.as_str()
+    }
+    pub fn get_table_name(&self) -> &str {
+        self.table_name.as_str()
+    }
+    pub fn alias(mut self, alias: impl ToString) -> Self {
+        self.alias = alias.to_string();
+        self
+    }
+    pub fn get_alias(&self) -> &str {
+        &self.alias.as_str()
     }
 }
 
@@ -156,9 +314,7 @@ impl ToSql for Columns {
                     columns.push("*".to_string());
                 }
             }
-
-            columns.extend(self.columns.iter().map(|column| column.to_sql()));
-
+            columns.extend(self.columns.iter().map(|col| col.to_sql()));
             columns.join(", ")
         }
     }
@@ -183,5 +339,10 @@ impl ToColumn for &str {
 impl ToColumn for Column {
     fn to_column(&self) -> Column {
         self.clone()
+    }
+}
+impl<T: ToColumn> ToColumn for &T {
+    fn to_column(&self) -> Column {
+        (**self).to_column()
     }
 }

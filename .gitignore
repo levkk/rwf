@@ -1,3 +1,4 @@
 target
+rwf.toml
 .DS_Store
 *.tar.*

@@ -4,7 +4,7 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 use uuid::Uuid;
 
-use std::{net::IpAddr, ops::RangeInclusive};
+use std::{hash::Hash, net::IpAddr, ops::RangeInclusive};
 
 use super::{Column, Error, Escape, ToSql};
 
@@ -58,10 +58,14 @@ pub enum Value {
     /// `NULL`.
     Null,
 }
-
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Value")
+    }
+}
+impl Hash for Value {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.to_sql().hash(state);
     }
 }
 
