@@ -3,7 +3,6 @@
 use super::{Escape, ToSql, ToValue, Value};
 use std::str::FromStr;
 
-
 /// Possible Aggregation to execute
 
 macro_rules! impl_aggregation {
@@ -84,13 +83,17 @@ impl ToAggregation for &str {
 }
 impl ToAggregation for Aggregation {
     fn to_agg(&self) -> Aggregation {
-       *self
+        *self
     }
 }
 
 impl Aggregation {
-    pub fn is_none(&self) -> bool {self.eq(&Self::NONE)}
-    pub fn is_agg(&self) -> bool {!self.is_none()}
+    pub fn is_none(&self) -> bool {
+        self.eq(&Self::NONE)
+    }
+    pub fn is_agg(&self) -> bool {
+        !self.is_none()
+    }
 }
 
 impl<T: ToAggregation + Sized> ToAggregation for &T {
@@ -114,9 +117,20 @@ impl PartialEq for Column {
         if self.as_value.is_some() == other.as_value.is_none() {
             false
         } else if self.as_value.is_some() && other.as_value.is_some() {
-            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.as_value.as_ref().unwrap().eq(&other.as_value.as_ref().unwrap()) && self.alias.eq(&other.alias)
+            self.table_name.eq(&other.table_name)
+                && self.column_name.eq(&other.column_name)
+                && self.agg.eq(&other.agg)
+                && self
+                    .as_value
+                    .as_ref()
+                    .unwrap()
+                    .eq(&other.as_value.as_ref().unwrap())
+                && self.alias.eq(&other.alias)
         } else {
-            self.table_name.eq(&other.table_name) && self.column_name.eq(&other.column_name) && self.agg.eq(&other.agg) && self.alias.eq(&other.alias)
+            self.table_name.eq(&other.table_name)
+                && self.column_name.eq(&other.column_name)
+                && self.agg.eq(&other.agg)
+                && self.alias.eq(&other.alias)
         }
     }
 }
@@ -168,7 +182,7 @@ impl Column {
             column_name: column_name.to_string(),
             as_value: None,
             agg: Aggregation::default(),
-            alias: column_name.to_string()
+            alias: column_name.to_string(),
         }
     }
 
@@ -203,15 +217,23 @@ impl Column {
         self.agg = value.to_agg();
         self
     }
-    pub fn aggregation(&self) -> &Aggregation {&self.agg}
+    pub fn aggregation(&self) -> &Aggregation {
+        &self.agg
+    }
 
-    pub fn get_name(&self) -> &str {self.column_name.as_str()}
-    pub fn get_table_name(&self) -> &str {self.table_name.as_str()}
+    pub fn get_name(&self) -> &str {
+        self.column_name.as_str()
+    }
+    pub fn get_table_name(&self) -> &str {
+        self.table_name.as_str()
+    }
     pub fn alias(mut self, alias: impl ToString) -> Self {
         self.alias = alias.to_string();
         self
     }
-    pub fn get_alias(&self) -> &str {&self.alias.as_str()}
+    pub fn get_alias(&self) -> &str {
+        &self.alias.as_str()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -294,7 +316,6 @@ impl ToSql for Columns {
             }
             columns.extend(self.columns.iter().map(|col| col.to_sql()));
             columns.join(", ")
-
         }
     }
 }
@@ -324,4 +345,4 @@ impl<T: ToColumn> ToColumn for &T {
     fn to_column(&self) -> Column {
         (**self).to_column()
     }
-}   
+}
