@@ -30,6 +30,7 @@ pub mod row;
 pub mod select;
 pub mod update;
 pub mod value;
+pub mod view;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
@@ -50,6 +51,7 @@ pub use row::Row;
 pub use select::Select;
 pub use update::Update;
 pub use value::{ToValue, Value};
+pub use view::View;
 
 /// Convert a PostgreSQL row to a Rust struct. Type conversions are handled by `tokio_postgres`. This only
 /// creates a mapping between columns and struct fields.
@@ -1877,29 +1879,67 @@ mod test {
             r#"SELECT COUNT("order_items"."id") as "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#
         );
     }
+    #[test]
+    fn test_join_view() {
+        let query: View<Order> =
+            view::View::<Order>::use_all_pivot().join(view::View::<User>::use_all());
+        let cmp: &str = r#"SELECT "orders"."id", "orders"."user_id", "orders"."amount", "users"."email", "users"."password" FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id""#;
+        assert_eq!(query.to_sql(), cmp);
+        assert_eq!(
+            query.create_view("test"),
+            format!("CREATE VIEW \"test\" AS ({})", cmp)
+        );
+    }
 
     #[tokio::test]
     async fn test_fetch_picked() {
         let mut conn = get_connection().await.unwrap();
-        let query = User::take_one().select_columns(&["name"]);
-        let res = query.fetch_picked(&mut conn).await;
-        eprintln!("{:?}", res);
+        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS products (id bigserial primary key, name varchar(255) not null)", &[]).await.is_ok());
+        let prod = Product::create(&[("name", "Test Product".to_string().to_value())]).fetch(&mut conn).await;
+        assert!(prod.is_ok());
+        let prod = prod.unwrap();
+        
+        let res= Product::find(prod.id).select_columns(&["name"]).fetch_picked(&mut conn).await;
         assert!(res.is_ok());
         let res = res.unwrap().map();
         assert_eq!(res.len(), 1);
         assert_eq!(
             res.values().next().unwrap(),
-            &Value::String("test".to_string())
+            &Value::String("Test Product".to_string())
+            );
+        assert!(conn.query_cached("DROP TABLE products", &[]).await.is_ok());
+        /*
+        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS users (id bigserial primary key, email varchar(255) not null, password varchar(255) not null)", &[]).await.is_ok());
+        let user = User::create(&[("email", "test@nomail.tld"), ("password", "test1234")]).fetch(&mut conn).await;
+        assert!(user.is_ok());
+        let user = user.unwrap();
+        let query = User::find(user.id).select_columns(&["email"]);
+        let res = query.fetch_picked(&mut conn).await;
+        assert!(res.is_ok());
+        let res = res.unwrap().map();
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res.values().next().unwrap(),
+            &Value::String("test@nomail.tld".to_string())
         );
+        assert!(conn.query_cached("DROP TABLE users", &[]).await.is_ok());
+        */
     }
 
     #[tokio::test]
     async fn test_fetch_aggregated() {
         let mut conn = get_connection().await.unwrap();
-        let query = OrderItem::all()
+        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS order_items (id bigserial primary key,  order_id bigint not null, product_id bigint not null)", &[]).await.is_ok());
+        
+        
+        let pos_one = OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 7.to_value())]).fetch(&mut conn).await;
+        assert!(pos_one.is_ok());
+        let pos_two = OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 8.to_value())]).fetch(&mut conn).await;
+        assert!(pos_two.is_ok());
+
+        let query = OrderItem::filter("order_id", 12)
             .group_by(&["order_id"])
             .select_aggregated(&[("id", "Count", Some("cnt"))]);
-        eprint!("{}", query.to_sql());
         let res = query.fetch_all_picked(&mut conn).await;
         eprintln!("{:?}", res);
         assert!(res.is_ok());
@@ -1910,14 +1950,15 @@ mod test {
         let oid = res.get_entry("order_id");
         assert!(oid.is_some());
         let (_c, v) = oid.unwrap();
-        assert_eq!(v, &Value::Integer(1));
+        assert_eq!(v, &Value::Integer(12));
 
         let cid = res.get_entry("cnt");
         assert!(cid.is_some());
         let (_c, v) = cid.unwrap();
         assert_eq!(v, &Value::Integer(2));
+
+        assert!(conn.query_cached("DROP TABLE order_items", &[]).await.is_ok());
     }
->>>>>>> main
 
     #[tokio::test]
     async fn test_fetch() -> Result<(), Error> {
