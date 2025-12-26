@@ -1895,18 +1895,23 @@ mod test {
     async fn test_fetch_picked() {
         let mut conn = get_connection().await.unwrap();
         assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS products (id bigserial primary key, name varchar(255) not null)", &[]).await.is_ok());
-        let prod = Product::create(&[("name", "Test Product".to_string().to_value())]).fetch(&mut conn).await;
+        let prod = Product::create(&[("name", "Test Product".to_string().to_value())])
+            .fetch(&mut conn)
+            .await;
         assert!(prod.is_ok());
         let prod = prod.unwrap();
-        
-        let res= Product::find(prod.id).select_columns(&["name"]).fetch_picked(&mut conn).await;
+
+        let res = Product::find(prod.id)
+            .select_columns(&["name"])
+            .fetch_picked(&mut conn)
+            .await;
         assert!(res.is_ok());
         let res = res.unwrap().map();
         assert_eq!(res.len(), 1);
         assert_eq!(
             res.values().next().unwrap(),
             &Value::String("Test Product".to_string())
-            );
+        );
         assert!(conn.query_cached("DROP TABLE products", &[]).await.is_ok());
         /*
         assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS users (id bigserial primary key, email varchar(255) not null, password varchar(255) not null)", &[]).await.is_ok());
@@ -1930,11 +1935,16 @@ mod test {
     async fn test_fetch_aggregated() {
         let mut conn = get_connection().await.unwrap();
         assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS order_items (id bigserial primary key,  order_id bigint not null, product_id bigint not null)", &[]).await.is_ok());
-        
-        
-        let pos_one = OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 7.to_value())]).fetch(&mut conn).await;
+
+        let pos_one =
+            OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 7.to_value())])
+                .fetch(&mut conn)
+                .await;
         assert!(pos_one.is_ok());
-        let pos_two = OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 8.to_value())]).fetch(&mut conn).await;
+        let pos_two =
+            OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 8.to_value())])
+                .fetch(&mut conn)
+                .await;
         assert!(pos_two.is_ok());
 
         let query = OrderItem::filter("order_id", 12)
@@ -1957,7 +1967,10 @@ mod test {
         let (_c, v) = cid.unwrap();
         assert_eq!(v, &Value::Integer(2));
 
-        assert!(conn.query_cached("DROP TABLE order_items", &[]).await.is_ok());
+        assert!(conn
+            .query_cached("DROP TABLE order_items", &[])
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
