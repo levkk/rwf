@@ -26,7 +26,7 @@ impl rwf::model::Model for User {
     }
     fn values(&self) -> Vec<rwf::model::Value> {
         use rwf::model::ToValue;
-        <[_]>::into_vec(#[rustc_box] ::alloc::boxed::Box::new([self.email.to_value()]))
+        <[_]>::into_vec(::alloc::boxed::box_new([self.email.to_value()]))
     }
     fn id(&self) -> rwf::model::Value {
         use rwf::model::ToValue;
@@ -76,7 +76,7 @@ impl rwf::model::Model for Task {
     }
     fn values(&self) -> Vec<rwf::model::Value> {
         use rwf::model::ToValue;
-        <[_]>::into_vec(#[rustc_box] ::alloc::boxed::Box::new([self.user_id.to_value()]))
+        <[_]>::into_vec(::alloc::boxed::box_new([self.user_id.to_value()]))
     }
     fn id(&self) -> rwf::model::Value {
         use rwf::model::ToValue;

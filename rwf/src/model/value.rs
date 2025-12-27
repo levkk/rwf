@@ -352,7 +352,7 @@ impl tokio_postgres::types::ToSql for Value {
         &self,
         ty: &Type,
         out: &mut BytesMut,
-    ) -> Result<IsNull, Box<(dyn std::error::Error + Send + Sync + 'static)>> {
+    ) -> Result<IsNull, Box<dyn std::error::Error + Send + Sync + 'static>> {
         use std::ops::Deref;
         match self {
             Value::String(string) => string.to_sql(ty, out),

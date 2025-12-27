@@ -525,6 +525,21 @@ impl<T: Model> Query<T> {
     pub fn join<F: Association<T>>(self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.join(F::construct_join())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(F::construct_join());
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    pub fn join_left<F: Association<T>>(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.join(F::construct_left_join())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(F::construct_left_join());
+                Query::Picked(picked)
+            }
             _ => self,
         }
     }
@@ -532,6 +547,10 @@ impl<T: Model> Query<T> {
     pub fn join_nested<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_joins(joined.into())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_joins(joined.into());
+                Query::Picked(picked)
+            }
             _ => self,
         }
     }
@@ -970,6 +989,53 @@ pub trait Model: FromRow {
     /// ```
     fn column_names() -> &'static [&'static str];
 
+    /// List of Column Structs hold by the Model
+    ///
+    /// This method is provided by the Model trait and generates a Column Struct for each column
+    /// name of `Model::column_names` method.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::Column;
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// let columns = vec![Column::new("users", "email")];
+    /// assert_eq!(columns, User::columns());
+    /// ```
+    fn columns() -> Vec<Column> {
+        Self::column_names()
+            .iter()
+            .map(|name| Self::column(*name))
+            .collect::<Vec<Column>>()
+    }
+
+    /// List of Column Structs hold by the Model including tge Primary Key!
+    ///
+    /// This Method is provided by the Model trait and generatrs a Column Struct for the column
+    /// name returned by `Model::primary_key` as well as for each name returned by
+    /// `Model::column_names`.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::Column;
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// let columns = vec![Column::new("users", "id"), Column::new("users", "email")];
+    /// assert_eq!(columns, User::all_columns());
+    /// ```
+    fn all_columns() -> Vec<Column> {
+        let mut columns = vec![Self::column(Self::primary_key())];
+        columns.append(&mut Self::columns());
+        columns
+    }
     /// The primary key value, if one exists, for the instance of a model.
     ///
     /// Primary keys are not required to use the ORM, but are generally needed to perform
@@ -1301,6 +1367,31 @@ pub trait Model: FromRow {
     /// ```
     fn join<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_join())
+    }
+
+    /// Join this Model to another model with which it has a relationship. The join kind is a left
+    /// join. The relationship should be declared in advance using an annotation.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// #[derive(Clone, macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String
+    /// }
+    /// let join = User::join_left::<Project>();
+    /// ```
+    fn join_left<F: Association<Self>>() -> Joined<Self, F> {
+        Joined::new(F::construct_left_join())
     }
 
     /// Filter all records which have a relationship to this model. Used for fetching multiple records at once
@@ -1743,10 +1834,15 @@ mod test {
     #[test]
     fn test_join() {
         let query = User::all().join::<Order>().first_one();
-
         assert_eq!(
             query.to_sql(),
             r#"SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" ORDER BY "users"."id" ASC LIMIT 1"#
+        );
+
+        let query = User::all().join_left::<Order>().first_one();
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT "users".* FROM "users" LEFT JOIN "orders" ON "users"."id" = "orders"."user_id" ORDER BY "users"."id" ASC LIMIT 1"#
         );
 
         let query = Order::all().join::<User>();
@@ -1877,29 +1973,63 @@ mod test {
             r#"SELECT COUNT("order_items"."id") as "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#
         );
     }
+    #[test]
+    fn test_join_view() {
+        let query = Order::all()
+            .select_columns(Order::all_columns().as_slice())
+            .join::<User>()
+            .select_columns(User::columns().as_slice());
+        let cmp: &str = r#"SELECT "orders"."id", "orders"."user_id", "orders"."amount", "users"."email", "users"."password" FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id""#;
+        assert_eq!(query.to_sql(), cmp);
+        assert_eq!(
+            Picked::try_from(query).unwrap().create_view("test"),
+            format!("CREATE VIEW \"test\" AS ({})", cmp)
+        );
+    }
 
     #[tokio::test]
     async fn test_fetch_picked() {
         let mut conn = get_connection().await.unwrap();
-        let query = User::take_one().select_columns(&["name"]);
-        let res = query.fetch_picked(&mut conn).await;
-        eprintln!("{:?}", res);
+        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS products (id bigserial primary key, name varchar(255) not null)", &[]).await.is_ok());
+        let prod = Product::create(&[("name", "Test Product".to_string().to_value())])
+            .fetch(&mut conn)
+            .await;
+        assert!(prod.is_ok());
+        let prod = prod.unwrap();
+
+        let res = Product::find(prod.id)
+            .select_columns(&["name"])
+            .fetch_picked(&mut conn)
+            .await;
         assert!(res.is_ok());
         let res = res.unwrap().map();
         assert_eq!(res.len(), 1);
         assert_eq!(
             res.values().next().unwrap(),
-            &Value::String("test".to_string())
+            &Value::String("Test Product".to_string())
         );
+        assert!(conn.query_cached("DROP TABLE products", &[]).await.is_ok());
     }
 
     #[tokio::test]
     async fn test_fetch_aggregated() {
         let mut conn = get_connection().await.unwrap();
-        let query = OrderItem::all()
+        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS order_items (id bigserial primary key,  order_id bigint not null, product_id bigint not null)", &[]).await.is_ok());
+
+        let pos_one =
+            OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 7.to_value())])
+                .fetch(&mut conn)
+                .await;
+        assert!(pos_one.is_ok());
+        let pos_two =
+            OrderItem::create(&[("order_id", 12.to_value()), ("product_id", 8.to_value())])
+                .fetch(&mut conn)
+                .await;
+        assert!(pos_two.is_ok());
+
+        let query = OrderItem::filter("order_id", 12)
             .group_by(&["order_id"])
             .select_aggregated(&[("id", "Count", Some("cnt"))]);
-        eprint!("{}", query.to_sql());
         let res = query.fetch_all_picked(&mut conn).await;
         eprintln!("{:?}", res);
         assert!(res.is_ok());
@@ -1910,12 +2040,17 @@ mod test {
         let oid = res.get_entry("order_id");
         assert!(oid.is_some());
         let (_c, v) = oid.unwrap();
-        assert_eq!(v, &Value::Integer(1));
+        assert_eq!(v, &Value::Integer(12));
 
         let cid = res.get_entry("cnt");
         assert!(cid.is_some());
         let (_c, v) = cid.unwrap();
         assert_eq!(v, &Value::Integer(2));
+
+        assert!(conn
+            .query_cached("DROP TABLE order_items", &[])
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
