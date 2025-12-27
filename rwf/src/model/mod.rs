@@ -30,7 +30,6 @@ pub mod row;
 pub mod select;
 pub mod update;
 pub mod value;
-pub mod view;
 
 pub use column::{Column, Columns, ToColumn};
 pub use error::Error;
@@ -51,7 +50,6 @@ pub use row::Row;
 pub use select::Select;
 pub use update::Update;
 pub use value::{ToValue, Value};
-pub use view::View;
 
 /// Convert a PostgreSQL row to a Rust struct. Type conversions are handled by `tokio_postgres`. This only
 /// creates a mapping between columns and struct fields.
@@ -527,6 +525,21 @@ impl<T: Model> Query<T> {
     pub fn join<F: Association<T>>(self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.join(F::construct_join())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(F::construct_join());
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    pub fn join_left<F: Association<T>>(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.join(F::construct_left_join())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(F::construct_left_join());
+                Query::Picked(picked)
+            }
             _ => self,
         }
     }
@@ -534,6 +547,10 @@ impl<T: Model> Query<T> {
     pub fn join_nested<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_joins(joined.into())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_joins(joined.into());
+                Query::Picked(picked)
+            }
             _ => self,
         }
     }
@@ -972,6 +989,53 @@ pub trait Model: FromRow {
     /// ```
     fn column_names() -> &'static [&'static str];
 
+    /// List of Column Structs hold by the Model
+    ///
+    /// This method is provided by the Model trait and generates a Column Struct for each column
+    /// name of `Model::column_names` method.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::Column;
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// let columns = vec![Column::new("users", "email")];
+    /// assert_eq!(columns, User::columns());
+    /// ```
+    fn columns() -> Vec<Column> {
+        Self::column_names()
+            .iter()
+            .map(|name| Self::column(*name))
+            .collect::<Vec<Column>>()
+    }
+
+    /// List of Column Structs hold by the Model including tge Primary Key!
+    ///
+    /// This Method is provided by the Model trait and generatrs a Column Struct for the column
+    /// name returned by `Model::primary_key` as well as for each name returned by
+    /// `Model::column_names`.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::Column;
+    /// #[derive(Clone, macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// let columns = vec![Column::new("users", "id"), Column::new("users", "email")];
+    /// assert_eq!(columns, User::all_columns());
+    /// ```
+    fn all_columns() -> Vec<Column> {
+        let mut columns = vec![Self::column(Self::primary_key())];
+        columns.append(&mut Self::columns());
+        columns
+    }
     /// The primary key value, if one exists, for the instance of a model.
     ///
     /// Primary keys are not required to use the ORM, but are generally needed to perform
@@ -1303,6 +1367,31 @@ pub trait Model: FromRow {
     /// ```
     fn join<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_join())
+    }
+
+    /// Join this Model to another model with which it has a relationship. The join kind is a left
+    /// join. The relationship should be declared in advance using an annotation.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// #[derive(Clone, macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String
+    /// }
+    /// let join = User::join_left::<Project>();
+    /// ```
+    fn join_left<F: Association<Self>>() -> Joined<Self, F> {
+        Joined::new(F::construct_left_join())
     }
 
     /// Filter all records which have a relationship to this model. Used for fetching multiple records at once
@@ -1745,10 +1834,15 @@ mod test {
     #[test]
     fn test_join() {
         let query = User::all().join::<Order>().first_one();
-
         assert_eq!(
             query.to_sql(),
             r#"SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" ORDER BY "users"."id" ASC LIMIT 1"#
+        );
+
+        let query = User::all().join_left::<Order>().first_one();
+        assert_eq!(
+            query.to_sql(),
+            r#"SELECT "users".* FROM "users" LEFT JOIN "orders" ON "users"."id" = "orders"."user_id" ORDER BY "users"."id" ASC LIMIT 1"#
         );
 
         let query = Order::all().join::<User>();
@@ -1881,12 +1975,14 @@ mod test {
     }
     #[test]
     fn test_join_view() {
-        let query: View<Order> =
-            view::View::<Order>::use_all_pivot().join(view::View::<User>::use_all());
+        let query = Order::all()
+            .select_columns(Order::all_columns().as_slice())
+            .join::<User>()
+            .select_columns(User::columns().as_slice());
         let cmp: &str = r#"SELECT "orders"."id", "orders"."user_id", "orders"."amount", "users"."email", "users"."password" FROM "orders" INNER JOIN "users" ON "orders"."user_id" = "users"."id""#;
         assert_eq!(query.to_sql(), cmp);
         assert_eq!(
-            query.create_view("test"),
+            Picked::try_from(query).unwrap().create_view("test"),
             format!("CREATE VIEW \"test\" AS ({})", cmp)
         );
     }
@@ -1913,22 +2009,6 @@ mod test {
             &Value::String("Test Product".to_string())
         );
         assert!(conn.query_cached("DROP TABLE products", &[]).await.is_ok());
-        /*
-        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS users (id bigserial primary key, email varchar(255) not null, password varchar(255) not null)", &[]).await.is_ok());
-        let user = User::create(&[("email", "test@nomail.tld"), ("password", "test1234")]).fetch(&mut conn).await;
-        assert!(user.is_ok());
-        let user = user.unwrap();
-        let query = User::find(user.id).select_columns(&["email"]);
-        let res = query.fetch_picked(&mut conn).await;
-        assert!(res.is_ok());
-        let res = res.unwrap().map();
-        assert_eq!(res.len(), 1);
-        assert_eq!(
-            res.values().next().unwrap(),
-            &Value::String("test@nomail.tld".to_string())
-        );
-        assert!(conn.query_cached("DROP TABLE users", &[]).await.is_ok());
-        */
     }
 
     #[tokio::test]

@@ -90,6 +90,14 @@ impl<T: FromRow> Picked<T> {
         self
     }
 
+    pub fn create_view(&self, name: impl ToString) -> String {
+        format!(
+            r#"CREATE VIEW "{}" AS ({})"#,
+            name.to_string().escape(),
+            self.to_sql()
+        )
+    }
+
     /// Workaround because `FromRow::from_row` accept no `&self` Parameter
     pub(super) fn from_row(&self, row: tokio_postgres::Row) -> Result<Self, Error> {
         let mut data = Vec::new();
@@ -152,5 +160,22 @@ impl<T: FromRow> From<Select<T>> for Picked<T> {
             columns,
             data: Vec::new(),
         }
+    }
+}
+
+impl<T: FromRow> TryFrom<Query<T>> for Picked<T> {
+    type Error = &'static str;
+    fn try_from(value: Query<T>) -> Result<Self, Self::Error> {
+        match value {
+            Query::Select(select) => Ok(Self::from(select)),
+            Query::Picked(picked) => Ok(picked),
+            _ => Err("TryFrom is only implemented for Select and Picked Querys"),
+        }
+    }
+}
+
+impl<T: FromRow> Into<Query<T>> for Picked<T> {
+    fn into(self) -> Query<T> {
+        Query::Picked(self)
     }
 }

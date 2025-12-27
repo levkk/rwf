@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use rwf::model::{Model, Pool, Scope, Value};
+use rwf::model::{Column, Model, Pool, Scope, Value};
 use rwf::view::{template::Template, Templates};
 use rwf::{
     controller::{
@@ -384,16 +384,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .spawn();
     println!("number: {}", rwf::crypto::encrypt_number(1).unwrap());
 
-    let view: rwf::model::Query<Order> = rwf::model::View::<Order>::use_all_pivot()
-        .join(
-            rwf::model::View::try_from(User::all().select_aggregated(&[(
-                "name",
-                "",
-                Some("username"),
-            )]))
-            .unwrap(),
-        )
-        .into();
+    let user_no_order = User::all()
+        .join_left::<Order>()
+        .filter(Column::new("orders", "id"), Value::Null)
+        .fetch(&mut conn)
+        .await;
+    assert!(user_no_order.is_ok());
+    let user_no_order = user_no_order.unwrap();
+    assert_eq!(user_no_order.name, "noorder".to_string());
+
+    let view = Order::all()
+        .select_columns(Order::all_columns().as_slice())
+        .join::<User>()
+        .select_aggregated(&[(
+            rwf::model::Column::new("users", "name"),
+            "",
+            Some("username"),
+        )]);
     let order_data = view.fetch_picked(&mut conn).await.unwrap();
     assert_eq!(
         order_data.get_entry("name").unwrap().1,

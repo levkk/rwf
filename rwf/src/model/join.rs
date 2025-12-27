@@ -40,6 +40,9 @@ pub trait Association<T: Model>: Model {
         Self::association_type() == AssociationType::HasMany
     }
 
+    fn construct_left_join() -> Join {
+        Self::construct_join().replace_kind(JoinKind::Left)
+    }
     fn construct_join() -> Join {
         use AssociationType::*;
 
@@ -98,6 +101,13 @@ pub struct Join {
     table_name: String,
     table_column: Column,
     foreign_column: Column,
+}
+
+impl Join {
+    fn replace_kind(mut self, kind: JoinKind) -> Self {
+        self.kind = kind;
+        self
+    }
 }
 
 impl ToSql for Join {
