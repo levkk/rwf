@@ -8,16 +8,17 @@
 //! To change this behavior, create the controller with [`StaticFiles::serve`] and
 //! then call [`StaticFiles::prefix`] to set the URL prefix to whatever you want.
 use super::{Controller, Error};
-use crate::http::{Body, Handler, Request, Response};
+use crate::{crypto::hash, http::{Body, Handler, Request, Response}, model::{FromRow, Model, get_connection}, prelude::ToConnectionRequest};
 use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
+    collections::HashMap, os::unix::fs::MetadataExt, path::{Path, PathBuf}
 };
 
 use async_trait::async_trait;
-use time::Duration;
+use time::{Duration, OffsetDateTime, macros::format_description};
 use tokio::fs::File;
-use tracing::debug;
+use tracing::{debug, warn};
+        
+use crate::model::value::{ToValue, Value};
 
 /// Cache control header.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -42,12 +43,123 @@ impl std::fmt::Display for CacheControl {
     }
 }
 
+#[derive(Debug, Clone, crate::prelude::Serialize, crate::prelude::Deserialize)]
+pub struct StaticFileMeta {
+    id: Option<i64>,
+    path: String,
+    etag: String,
+    modified: OffsetDateTime
+}
+
+impl FromRow for StaticFileMeta {
+    fn from_row(row: tokio_postgres::Row) -> Result<Self, crate::model::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            path: row.try_get("path")?,
+            etag: row.try_get("etag")?,
+            modified: row.try_get("modified")?
+        })
+    }
+}
+
+impl Model for StaticFileMeta {
+    fn primary_key() -> &'static str {
+        "id"
+    }
+    fn table_name() -> &'static str {
+        "rwf_static_file_metas"
+    }
+    fn foreign_key() -> &'static str {
+        "static_file_meta_id"
+    }
+    fn id(&self) -> Value {
+        self.id.to_value()
+    }
+    fn column_names() -> &'static [&'static str] {
+        &[
+            "path",
+            "etag",
+            "modified"
+        ]
+    }
+    fn values(&self) -> Vec<Value> {
+        vec![
+            self.path.to_value(),
+            self.etag.to_value(),
+            self.modified.to_value()
+        ]
+    }
+}
+
+impl StaticFileMeta {
+    fn format() -> &'static [time::format_description::BorrowedFormatItem<'static>] {
+        format_description!("[weekday repr:short], [day] [month] [year] [hour]:[minute]:[second] GMT")
+    }
+    async fn check_request(request: &Request, conn: impl ToConnectionRequest<'_>) -> Option<Response> {
+        let req_hash = request.header("if-none-match");
+        let req_modified = None::<&String>;
+        //let req_modified = request.header("if-modified-since");
+        if req_hash.is_some() || req_modified.is_some() {
+            let path = request.path().path().to_string(); 
+                if let Ok(Some(meta)) = Self::filter("path", path.to_value() ).unique_by(&["path"]).fetch_optional(conn).await {
+                    // If-None-Match is prefered
+                    if let Some(etag) = req_hash {
+                        if meta.etag.eq(etag) {
+                            Some(Response::new().code(304))
+                        } else {
+                            None
+                        }
+                    } else {
+                        let req_modified = req_modified.unwrap();
+                        if let Ok(modified) = OffsetDateTime::parse(req_modified, Self::format()) {
+                            if modified.ge(&meta.modified) {
+                                Some(Response::new().code(304))
+                            } else {
+                                None
+                            }
+                        } else {
+                            warn!("Invalid Modified Date in Request! {}", req_modified);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+        } else { None }
+    }
+    async fn load_by_path(path: impl ToString, conn: impl ToConnectionRequest<'_>) -> Result<Option<Self>, crate::model::Error> {
+        Self::filter("path", path.to_string().to_value()).unique_by(&["path"]).fetch_optional(conn).await
+    }
+    async fn add_preload(path: String, etag: String, conn: impl ToConnectionRequest<'_>) -> Result<Self, crate::model::Error> {
+            Self::create(&[("path", path.to_value()), ("etag", etag.to_value())]).fetch(conn).await
+    }
+    async fn add_new(path: String, etag: String, modified: OffsetDateTime, conn: impl ToConnectionRequest<'_>) -> Result<Self, crate::model::Error> {
+        Self::create(&[("path", path.to_value()), ("etag", etag.to_value()), ("modified", modified.to_value())]).fetch(conn).await
+    }
+    async fn update(mut self, etag: String, modified: OffsetDateTime, conn: impl ToConnectionRequest<'_>) -> Result<Self, crate::model::Error> {
+        if self.etag.ne(&etag) {
+            self.etag = etag;
+            self.modified = modified;
+            self.save().fetch(conn).await
+        } else {
+            Ok(self)
+        }
+    }
+    fn add_header(&self, response: Response) -> Response {
+        response.header("etag", &self.etag).header("last-modified", self.modified.format(Self::format()).unwrap())
+    }
+}
+
+
+
+
 /// Static files controller.
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
     preloads: HashMap<PathBuf, Body>,
     cache_control: CacheControl,
+    initialized: std::sync::atomic::AtomicBool,
 }
 
 impl StaticFiles {
@@ -74,6 +186,7 @@ impl StaticFiles {
             root,
             preloads: HashMap::new(),
             cache_control: CacheControl::NoStore,
+            initialized: std::sync::atomic::AtomicBool::new(false),
         };
 
         Ok(statics)
@@ -125,15 +238,43 @@ impl StaticFiles {
     pub fn handler(self) -> Handler {
         Handler::wildcard(self.prefix.display().to_string().as_str(), self)
     }
+    pub async fn initialize(&self) -> Result<(), crate::http::Error> {
+        if !self.initialized.load(std::sync::atomic::Ordering::Acquire) {
+            let mut conn = get_connection().await?;
+            for (path, body) in self.preloads.iter() {
+                match body {
+                    Body::FileInclude { bytes, .. } => {
+                        let path = path.as_path().as_os_str().to_string_lossy().to_string();
+                        let etag = format!(r#"W/"{}""#, hash(bytes.as_slice())?);
+                        let _meta = match StaticFileMeta::load_by_path(&path, &mut conn).await? {
+                            Some(obj) => obj.update(etag, OffsetDateTime::now_utc(), &mut conn).await?,
+                            None => StaticFileMeta::add_preload(path, etag, &mut conn).await?
+                        };
+                    },
+                    _ => continue
+                }
+            }
+            Ok(self.initialized.store(true, std::sync::atomic::Ordering::Release))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[async_trait]
 impl Controller for StaticFiles {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        self.initialize().await?;
         let path = request.path().to_std();
+        let mut conn = get_connection().await?;
 
         if let Some(body) = self.preloads.get(&path) {
-            return Ok(Response::new().body(body.clone()));
+            if let Some(response) = StaticFileMeta::check_request(request, &mut conn).await {
+                return Ok(response)
+            } else {
+                let meta = StaticFileMeta::load_by_path(request.path().path(), &mut conn).await?.expect("Initialized");
+                return Ok(meta.add_header(Response::new().body(body.clone())));
+            }
         }
 
         // Remove the prefix from the request path.
@@ -179,8 +320,32 @@ impl Controller for StaticFiles {
                     return Ok(Response::not_found());
                 }
 
+                let modified = OffsetDateTime::from_unix_timestamp(metadata.mtime()).expect("Unix Time Stamps should be valid");
+                let meta = match StaticFileMeta::load_by_path(request.path().path(), &mut conn).await? {
+                    Some(meta) => {
+                        if meta.modified.ne(&modified) {
+                            let data = tokio::fs::read(&path).await.expect("File exists checked before");
+                            let etag = format!(r#"W/"{}""#, hash(data.as_slice())?);
+                            meta.update(etag, modified, &mut conn).await?
+                        } else {
+                            if let Some(response) = StaticFileMeta::check_request(request, &mut conn).await {
+                                return Ok(response)
+                            } else {
+                                meta
+                            }
+                        }
+                    },
+                    None => {
+                        let data = tokio::fs::read(&path).await.expect("File exists checked before");
+                        let etag = format!(r#"W/"{}""#, hash(data.as_slice())?);
+                        StaticFileMeta::add_new(request.path().path().to_string(), etag, modified, &mut conn).await?
+                    }
+                };
+
+
                 let response =
-                    Response::new().header("cache-control", self.cache_control.to_string());
+                    meta.add_header(Response::new().header("cache-control", self.cache_control.to_string()));
+                
 
                 Ok(response.body((path, file, metadata)))
             }
