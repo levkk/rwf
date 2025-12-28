@@ -117,7 +117,7 @@ impl StaticFileMeta {
                 // If-None-Match is prefered
                 if let Some(etag) = req_hash {
                     if meta.etag.eq(etag) {
-                        Some(Response::new().code(304))
+                        Some(meta.add_header(Response::new().code(304)))
                     } else {
                         None
                     }
@@ -125,7 +125,7 @@ impl StaticFileMeta {
                     let req_modified = req_modified.unwrap();
                     if let Ok(modified) = OffsetDateTime::parse(req_modified, Self::format()) {
                         if modified.ge(&meta.modified) {
-                            Some(Response::new().code(304))
+                            Some(meta.add_header(Response::new().code(304)))
                         } else {
                             None
                         }
@@ -317,12 +317,16 @@ impl Controller for StaticFiles {
 
         if let Some(body) = self.preloads.get(&path) {
             if let Some(response) = StaticFileMeta::check_request(request, &mut conn).await {
-                return Ok(response);
+                return Ok(response.header("cache-control", self.cache_control.to_string()));
             } else {
                 let meta = StaticFileMeta::load_by_path(request.path().path(), &mut conn)
                     .await?
                     .expect("Initialized");
-                return Ok(meta.add_header(Response::new().body(body.clone())));
+                return Ok(meta
+                    .add_header(
+                        Response::new().header("cache-control", self.cache_control.to_string()),
+                    )
+                    .body(body.clone()));
             }
         }
 
@@ -384,7 +388,8 @@ impl Controller for StaticFiles {
                                 if let Some(response) =
                                     StaticFileMeta::check_request(request, &mut conn).await
                                 {
-                                    return Ok(response);
+                                    return Ok(response
+                                        .header("cache-control", self.cache_control.to_string()));
                                 } else {
                                     meta
                                 }
