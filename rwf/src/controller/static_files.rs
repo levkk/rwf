@@ -105,8 +105,8 @@ impl StaticFileMeta {
         conn: impl ToConnectionRequest<'_>,
     ) -> Option<Response> {
         let req_hash = request.header("if-none-match");
-        let req_modified = None::<&String>;
-        //let req_modified = request.header("if-modified-since");
+        //let req_modified = None::<&String>;
+        let req_modified = request.header("if-modified-since");
         if req_hash.is_some() || req_modified.is_some() {
             let path = request.path().path().to_string();
             if let Ok(Some(meta)) = Self::filter("path", path.to_value())
@@ -123,14 +123,18 @@ impl StaticFileMeta {
                     }
                 } else {
                     let req_modified = req_modified.unwrap();
-                    if let Ok(modified) = OffsetDateTime::parse(req_modified, Self::format()) {
+                    if let Ok(modified) =
+                        time::PrimitiveDateTime::parse(req_modified, Self::format())
+                    {
+                        let modified = OffsetDateTime::new_utc(modified.date(), modified.time());
+                        eprintln!("{:?} - {:?}", modified, meta.modified);
                         if modified.ge(&meta.modified) {
                             Some(meta.add_header(Response::new().code(304)))
                         } else {
                             None
                         }
                     } else {
-                        warn!("Invalid Modified Date in Request! {}", req_modified);
+                        warn!("Invalid Modified Date in Request! '{}'", req_modified);
                         None
                     }
                 }
