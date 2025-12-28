@@ -140,7 +140,7 @@ impl Head {
                 break;
             } else {
                 let header = header
-                    .split(":")
+                    .splitn(2, ":")
                     .map(|s| s.trim().to_string())
                     .collect::<Vec<_>>();
                 let name = header

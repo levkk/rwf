@@ -19,7 +19,7 @@ default = []
 rack = ["rwf-ruby", "rayon"]
 
 [dependencies]
-time = { version = "0.3", features = ["formatting", "serde", "parsing"] }
+time = { version = "0.3", features = ["formatting", "serde", "parsing", "macros"] }
 tokio-postgres = { version = "0.7", features = [
     "with-time-0_3",
     "with-serde_json-1",
