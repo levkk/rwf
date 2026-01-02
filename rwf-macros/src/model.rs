@@ -1,11 +1,14 @@
 use super::*;
 use parse::Parse;
+use proc_macro::TokenStream;
 use syn::*;
+use quote::{quote, ToTokens};
 
 pub fn impl_derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let relationships = handle_relationships(&input, &input.attrs);
+    let callbacks = handle_callbacks(&input.attrs);
 
     match input.data {
         Data::Struct(ref data) => {
@@ -111,6 +114,7 @@ pub fn impl_derive_model(input: TokenStream) -> TokenStream {
                     }
 
                     #id
+                    #callbacks
                 }
 
                 #relationships
@@ -280,6 +284,34 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
 
     quote! {
         #(#rels)*
+    }
+}
+
+struct Callback {
+    callbacks: Vec<Ident>
+}
+impl Parse for Callback {
+    fn parse(input: parse::ParseStream) -> Result<Self> {
+        let callbacks: Punctuated<Ident, token::Comma> = input.parse_terminated(Ident::parse, Token![,])?;
+        Ok(Self{callbacks: callbacks.iter().map(|ident|ident.clone()).collect::<Vec<Ident>>()})
+    }
+}
+
+fn handle_callbacks(attributes: &[Attribute]) -> proc_macro2::TokenStream {
+    let insert = if let Some(on_insert) = attributes.iter().find(|attr| attr.path().is_ident("oninsert")) {
+        if let Ok(callbacks) = on_insert.parse_args::<Callback>() {
+            let callbacks = callbacks.callbacks;
+            quote!{
+                    vec![#(#callbacks),*]
+                }
+            } else { quote!{ vec![] } }
+        };
+    quote!{
+        let callbacks = match self {
+            Query::Insert(_) => #insert,
+            _ => vec![]
+        }
+
     }
 }
 
