@@ -127,7 +127,7 @@ mod render;
 /// }
 /// ```
 ///
-#[proc_macro_derive(Model, attributes(belongs_to, has_many, table_name, foreign_key, onupdate, ondelete, oninsert))]
+#[proc_macro_derive(Model, attributes(belongs_to, has_many, table_name, foreign_key))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     model::impl_derive_model(input)
 }
