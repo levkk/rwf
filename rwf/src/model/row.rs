@@ -3,7 +3,7 @@ use super::{Error, FromRow, Model, Value};
 
 use std::{collections::HashMap, sync::Arc};
 
-fn de_row<'de, D>(d: D) -> Result<Arc<tokio_postgres::Row>, D::Error> 
+fn de_row<'de, D>(_d: D) -> Result<Arc<tokio_postgres::Row>, D::Error> 
 where D: serde::Deserializer<'de>
 {
     panic!("Desrialize is only implemented as a Marker");

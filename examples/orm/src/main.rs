@@ -4,9 +4,10 @@ use rwf::prelude::*;
 
 mod models {
     use rwf::model::prelude::*;
+    use rwf::prelude::{Serialize, Deserialize};
     use time::{Duration, OffsetDateTime};
 
-    #[derive(Clone, rwf::macros::Model, Debug)]
+    #[derive(Clone, rwf::macros::Model, Debug, Serialize, Deserialize)]
     #[has_many(Task)]
     pub struct User {
         pub id: Option<i64>, // id column is assigned by the database, new models don't have it until they are saved.
@@ -124,7 +125,7 @@ mod models {
         }
     }
 
-    #[derive(Clone, rwf::macros::Model, Debug)]
+    #[derive(Clone, rwf::macros::Model, Debug, Serialize, Deserialize)]
     #[belongs_to(User)]
     pub struct Task {
         pub id: Option<i64>,
@@ -190,7 +191,7 @@ mod models {
         }
     }
 
-    #[derive(Clone, rwf::macros::Model)]
+    #[derive(Clone, rwf::macros::Model, Serialize, Deserialize)]
     #[table_name("users")]
     #[foreign_key("user_id")]
     pub struct CustomTable {

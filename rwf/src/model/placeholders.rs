@@ -1,7 +1,7 @@
 //! `$1`, `$2`, etc. query placeholders used by prepared statements.
 use super::Value;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
 pub struct Placeholders {
     values: Vec<Value>,
 }

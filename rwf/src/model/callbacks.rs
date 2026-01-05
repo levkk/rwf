@@ -6,7 +6,8 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use super::{Model};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
+use tokio::sync::RwLock;
 use crate::{model::{FromRow, Query}, prelude::async_trait};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -55,23 +56,19 @@ pub struct CallbackRegistry {
 }
 
 impl CallbackRegistry {
-    pub fn add_callback(&self, table: &'static str, kind: CallbackKind, callback: Box<dyn InnerCallback>) -> bool {
-        if let Ok(mut map)= self.inner.write() {
-            let res = map.contains_key(table);
-            map.entry(table).or_default().entry(kind).or_default().push(callback);
-            return res
-        } else { panic!("Unexpected behavior while register a callback") }
+    pub async fn add_callback(&self, table: &'static str, kind: CallbackKind, callback: Box<dyn InnerCallback>) {
+        let mut map = self.inner.write().await;
+        map.entry(table).or_default().entry(kind).or_default().push(callback);
     }
     pub async fn apply<T: Model + for<'de> Deserialize<'de>>(&self, kind: CallbackKind, data: T) -> T {
-        if let Ok(map) = self.inner.read() {
-            if let Some(inner_map) = map.get(T::table_name()) {
-                if let Some(callbacks) = inner_map.get(&kind) {
-                    let mut data = data.to_json().unwrap();
-                    for callback in callbacks.iter() {
-                        data = callback.call(data.clone()).await;
-                    }
-                    return serde_json::from_value(data).unwrap();
+        let map = self.inner.read().await;
+        if let Some(inner_map) = map.get(T::table_name()) {
+            if let Some(callbacks) = inner_map.get(&kind) {
+                let mut data = data.to_json().unwrap();
+                for callback in callbacks.iter() {
+                    data = callback.call(data.clone()).await;
                 }
+                return serde_json::from_value(data).unwrap();
             }
         }
         data
@@ -81,7 +78,7 @@ impl CallbackRegistry {
 pub static CALLBACK_REGISTRY: Lazy<CallbackRegistry> = Lazy::new(|| CallbackRegistry::default());
 
 #[async_trait]
-pub trait Callback<T: Model>: Default {
+pub trait Callback<T: Model>: Default+Sync+Send {
     async fn callback(mut self, data: T) -> T;
     fn table_name() -> &'static str {T::table_name()}
 }
@@ -94,13 +91,15 @@ pub trait InnerCallback: Sync+Send {
 
 #[macro_export]
 macro_rules! register_callback {
-    ($model:ident, $callback:ident, $kind:ident) => {
-        impl $crate::model::callback::InnerCallback fot $callback {
+    ($callback:ident, $kind:path) => {
+        #[allow(non_local_definitions)]
+        #[async_trait]
+        impl $crate::model::callbacks::InnerCallback for $callback {
             async fn call(&self, data: serde_json::Value) -> serde_json::Value {
-                $crate::model::callback::Callback::callback($callback::default(), serde_json::from_value(data).unwrap()).await.to_json().unwrap()  
+                $crate::model::callbacks::Callback::callback($callback::default(), serde_json::from_value(data).unwrap()).await.to_json().unwrap()  
             }
         }
-        $crate::model::callback::CALLBACK_REGISTRY.add_callback($callback::table_name(), $kind, Box::new($callback::default()));
+        $crate::model::callbacks::CALLBACK_REGISTRY.add_callback($callback::table_name(), $kind, Box::new($callback::default())).await;
     };
 }
 
@@ -108,7 +107,7 @@ macro_rules! register_callback {
 macro_rules! apply_callback {
     ($kind:ident, $value:ident) => {
         if let Ok(kind) = $kind {
-            $crate::model::callbacks::CALLBACK_REGISTRY.apply(kind, $value)
+            $crate::model::callbacks::CALLBACK_REGISTRY.apply(kind, $value).await
         } else {
             $value
         }

@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use tracing::info;
 
 /// Job entry in the database-backed job queue.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, crate::prelude::Deserialize)]
 pub struct JobModel {
     pub id: Option<i64>,
     pub name: String,

@@ -311,7 +311,7 @@ mod test {
         let websocket = Comms::websocket(&session);
         websocket.send(Message::Text("test".into())).unwrap();
 
-        #[derive(Clone)]
+        #[derive(Clone, crate::prelude::Deserialize)]
         struct User {
             id: Option<i64>,
         }

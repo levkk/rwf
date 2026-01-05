@@ -2,12 +2,12 @@
 use super::{Column, ToSql, ToValue, Value};
 
 /// The WHERE clause of a SQL query.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct WhereClause {
     filter: Filter,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 enum Comparison {
     /// x = 1
     Equal((Column, Value)),
@@ -138,7 +138,7 @@ impl ToSql for WhereClause {
 }
 
 /// Type of connecting operation between two filters.
-#[derive(Debug, Clone, Default, PartialEq, Copy)]
+#[derive(Debug, Clone, Default, PartialEq, Copy, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub enum JoinOp {
     /// AND
     #[default]
@@ -170,7 +170,7 @@ impl ToSql for JoinOp {
 /// WHERE x = 1 AND b = 2
 /// ```
 ///
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Filter {
     clauses: Vec<Comparison>,
     op: JoinOp,

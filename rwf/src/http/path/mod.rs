@@ -20,7 +20,7 @@ pub mod query;
 pub use query::Query;
 
 /// HTTP URL path.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Path {
     query: Query,
     base: String,

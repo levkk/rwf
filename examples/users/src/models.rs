@@ -9,7 +9,7 @@ pub enum UserLogin {
     Ok(User),
 }
 
-#[derive(Clone, macros::Model)]
+#[derive(Clone, macros::Model, Serialize, Deserialize)]
 pub struct User {
     id: Option<i64>,
     email: String,
