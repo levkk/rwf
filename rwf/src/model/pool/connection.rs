@@ -5,7 +5,6 @@ use tokio::select;
 use tokio::sync::Notify;
 use tokio::task::spawn;
 
-
 use tokio_postgres::{connect, types::ToSql, Client, Row, Statement};
 
 use tracing::info;
