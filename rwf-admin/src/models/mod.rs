@@ -1,6 +1,6 @@
 use rwf::prelude::*;
 
-#[derive(Clone, macros::Model, Debug)]
+#[derive(Clone, macros::Model, Debug, Deserialize, Serialize)]
 pub struct TableColumn {
     pub table_name: String,
     pub column_name: String,
@@ -81,7 +81,7 @@ impl TableColumn {
     }
 }
 
-#[derive(Clone, macros::Model)]
+#[derive(Clone, macros::Model, Serialize, Deserialize)]
 pub struct Table {
     pub table_name: String,
 }
@@ -110,7 +110,7 @@ impl Table {
     }
 }
 
-#[derive(Clone, macros::Model, Serialize)]
+#[derive(Clone, macros::Model, Serialize, Deserialize)]
 pub struct RequestByCode {
     pub count: i64,
     pub code: String,
@@ -177,7 +177,7 @@ impl RequestByCode {
     }
 }
 
-#[derive(Clone, macros::Model, Serialize)]
+#[derive(Clone, macros::Model, Serialize, Deserialize)]
 pub struct RequestsDuration {
     pub duration: f64,
     #[serde(with = "time::serde::rfc2822")]

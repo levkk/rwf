@@ -20,7 +20,7 @@ use crate::{
 };
 
 /// HTTP request.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Request {
     head: Head,
     session: Session,
@@ -46,7 +46,7 @@ impl Default for Request {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 struct Inner {
     body: Vec<u8>,
     cookies: Cookies,
@@ -341,7 +341,7 @@ impl Request {
     ///
     /// ```
     /// # use rwf::prelude::*;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// struct User {
     ///     id: Option<i64>,
     ///     email: String,

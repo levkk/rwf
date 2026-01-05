@@ -12,6 +12,6 @@ tokio = { version = "1", features = ["full"]}
 tracing = "*"
 rand = "0.8"
 serde_json = "1"
-serde = "1"
+serde = {version = "1", features = ["derive"]}
 time = "0.3"
 rwf-admin = { path = "../../rwf-admin" }

@@ -1,7 +1,7 @@
 //! Represents the result of `Query::exists`.
 use super::{Error, FromRow, Model, Value};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize)]
 pub struct Exists {
     pub count: i64,
 }

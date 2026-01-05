@@ -14,7 +14,7 @@ use crate::crypto::{decrypt, encrypt};
 /// Cookies storage.
 ///
 /// Supports both plain text and encrypted (private) cookies.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, crate::prelude::Serialize, crate::prelude::Deserialize)]
 pub struct Cookies {
     cookies: HashMap<String, Cookie>,
 }
@@ -177,7 +177,7 @@ impl ToCookie for Cookie {
 }
 
 /// A browser cookie.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, crate::prelude::Serialize, crate::prelude::Deserialize)]
 pub struct Cookie {
     name: String,
     value: String,

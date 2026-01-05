@@ -6,6 +6,7 @@ use crate::config::get_config;
 use crate::model::column::ToAggregation;
 
 use pool::ToConnectionRequest;
+use serde::Deserialize;
 use std::time::{Duration, Instant};
 use tracing::{error, info};
 
@@ -62,7 +63,7 @@ pub use value::{ToValue, Value};
 /// ```
 /// use rwf::model::{FromRow, Error};
 ///
-/// #[derive(Clone)]
+/// #[derive(Clone, rwf::prelude::Deserialize)]
 /// struct User {
 ///     id: i64,
 ///     email: String,
@@ -152,7 +153,7 @@ pub trait ToSql {
 ///
 /// ```
 /// # use rwf::macros::Model;
-/// #[derive(Clone, Model)]
+/// #[derive(Clone, Model, rwf::prelude::Deserialize)]
 /// struct User {
 ///     id: Option<i64>,
 ///     email: String,
@@ -166,7 +167,7 @@ pub trait ToSql {
 /// ```
 /// # use rwf::macros::Model;
 /// # use rwf::model::{Model, Query, Select};
-/// # #[derive(Clone, Debug, Model)]
+/// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
 /// # struct User {
 /// #    id: Option<i64>,
 /// #    email: String,
@@ -194,7 +195,7 @@ pub trait ToSql {
 /// ```
 /// # use rwf::macros::Model;
 /// # use rwf::model::{Model, Query, Select, Scope};
-/// # #[derive(Clone, Debug, Model)]
+/// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
 /// # struct User {
 /// #    id: Option<i64>,
 /// #    email: String,
@@ -206,7 +207,7 @@ pub trait ToSql {
 ///     }
 /// }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize)]
 pub enum Query<T: FromRow + ?Sized = Row> {
     /// Represents a `SELECT` query.
     Select(Select<T>),
@@ -258,7 +259,7 @@ impl<T: Model> Query<T> {
     /// ```
     /// # use rwf::macros::Model;
     /// # use rwf::model::{Model, Query, Select, ToSql};
-    /// # #[derive(Clone, Debug, Model)]
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -281,7 +282,7 @@ impl<T: Model> Query<T> {
     /// ```
     /// # use rwf::macros::Model;
     /// # use rwf::model::{Model, Query, Select, ToSql};
-    /// # #[derive(Clone, Debug, Model)]
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -306,7 +307,7 @@ impl<T: Model> Query<T> {
     /// ```
     /// # use rwf::macros::Model;
     /// # use rwf::model::{Model, Query, Select, ToSql};
-    /// # #[derive(Clone, Debug, Model)]
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -332,7 +333,7 @@ impl<T: Model> Query<T> {
     /// ```
     /// # use rwf::macros::Model;
     /// # use rwf::model::{Model, Query, Select, ToSql};
-    /// # #[derive(Clone, Debug, Model)]
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -358,7 +359,7 @@ impl<T: Model> Query<T> {
     /// ```
     /// # use rwf::macros::Model;
     /// # use rwf::model::{Model, Query, Select, ToSql};
-    /// # #[derive(Clone, Debug, Model)]
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -514,10 +515,10 @@ impl<T: Model> Query<T> {
     /// ```
     /// use rwf::{model::{Association, Model}, macros::Model};
     ///
-    /// #[derive(Clone, Default, Model)]
+    /// #[derive(Clone, Default, Model, rwf::prelude::Deserialize)]
     /// struct User {}
     ///
-    /// #[derive(Clone, Default, Model)]
+    /// #[derive(Clone, Default, Model, rwf::prelude::Deserialize)]
     /// struct Order {}
     ///
     /// impl Association<Order> for User {}
@@ -762,8 +763,9 @@ impl<T: Model> Query<T> {
 
     /// Execute the query and fetch the first row from the database.
     pub async fn fetch(self, conn: impl ToConnectionRequest<'_>) -> Result<T, Error> {
+        let kind = callbacks::CallbackKind::try_from(&self);
         match self.execute(conn).await?.first().cloned() {
-            Some(row) => Ok(row),
+            Some(row) => Ok(crate::apply_callback!(kind, row)),
             None => Err(Error::RecordNotFound),
         }
     }
@@ -932,7 +934,7 @@ pub type Scope<T> = Query<T>;
 ///
 /// ```
 /// # use rwf::prelude::*;
-/// #[derive(Clone, macros::Model)]
+/// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
 /// struct User {
 ///     id: Option<i64>,
 ///     email: String,
@@ -945,7 +947,7 @@ pub type Scope<T> = Query<T>;
 /// - [`Clone`]
 ///
 /// When usindg the [`rwf_macros::Model`] derive, [`FromRow`] is derived automatically.
-pub trait Model: FromRow {
+pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// Name of the PostgreSQL table where records for this model are stored.
     ///
     /// The name must not be fully qualified
@@ -961,7 +963,7 @@ pub trait Model: FromRow {
     ///
     /// ```
     /// # use rwf::prelude::*;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -998,7 +1000,7 @@ pub trait Model: FromRow {
     /// ```
     /// use rwf::prelude::*;
     /// use rwf::model::Column;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// struct User {
     ///     id: Option<i64>,
     ///     email: String
@@ -1023,7 +1025,7 @@ pub trait Model: FromRow {
     /// ```
     /// use rwf::prelude::*;
     /// use rwf::model::Column;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// struct User {
     ///     id: Option<i64>,
     ///     email: String
@@ -1049,7 +1051,7 @@ pub trait Model: FromRow {
     /// # use rwf::prelude::*;
     /// # use rwf::model::Value;
     /// # use rwf::macros::FromRow;
-    /// # #[derive(Clone, FromRow)]
+    /// # #[derive(Clone, FromRow, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1082,7 +1084,7 @@ pub trait Model: FromRow {
     /// # use rwf::prelude::*;
     /// # use rwf::model::Value;
     /// # use rwf::macros::FromRow;
-    /// # #[derive(Clone, FromRow)]
+    /// # #[derive(Clone, FromRow, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1132,7 +1134,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1151,7 +1153,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1170,7 +1172,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1189,7 +1191,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1210,7 +1212,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1229,7 +1231,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1249,7 +1251,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1270,7 +1272,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1292,7 +1294,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1324,7 +1326,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1350,13 +1352,13 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[has_many(Project)]
     /// struct User {
     ///    id: Option<i64>,
     ///    email: String,
     /// }
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[belongs_to(User)]
     /// struct Project {
     ///     user_id: i64,
@@ -1376,13 +1378,13 @@ pub trait Model: FromRow {
     /// ```
     /// use rwf::prelude::*;
     /// use rwf::model::ToSql;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[has_many(Project)]
     /// struct User {
     ///     id: Option<i64>,
     ///     email: String
     /// }
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[belongs_to(User)]
     /// struct Project {
     ///     user_id: i64,
@@ -1401,13 +1403,13 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[has_many(Project)]
     /// struct User {
     ///    id: Option<i64>,
     ///    email: String,
     /// }
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[belongs_to(User)]
     /// struct Project {
     ///     user_id: i64,
@@ -1440,7 +1442,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1473,7 +1475,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1508,7 +1510,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1557,7 +1559,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// #[derive(Clone, macros::Model)]
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1582,7 +1584,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1604,7 +1606,7 @@ pub trait Model: FromRow {
     /// ```
     /// # use rwf::prelude::*;
     /// # use rwf::model::ToSql;
-    /// # #[derive(Clone, macros::Model)]
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
@@ -1642,7 +1644,7 @@ mod test {
     use super::*;
     use tokio_postgres::row::Row;
 
-    #[derive(Debug, Clone, Default)]
+    #[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
     struct User {
         id: i64,
         email: String,
@@ -1671,7 +1673,7 @@ mod test {
         }
     }
 
-    #[derive(Debug, Clone, Default)]
+    #[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
     struct Order {
         id: i64,
         user_id: i64,
@@ -1700,7 +1702,7 @@ mod test {
         }
     }
 
-    #[derive(Debug, Clone, Default)]
+    #[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
     struct OrderItem {
         id: i64,
         order_id: i64,
@@ -1729,7 +1731,7 @@ mod test {
         }
     }
 
-    #[derive(Debug, Clone, Default)]
+    #[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
     struct Product {
         id: i64,
         name: String,

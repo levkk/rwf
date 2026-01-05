@@ -3,9 +3,10 @@ use regex::Regex;
 use std::collections::HashMap;
 
 /// Handle URL parameters, e.g. `/api/orders/:id/create`.
-#[derive(Debug)]
+#[derive(Debug, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Params {
     params: HashMap<String, usize>,
+    #[serde(with = "serde_regex")]
     regex: Regex,
 }
 

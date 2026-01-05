@@ -103,7 +103,7 @@ impl<T: ToAggregation + Sized> ToAggregation for &T {
 }
 
 /// PostgreSQL table column.
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Column {
     table_name: String,
     column_name: String,
@@ -236,7 +236,7 @@ impl Column {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Columns {
     pub columns: Vec<Column>,
     table_name: Option<String>,

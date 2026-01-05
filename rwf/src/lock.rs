@@ -4,7 +4,7 @@
 use crate::model::{Column, Error, FromRow, Model, Pool, ToValue, Value};
 use time::OffsetDateTime;
 
-#[derive(Clone)]
+#[derive(Clone, crate::prelude::Deserialize)]
 pub struct Lock {
     id: Option<i64>,
     name: String,

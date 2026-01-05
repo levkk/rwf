@@ -8,8 +8,12 @@ use rwf::{
     },
     http::{websocket, Request, Response, Server, Stream},
     job::Job,
-    model::{migrate, rollback},
+    model::{
+        callbacks::{Callback, CallbackKind},
+        migrate, rollback,
+    },
     prelude::*,
+    register_callback,
     serde::{Deserialize, Serialize},
 };
 use rwf_macros::{Context, Model};
@@ -21,12 +25,23 @@ mod components;
 mod controllers;
 mod models;
 
-#[derive(Clone, Model, Debug, PartialEq)]
+#[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize)]
 #[has_many(Order)]
 #[allow(dead_code)]
 struct User {
     id: Option<i64>,
     name: String,
+}
+
+#[derive(Debug, Default)]
+struct CreateUserCallback;
+
+#[async_trait]
+impl Callback<User> for CreateUserCallback {
+    async fn callback(mut self, data: User) -> User {
+        eprintln!("{:?}", data);
+        data
+    }
 }
 
 #[derive(Clone, Model, Debug, Serialize, Deserialize)]
@@ -40,7 +55,7 @@ struct Order {
     optional: Option<String>,
 }
 
-#[derive(Clone, Model, Debug)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize)]
 #[belongs_to(Order)]
 #[belongs_to(Product)]
 #[allow(dead_code)]
@@ -51,7 +66,7 @@ struct OrderItem {
     amount: f64,
 }
 
-#[derive(Clone, Model, Debug)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
 struct Product {
@@ -215,6 +230,8 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    register_callback!(CreateUserCallback, CallbackKind::Insert);
+
     fmt()
         .with_env_filter(
             EnvFilter::builder()
@@ -229,6 +246,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = Pool::from_env();
     let mut conn = pool.get().await?;
+
+    User::create(&[("id", 31.to_value()), ("name", "callback".to_value())])
+        .fetch(&mut conn)
+        .await?;
 
     conn.client()
         .query(

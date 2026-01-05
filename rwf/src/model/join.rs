@@ -77,7 +77,7 @@ pub trait Association<T: Model>: Model {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub enum JoinKind {
     Inner,
     Left,
@@ -95,7 +95,7 @@ impl ToString for JoinKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Join {
     kind: JoinKind,
     table_name: String,
@@ -122,7 +122,7 @@ impl ToSql for Join {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Joins {
     joins: Vec<Join>,
 }
@@ -159,7 +159,7 @@ impl ToSql for Joins {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Joined<S: Model, T: Model> {
     a: PhantomData<S>,
     b: PhantomData<T>,
