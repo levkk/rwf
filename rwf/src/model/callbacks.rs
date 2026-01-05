@@ -55,10 +55,12 @@ pub struct CallbackRegistry {
 }
 
 impl CallbackRegistry {
-    pub fn add_callback(&self, table: &'static str, kind: CallbackKind, callback: Box<dyn InnerCallback>) {
+    pub fn add_callback(&self, table: &'static str, kind: CallbackKind, callback: Box<dyn InnerCallback>) -> bool {
         if let Ok(mut map)= self.inner.write() {
+            let res = map.contains_key(table);
             map.entry(table).or_default().entry(kind).or_default().push(callback);
-        }
+            return res
+        } else { panic!("Unexpected behavior while register a callback") }
     }
     pub async fn apply<T: Model + for<'de> Deserialize<'de>>(&self, kind: CallbackKind, data: T) -> T {
         if let Ok(map) = self.inner.read() {
@@ -66,7 +68,7 @@ impl CallbackRegistry {
                 if let Some(callbacks) = inner_map.get(&kind) {
                     let mut data = data.to_json().unwrap();
                     for callback in callbacks.iter() {
-                        data = callback.call(data).await;
+                        data = callback.call(data.clone()).await;
                     }
                     return serde_json::from_value(data).unwrap();
                 }
@@ -89,14 +91,26 @@ pub trait InnerCallback: Sync+Send {
     async fn call(&self, data: serde_json::Value) -> serde_json::Value;
 }
 
+
 #[macro_export]
 macro_rules! register_callback {
-    ($callback:ident, $kind:ident) => {
+    ($model:ident, $callback:ident, $kind:ident) => {
         impl $crate::model::callback::InnerCallback fot $callback {
             async fn call(&self, data: serde_json::Value) -> serde_json::Value {
                 $crate::model::callback::Callback::callback($callback::default(), serde_json::from_value(data).unwrap()).await.to_json().unwrap()  
             }
         }
         $crate::model::callback::CALLBACK_REGISTRY.add_callback($callback::table_name(), $kind, Box::new($callback::default()));
+    };
+}
+
+#[macro_export]
+macro_rules! apply_callback {
+    ($kind:ident, $value:ident) => {
+        if let Ok(kind) = $kind {
+            $crate::model::callbacks::CALLBACK_REGISTRY.apply(kind, $value)
+        } else {
+            $value
+        }
     };
 }
