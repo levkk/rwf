@@ -53,6 +53,7 @@ argon2 = { version = "0.5", features = ["password-hash"] }
 password-hash = "0.5"
 rustls = "0.23.35"
 tokio-rustls = "0.26.4"
+postgres_rustls = "0.1.4"
 
 [dev-dependencies]
 tempdir = "0.3"

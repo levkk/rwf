@@ -6,19 +6,21 @@ use tokio::sync::Notify;
 use tokio::task::spawn;
 
 use tokio_postgres::tls::NoTls;
-use tokio_postgres::{types::ToSql, Client, Row, Statement};
+use tokio_postgres::{connect, types::ToSql, Client, Row, Statement};
 
 use tracing::info;
 
 use std::collections::HashMap;
 
+use super::Error;
+use crate::config::get_config;
+use rustls::pki_types::pem::PemObject;
+use rustls::pki_types::CertificateDer;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
 use std::time::Instant;
-
-use super::Error;
 
 #[derive(Debug)]
 struct ConnectionInner {
@@ -44,33 +46,61 @@ impl Connection {
     /// * `database_url` - Postgres-style connection URL.
     ///
     pub async fn new(database_url: &str) -> Result<Self, Error> {
-        let (client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
+        let config = get_config().database.tls_config()?;
 
         let bad = AtomicBool::new(false);
         let shutdown = Notify::new();
 
         let inner = Arc::new(ConnectionInner { bad, shutdown });
 
-        let mut guard = Connection {
-            client,
-            inner: inner.clone(),
-            last_used: Instant::now(),
-            created_at: Instant::now(),
-            cache: HashMap::new(),
-        };
+        let mut guard = match config {
+            crate::config::DBTlsConfig::On(c) => {
+                let (client, connection) = connect(database_url, c).await?;
+                let client = Connection {
+                    client,
+                    inner: inner.clone(),
+                    last_used: Instant::now(),
+                    created_at: Instant::now(),
+                    cache: HashMap::new(),
+                };
+                spawn(async move {
+                    select! {
+                        error = connection => {
+                            if let Err(error) = error {
+                                inner.bad.store(true, Ordering::Relaxed);
+                                tracing::error!("{:?}", error);
+                            }
+                        }
 
-        spawn(async move {
-            select! {
-                error = connection => {
-                    if let Err(error) = error {
-                        inner.bad.store(true, Ordering::Relaxed);
-                        tracing::error!("{:?}", error);
+                        _ = inner.shutdown.notified() => {}
                     }
-                }
-
-                _ = inner.shutdown.notified() => {}
+                });
+                client
             }
-        });
+            crate::config::DBTlsConfig::Off(c) => {
+                let (client, connection) = connect(database_url, c).await?;
+                let client = Connection {
+                    client,
+                    inner: inner.clone(),
+                    last_used: Instant::now(),
+                    created_at: Instant::now(),
+                    cache: HashMap::new(),
+                };
+                spawn(async move {
+                    select! {
+                        error = connection => {
+                            if let Err(error) = error {
+                                inner.bad.store(true, Ordering::Relaxed);
+                                tracing::error!("{:?}", error);
+                            }
+                        }
+
+                        _ = inner.shutdown.notified() => {}
+                    }
+                });
+                client
+            }
+        };
 
         let info = guard
             .query_cached("SELECT current_database()::text, current_user::text", &[])

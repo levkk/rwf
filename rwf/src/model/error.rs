@@ -47,6 +47,14 @@ pub enum Error {
         "column \"{0}\" is missing from the row returned by the database,\ndid you forget to specify it in the query?"
     )]
     Column(String),
+
+    /// RustTLS
+    #[error("tls error \"{0}\"")]
+    Tls(#[from] rustls::Error),
+
+    /// PEM File
+    #[error("PEM file error \"{0}\"")]
+    Pem(#[from] rustls::pki_types::pem::Error),
 }
 
 impl Error {
