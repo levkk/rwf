@@ -5,7 +5,7 @@ use tokio::select;
 use tokio::sync::Notify;
 use tokio::task::spawn;
 
-use tokio_postgres::tls::NoTls;
+
 use tokio_postgres::{connect, types::ToSql, Client, Row, Statement};
 
 use tracing::info;
@@ -14,8 +14,6 @@ use std::collections::HashMap;
 
 use super::Error;
 use crate::config::get_config;
-use rustls::pki_types::pem::PemObject;
-use rustls::pki_types::CertificateDer;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
