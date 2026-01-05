@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+/// The Database Action which triggers the Callback
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CallbackKind {
     Insert,
@@ -53,12 +54,15 @@ impl<T: FromRow> TryFrom<&Query<T>> for CallbackKind {
     }
 }
 
+/// A Registry for Callbacks assoziatet with a `Model`
 #[derive(Default)]
 pub struct CallbackRegistry {
     inner: Arc<RwLock<BTreeMap<&'static str, BTreeMap<CallbackKind, Vec<Box<dyn InnerCallback>>>>>>,
 }
 
 impl CallbackRegistry {
+    /// Add a new Callback for a specific `Model`
+    /// Should not called directly, use the `register_callback!` macro instead.
     pub async fn add_callback(
         &self,
         table: &'static str,
@@ -72,6 +76,8 @@ impl CallbackRegistry {
             .or_default()
             .push(callback);
     }
+    /// Checks if a `Model` `CallbackKind` combination has an entry in the Registry.
+    /// If so, callbacks will applied each
     pub async fn apply<T: Model + for<'de> Deserialize<'de>>(
         &self,
         kind: CallbackKind,
@@ -93,6 +99,33 @@ impl CallbackRegistry {
 
 pub static CALLBACK_REGISTRY: Lazy<CallbackRegistry> = Lazy::new(|| CallbackRegistry::default());
 
+/// The Callback itself.
+/// # Example
+/// ```
+/// use rwf::prelude::*;
+/// use rwf::model::callbacks::{Callback, CallbackKind};
+/// use rwf::register_callback;
+///
+/// #[derive(Serialize, Deserialize, macros::Model, Clone)]
+/// struct User {
+///     id: Option<i64>,
+///     name: String
+/// }
+/// #[derive(Default)]
+/// struct UserCallback;
+/// #[async_trait]
+/// impl Callback<User> for UserCallback {
+///     async fn callback(mut self, data: User) -> User {
+///         // do stuf
+///         data
+///     }
+/// }
+/// #[tokio::main]
+/// async fn main() {
+///     register_callback!(UserCallback, CallbackKind::Insert);
+/// }
+///
+/// ```
 #[async_trait]
 pub trait Callback<T: Model>: Default + Sync + Send {
     async fn callback(mut self, data: T) -> T;
@@ -101,6 +134,8 @@ pub trait Callback<T: Model>: Default + Sync + Send {
     }
 }
 
+/// Helper Trait to make Callback dyn compatibel as well as strictly typed.
+/// Should not implemented directly, is automatically implemented by the `register_callback!` macro
 #[async_trait]
 pub trait InnerCallback: Sync + Send {
     async fn call(&self, data: serde_json::Value) -> serde_json::Value;
