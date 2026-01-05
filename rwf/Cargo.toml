@@ -51,6 +51,9 @@ notify = "7"
 rwf-ruby = { path = "../rwf-ruby", optional = true, version = "0.1.1" }
 argon2 = { version = "0.5", features = ["password-hash"] }
 password-hash = "0.5"
+rustls = "0.23.35"
+tokio-rustls = "0.26.4"
+postgres_rustls = "0.1.4"
 serde_regex = "1.1.0"
 
 [dev-dependencies]

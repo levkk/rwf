@@ -13,8 +13,11 @@ use tracing::{error, info, warn};
 use crate::controller::middleware::csrf::Csrf;
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
 use crate::controller::{AuthHandler, MiddlewareSet};
+use rustls::pki_types::pem::PemObject;
+use rustls::pki_types::CertificateDer;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
+use std::sync::Arc;
 use thiserror::Error;
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
@@ -184,6 +187,10 @@ pub struct General {
     /// On what port to run the HTTP server. Default: 8000.
     #[serde(default = "General::default_port")]
     pub port: u16,
+    #[serde(default = "General::default_cert_file")]
+    pub cert_file: Option<PathBuf>,
+    #[serde(default = "General::default_key_file")]
+    pub key_file: Option<PathBuf>,
     #[serde(default = "General::default_secret_key")]
     secret_key: String,
     /// AES-128 encryption key. Derived from the secret key. Used for encrypting cookies, sessions, and arbitrary user data.
@@ -231,6 +238,8 @@ impl Default for General {
         Self {
             host: General::default_host(),
             port: General::default_port(),
+            cert_file: General::default_cert_file(),
+            key_file: General::default_key_file(),
             secret_key: General::default_secret_key(),
             aes_key: Key::<AesGcmSiv<Aes128>>::default(),
             secure_id_key: Key::<AesGcmSiv<Aes128>>::default(),
@@ -264,6 +273,14 @@ impl General {
 
     fn default_port() -> u16 {
         8000
+    }
+
+    fn default_cert_file() -> Option<PathBuf> {
+        None
+    }
+
+    fn default_key_file() -> Option<PathBuf> {
+        None
     }
 
     /// Extract the secret key from configuration.
@@ -436,6 +453,10 @@ pub struct DatabaseConfig {
     /// in the pool.
     #[serde(default = "DatabaseConfig::default_pool_size")]
     pub pool_size: usize,
+    #[serde(default = "DatabaseConfig::default_tls")]
+    pub tls: bool,
+    #[serde(default = "DatabaseConfig::default_tls_ca")]
+    pub tls_ca: Option<PathBuf>,
 }
 
 impl Default for DatabaseConfig {
@@ -447,10 +468,16 @@ impl Default for DatabaseConfig {
             idle_timeout: DatabaseConfig::default_idle_timeout(),
             checkout_timeout: DatabaseConfig::default_checkout_timeout(),
             pool_size: DatabaseConfig::default_pool_size(),
+            tls: DatabaseConfig::default_tls(),
+            tls_ca: DatabaseConfig::default_tls_ca(),
         }
     }
 }
 
+pub(crate) enum DBTlsConfig {
+    Off(tokio_postgres::NoTls),
+    On(postgres_rustls::MakeTlsConnector),
+}
 impl DatabaseConfig {
     fn default_idle_timeout() -> usize {
         match var("RWF_DATABASE_IDLE_TIMEOUT") {
@@ -514,6 +541,35 @@ impl DatabaseConfig {
                     format!("postgresql://{}@localhost/{}", user, name)
                 }
             },
+        }
+    }
+    pub fn default_tls() -> bool {
+        false
+    }
+    pub fn default_tls_ca() -> Option<PathBuf> {
+        None
+    }
+
+    pub(crate) fn tls_config(&self) -> Result<DBTlsConfig, crate::model::Error> {
+        if !self.tls {
+            Ok(DBTlsConfig::Off(tokio_postgres::NoTls))
+        } else {
+            let rtls = if self.tls_ca.is_none() {
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(rustls::RootCertStore::empty())
+                    .with_no_client_auth()
+            } else {
+                let mut ca_store = rustls::RootCertStore::empty();
+                ca_store.add(CertificateDer::from_pem_file(
+                    self.tls_ca.as_ref().unwrap(),
+                )?)?;
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(ca_store)
+                    .with_no_client_auth()
+            };
+            let connector = tokio_rustls::TlsConnector::from(Arc::new(rtls));
+            let tls = postgres_rustls::MakeTlsConnector::new(connector);
+            Ok(DBTlsConfig::On(tls))
         }
     }
 }

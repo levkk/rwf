@@ -738,7 +738,7 @@ pub trait WebsocketController: Controller {
         );
 
         let config = get_config();
-        let mut stream = stream.stream();
+        //let mut stream = stream;
         let mut receiver = Comms::receiver(&session_id);
         let mut check = interval(config.websocket.ping_interval().unsigned_abs());
         let mut lost_pings = 0_i64;
