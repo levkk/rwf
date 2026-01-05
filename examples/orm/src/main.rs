@@ -4,7 +4,7 @@ use rwf::prelude::*;
 
 mod models {
     use rwf::model::prelude::*;
-    use rwf::prelude::{Serialize, Deserialize};
+    use rwf::prelude::{Deserialize, Serialize};
     use time::{Duration, OffsetDateTime};
 
     #[derive(Clone, rwf::macros::Model, Debug, Serialize, Deserialize)]

@@ -3,15 +3,16 @@ use super::{Error, FromRow, Model, Value};
 
 use std::{collections::HashMap, sync::Arc};
 
-fn de_row<'de, D>(_d: D) -> Result<Arc<tokio_postgres::Row>, D::Error> 
-where D: serde::Deserializer<'de>
+fn de_row<'de, D>(_d: D) -> Result<Arc<tokio_postgres::Row>, D::Error>
+where
+    D: serde::Deserializer<'de>,
 {
     panic!("Desrialize is only implemented as a Marker");
 }
 
 #[derive(Debug, Clone, crate::prelude::Deserialize)]
 pub struct Row {
-    #[serde(deserialize_with="de_row")]
+    #[serde(deserialize_with = "de_row")]
     row: Arc<tokio_postgres::Row>,
 }
 

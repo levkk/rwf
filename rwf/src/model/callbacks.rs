@@ -2,19 +2,22 @@
 //!
 //! This is currently a work in progress.
 
+use super::Model;
+use crate::{
+    model::{FromRow, Query},
+    prelude::async_trait,
+};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use super::{Model};
-use std::sync::{Arc};
+use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::{model::{FromRow, Query}, prelude::async_trait};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CallbackKind {
     Insert,
     Update,
-    Delete
+    Delete,
 }
 
 impl std::fmt::Display for CallbackKind {
@@ -22,19 +25,19 @@ impl std::fmt::Display for CallbackKind {
         match self {
             Self::Insert => write!(f, "Insert"),
             Self::Update => write!(f, "Update"),
-            Self::Delete => write!(f, "Delete")
+            Self::Delete => write!(f, "Delete"),
         }
     }
 }
 
-impl std::str::FromStr for  CallbackKind {
+impl std::str::FromStr for CallbackKind {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Insert" => Ok(Self::Insert),
             "Update" => Ok(Self::Update),
             "Delete" => Ok(Self::Delete),
-            _ => Err("No matching CallbackKind")
+            _ => Err("No matching CallbackKind"),
         }
     }
 }
@@ -45,22 +48,35 @@ impl<T: FromRow> TryFrom<&Query<T>> for CallbackKind {
         match value {
             Query::Insert(_) => Ok(Self::Insert),
             Query::Update(_) => Ok(Self::Update),
-            _ => Err("No matching CallbackKind")
+            _ => Err("No matching CallbackKind"),
         }
     }
 }
 
 #[derive(Default)]
 pub struct CallbackRegistry {
-    inner: Arc<RwLock<BTreeMap<&'static str, BTreeMap<CallbackKind, Vec<Box<dyn InnerCallback>>>>>>
+    inner: Arc<RwLock<BTreeMap<&'static str, BTreeMap<CallbackKind, Vec<Box<dyn InnerCallback>>>>>>,
 }
 
 impl CallbackRegistry {
-    pub async fn add_callback(&self, table: &'static str, kind: CallbackKind, callback: Box<dyn InnerCallback>) {
+    pub async fn add_callback(
+        &self,
+        table: &'static str,
+        kind: CallbackKind,
+        callback: Box<dyn InnerCallback>,
+    ) {
         let mut map = self.inner.write().await;
-        map.entry(table).or_default().entry(kind).or_default().push(callback);
+        map.entry(table)
+            .or_default()
+            .entry(kind)
+            .or_default()
+            .push(callback);
     }
-    pub async fn apply<T: Model + for<'de> Deserialize<'de>>(&self, kind: CallbackKind, data: T) -> T {
+    pub async fn apply<T: Model + for<'de> Deserialize<'de>>(
+        &self,
+        kind: CallbackKind,
+        data: T,
+    ) -> T {
         let map = self.inner.read().await;
         if let Some(inner_map) = map.get(T::table_name()) {
             if let Some(callbacks) = inner_map.get(&kind) {
@@ -78,16 +94,17 @@ impl CallbackRegistry {
 pub static CALLBACK_REGISTRY: Lazy<CallbackRegistry> = Lazy::new(|| CallbackRegistry::default());
 
 #[async_trait]
-pub trait Callback<T: Model>: Default+Sync+Send {
+pub trait Callback<T: Model>: Default + Sync + Send {
     async fn callback(mut self, data: T) -> T;
-    fn table_name() -> &'static str {T::table_name()}
+    fn table_name() -> &'static str {
+        T::table_name()
+    }
 }
 
 #[async_trait]
-pub trait InnerCallback: Sync+Send {
+pub trait InnerCallback: Sync + Send {
     async fn call(&self, data: serde_json::Value) -> serde_json::Value;
 }
-
 
 #[macro_export]
 macro_rules! register_callback {
@@ -96,10 +113,22 @@ macro_rules! register_callback {
         #[async_trait]
         impl $crate::model::callbacks::InnerCallback for $callback {
             async fn call(&self, data: serde_json::Value) -> serde_json::Value {
-                $crate::model::callbacks::Callback::callback($callback::default(), serde_json::from_value(data).unwrap()).await.to_json().unwrap()  
+                $crate::model::callbacks::Callback::callback(
+                    $callback::default(),
+                    serde_json::from_value(data).unwrap(),
+                )
+                .await
+                .to_json()
+                .unwrap()
             }
         }
-        $crate::model::callbacks::CALLBACK_REGISTRY.add_callback($callback::table_name(), $kind, Box::new($callback::default())).await;
+        $crate::model::callbacks::CALLBACK_REGISTRY
+            .add_callback(
+                $callback::table_name(),
+                $kind,
+                Box::new($callback::default()),
+            )
+            .await;
     };
 }
 
@@ -107,7 +136,9 @@ macro_rules! register_callback {
 macro_rules! apply_callback {
     ($kind:ident, $value:ident) => {
         if let Ok(kind) = $kind {
-            $crate::model::callbacks::CALLBACK_REGISTRY.apply(kind, $value).await
+            $crate::model::callbacks::CALLBACK_REGISTRY
+                .apply(kind, $value)
+                .await
         } else {
             $value
         }

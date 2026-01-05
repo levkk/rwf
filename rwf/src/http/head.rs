@@ -10,7 +10,9 @@ use super::{Authorization, Cookies, Error, Headers, Path, Query};
 use crate::config::get_config;
 
 /// HTTP method, e.g. GET, POST, etc.
-#[derive(PartialEq, Clone, Debug, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(
+    PartialEq, Clone, Debug, Default, crate::prelude::Deserialize, crate::prelude::Serialize,
+)]
 pub enum Method {
     /// `GET` request.
     #[default]
@@ -64,7 +66,9 @@ impl std::fmt::Display for Method {
 }
 
 /// HTTP version, e.g. HTTP/1.1 or HTTP/2.
-#[derive(Debug, Clone, PartialEq, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(
+    Debug, Clone, PartialEq, Default, crate::prelude::Deserialize, crate::prelude::Serialize,
+)]
 pub enum Version {
     /// HTTP/1.1.
     #[default]

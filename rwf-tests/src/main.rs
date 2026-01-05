@@ -8,10 +8,13 @@ use rwf::{
     },
     http::{websocket, Request, Response, Server, Stream},
     job::Job,
-    model::{migrate, rollback, callbacks::{CallbackKind, Callback}},
+    model::{
+        callbacks::{Callback, CallbackKind},
+        migrate, rollback,
+    },
     prelude::*,
-    serde::{Deserialize, Serialize},
     register_callback,
+    serde::{Deserialize, Serialize},
 };
 use rwf_macros::{Context, Model};
 
@@ -40,8 +43,6 @@ impl Callback<User> for CreateUserCallback {
         data
     }
 }
-
-
 
 #[derive(Clone, Model, Debug, Serialize, Deserialize)]
 #[belongs_to(User)]
@@ -246,7 +247,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = Pool::from_env();
     let mut conn = pool.get().await?;
 
-    User::create(&[("id", 31.to_value()), ("name", "callback".to_value())]).fetch(&mut conn).await?;
+    User::create(&[("id", 31.to_value()), ("name", "callback".to_value())])
+        .fetch(&mut conn)
+        .await?;
 
     conn.client()
         .query(

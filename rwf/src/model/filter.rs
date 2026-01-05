@@ -138,7 +138,9 @@ impl ToSql for WhereClause {
 }
 
 /// Type of connecting operation between two filters.
-#[derive(Debug, Clone, Default, PartialEq, Copy, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Copy, crate::prelude::Deserialize, crate::prelude::Serialize,
+)]
 pub enum JoinOp {
     /// AND
     #[default]

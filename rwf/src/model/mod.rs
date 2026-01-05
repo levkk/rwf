@@ -1051,7 +1051,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// # use rwf::prelude::*;
     /// # use rwf::model::Value;
     /// # use rwf::macros::FromRow;
-    /// # #[derive(Clone, FromRow, rwf::prelude::Deserialize)] 
+    /// # #[derive(Clone, FromRow, rwf::prelude::Deserialize)]
     /// # struct User {
     /// #    id: Option<i64>,
     /// #    email: String,
