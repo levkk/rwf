@@ -1,4 +1,5 @@
 //! Errors returned by the HTTP protocol implementation.
+
 use thiserror::Error;
 
 use super::Head;
@@ -67,6 +68,14 @@ pub enum Error {
     /// Model used as user has null id column.
     #[error("user model is is null")]
     UserIdIsNull,
+
+    /// RustTLS
+    #[error("tls error")]
+    Tls(#[from] rustls::Error),
+
+    /// PEM File
+    #[error("PEM file error")]
+    Pem(#[from] rustls::pki_types::pem::Error),
 }
 
 impl Error {

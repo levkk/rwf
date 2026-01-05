@@ -184,6 +184,10 @@ pub struct General {
     /// On what port to run the HTTP server. Default: 8000.
     #[serde(default = "General::default_port")]
     pub port: u16,
+    #[serde(default = "General::default_cert_file")]
+    pub cert_file: Option<PathBuf>,
+    #[serde(default = "General::default_key_file")]
+    pub key_file: Option<PathBuf>,
     #[serde(default = "General::default_secret_key")]
     secret_key: String,
     /// AES-128 encryption key. Derived from the secret key. Used for encrypting cookies, sessions, and arbitrary user data.
@@ -231,6 +235,8 @@ impl Default for General {
         Self {
             host: General::default_host(),
             port: General::default_port(),
+            cert_file: General::default_cert_file(),
+            key_file: General::default_key_file(),
             secret_key: General::default_secret_key(),
             aes_key: Key::<AesGcmSiv<Aes128>>::default(),
             secure_id_key: Key::<AesGcmSiv<Aes128>>::default(),
@@ -264,6 +270,14 @@ impl General {
 
     fn default_port() -> u16 {
         8000
+    }
+
+    fn default_cert_file() -> Option<PathBuf> {
+        None
+    }
+
+    fn default_key_file() -> Option<PathBuf> {
+        None
     }
 
     /// Extract the secret key from configuration.
