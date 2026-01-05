@@ -10,7 +10,7 @@ use crate::model::{Error, FromRow, Model, ToValue, Value};
 use time::OffsetDateTime;
 
 /// HTTP request recorded by the request tracker middleware.
-#[derive(Clone)]
+#[derive(Clone, crate::prelude::Deserialize)]
 pub struct Request {
     id: Option<i64>,
     path: String,

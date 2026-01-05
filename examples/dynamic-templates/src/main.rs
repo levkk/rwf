@@ -3,7 +3,7 @@ use rwf::prelude::*;
 
 use rand::Rng;
 
-#[derive(Clone, rwf::macros::Model)]
+#[derive(Clone, rwf::macros::Model, Serialize, Deserialize)]
 struct User {
     id: Option<i64>,
     email: String,

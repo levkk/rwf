@@ -13,7 +13,7 @@ use super::*;
 ///
 /// Only the 'SELECT' Part is implemented by `Picked<T>` Everything else (FROM, JOIN, WHERE, GROUP) is
 /// taken from the underlaying `Select<T>`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize)]
 pub struct Picked<T: FromRow> {
     pub select: Select<T>,
     columns: Vec<Column>,

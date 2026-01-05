@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 rwf = { path = "../../rwf" }
+serde = { features = ["derive"], version = "1" }
 tokio = { version = "1", features = ["full"]}
 rand = "0.8"

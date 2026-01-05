@@ -1,7 +1,7 @@
 //! Represents the result of executing `EXPLAIN <query>;`
 use super::{Error, FromRow, Model, Value};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize)]
 pub struct Explain {
     plan: String,
 }

@@ -18,7 +18,7 @@ enum Op {
     LesserEqualThan,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, crate::prelude::Deserialize)]
 pub struct Select<T: FromRow + ?Sized> {
     pub table_name: String,
     pub primary_key: String,

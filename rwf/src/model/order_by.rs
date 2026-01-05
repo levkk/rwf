@@ -1,7 +1,7 @@
 //! Implements the `ORDER BY` SQL primitive.
 use super::{Column, Escape, ToSql};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub enum OrderColumn {
     Asc(Column),
     Desc(Column),
@@ -62,7 +62,7 @@ impl ToOrderBy for (Column, &str) {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct OrderBy {
     pub order_by: Vec<OrderColumn>,
 }

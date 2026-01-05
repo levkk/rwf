@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use super::Direction;
 
 /// A record of a database migration.
-#[derive(Clone)]
+#[derive(Clone, crate::prelude::Deserialize)]
 #[allow(dead_code)]
 pub struct Migration {
     id: Option<i64>,

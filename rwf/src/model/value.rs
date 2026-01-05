@@ -13,7 +13,7 @@ use super::{Column, Error, Escape, ToSql};
 /// This includes primitive types like [`String`] and [`i64`],
 /// and expands all the way to placeholders in prepared statements, e.g. `$1`,
 /// and table columns.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub enum Value {
     /// `VARCHAR`, `TEXT`, regular string, e.g. `'hello'`.
     String(String),

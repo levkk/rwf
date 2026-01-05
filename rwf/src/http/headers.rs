@@ -2,7 +2,7 @@
 use std::collections::{hash_map::Iter, HashMap};
 
 /// HTTP headers.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Headers {
     headers: HashMap<String, String>,
 }

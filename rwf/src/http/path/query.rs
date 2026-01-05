@@ -13,7 +13,7 @@ use crate::http::{urldecode, urlencode};
 /// ```text
 /// page=5&page_size=25
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Query {
     query: BTreeMap<String, String>,
 }
