@@ -115,7 +115,6 @@ impl StaticFileMeta {
                 .await
             {
                 // If-None-Match is prefered
-                eprintln!("{:?}", req_hash);
                 if let Some(etag_list) = req_hash {
                     for etag_opt in etag_list.split(",").map(|opt| opt.trim().replace("\"", "")) {
                         let etag = if etag_opt.starts_with("W/") {
@@ -123,7 +122,6 @@ impl StaticFileMeta {
                         } else {
                             etag_opt.as_str()
                         };
-                        eprintln!("{}", etag);
                         if meta.etag.as_str().eq(etag) {
                             return Some(meta.add_header(Response::new().code(304)));
                         }
@@ -134,7 +132,6 @@ impl StaticFileMeta {
                         time::PrimitiveDateTime::parse(req_modified, Self::format())
                     {
                         let modified = OffsetDateTime::new_utc(modified.date(), modified.time());
-                        eprintln!("{:?} - {:?}", modified, meta.modified);
                         if modified.ge(&meta.modified) {
                             Some(meta.add_header(Response::new().code(304)))
                         } else {
@@ -168,9 +165,14 @@ impl StaticFileMeta {
         etag: String,
         conn: impl ToConnectionRequest<'_>,
     ) -> Result<Self, crate::model::Error> {
-        Self::create(&[("path", path.to_value()), ("etag", etag.to_value())])
-            .fetch(conn)
-            .await
+        let modified = OffsetDateTime::now_utc().replace_nanosecond(0).unwrap();
+        Self::create(&[
+            ("path", path.to_value()),
+            ("etag", etag.to_value()),
+            ("modified", modified.to_value()),
+        ])
+        .fetch(conn)
+        .await
     }
     async fn add_new(
         path: String,
@@ -181,7 +183,10 @@ impl StaticFileMeta {
         Self::create(&[
             ("path", path.to_value()),
             ("etag", etag.to_value()),
-            ("modified", modified.to_value()),
+            (
+                "modified",
+                modified.replace_nanosecond(0).unwrap().to_value(),
+            ),
         ])
         .fetch(conn)
         .await
@@ -194,7 +199,7 @@ impl StaticFileMeta {
     ) -> Result<Self, crate::model::Error> {
         if self.etag.ne(&etag) {
             self.etag = etag;
-            self.modified = modified;
+            self.modified = modified.replace_nanosecond(0).unwrap();
             self.save().fetch(conn).await
         } else {
             Ok(self)
