@@ -9,18 +9,18 @@
 //! then call [`StaticFiles::prefix`] to set the URL prefix to whatever you want.
 use super::{Controller, Error};
 use crate::{
-    crypto::hash,
     http::{Body, Handler, Request, Response},
     model::{get_connection, FromRow, Model},
     prelude::ToConnectionRequest,
 };
+use async_trait::async_trait;
+use base64::Engine;
+use sha1::{Digest, Sha1};
 use std::{
     collections::HashMap,
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
-
-use async_trait::async_trait;
 use time::{macros::format_description, Duration, OffsetDateTime};
 use tokio::fs::File;
 use tracing::{debug, warn};
@@ -70,20 +70,14 @@ impl FromRow for StaticFileMeta {
 }
 
 impl Model for StaticFileMeta {
-    fn primary_key() -> &'static str {
-        "id"
-    }
     fn table_name() -> &'static str {
         "rwf_static_file_metas"
     }
-    fn foreign_key() -> &'static str {
-        "static_file_meta_id"
+    fn column_names() -> &'static [&'static str] {
+        &["path", "etag", "modified"]
     }
     fn id(&self) -> Value {
         self.id.to_value()
-    }
-    fn column_names() -> &'static [&'static str] {
-        &["path", "etag", "modified"]
     }
     fn values(&self) -> Vec<Value> {
         vec![
@@ -91,6 +85,12 @@ impl Model for StaticFileMeta {
             self.etag.to_value(),
             self.modified.to_value(),
         ]
+    }
+    fn foreign_key() -> &'static str {
+        "static_file_meta_id"
+    }
+    fn primary_key() -> &'static str {
+        "id"
     }
 }
 
@@ -115,14 +115,21 @@ impl StaticFileMeta {
                 .await
             {
                 // If-None-Match is prefered
-                if let Some(etag) = req_hash {
-                    if meta.etag.eq(etag) {
-                        Some(meta.add_header(Response::new().code(304)))
-                    } else {
-                        None
+                eprintln!("{:?}", req_hash);
+                if let Some(etag_list) = req_hash {
+                    for etag_opt in etag_list.split(",").map(|opt| opt.trim().replace("\"", "")) {
+                        let etag = if etag_opt.starts_with("W/") {
+                            etag_opt.strip_prefix("W/").unwrap()
+                        } else {
+                            etag_opt.as_str()
+                        };
+                        eprintln!("{}", etag);
+                        if meta.etag.as_str().eq(etag) {
+                            return Some(meta.add_header(Response::new().code(304)));
+                        }
                     }
-                } else {
-                    let req_modified = req_modified.unwrap();
+                }
+                if let Some(req_modified) = req_modified {
                     if let Ok(modified) =
                         time::PrimitiveDateTime::parse(req_modified, Self::format())
                     {
@@ -137,6 +144,8 @@ impl StaticFileMeta {
                         warn!("Invalid Modified Date in Request! '{}'", req_modified);
                         None
                     }
+                } else {
+                    None
                 }
             } else {
                 None
@@ -192,19 +201,26 @@ impl StaticFileMeta {
         }
     }
     fn add_header(&self, response: Response) -> Response {
-        response.header("etag", &self.etag).header(
-            "last-modified",
-            self.modified.format(Self::format()).unwrap(),
-        )
+        response
+            .header("etag", format!(r#"W/"{}""#, &self.etag))
+            .header(
+                "last-modified",
+                self.modified.format(Self::format()).unwrap(),
+            )
     }
 }
 
+fn default_etag_generator(data: &[u8]) -> String {
+    let hash = Sha1::digest(data);
+    base64::engine::general_purpose::STANDARD.encode(hash.as_slice())
+}
 /// Static files controller.
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
     preloads: HashMap<PathBuf, Body>,
     cache_control: CacheControl,
+    etag_generator: fn(&[u8]) -> String,
     initialized: std::sync::atomic::AtomicBool,
 }
 
@@ -232,6 +248,7 @@ impl StaticFiles {
             root,
             preloads: HashMap::new(),
             cache_control: CacheControl::NoStore,
+            etag_generator: default_etag_generator,
             initialized: std::sync::atomic::AtomicBool::new(false),
         };
 
@@ -281,17 +298,27 @@ impl StaticFiles {
         self
     }
 
+    /// Sets the callback to create ETags
+    pub fn etag_builder(mut self, etag_builder: fn(&[u8]) -> String) -> Self {
+        self.etag_generator = etag_builder;
+        self
+    }
+
+    pub fn generate_etag(&self, data: &[u8]) -> String {
+        (self.etag_generator)(data)
+    }
+
     pub fn handler(self) -> Handler {
         Handler::wildcard(self.prefix.display().to_string().as_str(), self)
     }
-    pub async fn initialize(&self) -> Result<(), crate::http::Error> {
+    pub async fn initialize(&self) -> Result<(), Error> {
         if !self.initialized.load(std::sync::atomic::Ordering::Acquire) {
             let mut conn = get_connection().await?;
             for (path, body) in self.preloads.iter() {
                 match body {
                     Body::FileInclude { bytes, .. } => {
                         let path = path.as_path().as_os_str().to_string_lossy().to_string();
-                        let etag = format!(r#"W/"{}""#, hash(bytes.as_slice())?);
+                        let etag = self.generate_etag(bytes.as_slice());
                         let _meta = match StaticFileMeta::load_by_path(&path, &mut conn).await? {
                             Some(obj) => {
                                 obj.update(etag, OffsetDateTime::now_utc(), &mut conn)
@@ -310,6 +337,12 @@ impl StaticFiles {
             Ok(())
         }
     }
+    async fn file_etag(&self, path: impl AsRef<Path>) -> String {
+        let data = tokio::fs::read(&path)
+            .await
+            .expect("File exists checked before");
+        self.generate_etag(data.as_slice())
+    }
 }
 
 #[async_trait]
@@ -320,18 +353,18 @@ impl Controller for StaticFiles {
         let mut conn = get_connection().await?;
 
         if let Some(body) = self.preloads.get(&path) {
-            if let Some(response) = StaticFileMeta::check_request(request, &mut conn).await {
-                return Ok(response.header("cache-control", self.cache_control.to_string()));
+            return if let Some(response) = StaticFileMeta::check_request(request, &mut conn).await {
+                Ok(response.header("cache-control", self.cache_control.to_string()))
             } else {
                 let meta = StaticFileMeta::load_by_path(request.path().path(), &mut conn)
                     .await?
                     .expect("Initialized");
-                return Ok(meta
+                Ok(meta
                     .add_header(
                         Response::new().header("cache-control", self.cache_control.to_string()),
                     )
-                    .body(body.clone()));
-            }
+                    .body(body.clone()))
+            };
         }
 
         // Remove the prefix from the request path.
@@ -383,11 +416,8 @@ impl Controller for StaticFiles {
                     match StaticFileMeta::load_by_path(request.path().path(), &mut conn).await? {
                         Some(meta) => {
                             if meta.modified.ne(&modified) {
-                                let data = tokio::fs::read(&path)
-                                    .await
-                                    .expect("File exists checked before");
-                                let etag = format!(r#"W/"{}""#, hash(data.as_slice())?);
-                                meta.update(etag, modified, &mut conn).await?
+                                meta.update(self.file_etag(&path).await, modified, &mut conn)
+                                    .await?
                             } else {
                                 if let Some(response) =
                                     StaticFileMeta::check_request(request, &mut conn).await
@@ -400,13 +430,9 @@ impl Controller for StaticFiles {
                             }
                         }
                         None => {
-                            let data = tokio::fs::read(&path)
-                                .await
-                                .expect("File exists checked before");
-                            let etag = format!(r#"W/"{}""#, hash(data.as_slice())?);
                             StaticFileMeta::add_new(
                                 request.path().path().to_string(),
-                                etag,
+                                self.file_etag(&path).await,
                                 modified,
                                 &mut conn,
                             )
@@ -420,7 +446,7 @@ impl Controller for StaticFiles {
 
                 Ok(response.body((path, file, metadata)))
             }
-            Err(_) => return Ok(Response::not_found()),
+            Err(_) => Ok(Response::not_found()),
         }
     }
 }

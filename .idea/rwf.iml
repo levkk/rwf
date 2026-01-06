@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/examples/auth/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/background-jobs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/dynamic-templates/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/engine/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/files/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/middleware/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/orm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/quick-start/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/request-tracking/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/scheduled-jobs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/static-files/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/turbo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/users/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf-admin/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf-cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf-macros/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf-macros/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf-tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rwf/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/rwf-tests/target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
