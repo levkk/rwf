@@ -247,9 +247,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = Pool::from_env();
     let mut conn = pool.get().await?;
 
-    User::create(&[("id", 31.to_value()), ("name", "callback".to_value())])
+    let user1 = User::create(&[("id", 31.to_value()), ("name", "callback".to_value())])
         .fetch(&mut conn)
         .await?;
+    let user2 = User::create(&[("id", 32.to_value()), ("name", "callback2".to_value())])
+        .fetch(&mut conn)
+        .await?;
+
+    let delq = User::all().filter_gt("id", 30.to_value()).delete();
+
+    let mut del_cnt = delq.fetch_all(&mut conn).await?;
+    del_cnt.sort_by(|u1, u2| u1.id.cmp(&u2.id));
+    assert_eq!(del_cnt, vec![user1, user2]);
 
     conn.client()
         .query(
