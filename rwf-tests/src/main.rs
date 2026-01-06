@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use rwf::crypto::encrypt_number;
 use rwf::model::{Column, Model, Pool, Scope, Value};
 use rwf::view::{template::Template, Templates};
 use rwf::{
@@ -223,8 +224,12 @@ struct IndexController;
 
 #[rwf::async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, _request: &Request) -> Result<Response, rwf::controller::Error> {
-        Ok(Template::cached_static("templates/index.html")?)
+    async fn handle(&self, request: &Request) -> Result<Response, rwf::controller::Error> {
+        let encs = (1..29)
+            .into_iter()
+            .map(|i| encrypt_number(i).unwrap())
+            .collect::<Vec<String>>();
+        render!(request, "templates/index.html", "encs" => encs)
     }
 }
 
@@ -463,7 +468,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 SecureId::default().middleware(),
             ]),
         }
-        .route("/orders"),
+        .crud("/orders"),
     ])
     .launch()
     .await?;

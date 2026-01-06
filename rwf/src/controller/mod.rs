@@ -646,6 +646,7 @@ pub trait ModelController: Controller {
         Ok(Response::new().json(model)?)
     }
 
+    /// Removes a record if exists.
     async fn delete(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
