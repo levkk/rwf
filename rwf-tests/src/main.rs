@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use rwf::crypto::encrypt_number;
 use rwf::model::{Column, Model, Pool, Scope, Value};
-use rwf::view::{template::Template, Templates};
+use rwf::view::Templates;
 use rwf::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
