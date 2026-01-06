@@ -433,7 +433,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     Server::new(vec![
-        StaticFiles::serve("static")?,
+        StaticFiles::new("static")?
+            .preload("/static/pre", b"Hello World!")
+            .handler(),
         IndexController {}.route("/"),
         MyWebsocketController::new().route("/websocket"),
         BaseController {
