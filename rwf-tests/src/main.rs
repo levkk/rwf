@@ -5,7 +5,7 @@ use rwf::view::Templates;
 use rwf::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController,
+        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController, ModelListQuery,
     },
     http::{websocket, Request, Response, Server, Stream},
     job::Job,
@@ -21,12 +21,13 @@ use rwf_macros::{Context, Model};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
-
+use tracing::error;
+use utoipa::{ToSchema, ToResponse, OpenApi};
 mod components;
 mod controllers;
 mod models;
 
-#[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(Order)]
 #[allow(dead_code)]
 struct User {
@@ -45,7 +46,7 @@ impl Callback<User> for CreateUserCallback {
     }
 }
 
-#[derive(Clone, Model, Debug, Serialize, Deserialize)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[belongs_to(User)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
@@ -56,7 +57,7 @@ struct Order {
     optional: Option<String>,
 }
 
-#[derive(Clone, Model, Debug, Serialize, Deserialize)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[belongs_to(Order)]
 #[belongs_to(Product)]
 #[allow(dead_code)]
@@ -67,7 +68,7 @@ struct OrderItem {
     amount: f64,
 }
 
-#[derive(Clone, Model, Debug, Serialize, Deserialize)]
+#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
 struct Product {
@@ -79,6 +80,40 @@ struct Product {
 impl OrderItem {
     fn expensive() -> Scope<Self> {
         Self::all().filter_gt("amount", 5.0)
+    }
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    components(
+        schemas(User, Order, Product, OrderItem),
+        responses(Order),
+    ),
+    paths(list_orders, create_order, get_order, delete_order, update_order, patch_order)
+    )]
+struct ApiDoc;
+
+#[derive(Default, Debug, Copy, Clone)]
+struct OpenApiController;
+
+#[async_trait]
+impl Controller for OpenApiController {
+    async fn handle(&self, request: &Request) -> Result<Response, rwf::controller::Error> {
+        let accept = match request.header("accept").map(|s| s.as_str())  {
+            Some("application/json") => true,
+            Some("application/yaml") => false,
+            None => true,
+            Some(s) => {
+                error!("Invalid Accept Header {}", s);
+                return Ok(Response::bad_request())
+            }
+        };
+        let oapi = ApiDoc::openapi();
+        if accept {
+            Ok(Response::new().json(oapi)?)
+        } else {
+            Ok(Response::new().text(oapi.to_yaml().map_err(|e| Error::Error(Box::new(e)))?))
+        }
     }
 }
 
@@ -150,11 +185,56 @@ impl Controller for OrdersController {
     fn middleware(&self) -> &MiddlewareSet {
         &self.middlware
     }
-
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         ModelController::handle(self, request).await
     }
 }
+
+#[utoipa::path(
+    get,
+    path="/orders",
+    responses(
+        (status = 200, body=Vec<Order>),
+        (status = 500, description="Server Error")
+    ),
+    params(
+        ModelListQuery
+    )
+)]
+fn list_orders(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+#[utoipa::path(
+    post,
+    path="/orders",
+    responses(
+          (status = 200, body=Order),
+          (status = 400, description = "Knvalid User Input"),
+          (status = 500, description="Server Error")                                                  ),
+    request_body(content= Order, description = "The new Model to create")
+)]
+fn create_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+
+#[utoipa::path(get, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
+fn get_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+#[utoipa::path(put, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description = "Invalid User Input"), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content=Order, description="Full Model for full update"))]
+fn update_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+#[utoipa::path(patch, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description="Invalid User Input"),(status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content_type="application/json", description="Partial Model for partial update"))]
+fn patch_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+#[utoipa::path(delete, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
+fn delete_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+    Ok(Response::not_implemented())
+}
+
+
 
 #[rwf::async_trait]
 impl RestController for OrdersController {
@@ -446,6 +526,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &Value::String("test".to_string())
     );
 
+    let ordctl = OrdersController {
+        auth: AuthHandler::new(AllowAll{}),
+        middlware: MiddlewareSet::new(vec![
+                RateLimiter::per_second(10).middleware(),
+                SecureId::default().middleware(),
+        ])
+    };
+    let hdl = ordctl.crud("/orders");
+    let _path = hdl.path().clone();
+
+    
+    //ApiDoc::openapi().paths
+
+
     Server::new(vec![
         StaticFiles::new("static")?
             .preload("/static/pre", b"Hello World!")
@@ -457,18 +551,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         .route("/base"),
         BasePlayerController {}.route("/base/player"),
-        OrdersController {
-            // auth: AuthHandler::new(BasicAuth {
-            //     user: "test".to_string(),
-            //     password: "test".to_string(),
-            // }),
-            auth: AuthHandler::new(AllowAll {}),
-            middlware: MiddlewareSet::new(vec![
-                RateLimiter::per_second(10).middleware(),
-                SecureId::default().middleware(),
-            ]),
-        }
-        .crud("/orders"),
+        OpenApiController::default().route("/openapi"),
+        hdl
     ])
     .launch()
     .await?;

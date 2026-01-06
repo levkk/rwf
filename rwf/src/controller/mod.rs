@@ -699,6 +699,19 @@ pub trait ModelController: Controller {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct ModelListQuery {
+    page: Option<i32>,
+    page_size: Option<i32>
+}
+
+impl Default for ModelListQuery {
+    fn default() -> Self {
+        Self {page: Some(1), page_size: Some(25)}
+    }
+}
+
 /// A controller that handles WebSocket connections.
 #[async_trait]
 #[allow(unused_variables)]
