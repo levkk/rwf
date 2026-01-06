@@ -23,6 +23,8 @@ use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 use tracing::error;
 use utoipa::{ToSchema, ToResponse, OpenApi};
+use utoipa::openapi::OpenApiBuilder;
+
 mod components;
 mod controllers;
 mod models;
@@ -209,15 +211,13 @@ fn list_orders(_request: &Request) -> Result<Response, rwf::http::Error> {
     path="/orders",
     responses(
           (status = 200, body=Order),
-          (status = 400, description = "Knvalid User Input"),
+          (status = 400, description = "Invalid User Input"),
           (status = 500, description="Server Error")                                                  ),
     request_body(content= Order, description = "The new Model to create")
 )]
 fn create_order(_request: &Request) -> Result<Response, rwf::http::Error> {
     Ok(Response::not_implemented())
-}
-
-#[utoipa::path(get, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
+}#[utoipa::path(get, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
 fn get_order(_request: &Request) -> Result<Response, rwf::http::Error> {
     Ok(Response::not_implemented())
 }

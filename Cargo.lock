@@ -2288,6 +2288,7 @@ dependencies = [
  "bytes",
  "cc",
  "colored",
+ "log",
  "notify",
  "once_cell",
  "parking_lot 0.12.3",

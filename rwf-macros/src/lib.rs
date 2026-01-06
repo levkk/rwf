@@ -2,16 +2,14 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
-    ReturnType, Token, Type, Visibility,
-};
+use syn::{parse, parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta, ReturnType, Token, Type, Visibility};
 
-use quote::quote;
+use quote::{quote, ToTokens};
 
 mod model;
 mod prelude;
 mod render;
+mod openapi;
 
 /// The `#[derive(Model)]` macro.
 ///
@@ -736,4 +734,19 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn generate_full_model(args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut type_args = args.clone();
+    let working_on = input.clone();
+    let mut res = model::handle_generate_full_model(parse_macro_input!(working_on));
+    //eprintln!("{}", res);
+    let controller_on = input.clone();
+    let extra_args = args.clone();
+    let controller = openapi::generate_controller4(parse_macro_input!(controller_on), parse_macro_input!(extra_args));
+    eprintln!("{}", controller);
+    controller.to_tokens(&mut res);
+    res.into()
+    //response.into()
 }

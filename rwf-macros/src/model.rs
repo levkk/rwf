@@ -1,6 +1,10 @@
+use std::iter::zip;
 use super::*;
 use parse::Parse;
+use proc_macro2::Span;
+use quote::{format_ident, ToTokens};
 use syn::*;
+use syn::parse::{ParseBuffer, ParseStream, Parser};
 
 pub fn impl_derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -281,6 +285,244 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
     quote! {
         #(#rels)*
     }
+}
+
+#[derive(Clone)]
+pub struct TypeParser {
+    pub ty: Type,
+    _comma: Token![,],
+    pub ctrl: Ident,
+    _comma2: Token![,],
+    pub sufix: Ident,
+    _comma3: Token![,],
+    pub apipth: LitStr
+}
+
+impl TypeParser {
+    pub fn gen_doc_paths(&self) -> proc_macro2::TokenStream {
+        let paths = self.path_name_list();
+        quote!{
+            #(#paths),*
+        }
+    }
+    pub fn gen_oapi(&self, model: Ident) -> Vec<proc_macro2::TokenStream> {
+        let mut result = Vec::with_capacity(6);
+
+        let operations = self.operation();
+        let paths = self.apipths();
+        let responses = self.rewsponses(model.clone());
+        let params = self.params();
+        let requests = self.request_body(model.clone());
+        let funcs = self.path_name_list();
+
+        operations
+            .into_iter()
+            .zip(
+                paths.into_iter()
+            )
+            .zip(
+                params
+                    .into_iter()
+                    .zip(requests.into_iter())
+            )
+            .map(|((o, p),(par, req))| (o, p, par, req))
+            .zip(
+                responses
+                    .into_iter()
+                    .zip(
+                        funcs.into_iter()
+                    )
+            )
+            .map(
+                |((o,p,par,req),(res, func))|
+                    (o,p,par,req,res,func)
+            )
+            .map(|(o,p,par,req,res,func)| {
+                if o.eq("get") || o.eq("delete") {
+                    quote!{
+                        #[utoipa::path(
+                            #o,
+                            #p,
+                            #par,
+                            responses(#res)
+                        )]
+                        fn #func (_request: &Request) -> Result<Response, rwf::http::Error> {
+                            Ok(Response::not_implemented())
+                        }
+                    }
+                } else {
+                    quote!{
+                        #[utoipa::path(
+                            #o,
+                            #p,
+                            #par,
+                            #req,
+                            responses(#res)
+                        )]
+                        fn #func (_request: &Request) -> Result<Response, rwf::http::Error> {
+                            Ok(Response::not_implemented())
+                        }
+                    }
+                }
+
+            })
+            .for_each(|ts| result.push(ts));
+
+        result
+    }
+    pub fn path_name_list(&self) -> Vec<Ident> {
+        vec![
+            format_ident!("list_{}", self.sufix),
+            format_ident!("create_{}", self.sufix),
+            format_ident!("get_{}", self.sufix),
+            format_ident!("update_{}", self.sufix),
+            format_ident!("patch_{}", self.sufix),
+            format_ident!("delete_{}", self.sufix)
+        ]
+    }
+    pub fn operation(&self) -> Vec<syn::Ident> {
+        vec![
+            format_ident!("get"),
+            format_ident!("post"),
+            format_ident!("get"),
+            format_ident!("put"),
+            format_ident!("patch"),
+            format_ident!("delete"),
+        ]
+    }
+    pub fn apipths(&self) -> Vec<LitStr> {
+        vec![
+            LitStr::new("/", Span::call_site()),
+            LitStr::new("/", Span::call_site()),
+            LitStr::new("/{id}", Span::call_site()),
+            LitStr::new("/{id}", Span::call_site()),
+            LitStr::new("/{id}", Span::call_site()),
+            LitStr::new("/{id}", Span::call_site()),
+        ]
+    }
+    pub fn rewsponses(&self, model: Ident) -> Vec<proc_macro2::TokenStream> {
+        vec![
+            quote!{
+                (status = 200, body=Vec<#model>),
+                (status = 500, description="Server Error")
+            },
+            quote!{
+                (status = 200, body=#model),
+                (status = 400, description = "Invalid User Input"),
+                (status = 500, description="Server Error")
+            },
+            quote!{
+                (status = 200, body=#model),
+                (status = 404, description = "No such model found"),
+                (status = 500, description = "Server Error")
+            },
+            quote!{
+                (status = 200, body=#model),
+                (status = 400, description = "Invalid User Input"),
+                (status = 404, description = "No such model found"),
+                (status = 500, description = "Server Error")
+            },
+            quote!{
+                (status = 200, body=#model),
+                (status = 400, description= "Invalid User Input"),
+                (status = 404, description = "No such model found"),
+                (status = 500, description = "Server Error")
+            },
+            quote!{
+                (status = 200, body=#model),
+                (status = 404, description = "No such model found"),
+                (status = 500, description = "Server Error")
+            }
+        ]
+    }
+    pub fn params(&self) -> Vec<proc_macro2::TokenStream> {
+        let pkey_type = self.ty.clone();
+        vec![
+            quote!{
+                params(ModelListQuery)
+            },
+            quote!{
+                params(
+                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
+                )
+            },
+            quote!{
+                params(("id" = #pkey_type , Path, description = "Database ID of the Model"))
+            },
+            quote!{
+                params(
+                    ("id" = #pkey_type, Path, description = "Database ID of the Model"),
+                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
+                )
+            },
+            quote!{
+                params(
+                    ("id" = #pkey_type , Path, description = "Database ID of the Model"),
+                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
+                )
+            },
+            quote!{
+                params(("id" = #pkey_type, Path, description = "Database ID of the Model"))
+            }
+        ]
+    }
+    pub fn request_body(&self, model: Ident) -> Vec<proc_macro2::TokenStream> {
+        vec![
+            quote!{},
+            quote!{
+                request_body(content=#model, description = "The new Model to create")
+            },
+            quote!{},
+            quote!{
+                request_body(content=#model, description="Full Model for full update")
+            },
+            quote!{
+                request_body(content_type="application/json", description="Partial Model for partial update")
+            },
+            quote!{}
+        ]
+    }
+}
+impl Parse for TypeParser {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let ty = input.parse()?;
+        let _comma = input.parse()?;
+        let ctrl: Ident = input.parse()?;
+        let _comma2 = input.parse()?;
+        let sufix: Ident = input.parse()?;
+        let _comma3 = input.parse()?;
+        let apipth: LitStr = input.parse()?;
+        Ok(Self { ty, _comma, ctrl,  _comma2, sufix, _comma3, apipth})
+    }
+}
+
+pub fn handle_generate_full_model(mut input: ItemStruct) -> proc_macro2::TokenStream {
+    let mut data = proc_macro2::TokenStream::new();
+    
+    input.attrs.push(
+        parse_quote!(
+            #[derive(Clone, macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::prelude::ToSchema, rwf::prelude::ToResponse)]
+        )
+    );
+    let model_name = input.ident.clone();
+    for field in &mut input.fields {
+        let fname = field.ident.as_ref().unwrap();
+        eprintln!("{}", fname);
+    }
+    //let pkey_type = input.fields.iter().filter(|f| f.ident.is_some()).find(|f|
+    //    f.ident.as_ref().unwrap().clone().to_string().eq("id")
+    //).map(|f| f.ty.clone()).unwrap();
+    eprintln!("{:?}", model_name);
+    //let pkey_type = quote!{#pkey_type}.to_string().replace("Option", "").trim().strip_prefix("<").unwrap().strip_suffix(">").unwrap().trim().replace("\"", "");
+    input.to_tokens(&mut data);
+    quote!{
+        impl rwf :: controller :: PkeyParamGenerator for #model_name
+{
+    fn param(val : impl IntoPkey) -> rwf :: controller :: ModelPkeyParam
+    { rwf :: controller :: ModelPkeyParam :: from(val.pkey_type() ) }
+}
+    }.to_tokens(&mut data);
+    data.into_token_stream()
 }
 
 #[cfg(test)]

@@ -712,6 +712,59 @@ impl Default for ModelListQuery {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, utoipa::ToSchema)]
+pub enum PKeyTypes {
+    Small(i16),
+    Middle(i32),
+    Large(i64)
+}
+
+pub trait IntoPkey {
+    fn pkey_type(&self) -> PKeyTypes;
+}
+impl IntoPkey for i16 {
+    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Small(*self)}
+}
+
+impl IntoPkey for i32 {
+    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Middle(*self)}
+}
+
+impl IntoPkey for i64 {
+    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Large(*self)}
+}
+
+impl<T> From<T> for PKeyTypes where T: IntoPkey {
+    fn from(value: T) -> Self {
+        value.pkey_type()
+    }
+}
+
+impl Default for PKeyTypes {
+    fn default() -> Self {
+        PKeyTypes::Large(1)
+    }
+}
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Path)]
+pub struct ModelPkeyParam
+{
+    id: PKeyTypes
+}
+impl From<PKeyTypes> for ModelPkeyParam {
+    fn from(value: PKeyTypes) -> Self {
+        ModelPkeyParam {id: value}
+    }
+}
+
+
+pub trait PkeyParamGenerator {
+    fn param(val:  impl IntoPkey) -> ModelPkeyParam {
+        ModelPkeyParam{id: val.pkey_type()}
+    }
+}
+
+
 /// A controller that handles WebSocket connections.
 #[async_trait]
 #[allow(unused_variables)]
