@@ -12,6 +12,7 @@ use tracing::{error, info};
 
 pub mod callbacks;
 pub mod column;
+pub mod delete;
 pub mod error;
 pub mod escape;
 pub mod exists;
@@ -33,6 +34,7 @@ pub mod update;
 pub mod value;
 
 pub use column::{Column, Columns, ToColumn};
+pub use delete::Delete;
 pub use error::Error;
 pub use escape::Escape;
 pub use exists::Exists;
@@ -221,6 +223,7 @@ pub enum Query<T: FromRow + ?Sized = Row> {
         insert: Insert<T>,
         created: bool,
     },
+    Delete(Delete<T>),
     /// An arbitrary query.
     Raw {
         query: String,
@@ -239,6 +242,7 @@ impl<T: FromRow> ToSql for Query<T> {
             Raw { query, .. } => query.clone(),
             Update(update) => update.to_sql(),
             Insert(insert) => insert.to_sql(),
+            Delete(delete) => delete.to_sql(),
             InsertIfNotExists { select, insert, .. } => {
                 format!("{}; {};", select.to_sql(), insert.to_sql())
             }
@@ -633,6 +637,14 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn delete(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Delete(Delete::from(select)),
+            Query::Picked(picked) => Query::Delete(Delete::from(picked.select)),
+            _ => self,
+        }
+    }
+
     pub fn select_aggregated(
         self,
         columns: &[(impl ToColumn, impl ToAggregation, Option<impl ToString>)],
@@ -748,6 +760,12 @@ impl<T: Model> Query<T> {
                 let query = picked.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
+                client.query_cached(&query, &values).await
+            }
+
+            Query::Delete(delete) => {
+                let query = delete.to_sql();
+                let values = delete.placeholders.values();
                 client.query_cached(&query, &values).await
             }
         };
@@ -899,6 +917,7 @@ impl<T: Model> Query<T> {
             Query::Update(_) => "save",
             Query::Raw { .. } => "query",
             Query::Insert(_) => "save",
+            Query::Delete(_) => "destroy",
             Query::InsertIfNotExists { .. } => "load/create",
         }
     }
@@ -1635,6 +1654,27 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
         map.insert("id".into(), self.id().into());
 
         Ok(serde_json::Value::Object(map))
+    }
+
+    /// Destroy the model.
+    ///
+    /// # Example
+    /// ```
+    /// # use rwf::prelude::*;
+    /// # use rwf::model::ToSql;
+    /// # #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// # }
+    /// let user = User { id: Some(1), email: "test@test.com".into() };
+    /// assert_eq!(
+    ///     user.destroy().to_sql(),
+    ///     r#"DELETE FROM "users" WHERE "users"."id" = $1 RETURNING *"#,
+    /// );
+    /// ```
+    fn destroy(&self) -> Query<Self> {
+        Self::find(self.id()).delete()
     }
 }
 
