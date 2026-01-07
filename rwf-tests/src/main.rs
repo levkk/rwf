@@ -52,10 +52,15 @@ impl Callback<User> for CreateUserCallback {
 #[belongs_to(User)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
+#[schema(title="An exaple Order", description="A Order in the DB System. Referebces the user who made the order and is refereenced by all related order items")]
+#[response(description="Rerpresentation of a single Order azzoziated with the buying User and ordere3d Items")]
 struct Order {
+    #[schema(minimum=1, example=128, format="Int64")]
     id: Option<i64>,
+    #[schema(minimum=1, example=32, format="Int64")]
     user_id: i64,
     name: String,
+    #[schema(required=false, nullable=true)]
     optional: Option<String>,
 }
 
@@ -64,6 +69,7 @@ struct Order {
 #[belongs_to(Product)]
 #[allow(dead_code)]
 struct OrderItem {
+    #[schema(minimum=1, example=128, format="Int64")]
     id: Option<i64>,
     order_id: i64,
     product_id: i64,
@@ -85,6 +91,8 @@ impl OrderItem {
     }
 }
 
+
+
 #[derive(OpenApi)]
 #[openapi(
     components(
@@ -93,7 +101,10 @@ impl OrderItem {
     ),
     paths(list_orders, create_order, get_order, delete_order, update_order, patch_order)
     )]
-struct ApiDoc;
+struct OpenApiDocs;
+
+
+
 
 #[derive(Default, Debug, Copy, Clone)]
 struct OpenApiController;
@@ -110,7 +121,8 @@ impl Controller for OpenApiController {
                 return Ok(Response::bad_request())
             }
         };
-        let oapi = ApiDoc::openapi();
+        let oapi = OpenApiDocs::openapi();//.nest("/tmodel", crate::models::oapi_test_model::ApiDoc::openapi());
+
         if accept {
             Ok(Response::new().json(oapi)?)
         } else {
@@ -538,7 +550,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     
     //ApiDoc::openapi().paths
-
 
     Server::new(vec![
         StaticFiles::new("static")?

@@ -1,10 +1,9 @@
-use std::iter::zip;
 use super::*;
 use parse::Parse;
 use proc_macro2::Span;
 use quote::{format_ident, ToTokens};
 use syn::*;
-use syn::parse::{ParseBuffer, ParseStream, Parser};
+use syn::parse::{ParseStream};
 
 pub fn impl_derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -498,16 +497,20 @@ impl Parse for TypeParser {
 
 pub fn handle_generate_full_model(mut input: ItemStruct) -> proc_macro2::TokenStream {
     let mut data = proc_macro2::TokenStream::new();
-    
-    input.attrs.push(
-        parse_quote!(
-            #[derive(Clone, macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::prelude::ToSchema, rwf::prelude::ToResponse)]
-        )
+        input.attrs.push(
+            parse_quote!(
+                    #[derive(Clone, rwf_macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::prelude::ToSchema, rwf::prelude::ToResponse)]
+            )
     );
     let model_name = input.ident.clone();
     for field in &mut input.fields {
         let fname = field.ident.as_ref().unwrap();
         eprintln!("{}", fname);
+        if fname.eq("id") {
+            field.attrs.push(parse_quote!(
+                #[schema(minimum=1, format="Int64")]
+            ))
+        }
     }
     //let pkey_type = input.fields.iter().filter(|f| f.ident.is_some()).find(|f|
     //    f.ident.as_ref().unwrap().clone().to_string().eq("id")
@@ -515,13 +518,13 @@ pub fn handle_generate_full_model(mut input: ItemStruct) -> proc_macro2::TokenSt
     eprintln!("{:?}", model_name);
     //let pkey_type = quote!{#pkey_type}.to_string().replace("Option", "").trim().strip_prefix("<").unwrap().strip_suffix(">").unwrap().trim().replace("\"", "");
     input.to_tokens(&mut data);
-    quote!{
+    /*quote!{
         impl rwf :: controller :: PkeyParamGenerator for #model_name
 {
     fn param(val : impl IntoPkey) -> rwf :: controller :: ModelPkeyParam
     { rwf :: controller :: ModelPkeyParam :: from(val.pkey_type() ) }
 }
-    }.to_tokens(&mut data);
+    }.to_tokens(&mut data);*/
     data.into_token_stream()
 }
 

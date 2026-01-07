@@ -56,8 +56,9 @@ rustls-platform-verifier = "0.6.2"
 tokio-rustls = "0.26.4"
 postgres_rustls = "0.1.4"
 serde_regex = "1.1.0"
-utoipa = {features = ["debug", "yaml", "time", "uuid", "url", "rc_schema", "openapi_extensions"], version = "5"}
 log = "0.4.22"
+#utoipa = {features = ["debug", "yaml", "time", "uuid", "url", "rc_schema", "openapi_extensions", "config"], version = "5.4.0"}
+utoipa = {features = ["yaml", "time", "uuid","ulid", "url", "rc_schema", "non_strict_integers"], version = "5.4.0"}
 
 [dev-dependencies]
 tempdir = "0.3"

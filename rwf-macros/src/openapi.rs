@@ -13,7 +13,7 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
         #[derive(Debug, Clone, Default, rwf::macros::ModelController, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
     });
     ItemStruct {
-        attrs: attrs,
+        attrs,
         vis: Visibility::Public(Token![pub](proc_macro2::Span::call_site())),
         struct_token: Token![struct](proc_macro2::Span::call_site()),
         ident: targs.ctrl.clone(),
@@ -26,7 +26,6 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
     let pkey_type = targs.ty.clone();
     let ctrl = targs.ctrl.clone();
     let suffix = targs.sufix.clone();
-    let apipth = targs.apipth.clone();
 
     let path_impl = targs.gen_oapi(model.clone());
 
@@ -42,16 +41,6 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
     let module_name = format_ident!("oapi_{}", suffix);
     let paths = targs.gen_doc_paths();
     quote!{
-
-        impl #ctrl {
-            pub fn ocrud(self, path: &str) -> (Handler, Into<OpenApi>) {
-                (self.crud(path.clone()), #module_name::ApiDoc::openapi)
-            }
-        }
-
-        pub(crate) mod #module_name {
-            use rwf::prelude::*;
-
             #[derive(OpenApi)]
             #[openapi(
                 components(
@@ -65,9 +54,6 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
             #(
                 #path_impl
             )*
-        }
-    }.to_tokens(&mut output);
-
-
+        }.to_tokens(&mut output);
     output.into_token_stream()
 }
