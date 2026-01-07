@@ -1,18 +1,29 @@
+use crate::model::TypeParser;
 use proc_macro2;
+use quote::quote;
 use quote::{format_ident, ToTokens};
 use syn::{parse_quote, Fields, Generics, ItemStruct, Token, Visibility};
-use quote::quote;
-use crate::model::TypeParser;
-
 
 pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2::TokenStream {
-    let mut output = proc_macro2::TokenStream::new();
+    let model = input.ident.clone();
+    let paths = targs.gen_doc_paths();
+    let mopd_name = format_ident!("oapi_{}", targs.sufix);
+
+    let mut stor = Vec::new();
+
+    stor.push(quote! {
+        use super::#model;
+        use rwf::prelude::*;
+        use rwf::http::{Request, Response};
+        use rwf::controller::ModelListQuery;
+    });
 
     let mut attrs = Vec::new();
     attrs.push(parse_quote!{
         #[derive(Debug, Clone, Default, rwf::macros::ModelController, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
     });
-    ItemStruct {
+
+    let controller = ItemStruct {
         attrs,
         vis: Visibility::Public(Token![pub](proc_macro2::Span::call_site())),
         struct_token: Token![struct](proc_macro2::Span::call_site()),
@@ -20,27 +31,32 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
         generics: Generics::default(),
         fields: Fields::Unit,
         semi_token: None,
-    }.to_tokens(&mut output);
+    }
+    .into_token_stream();
+    stor.push(controller);
 
     let model = input.ident.clone();
     let pkey_type = targs.ty.clone();
     let ctrl = targs.ctrl.clone();
-    let suffix = targs.sufix.clone();
 
     let path_impl = targs.gen_oapi(model.clone());
 
-    quote!{
-        impl rwf::controller::RestController for #ctrl {
-            type Resource = #pkey_type;
-        }
+    stor.push(
+        quote! {
 
-        impl rwf::controller::ModelController for #ctrl {
-            type Model = #model;
+            impl rwf::controller::RestController for #ctrl {
+                type Resource = #pkey_type;
+            }
+
+            impl rwf::controller::ModelController for #ctrl {
+                type Model = #model;
+            }
         }
-    }.to_tokens(&mut output);
-    let module_name = format_ident!("oapi_{}", suffix);
-    let paths = targs.gen_doc_paths();
-    quote!{
+        .into_token_stream(),
+    );
+
+    stor.push(
+        quote! {
             #[derive(OpenApi)]
             #[openapi(
                 components(
@@ -54,6 +70,16 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
             #(
                 #path_impl
             )*
-        }.to_tokens(&mut output);
+        }
+        .into_token_stream(),
+    );
+    let output = quote! {
+        pub mod #mopd_name {
+            #(
+                #stor
+            )*
+        }
+    };
+    //eprintln!("{}", output);
     output.into_token_stream()
 }

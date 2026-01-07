@@ -703,12 +703,15 @@ pub trait ModelController: Controller {
 #[into_params(parameter_in = Query)]
 pub struct ModelListQuery {
     page: Option<i32>,
-    page_size: Option<i32>
+    page_size: Option<i32>,
 }
 
 impl Default for ModelListQuery {
     fn default() -> Self {
-        Self {page: Some(1), page_size: Some(25)}
+        Self {
+            page: Some(1),
+            page_size: Some(25),
+        }
     }
 }
 
@@ -716,25 +719,34 @@ impl Default for ModelListQuery {
 pub enum PKeyTypes {
     Small(i16),
     Middle(i32),
-    Large(i64)
+    Large(i64),
 }
 
 pub trait IntoPkey {
     fn pkey_type(&self) -> PKeyTypes;
 }
 impl IntoPkey for i16 {
-    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Small(*self)}
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Small(*self)
+    }
 }
 
 impl IntoPkey for i32 {
-    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Middle(*self)}
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Middle(*self)
+    }
 }
 
 impl IntoPkey for i64 {
-    fn pkey_type(&self) -> PKeyTypes {PKeyTypes::Large(*self)}
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Large(*self)
+    }
 }
 
-impl<T> From<T> for PKeyTypes where T: IntoPkey {
+impl<T> From<T> for PKeyTypes
+where
+    T: IntoPkey,
+{
     fn from(value: T) -> Self {
         value.pkey_type()
     }
@@ -747,23 +759,22 @@ impl Default for PKeyTypes {
 }
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, utoipa::IntoParams)]
 #[into_params(parameter_in = Path)]
-pub struct ModelPkeyParam
-{
-    id: PKeyTypes
+pub struct ModelPkeyParam {
+    id: PKeyTypes,
 }
 impl From<PKeyTypes> for ModelPkeyParam {
     fn from(value: PKeyTypes) -> Self {
-        ModelPkeyParam {id: value}
+        ModelPkeyParam { id: value }
     }
 }
-
 
 pub trait PkeyParamGenerator {
-    fn param(val:  impl IntoPkey) -> ModelPkeyParam {
-        ModelPkeyParam{id: val.pkey_type()}
+    fn param(val: impl IntoPkey) -> ModelPkeyParam {
+        ModelPkeyParam {
+            id: val.pkey_type(),
+        }
     }
 }
-
 
 /// A controller that handles WebSocket connections.
 #[async_trait]

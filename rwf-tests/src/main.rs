@@ -16,23 +16,20 @@ use rwf::{
     prelude::*,
     register_callback,
 };
-use rwf_macros::{Context};
+use rwf_macros::Context;
 
 use std::time::Instant;
-use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 use tracing::error;
-use utoipa::{OpenApi};
+use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
+use utoipa::OpenApi;
 
 mod components;
 mod controllers;
 pub mod models;
 
-use models::{Order, OrderItem, User, Product};
-use crate::models::CreateUserCallback;
 use crate::models::oapi_backend::OpenApiDocs;
-
-
-
+use crate::models::CreateUserCallback;
+use models::{Order, OrderItem, Product, User};
 
 #[derive(Default, Debug, Copy, Clone)]
 struct OpenApiController;
@@ -40,16 +37,19 @@ struct OpenApiController;
 #[async_trait]
 impl Controller for OpenApiController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        let accept = match request.header("accept").map(|s| s.as_str())  {
+        let accept = match request.header("accept").map(|s| s.as_str()) {
             Some("application/json") => true,
             Some("application/yaml") => false,
             None => true,
             Some(s) => {
                 error!("Invalid Accept Header {}", s);
-                return Ok(Response::bad_request())
+                return Ok(Response::bad_request());
             }
         };
-        let oapi = OpenApiDocs::openapi();//.nest("/tmodel", crate::models::oapi_test_model::ApiDoc::openapi());
+        let oapi = OpenApiDocs::openapi()
+            .nest("/users", models::oapi_users::ApiDoc::openapi())
+            .nest("/products", models::oapi_produucts::ApiDoc::openapi())
+            .nest("/orderItems", models::oapi_order_items::ApiDoc::openapi()); //.nest("/tmodel", crate::models::oapi_test_model::ApiDoc::openapi());
 
         if accept {
             Ok(Response::new().json(oapi)?)
@@ -74,11 +74,7 @@ impl Controller for BaseController {
 impl RestController for BaseController {
     type Resource = String;
 
-    async fn get(
-        &self,
-        _request: &Request,
-        id: &String,
-    ) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &String) -> Result<Response, Error> {
         Ok(Response::new().html(format!("<h1>controller id: {}, id: {}</h1>", self.id, id)))
     }
 }
@@ -132,7 +128,6 @@ impl Controller for OrdersController {
     }
 }
 
-
 #[async_trait]
 impl RestController for OrdersController {
     type Resource = i64;
@@ -183,11 +178,7 @@ impl Controller for MyWebsocketController {
 
 #[async_trait]
 impl WebsocketController for MyWebsocketController {
-    async fn client_message(
-        &self,
-        user_id: &SessionId,
-        message: Message,
-    ) -> Result<(), Error> {
+    async fn client_message(&self, user_id: &SessionId, message: Message) -> Result<(), Error> {
         println!("echo: {:?}", message);
         // send it back
         use rwf::comms::Comms;
@@ -408,11 +399,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let view = Order::all()
         .select_columns(Order::all_columns().as_slice())
         .join::<User>()
-        .select_aggregated(&[(
-            Column::new("users", "name"),
-            "",
-            Some("username"),
-        )]);
+        .select_aggregated(&[(Column::new("users", "name"), "", Some("username"))]);
     let order_data = view.fetch_picked(&mut conn).await?;
     assert_eq!(
         order_data.get_entry("name").unwrap().1,
@@ -424,16 +411,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let ordctl = OrdersController {
-        auth: AuthHandler::new(AllowAll{}),
+        auth: AuthHandler::new(AllowAll {}),
         middlware: MiddlewareSet::new(vec![
-                RateLimiter::per_second(10).middleware(),
-                SecureId::default().middleware(),
-        ])
+            RateLimiter::per_second(10).middleware(),
+            SecureId::default().middleware(),
+        ]),
     };
     let hdl = ordctl.crud("/orders");
     let _path = hdl.path().clone();
 
-    
     //ApiDoc::openapi().paths
 
     Server::new(vec![
@@ -448,7 +434,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/base"),
         BasePlayerController {}.route("/base/player"),
         OpenApiController::default().route("/openapi"),
-        hdl
+        hdl,
     ])
     .launch()
     .await?;

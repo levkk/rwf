@@ -22,26 +22,24 @@ impl ToParameter for i64 {
 impl ToParameter for i32 {
     fn to_parameter(s: &str) -> Result<Self, crate::http::Error>
     where
-        Self: Sized
+        Self: Sized,
     {
         match s.parse() {
             Ok(id) => Ok(id),
             Err(_) => Err(Error::MalformedRequest("i64")),
         }
-
     }
 }
 
 impl ToParameter for i16 {
     fn to_parameter(s: &str) -> Result<Self, crate::http::Error>
     where
-        Self: Sized
+        Self: Sized,
     {
         match s.parse() {
             Ok(id) => Ok(id),
             Err(_) => Err(Error::MalformedRequest("i64")),
         }
-
     }
 }
 
