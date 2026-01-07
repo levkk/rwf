@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 use rwf::crypto::encrypt_number;
-use rwf::model::{Column, Model, Pool, Scope, Value};
+use rwf::model::{Column, Model, Pool, Value};
 use rwf::view::Templates;
 use rwf::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, ModelListQuery, SessionId, StaticFiles, WebsocketController,
+        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController,
     },
-    http::{websocket, Request, Response, Server, Stream},
+    http::{Request, Response, Server, Stream},
     job::Job,
     model::{
         callbacks::{Callback, CallbackKind},
@@ -15,15 +15,13 @@ use rwf::{
     },
     prelude::*,
     register_callback,
-    serde::{Deserialize, Serialize},
 };
-use rwf_macros::{Context, Model};
+use rwf_macros::{Context};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 use tracing::error;
-use utoipa::{OpenApi, ToResponse, ToSchema};
-use utoipa::openapi::OpenApiBuilder;
+use utoipa::{OpenApi};
 
 mod components;
 mod controllers;
@@ -31,7 +29,7 @@ pub mod models;
 
 use models::{Order, OrderItem, User, Product};
 use crate::models::CreateUserCallback;
-use crate::models::OpenApiDocs;
+use crate::models::oapi_backend::OpenApiDocs;
 
 
 
@@ -41,7 +39,7 @@ struct OpenApiController;
 
 #[async_trait]
 impl Controller for OpenApiController {
-    async fn handle(&self, request: &Request) -> Result<Response, rwf::controller::Error> {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let accept = match request.header("accept").map(|s| s.as_str())  {
             Some("application/json") => true,
             Some("application/yaml") => false,
@@ -65,14 +63,14 @@ struct BaseController {
     id: String,
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for BaseController {
-    async fn handle(&self, request: &Request) -> Result<Response, rwf::controller::Error> {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
         RestController::handle(self, request).await
     }
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl RestController for BaseController {
     type Resource = String;
 
@@ -80,31 +78,23 @@ impl RestController for BaseController {
         &self,
         _request: &Request,
         id: &String,
-    ) -> Result<Response, rwf::controller::Error> {
+    ) -> Result<Response, Error> {
         Ok(Response::new().html(format!("<h1>controller id: {}, id: {}</h1>", self.id, id)))
     }
 }
 
 struct BasePlayerController {}
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for BasePlayerController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         RestController::handle(self, request).await
     }
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl RestController for BasePlayerController {
     type Resource = i64;
-
-    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
-        request
-            .session()
-            .websocket()
-            .send(websocket::Message::Text("controller websocket".into()))?;
-        Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
-    }
 
     async fn list(&self, _request: &Request) -> Result<Response, Error> {
         // match tokio::fs::File::create("fsdf").await {
@@ -113,6 +103,14 @@ impl RestController for BasePlayerController {
         // };
         Ok(Response::new().html("list all the players"))
     }
+
+    async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+        request
+            .session()
+            .websocket()
+            .send(Message::Text("controller websocket".into()))?;
+        Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
+    }
 }
 
 struct OrdersController {
@@ -120,7 +118,7 @@ struct OrdersController {
     middlware: MiddlewareSet,
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for OrdersController {
     fn auth(&self) -> &AuthHandler {
         &self.auth
@@ -135,19 +133,19 @@ impl Controller for OrdersController {
 }
 
 
-#[rwf::async_trait]
+#[async_trait]
 impl RestController for OrdersController {
     type Resource = i64;
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl ModelController for OrdersController {
     type Model = Order;
 }
 
 struct JobOne;
 
-#[rwf::async_trait]
+#[async_trait]
 impl Job for JobOne {
     async fn execute(&self, _args: serde_json::Value) -> Result<(), rwf::job::Error> {
         Ok(())
@@ -156,7 +154,7 @@ impl Job for JobOne {
 
 struct JobTwo;
 
-#[rwf::async_trait]
+#[async_trait]
 impl Job for JobTwo {
     async fn execute(&self, args: serde_json::Value) -> Result<(), rwf::job::Error> {
         println!("job two args: {:?}", args);
@@ -172,23 +170,23 @@ impl MyWebsocketController {
     }
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for MyWebsocketController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        WebsocketController::handle(self, request).await
-    }
-
     async fn handle_stream(&self, request: &Request, stream: Stream<'_>) -> Result<bool, Error> {
         WebsocketController::handle_stream(self, request, stream).await
     }
+
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
+        WebsocketController::handle(self, request).await
+    }
 }
 
-#[rwf::async_trait]
+#[async_trait]
 impl WebsocketController for MyWebsocketController {
     async fn client_message(
         &self,
         user_id: &SessionId,
-        message: websocket::Message,
+        message: Message,
     ) -> Result<(), Error> {
         println!("echo: {:?}", message);
         // send it back
@@ -201,9 +199,9 @@ impl WebsocketController for MyWebsocketController {
 
 struct IndexController;
 
-#[rwf::async_trait]
+#[async_trait]
 impl Controller for IndexController {
-    async fn handle(&self, request: &Request) -> Result<Response, rwf::controller::Error> {
+    async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let encs = (1..29)
             .into_iter()
             .map(|i| encrypt_number(i).unwrap())
@@ -396,7 +394,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .start()
     //     .await?
     //     .spawn();
-    println!("number: {}", rwf::crypto::encrypt_number(1).unwrap());
+    println!("number: {}", encrypt_number(1)?);
 
     let user_no_order = User::all()
         .join_left::<Order>()
@@ -404,18 +402,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fetch(&mut conn)
         .await;
     assert!(user_no_order.is_ok());
-    let user_no_order = user_no_order.unwrap();
+    let user_no_order = user_no_order?;
     assert_eq!(user_no_order.name, "noorder".to_string());
 
     let view = Order::all()
         .select_columns(Order::all_columns().as_slice())
         .join::<User>()
         .select_aggregated(&[(
-            rwf::model::Column::new("users", "name"),
+            Column::new("users", "name"),
             "",
             Some("username"),
         )]);
-    let order_data = view.fetch_picked(&mut conn).await.unwrap();
+    let order_data = view.fetch_picked(&mut conn).await?;
     assert_eq!(
         order_data.get_entry("name").unwrap().1,
         &Value::String("test".to_string())

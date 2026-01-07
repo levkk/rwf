@@ -1,16 +1,18 @@
 use rwf::async_trait;
-use rwf::controller::ModelListQuery;
-use rwf::http::{Request, Response};
 use rwf::model::{Model, Scope};
 use rwf::model::callbacks::Callback;
-use rwf::prelude::{Deserialize, OpenApi, Serialize, ToResponse, ToSchema};
+use rwf::prelude::{Deserialize, Serialize, ToResponse, ToSchema};
 use rwf_macros::Model;
 
 #[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(Order)]
 #[allow(dead_code)]
+#[schema(title="An simple User.", description="A User/Customer implementation, which is referenced by Order")]
+#[response(description="Representation of a single User azzoziated with the his Orders")]
 pub struct User {
+    #[schema(minimum=1, format="Int64", example=512)]
     pub(crate)id: Option<i64>,
+    #[schema(required=true, examples("John", "Maria"))]
     pub(crate) name: String,
 }
 
@@ -69,60 +71,75 @@ impl OrderItem {
     }
 }
 
-#[utoipa::path(
-    get,
-    path="/orders",
-    responses(
-        (status = 200, body=Vec<Order>),
-        (status = 500, description="Server Error")
-    ),
-    params(
-        ModelListQuery
-    )
-)]
-fn list_orders(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+pub mod oapi_backend {
+    use super::{User, Order, OrderItem, Product};
+    use rwf::prelude::*;
+    use rwf::http::{Request, Response};
+    use rwf::controller::ModelListQuery;
 
-#[utoipa::path(
-    post,
-    path="/orders",
-    responses(
-          (status = 200, body=Order),
-          (status = 400, description = "Invalid User Input"),
-          (status = 500, description="Server Error")                                                  ),
-    request_body(content= Order, description = "The new Model to create")
-)]
-fn create_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+    #[utoipa::path(
+        get,
+        path = "/orders",
+        responses(
+            (status = 200, body=Vec<Order>),
+            (status = 500, description="Server Error")
+        ),
+        params(
+            ModelListQuery
+        )
+    )]
+    fn list_orders(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
 
-#[utoipa::path(get, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
-fn get_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+    #[utoipa::path(
+        post,
+        path = "/orders",
+        responses(
+            (status = 200, body=Order),
+            (status = 400, description = "Invalid User Input"),
+            (status = 500, description="Server Error")),
+        request_body(content= Order, description = "The new Model to create")
+    )]
+    fn create_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
 
-#[utoipa::path(put, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description = "Invalid User Input"), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content=Order, description="Full Model for full update"))]
-fn update_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+    #[utoipa::path(get, path = "/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")
+    ), params(("id" = i64, Path, description = "Database ID of the Model")))]
+    fn get_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
 
-#[utoipa::path(patch, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description="Invalid User Input"),(status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content_type="application/json", description="Partial Model for partial update"))]
-fn patch_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+    #[utoipa::path(put, path = "/orders/{id}", responses((status = 200, body=Order), (status = 400, description = "Invalid User Input"), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")
+    ), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content=Order, description="Full Model for full update"
+    ))]
+    fn update_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
 
-#[utoipa::path(delete, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
-fn delete_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
+    #[utoipa::path(patch, path = "/orders/{id}", responses((status = 200, body=Order), (status = 400, description="Invalid User Input"),(status = 404, description = "No such model found"), (status = 500, description = "Server Error")
+    ), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(
+        content_type = "application/json",
+        description = "Partial Model for partial update"
+    ))]
+    fn patch_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
 
-#[derive(OpenApi)]
-#[openapi(
-    components(
-        schemas(User, Order, Product, OrderItem),
-        responses(Order),
-    ),
-    paths(list_orders, create_order, get_order, delete_order, update_order, patch_order)
-)]
-pub struct OpenApiDocs;
+    #[utoipa::path(delete, path = "/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")
+    ), params(("id" = i64, Path, description = "Database ID of the Model")))]
+    fn delete_order(_request: &Request) -> Result<Response, rwf::http::Error> {
+        Ok(Response::not_implemented())
+    }
+
+    #[derive(OpenApi)]
+    #[openapi(
+        components(
+            schemas(User, Order, Product, OrderItem),
+            responses(Order),
+        ),
+        paths(list_orders, create_order, get_order, delete_order, update_order, patch_order)
+    )]
+    pub struct OpenApiDocs;
+}
