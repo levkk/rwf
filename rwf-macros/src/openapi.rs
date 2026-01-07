@@ -2,6 +2,7 @@ use crate::model::TypeParser;
 use proc_macro2;
 use quote::quote;
 use quote::{format_ident, ToTokens};
+
 use syn::{parse_quote, Fields, Generics, ItemStruct, Token, Visibility};
 
 pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2::TokenStream {

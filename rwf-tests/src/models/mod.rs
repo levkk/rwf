@@ -4,7 +4,6 @@ use rwf::model::{Model, Scope};
 use rwf::prelude::{Deserialize, Serialize, ToResponse, ToSchema};
 use rwf_macros::Model;
 
-
 #[rwf_macros::generate_full_model(i64, UssersController, users, "/users")]
 #[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(Order)]

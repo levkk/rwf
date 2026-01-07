@@ -1,7 +1,7 @@
 use super::*;
 use parse::Parse;
 use proc_macro2::Span;
-use quote::{format_ident};
+use quote::format_ident;
 use syn::parse::ParseStream;
 use syn::*;
 
