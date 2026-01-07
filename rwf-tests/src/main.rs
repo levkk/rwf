@@ -5,7 +5,7 @@ use rwf::view::Templates;
 use rwf::{
     controller::{
         middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController, ModelListQuery,
+        AllowAll, AuthHandler, MiddlewareSet, ModelListQuery, SessionId, StaticFiles, WebsocketController,
     },
     http::{websocket, Request, Response, Server, Stream},
     job::Job,
@@ -22,86 +22,16 @@ use rwf_macros::{Context, Model};
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 use tracing::error;
-use utoipa::{ToSchema, ToResponse, OpenApi};
+use utoipa::{OpenApi, ToResponse, ToSchema};
 use utoipa::openapi::OpenApiBuilder;
 
 mod components;
 mod controllers;
-mod models;
+pub mod models;
 
-#[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize, ToSchema, ToResponse)]
-#[has_many(Order)]
-#[allow(dead_code)]
-struct User {
-    id: Option<i64>,
-    name: String,
-}
-
-#[derive(Debug, Default)]
-struct CreateUserCallback;
-
-#[async_trait]
-impl Callback<User> for CreateUserCallback {
-    async fn callback(mut self, data: User) -> User {
-        eprintln!("{:?}", data);
-        data
-    }
-}
-
-#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
-#[belongs_to(User)]
-#[has_many(OrderItem)]
-#[allow(dead_code)]
-#[schema(title="An exaple Order", description="A Order in the DB System. Referebces the user who made the order and is refereenced by all related order items")]
-#[response(description="Rerpresentation of a single Order azzoziated with the buying User and ordere3d Items")]
-struct Order {
-    #[schema(minimum=1, example=128, format="Int64")]
-    id: Option<i64>,
-    #[schema(minimum=1, example=32, format="Int64")]
-    user_id: i64,
-    name: String,
-    #[schema(required=false, nullable=true)]
-    optional: Option<String>,
-}
-
-#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
-#[belongs_to(Order)]
-#[belongs_to(Product)]
-#[allow(dead_code)]
-struct OrderItem {
-    #[schema(minimum=1, example=128, format="Int64")]
-    id: Option<i64>,
-    order_id: i64,
-    product_id: i64,
-    amount: f64,
-}
-
-#[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
-#[has_many(OrderItem)]
-#[allow(dead_code)]
-struct Product {
-    id: Option<i64>,
-    name: String,
-    avg_price: f64,
-}
-
-impl OrderItem {
-    fn expensive() -> Scope<Self> {
-        Self::all().filter_gt("amount", 5.0)
-    }
-}
-
-
-
-#[derive(OpenApi)]
-#[openapi(
-    components(
-        schemas(User, Order, Product, OrderItem),
-        responses(Order),
-    ),
-    paths(list_orders, create_order, get_order, delete_order, update_order, patch_order)
-    )]
-struct OpenApiDocs;
+use models::{Order, OrderItem, User, Product};
+use crate::models::CreateUserCallback;
+use crate::models::OpenApiDocs;
 
 
 
@@ -203,49 +133,6 @@ impl Controller for OrdersController {
         ModelController::handle(self, request).await
     }
 }
-
-#[utoipa::path(
-    get,
-    path="/orders",
-    responses(
-        (status = 200, body=Vec<Order>),
-        (status = 500, description="Server Error")
-    ),
-    params(
-        ModelListQuery
-    )
-)]
-fn list_orders(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
-#[utoipa::path(
-    post,
-    path="/orders",
-    responses(
-          (status = 200, body=Order),
-          (status = 400, description = "Invalid User Input"),
-          (status = 500, description="Server Error")                                                  ),
-    request_body(content= Order, description = "The new Model to create")
-)]
-fn create_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}#[utoipa::path(get, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
-fn get_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
-#[utoipa::path(put, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description = "Invalid User Input"), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content=Order, description="Full Model for full update"))]
-fn update_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
-#[utoipa::path(patch, path="/orders/{id}", responses((status = 200, body=Order), (status = 400, description="Invalid User Input"),(status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")), request_body(content_type="application/json", description="Partial Model for partial update"))]
-fn patch_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
-#[utoipa::path(delete, path="/orders/{id}", responses((status = 200, body=Order), (status = 404, description = "No such model found"), (status = 500, description = "Server Error")), params(("id" = i64, Path, description = "Database ID of the Model")))]
-fn delete_order(_request: &Request) -> Result<Response, rwf::http::Error> {
-    Ok(Response::not_implemented())
-}
-
 
 
 #[rwf::async_trait]
