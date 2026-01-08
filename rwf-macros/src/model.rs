@@ -293,8 +293,6 @@ pub struct TypeParser {
     pub ctrl: Ident,
     _comma2: Token![,],
     pub sufix: Ident,
-    _comma3: Token![,],
-    pub _apipth: LitStr,
 }
 
 impl TypeParser {
@@ -314,6 +312,8 @@ impl TypeParser {
         let requests = self.request_body(model.clone());
         let funcs = self.path_name_list();
 
+        let model_tag = LitStr::new(model.to_string().as_str(), Span::call_site());
+
         operations
             .into_iter()
             .zip(paths.into_iter())
@@ -322,16 +322,20 @@ impl TypeParser {
             .zip(responses.into_iter().zip(funcs.into_iter()))
             .map(|((o, p, par, req), (res, func))| (o, p, par, req, res, func))
             .map(|(o, p, par, req, res, func)| {
+                let endpoint_tag = LitStr::new({
+                    if p.token().to_string().as_str().contains("{id}") {"InstanceUrl"} else {"CollectionUrl"}
+                                               }, Span::call_site());
                 if o.eq("get") || o.eq("delete") {
                     quote! {
                         #[utoipa::path(
                             #o,
                             path=#p,
                             #par,
-                            responses(#res)
+                            responses(#res),
+                            tags=["ModelController", #model_tag, #endpoint_tag],
                         )]
-                        fn #func (_request: &Request) -> Result<Response, rwf::http::Error> {
-                            Ok(Response::not_implemented())
+                        fn #func (_request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::http::Error> {
+                            Ok(rwf::http::Response::not_implemented())
                         }
                     }
                 } else {
@@ -341,10 +345,11 @@ impl TypeParser {
                             path=#p,
                             #par,
                             #req,
-                            responses(#res)
+                            responses(#res),
+                            tags=["ModelController", #model_tag, #endpoint_tag],
                         )]
-                        fn #func (_request: &Request) -> Result<Response, rwf::http::Error> {
-                            Ok(Response::not_implemented())
+                        fn #func (_request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::http::Error> {
+                            Ok(rwf::http::Response::not_implemented())
                         }
                     }
                 }
@@ -422,7 +427,7 @@ impl TypeParser {
         let pkey_type = self.ty.clone();
         vec![
             quote! {
-                params(ModelListQuery)
+                params(rwf::controller::ModelListQuery)
             },
             quote! {
                 params(
@@ -473,16 +478,12 @@ impl Parse for TypeParser {
         let ctrl: Ident = input.parse()?;
         let _comma2 = input.parse()?;
         let sufix: Ident = input.parse()?;
-        let _comma3 = input.parse()?;
-        let _apipth: LitStr = input.parse()?;
         Ok(Self {
             ty,
             _comma,
             ctrl,
             _comma2,
             sufix,
-            _comma3,
-            _apipth,
         })
     }
 }

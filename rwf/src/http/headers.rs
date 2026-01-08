@@ -84,7 +84,7 @@ impl Headers {
     }
 
     /// Get a borrowing interator to the headers.
-    pub fn iter(&self) -> Iter<String, String> {
+    pub fn iter(&self) -> Iter<'_, String, String> {
         self.headers.iter()
     }
 

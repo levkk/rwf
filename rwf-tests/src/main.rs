@@ -17,154 +17,18 @@ use rwf::{
     register_callback,
 };
 use rwf_macros::Context;
-use std::str::FromStr;
 
 use std::time::Instant;
-use tracing::info;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
-use utoipa::OpenApi;
-use utoipa_redoc::Redoc;
 
 mod components;
 mod controllers;
 pub mod models;
 
-use crate::models::oapi_backend::OpenApiDocs;
 use crate::models::CreateUserCallback;
-use crate::OpenApiTargets::Rapidoc;
 use models::{Order, OrderItem, Product, User};
 
-//[derive(OpenApi)]
-#[derive(Clone, OpenApi, Default, Copy)]
-#[openapi(
-    info(
-        title="rwf", version="0.2.1", contact(name="levkk", url="https://github.com/levkk?tab=packages", email="none@cf.org"), license(name="MIT", url="https://github.com/levkk/rwf/blob/main/LICENSE"),
-        description = "OpenAPI definitions and informations about the RWF crate. Also provides API/Type descriptions for Models / ModelController"
-    ),
-    external_docs(url = "https://rustwebframework.org/", description="Getting started Dcumentation"),
-    tags(
-        (name = "Model", description = "MOdel/ModdelController related Enndpoints"),
-    (name = "RWF", description = "The OpenAPI Specs of RWF. Metainformations about RWF and the guys working on. Informations about anything what have to do whith an impplementation has a different Tag", external_docs(url="https://github.com/levkk/rwf/", description="Link to the git, as any Question could find a answer there")),
-    ),
-)]
-pub struct OpenApiController;
-
-///pub struct RwfOpenApi;
-
-#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq, Ord, Hash)]
-enum OpenApiTargets {
-    Yaml,
-    Json,
-    Doc,
-    Redoc,
-    Rapidoc,
-    Swagger,
-    Deny,
-}
-
-impl FromStr for OpenApiTargets {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "yaml" => Ok(OpenApiTargets::Yaml),
-            "json" => Ok(OpenApiTargets::Json),
-            "doc" => Ok(OpenApiTargets::Doc),
-            "redoc" => Ok(OpenApiTargets::Redoc),
-            "rapoidoc" => Ok(OpenApiTargets::Rapidoc),
-            "swagger" => Ok(OpenApiTargets::Swagger),
-            "deny" => Ok(OpenApiTargets::Deny),
-            _ => Err("Unknown OpenApi Targets"),
-        }
-    }
-}
-
-impl std::fmt::Display for OpenApiTargets {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OpenApiTargets::Yaml => write!(f, "yaml"),
-            OpenApiTargets::Json => write!(f, "json"),
-            OpenApiTargets::Doc => write!(f, "doc"),
-            OpenApiTargets::Redoc => write!(f, "redoc"),
-            OpenApiTargets::Rapidoc => write!(f, "rapoidoc"),
-            OpenApiTargets::Swagger => write!(f, "swagger"),
-            OpenApiTargets::Deny => write!(f, "deny"),
-        }
-    }
-}
-
-impl OpenApiController {
-    fn match_url(self, request: &Request) -> OpenApiTargets {
-        return match request.path().path() {
-            "/doc/openapi.json" => OpenApiTargets::Json,
-            "/doc/openapi.yaml" => OpenApiTargets::Yaml,
-            "/doc" => OpenApiTargets::Doc,
-            "/doc/redoc" => OpenApiTargets::Redoc,
-            "/doc/rapidoc" => OpenApiTargets::Rapidoc,
-            "/doc/swagger" => OpenApiTargets::Swagger,
-            "/doc/openapi" => match request.query().get::<OpenApiTargets>("target") {
-                Some(target) => match target {
-                    OpenApiTargets::Yaml => OpenApiTargets::Yaml,
-                    OpenApiTargets::Json => OpenApiTargets::Json,
-                    OpenApiTargets::Doc => OpenApiTargets::Doc,
-                    OpenApiTargets::Redoc => OpenApiTargets::Redoc,
-                    OpenApiTargets::Rapidoc => OpenApiTargets::Rapidoc,
-                    OpenApiTargets::Swagger => OpenApiTargets::Swagger,
-                    OpenApiTargets::Deny => OpenApiTargets::Deny,
-                },
-                None => OpenApiTargets::Deny,
-            },
-            _ => OpenApiTargets::Deny,
-        };
-    }
-    fn match_header(&self, request: &Request) -> OpenApiTargets {
-        match request.header("accept").map(|s| s.as_str()) {
-            Some("application/json") => OpenApiTargets::Json,
-            Some("application/yaml") => OpenApiTargets::Yaml,
-            None => OpenApiTargets::Json,
-            Some(_) => OpenApiTargets::Deny,
-        }
-    }
-
-    pub fn nest_model_appis() {
-        //toipa::openapi::OpenApi {
-        let rwfapi = Self::openapi()
-            .nest("/api/", models::oapi_backend::OpenApiDocs::openapi())
-            .nest("/api/users", models::oapi_users::ApiDoc::openapi())
-            .nest("/api/orditems", models::oapi_order_items::ApiDoc::openapi())
-            .nest("/api/products", models::oapi_produucts::ApiDoc::openapi());
-        eprintln!("{}", serde_json::to_string_pretty(&rwfapi).unwrap());
-    }
-}
-
-#[async_trait]
-impl Controller for OpenApiController {
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        let target = self.match_url(request);
-        let target = if OpenApiTargets::Deny.eq(&target) {
-            self.match_header(request)
-        } else {
-            target
-        };
-        let oapi = OpenApiDocs::openapi()
-            .nest("/users", models::oapi_users::ApiDoc::openapi())
-            .nest("/products", models::oapi_produucts::ApiDoc::openapi())
-            .nest("/orderItems", models::oapi_order_items::ApiDoc::openapi()); //.nest("/tmodel", crate::models::oapi_test_model::ApiDoc::openapi());
-        let redoc = Redoc::new(oapi.clone());
-        let rapidoc = utoipa_rapidoc::RapiDoc::new(include_str!("./controllers/rapidoc.json"));
-
-        return match target {
-            OpenApiTargets::Yaml => {
-                Ok(Response::new().text(oapi.to_yaml().map_err(|e| Error::Error(Box::new(e)))?))
-            }
-            OpenApiTargets::Json => Ok(Response::new().json(oapi)?),
-            OpenApiTargets::Doc => Ok(Response::bad_request()),
-            OpenApiTargets::Redoc => Ok(Response::new().html(redoc.to_html())),
-            OpenApiTargets::Rapidoc => Ok(Response::new().html(rapidoc.to_html())),
-            OpenApiTargets::Swagger => Ok(Response::new().html(redoc.to_html())),
-            OpenApiTargets::Deny => Ok(Response::forbidden()),
-        };
-    }
-}
+use rwf::controller::OpenApiController;
 
 struct BaseController {
     id: String,
@@ -527,23 +391,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hdl = ordctl.crud("/orders");
     let _path = hdl.path().clone();
 
-    //ApiDoc::openapi().paths
     use rwf_admin::*;
-    use utoipa_redoc;
+
     install()?;
     let engine = engine().auth(AuthHandler::new(rwf::controller::auth::BasicAuth {
         user: "rwf_admin".to_string(),
         password: "SPbgE5uipuPr7BVDXjifOFqdlQxVVPi".to_string(),
     }));
 
-    let static_files = StaticFiles::new("static")?
-        .preload("/static/pre", b"Hello World!")
-        .preload(
-            "/static/redoc",
-            utoipa_redoc::Redoc::new("http://127.0.0.1:8000/doc/openapi.json")
-                .to_html()
-                .as_bytes(),
-        );
+    let static_files = StaticFiles::new("static")?.preload("/static/pre", b"Hello World!");
 
     Server::new(vec![
         static_files.handler(),
@@ -554,9 +410,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         .route("/base"),
         BasePlayerController {}.route("/base/player"),
-        OpenApiController::default().wildcard("/doc"),
+        route!("/openapi" => OpenApiController),
         engine!("/admin" => engine),
         rwf_admin::static_files()?,
+        crud!("/api/users" => models::UserController),
+        crud!("/api/products" => models::ProductController),
+        crud!("/api/orders" => models::OrderController),
+        crud!("/api/orderitems" => models::OrderItemController),
     ])
     .launch()
     .await?;

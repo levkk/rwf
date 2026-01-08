@@ -39,17 +39,12 @@ pub mod wsgi;
 #[cfg(feature = "wsgi")]
 pub use wsgi::WsgiController;
 
+pub mod openapi;
 #[cfg(feature = "rack")]
 pub mod rack;
+
 #[cfg(feature = "rack")]
 pub use rack::RackController;
-
-pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
-pub use engine::Engine;
-pub use error::Error;
-pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
-pub use static_files::{CacheControl, StaticFiles};
-pub use turbo_stream::TurboStream;
 
 use super::http::{
     websocket::{self, DataFrame},
@@ -59,6 +54,13 @@ use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value}
 use crate::colors::MaybeColorize;
 use crate::comms::Comms;
 use crate::config::get_config;
+pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
+pub use engine::Engine;
+pub use error::Error;
+pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
+pub use openapi::OpenApiController;
+pub use static_files::{CacheControl, StaticFiles};
+pub use turbo_stream::TurboStream;
 
 use tokio::select;
 use tokio::time::{interval, timeout};

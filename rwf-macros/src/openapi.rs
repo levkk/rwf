@@ -6,25 +6,15 @@ use quote::{format_ident, ToTokens};
 use syn::{parse_quote, Fields, Generics, ItemStruct, Token, Visibility};
 
 pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2::TokenStream {
-    let model = input.ident.clone();
     let paths = targs.gen_doc_paths();
-    let mopd_name = format_ident!("oapi_{}", targs.sufix);
-
-    let mut stor = Vec::new();
-
-    stor.push(quote! {
-        use super::#model;
-        use rwf::prelude::*;
-        use rwf::http::{Request, Response};
-        use rwf::controller::ModelListQuery;
-    });
+    let mut output = proc_macro2::TokenStream::new();
 
     let mut attrs = Vec::new();
     attrs.push(parse_quote!{
         #[derive(Debug, Clone, Default, rwf::macros::ModelController, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
     });
 
-    let controller = ItemStruct {
+    ItemStruct {
         attrs,
         vis: Visibility::Public(Token![pub](proc_macro2::Span::call_site())),
         struct_token: Token![struct](proc_macro2::Span::call_site()),
@@ -33,54 +23,45 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParser) -> proc_macro2
         fields: Fields::Unit,
         semi_token: None,
     }
-    .into_token_stream();
-    stor.push(controller);
+    .to_tokens(&mut output);
 
     let model = input.ident.clone();
     let pkey_type = targs.ty.clone();
     let ctrl = targs.ctrl.clone();
-
     let path_impl = targs.gen_oapi(model.clone());
+    let apiname = format_ident!("{}OpenapiDoc", model);
 
-    stor.push(
-        quote! {
+    quote! {
+        impl rwf::controller::RestController for #ctrl {
+            type Resource = #pkey_type;
+        }
 
-            impl rwf::controller::RestController for #ctrl {
-                type Resource = #pkey_type;
+        impl rwf::controller::ModelController for #ctrl {
+            type Model = #model;
+
+            fn crud(self, path: &str) -> rwf::http::Handler {
+                rwf::controller::openapi::registrer_controller(path, #apiname :: openapi);
+                rwf::http::Handler::rest(path, self)
             }
-
-            impl rwf::controller::ModelController for #ctrl {
-                type Model = #model;
-            }
         }
-        .into_token_stream(),
-    );
+    }
+    .to_tokens(&mut output);
 
-    stor.push(
-        quote! {
-            #[derive(OpenApi)]
-            #[openapi(
-                components(
-                    schemas(#model),
-                    responses(#model)
-                ),
-                paths(#paths)
-            )]
-            pub struct ApiDoc;
+    quote! {
+        #[derive(OpenApi)]
+        #[openapi(
+            components(
+                schemas(#model),
+                responses(#model)
+            ),
+            paths(#paths)
+        )]
+        pub struct #apiname;
 
-            #(
-                #path_impl
-            )*
-        }
-        .into_token_stream(),
-    );
-    let output = quote! {
-        pub mod #mopd_name {
-            #(
-                #stor
-            )*
-        }
-    };
-    //eprintln!("{}", output);
-    output.into_token_stream()
+        #(
+            #path_impl
+        )*
+    }
+    .to_tokens(&mut output);
+    output
 }

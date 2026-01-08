@@ -10,10 +10,6 @@ rwf = { path = "../rwf" }
 rwf-macros = { path = "../rwf-macros" }
 rwf-admin = { path = "../rwf-admin" }
 tokio = { version = "1", features = ["net", "fs", "rt-multi-thread"] }
-utoipa = {features = ["yaml", "time", "uuid","ulid", "url", "rc_schema"], version = "5.4.0"}
-utoipa-redoc = "6"
-utoipa-swagger-ui = {version="9", features=["cache", "vendored"]}
-utoipa-rapidoc = "6"
 tracing-subscriber = "*"
 console-subscriber = "*"
 serde_json = "1"
