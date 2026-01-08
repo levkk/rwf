@@ -4,6 +4,7 @@
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
+use rustls_platform_verifier::BuilderVerifierExt;
 use std::env::var;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
@@ -556,7 +557,8 @@ impl DatabaseConfig {
         } else {
             let rtls = if self.tls_ca.is_none() {
                 rustls::ClientConfig::builder()
-                    .with_root_certificates(rustls::RootCertStore::empty())
+                    .with_platform_verifier()
+                    .unwrap()
                     .with_no_client_auth()
             } else {
                 let mut ca_store = rustls::RootCertStore::empty();

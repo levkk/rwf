@@ -49,6 +49,7 @@ impl<T: FromRow> TryFrom<&Query<T>> for CallbackKind {
         match value {
             Query::Insert(_) => Ok(Self::Insert),
             Query::Update(_) => Ok(Self::Update),
+            Query::Delete(_) => Ok(Self::Delete),
             _ => Err("No matching CallbackKind"),
         }
     }

@@ -535,7 +535,7 @@ pub trait ModelController: Controller {
             Ok(Some(id)) => match method {
                 Method::Get => ModelController::get(self, request, &id).await,
                 Method::Put => ModelController::update(self, request, &id).await,
-                Method::Delete => return Ok(Response::not_found()),
+                Method::Delete => ModelController::delete(self, request, &id).await,
                 Method::Patch => ModelController::patch(self, request, &id).await,
                 _ => Ok(Response::method_not_allowed()),
             },
@@ -644,6 +644,26 @@ pub trait ModelController: Controller {
         let mut conn = get_connection().await?;
         let model = model.save().fetch(&mut conn).await?;
         Ok(Response::new().json(model)?)
+    }
+
+    /// Removes a record if exists.
+    async fn delete(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+        let mut conn = get_connection().await?;
+
+        match Self::Model::find_by(Self::Model::primary_key(), *id)
+            .fetch_optional(&mut conn)
+            .await
+        {
+            Ok(Some(model)) => {
+                model.destroy().fetch(&mut conn).await?;
+                match Response::new().json(model) {
+                    Ok(response) => Ok(response),
+                    Err(err) => Ok(Response::internal_error(err)),
+                }
+            }
+            Ok(None) => Ok(Response::not_found()),
+            Err(e) => Ok(Response::internal_error(e)),
+        }
     }
 
     /// Partially update an existing model record.

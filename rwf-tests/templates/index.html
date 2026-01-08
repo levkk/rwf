@@ -35,6 +35,13 @@
                     </nav>
                 </div>
             </div>
+	    <div class="row">
+		    <ul clasy="list-group">
+		    <% for tup in encs.enumerate %>    
+		    	<li class="list-group-item"><a href="/orders/<%= tup.1 %>"><%= tup.0 %></a></li>
+		    <% end %>
+		    </ul>
+	    </div>
         </div>
     </body>
 </html>
