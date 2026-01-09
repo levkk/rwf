@@ -29,5 +29,5 @@ pub use macros::{
 };
 pub use rwf_macros as macros;
 pub use serde::{Deserialize, Serialize};
-pub use utoipa::{self, OpenApi, ToResponse, ToSchema, Modify};
+pub use utoipa::{self, Modify, OpenApi, ToResponse, ToSchema};
 pub use uuid::Uuid;

@@ -283,8 +283,6 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
     }
 }
 
-
-
 /// Relevant again, once we create OpenApi Models from Scratch
 
 /*

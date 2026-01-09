@@ -99,7 +99,7 @@ struct OpenapiOpenapi;
 #[derive(Clone)]
 pub enum OpenApiNesterOptions {
     Fn(fn() -> utoipa::openapi::OpenApi),
-    Value(utoipa::openapi::OpenApi)
+    Value(utoipa::openapi::OpenApi),
 }
 
 impl OpenApiNesterOptions {

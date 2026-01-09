@@ -3,16 +3,15 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 use quote::{format_ident, ToTokens};
 
-use syn::{ItemStruct, LitStr, Token, Type};
-use syn::parse::{Parse, ParseStream};
 use crate::snake_case;
+use syn::parse::{Parse, ParseStream};
+use syn::{ItemStruct, LitStr, Token, Type};
 
 pub fn generate_controller4(input: ItemStruct, targs: TypeParserInput) -> proc_macro2::TokenStream {
     let targs = targs.into_type_parser(&input);
 
     let paths = targs.gen_doc_paths();
     let mut output = proc_macro2::TokenStream::new();
-
 
     let model = targs.model.clone();
     let pkey_type = targs.ty.clone();
@@ -38,7 +37,7 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParserInput) -> proc_m
             }
         }
     }
-        .to_tokens(&mut output);
+    .to_tokens(&mut output);
 
     quote! {
         #[derive(OpenApi)]
@@ -58,7 +57,6 @@ pub fn generate_controller4(input: ItemStruct, targs: TypeParserInput) -> proc_m
     .to_tokens(&mut output);
     output
 }
-
 
 #[derive(Clone)]
 pub struct TypeParser {
@@ -254,9 +252,21 @@ pub struct TypeParserInput {
 }
 impl TypeParserInput {
     pub fn into_type_parser(self, input: &ItemStruct) -> TypeParser {
-
-        let sufix = Ident::new( pluralizer::pluralize(snake_case(self.model.to_string().as_str()).as_str(), 2, false).as_str(), Span::call_site());
-        TypeParser {ty: self.ty, ctrl: input.ident.clone(), model: self.model, sufix}
+        let sufix = Ident::new(
+            pluralizer::pluralize(
+                snake_case(self.model.to_string().as_str()).as_str(),
+                2,
+                false,
+            )
+            .as_str(),
+            Span::call_site(),
+        );
+        TypeParser {
+            ty: self.ty,
+            ctrl: input.ident.clone(),
+            model: self.model,
+            sufix,
+        }
     }
 }
 impl Parse for TypeParserInput {

@@ -3,9 +3,7 @@ use rwf::crypto::encrypt_number;
 use rwf::model::{Column, Model, Pool, Value};
 use rwf::view::Templates;
 use rwf::{
-    controller::{
-        AuthHandler, SessionId, StaticFiles, WebsocketController,
-    },
+    controller::{AuthHandler, SessionId, StaticFiles, WebsocketController},
     http::{Request, Response, Server, Stream},
     job::Job,
     model::{
@@ -15,7 +13,7 @@ use rwf::{
     prelude::*,
     register_callback,
 };
-use rwf_macros::{Context, generate_openapi_model_controller};
+use rwf_macros::{generate_openapi_model_controller, Context};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -27,8 +25,10 @@ pub mod models;
 use crate::models::CreateUserCallback;
 use models::{Order, OrderItem, Product, User};
 
-use rwf::controller::{AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter};
 use rwf::controller::middleware::SecureId;
+use rwf::controller::{
+    AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
+};
 
 struct BaseController {
     id: String,
@@ -80,7 +80,6 @@ impl RestController for BasePlayerController {
     }
 }
 
-
 #[generate_openapi_model_controller(i64, User)]
 #[derive(Clone, rwf::macros::ModelController)]
 #[auth(auth)]
@@ -89,7 +88,13 @@ struct UserController {
 }
 impl Default for UserController {
     fn default() -> Self {
-        Self {auth: BasicAuth{user: "test".to_string(), password: "".to_string()}.handler()}
+        Self {
+            auth: BasicAuth {
+                user: "test".to_string(),
+                password: "".to_string(),
+            }
+            .handler(),
+        }
     }
 }
 
@@ -99,16 +104,19 @@ impl Default for UserController {
 #[middleware(middleware)]
 struct OrderController {
     auth: AuthHandler,
-    middleware: MiddlewareSet
+    middleware: MiddlewareSet,
 }
 impl Default for OrderController {
     fn default() -> Self {
         Self {
-            auth: rwf::controller::auth::Token {token: "testToken".to_string()}.handler(),
+            auth: rwf::controller::auth::Token {
+                token: "testToken".to_string(),
+            }
+            .handler(),
             middleware: MiddlewareSet::new(vec![
                 RateLimiter::per_second(10).middleware(),
                 SecureId::default().middleware(),
-            ])
+            ]),
         }
     }
 }
@@ -120,7 +128,9 @@ struct ProductController {
 }
 impl Default for ProductController {
     fn default() -> Self {
-        Self {auth: AllowAll.handler()}
+        Self {
+            auth: AllowAll.handler(),
+        }
     }
 }
 #[generate_openapi_model_controller(i64, OrderItem)]
@@ -131,7 +141,9 @@ struct OrderItemController {
 }
 impl Default for OrderItemController {
     fn default() -> Self {
-        Self {auth: AllowAll.handler()}
+        Self {
+            auth: AllowAll.handler(),
+        }
     }
 }
 
@@ -406,14 +418,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         order_data.get_entry("username").unwrap().1,
         &Value::String("test".to_string())
     );
-/*
-    let ordctl = OrdersController {
-        auth: AuthHandler::new(AllowAll {}),
-        ,
-    };
-    let hdl = ordctl.crud("/orders");
-    let _path = hdl.path().clone();
-*/
+    /*
+        let ordctl = OrdersController {
+            auth: AuthHandler::new(AllowAll {}),
+            ,
+        };
+        let hdl = ordctl.crud("/orders");
+        let _path = hdl.path().clone();
+    */
     use rwf_admin::*;
 
     install()?;

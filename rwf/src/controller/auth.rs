@@ -34,11 +34,21 @@ impl Default for AuthHandler {
 impl utoipa::Modify for AuthHandler {
     fn modify(&self, openapi: &mut OpenApi) {
         self.auth().modify(openapi);
-        let unauthorized_response = utoipa::openapi::Response::new("An Unauthorized access attempted");
+        let unauthorized_response =
+            utoipa::openapi::Response::new("An Unauthorized access attempted");
         for path in openapi.paths.paths.values_mut() {
-            for operation in [&mut path.get, &mut path.post, &mut path.put, &mut path.patch, &mut path.head] {
+            for operation in [
+                &mut path.get,
+                &mut path.post,
+                &mut path.put,
+                &mut path.patch,
+                &mut path.head,
+            ] {
                 if let Some(ref mut op) = operation {
-                    op.responses.responses.entry("401".to_string()).or_insert(utoipa::openapi::RefOr::T(unauthorized_response.clone()));
+                    op.responses
+                        .responses
+                        .entry("401".to_string())
+                        .or_insert(utoipa::openapi::RefOr::T(unauthorized_response.clone()));
                 }
             }
         }
@@ -128,8 +138,6 @@ impl Authentication for DenyAll {
     }
 }
 
-
-
 /// HTTP Basic authentication.
 pub struct BasicAuth {
     /// Username.
@@ -158,20 +166,15 @@ impl Authentication for BasicAuth {
 impl utoipa::Modify for BasicAuth {
     fn modify(&self, openapi: &mut OpenApi) {
         if let Some(ref mut components) = openapi.components {
-            components
-                .add_security_scheme(
-                    "http_basic_auth",
-                    openapi::security::SecurityScheme::Http(
-                        openapi::security::HttpBuilder::new()
-                            .scheme(
-                                openapi::security::HttpAuthScheme::Basic
-                            )
-                            .description(
-                                Some("A Path protected by a HTTP Basic AUth middleware")
-                            )
-                            .build()
-                    )
-                )
+            components.add_security_scheme(
+                "http_basic_auth",
+                openapi::security::SecurityScheme::Http(
+                    openapi::security::HttpBuilder::new()
+                        .scheme(openapi::security::HttpAuthScheme::Basic)
+                        .description(Some("A Path protected by a HTTP Basic AUth middleware"))
+                        .build(),
+                ),
+            )
         }
         let scopes: Vec<String> = Vec::new();
         let requirement = SecurityRequirement::new("http_basic_auth", scopes);
@@ -181,7 +184,15 @@ impl utoipa::Modify for BasicAuth {
             openapi.security.as_mut().unwrap().push(requirement.clone());
         }
         for path in &mut openapi.paths.paths {
-            for operation in [&mut path.1.get, &mut path.1.post, &mut path.1.delete, &mut path.1.patch, &mut path.1.put].into_iter() {
+            for operation in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            {
                 if let Some(ref mut op) = operation {
                     if let Some(ref mut sec) = op.security {
                         sec.push(requirement.clone())
@@ -228,16 +239,27 @@ impl utoipa::Modify for Token {
 
         if let Some(ref mut components) = openapi.components {
             let mut token_header = openapi::security::ApiKeyValue::new("Authorization:");
-            token_header.description = Some("A Authorization Header holdig a Token. The Value must begin with 'Token'".to_string());
+            token_header.description = Some(
+                "A Authorization Header holdig a Token. The Value must begin with 'Token'"
+                    .to_string(),
+            );
             components.add_security_scheme(
                 "token_auth",
-                openapi::security::SecurityScheme::ApiKey(
-                    openapi::security::ApiKey::Header(token_header)
-                )
+                openapi::security::SecurityScheme::ApiKey(openapi::security::ApiKey::Header(
+                    token_header,
+                )),
             )
         }
         for path in &mut openapi.paths.paths {
-            for operation in [&mut path.1.get, &mut path.1.post, &mut path.1.delete, &mut path.1.patch, &mut path.1.put].into_iter() {
+            for operation in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            {
                 if let Some(ref mut op) = operation {
                     if let Some(ref mut sec) = op.security {
                         sec.push(requirement.clone())
@@ -247,8 +269,6 @@ impl utoipa::Modify for Token {
                 }
             }
         }
-
-
     }
 }
 
@@ -447,21 +467,28 @@ impl utoipa::Modify for SessionAuth {
         let requirement = SecurityRequirement::new("session_auth", scopes);
         if let Some(ref mut sec) = openapi.security {
             sec.push(requirement.clone());
-        } else  {
+        } else {
             openapi.security = Some(vec![requirement.clone()]);
         }
 
         if let Some(ref mut components) = openapi.components {
-            components.add_security_scheme("session_auth",
-                                           openapi::security::SecurityScheme::ApiKey(
-                                               openapi::security::ApiKey::Cookie(
-                                                   openapi::security::ApiKeyValue::new("rwf_session")
-                                               )
-                                           )
+            components.add_security_scheme(
+                "session_auth",
+                openapi::security::SecurityScheme::ApiKey(openapi::security::ApiKey::Cookie(
+                    openapi::security::ApiKeyValue::new("rwf_session"),
+                )),
             );
         }
         for path in &mut openapi.paths.paths {
-            for operation in [&mut path.1.get, &mut path.1.post, &mut path.1.delete, &mut path.1.patch, &mut path.1.put].into_iter() {
+            for operation in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            {
                 if let Some(ref mut op) = operation {
                     if let Some(ref mut sec) = op.security {
                         sec.push(requirement.clone())

@@ -31,7 +31,6 @@ pub struct OrderItem {
     amount: f64,
 }
 
-
 #[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
