@@ -17,6 +17,7 @@ use async_trait::async_trait;
 use std::ops::Deref;
 use std::sync::Arc;
 use tracing::debug;
+use utoipa::openapi::OpenApi;
 
 pub mod rate_limiter;
 pub use rate_limiter::RateLimiter;
@@ -77,7 +78,7 @@ pub enum Outcome {
 /// ```
 #[async_trait]
 #[allow(unused_variables)]
-pub trait Middleware: Send + Sync {
+pub trait Middleware: Send + Sync + utoipa::Modify {
     /// Process the request before it reaches the controller. You can modify it,
     /// forward it without modification, or block the request entirely
     /// and return a response.
@@ -116,6 +117,12 @@ pub trait Middleware: Send + Sync {
 #[derive(Clone)]
 pub struct MiddlewareHandler {
     middleware: Arc<Box<dyn Middleware>>,
+}
+
+impl utoipa::Modify for MiddlewareHandler {
+    fn modify(&self, openapi: &mut OpenApi) {
+        self.middleware.modify(openapi);
+    }
 }
 
 impl MiddlewareHandler {
@@ -217,5 +224,13 @@ impl MiddlewareSet {
     /// Returns a clone of the middleware wrappers. They cannot be executed manually.
     pub fn handlers(&self) -> Vec<MiddlewareHandler> {
         self.handlers.clone()
+    }
+}
+
+impl utoipa::Modify for MiddlewareSet {
+    fn modify(&self, openapi: &mut OpenApi) {
+        for handler in self.handlers.iter() {
+            handler.modify(openapi);
+        }
     }
 }

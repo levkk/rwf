@@ -17,6 +17,11 @@ impl Middleware for BlockBadHeader {
         Ok(Outcome::Stop(request, Response::bad_request()))
     }
 }
+impl utoipa::Modify for BlockBadHeader {
+    fn modify(&self, _openapi: &mut utoipa::openapi::OpenApi) {
+        ()
+    }
+}
 
 struct IndexController {
     middleware: MiddlewareSet,

@@ -6,9 +6,11 @@
 //!
 //! This middleware automatically converts the hidden version of the ID to the actual number,
 //! allowing it to be used in database queries.
+
 use crate::controller::middleware::prelude::*;
 use crate::crypto::decrypt_number;
 use crate::http::Path;
+use utoipa::openapi::OpenApi;
 
 /// Hide unique identifiers.
 pub struct SecureId {
@@ -50,5 +52,59 @@ impl Middleware for SecureId {
         }
 
         Ok(Outcome::Forward(request))
+    }
+}
+
+impl utoipa::Modify for SecureId {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let encrypted_id = utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(
+            utoipa::openapi::Object::builder()
+                .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                    utoipa::openapi::schema::KnownFormat::Password,
+                )))
+                .description(Some("A encrypted Databse primary key."))
+                .schema_type(utoipa::openapi::Type::String)
+                .examples(vec![
+                    serde_json::json!(crate::crypto::encrypt_number(21).unwrap()),
+                    serde_json::json!(crate::crypto::encrypt_number(42).unwrap()),
+                    serde_json::json!(crate::crypto::encrypt_number(4321).unwrap()),
+                ])
+                .title(Some("DatabaseId"))
+                .build(),
+        ));
+        if let Some(ref mut components) = openapi.components {
+            components
+                .schemas
+                .insert("encrypted_id".to_string(), encrypted_id);
+        }
+        for path in openapi.paths.paths.values_mut() {
+            for operation in [
+                &mut path.get,
+                &mut path.post,
+                &mut path.put,
+                &mut path.patch,
+                &mut path.delete,
+                &mut path.head,
+            ] {
+                if let Some(ref mut op) = operation {
+                    if let Some(ref mut params) = op.parameters {
+                        for param in params.iter_mut() {
+                            if param.name.eq("id")
+                                && param
+                                    .parameter_in
+                                    .eq(&utoipa::openapi::path::ParameterIn::Path)
+                            {
+                                param.description = Some("The encrypted id of the Database object. Prevents leaking internal data.".to_string());
+                                param.schema = Some(utoipa::openapi::RefOr::Ref(
+                                    utoipa::openapi::Ref::from_schema_name("encrypted_id"),
+                                ));
+                                param.style = Some(utoipa::openapi::path::ParameterStyle::Simple);
+                                param.required = utoipa::openapi::Required::True;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -109,6 +109,19 @@ impl TypeParser {
                             Ok(rwf::http::Response::not_implemented())
                         }
                     }
+                } else if o.eq("post") {
+                    quote! {
+                        #[utoipa::path(
+                            #o,
+                            path=#p,
+                            #req,
+                            responses(#res),
+                            tags=["ModelController", #model_tag, #endpoint_tag],
+                        )]
+                        fn #func (_request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::http::Error> {
+                            Ok(rwf::http::Response::not_implemented())
+                        }
+                    }
                 } else {
                     quote! {
                         #[utoipa::path(
@@ -203,7 +216,6 @@ impl TypeParser {
             },
             quote! {
                 params(
-                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
                 )
             },
             quote! {
@@ -212,13 +224,11 @@ impl TypeParser {
             quote! {
                 params(
                     ("id" = #pkey_type, Path, description = "Database ID of the Model"),
-                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
                 )
             },
             quote! {
                 params(
                     ("id" = #pkey_type , Path, description = "Database ID of the Model"),
-                    ("x-csrf-token" = String, Header, description = "X-CSRF-Token for protection purposes")
                 )
             },
             quote! {

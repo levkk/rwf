@@ -1,3 +1,4 @@
+
 //! Record HTTP requests served by the application.
 //!
 //! Requests record metadata like client IP, request duration, path, query, and HTTP method.
@@ -12,6 +13,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
+use utoipa::openapi::OpenApi;
 use uuid::Uuid;
 
 use crate::analytics::Request as AnalyticsRequest;
@@ -134,6 +136,12 @@ impl Middleware for RequestTracker {
         }
 
         Ok(response)
+    }
+}
+
+impl utoipa::Modify for RequestTracker {
+    fn modify(&self, _openapi: &mut OpenApi) {
+        ()
     }
 }
 

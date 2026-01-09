@@ -286,6 +286,7 @@ pub trait Controller: Sync + Send {
 impl utoipa::Modify for dyn Controller {
     fn modify(&self, openapi: &mut OpenApi) {
         self.auth().modify(openapi);
+        self.middleware().modify(openapi);
     }
 }
 
