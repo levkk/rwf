@@ -1,4 +1,3 @@
-
 //! Record HTTP requests served by the application.
 //!
 //! Requests record metadata like client IP, request duration, path, query, and HTTP method.
