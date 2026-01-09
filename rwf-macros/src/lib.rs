@@ -740,18 +740,20 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn generate_full_model(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn generate_openapi_model_controller(args: TokenStream, input: TokenStream) -> TokenStream {
     //let working_on = input.clone();
     //let mut res = model::handle_generate_full_model(parse_macro_input!(working_on));
     //eprintln!("{}", res);
     let controller_on = input.clone();
+    let args_on = args.clone();
+
     let mut output = proc_macro2::TokenStream::new();
     let orig: proc_macro2::TokenStream = input.clone().into();
     orig.to_tokens(&mut output);
-    let extra_args = args.clone();
+
     let controller = openapi::generate_controller4(
         parse_macro_input!(controller_on),
-        parse_macro_input!(extra_args),
+        parse_macro_input!(args_on),
     );
     //eprintln!("{}", controller);
     controller.to_tokens(&mut output);

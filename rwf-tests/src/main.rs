@@ -4,8 +4,7 @@ use rwf::model::{Column, Model, Pool, Value};
 use rwf::view::Templates;
 use rwf::{
     controller::{
-        middleware::{Middleware, RateLimiter, SecureId},
-        AllowAll, AuthHandler, MiddlewareSet, SessionId, StaticFiles, WebsocketController,
+        AuthHandler, SessionId, StaticFiles, WebsocketController,
     },
     http::{Request, Response, Server, Stream},
     job::Job,
@@ -16,7 +15,7 @@ use rwf::{
     prelude::*,
     register_callback,
 };
-use rwf_macros::Context;
+use rwf_macros::{Context, generate_openapi_model_controller};
 
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
@@ -28,7 +27,8 @@ pub mod models;
 use crate::models::CreateUserCallback;
 use models::{Order, OrderItem, Product, User};
 
-use rwf::controller::OpenApiController;
+use rwf::controller::{AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter};
+use rwf::controller::middleware::SecureId;
 
 struct BaseController {
     id: String,
@@ -80,33 +80,59 @@ impl RestController for BasePlayerController {
     }
 }
 
-struct OrdersController {
+
+#[generate_openapi_model_controller(i64, User)]
+#[derive(Clone, rwf::macros::ModelController)]
+#[auth(auth)]
+struct UserController {
     auth: AuthHandler,
-    middlware: MiddlewareSet,
 }
-
-#[async_trait]
-impl Controller for OrdersController {
-    fn auth(&self) -> &AuthHandler {
-        &self.auth
-    }
-
-    fn middleware(&self) -> &MiddlewareSet {
-        &self.middlware
-    }
-    async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        ModelController::handle(self, request).await
+impl Default for UserController {
+    fn default() -> Self {
+        Self {auth: BasicAuth{user: "test".to_string(), password: "".to_string()}.handler()}
     }
 }
 
-#[async_trait]
-impl RestController for OrdersController {
-    type Resource = i64;
+#[generate_openapi_model_controller(i64, Order)]
+#[derive(Clone, rwf::macros::ModelController)]
+#[auth(auth)]
+#[middleware(middleware)]
+struct OrderController {
+    auth: AuthHandler,
+    middleware: MiddlewareSet
 }
-
-#[async_trait]
-impl ModelController for OrdersController {
-    type Model = Order;
+impl Default for OrderController {
+    fn default() -> Self {
+        Self {
+            auth: rwf::controller::auth::Token {token: "testToken".to_string()}.handler(),
+            middleware: MiddlewareSet::new(vec![
+                RateLimiter::per_second(10).middleware(),
+                SecureId::default().middleware(),
+            ])
+        }
+    }
+}
+#[generate_openapi_model_controller(i64, Product)]
+#[derive(Clone, rwf::macros::ModelController)]
+#[auth(auth)]
+struct ProductController {
+    auth: AuthHandler,
+}
+impl Default for ProductController {
+    fn default() -> Self {
+        Self {auth: AllowAll.handler()}
+    }
+}
+#[generate_openapi_model_controller(i64, OrderItem)]
+#[derive(Clone, rwf::macros::ModelController)]
+#[auth(auth)]
+struct OrderItemController {
+    auth: AuthHandler,
+}
+impl Default for OrderItemController {
+    fn default() -> Self {
+        Self {auth: AllowAll.handler()}
+    }
 }
 
 struct JobOne;
@@ -380,17 +406,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         order_data.get_entry("username").unwrap().1,
         &Value::String("test".to_string())
     );
-
+/*
     let ordctl = OrdersController {
         auth: AuthHandler::new(AllowAll {}),
-        middlware: MiddlewareSet::new(vec![
-            RateLimiter::per_second(10).middleware(),
-            SecureId::default().middleware(),
-        ]),
+        ,
     };
     let hdl = ordctl.crud("/orders");
     let _path = hdl.path().clone();
-
+*/
     use rwf_admin::*;
 
     install()?;
@@ -413,10 +436,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         route!("/openapi" => OpenApiController),
         engine!("/admin" => engine),
         rwf_admin::static_files()?,
-        crud!("/api/users" => models::UserController),
-        crud!("/api/products" => models::ProductController),
-        crud!("/api/orders" => models::OrderController),
-        crud!("/api/orderitems" => models::OrderItemController),
+        crud!("/api/users" => UserController),
+        crud!("/api/products" => ProductController),
+        crud!("/api/orders" => OrderController),
+        crud!("/api/orderitems" => OrderItemController),
     ])
     .launch()
     .await?;

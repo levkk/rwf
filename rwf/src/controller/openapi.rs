@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::RwLock;
+use utoipa::Modify;
 
 #[derive(Clone, OpenApi, Default)]
 #[openapi(
@@ -42,7 +43,7 @@ enum OpenApiTargets {
     get,
     path="/json",
     tag="OpenAPI",
-    responses((status = 200, content_type="application/json", description="OpenAPI JSON"))
+    responses((status = 200, content_type="application/json", description="OpenAPI JSON")),
 )]
 fn openapi_json(_request: &Request) -> Result<Response, Error> {
     Ok(Response::not_implemented())
@@ -95,19 +96,48 @@ impl FromStr for OpenApiTargets {
 #[openapi(paths(openapi_json, openapi_yaml, openapi_redoc, openapi_rapidoc))]
 struct OpenapiOpenapi;
 
-#[derive(Debug, Default)]
+#[derive(Clone)]
+pub enum OpenApiNesterOptions {
+    Fn(fn() -> utoipa::openapi::OpenApi),
+    Value(utoipa::openapi::OpenApi)
+}
+
+impl OpenApiNesterOptions {
+    pub fn get_openapi(&self) -> utoipa::openapi::OpenApi {
+        match self {
+            OpenApiNesterOptions::Fn(func) => func(),
+            OpenApiNesterOptions::Value(value) => value.clone(),
+        }
+    }
+}
+
+pub trait IntoOpenApiNesterOption {
+    fn into_nester_option(self) -> OpenApiNesterOptions;
+}
+impl IntoOpenApiNesterOption for utoipa::openapi::OpenApi {
+    fn into_nester_option(self) -> OpenApiNesterOptions {
+        OpenApiNesterOptions::Value(self)
+    }
+}
+impl IntoOpenApiNesterOption for fn() -> utoipa::openapi::OpenApi {
+    fn into_nester_option(self) -> OpenApiNesterOptions {
+        OpenApiNesterOptions::Fn(self)
+    }
+}
+
+#[derive(Default)]
 struct OpenapiNester {
-    map: RwLock<BTreeMap<String, fn() -> utoipa::openapi::OpenApi>>,
+    map: RwLock<BTreeMap<String, OpenApiNesterOptions>>,
 }
 
 static RWF_OPENAPIS: Lazy<OpenapiNester> = Lazy::new(|| OpenapiNester::default());
 
-pub fn registrer_controller(path: impl ToString, openapi: fn() -> utoipa::openapi::OpenApi) {
+pub fn registrer_controller(path: impl ToString, openapi: impl IntoOpenApiNesterOption) {
     RWF_OPENAPIS
         .map
         .write()
         .unwrap()
-        .insert(path.to_string(), openapi);
+        .insert(path.to_string(), openapi.into_nester_option());
 }
 
 impl std::fmt::Display for OpenApiTargets {
@@ -128,7 +158,11 @@ impl Controller for OpenApiController {
     where
         Self: Sized + 'static,
     {
+        let mut openapi = OpenapiOpenapi::openapi();
+        <dyn Controller>::modify(&self, &mut openapi);
+
         self.mount.set(path.to_string()).unwrap();
+        registrer_controller(path.to_string(), openapi);
 
         Handler::wildcard(path, self)
     }
@@ -169,7 +203,7 @@ impl OpenApiController {
     fn rwfapi() -> utoipa::openapi::OpenApi {
         let mut rwfapi = Self::openapi();
         for (k, v) in RWF_OPENAPIS.map.read().unwrap().iter() {
-            rwfapi = rwfapi.nest(k, v())
+            rwfapi = rwfapi.nest(k, v.get_openapi())
         }
         rwfapi
     }

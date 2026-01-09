@@ -1,10 +1,9 @@
 use rwf::async_trait;
 use rwf::model::callbacks::Callback;
 use rwf::model::{Model, Scope};
-use rwf::prelude::{utoipa, Deserialize, OpenApi, Serialize, ToResponse, ToSchema};
+use rwf::prelude::{utoipa, Deserialize, Serialize, ToResponse, ToSchema};
 use rwf_macros::Model;
 
-#[rwf_macros::generate_full_model(i64, UserController, users)]
 #[derive(Clone, Model, Debug, PartialEq, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(Order)]
 #[allow(dead_code)]
@@ -20,7 +19,6 @@ pub struct User {
     pub(crate) name: String,
 }
 
-#[rwf_macros::generate_full_model(i64, OrderItemController, order_items)]
 #[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[belongs_to(Order)]
 #[belongs_to(Product)]
@@ -33,7 +31,7 @@ pub struct OrderItem {
     amount: f64,
 }
 
-#[rwf_macros::generate_full_model(i64, ProductController, produucts)]
+
 #[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[has_many(OrderItem)]
 #[allow(dead_code)]
@@ -53,7 +51,6 @@ impl Callback<User> for CreateUserCallback {
         data
     }
 }
-#[rwf_macros::generate_full_model(i64, OrderController, orders)]
 #[derive(Clone, Model, Debug, Serialize, Deserialize, ToSchema, ToResponse)]
 #[belongs_to(User)]
 #[has_many(OrderItem)]

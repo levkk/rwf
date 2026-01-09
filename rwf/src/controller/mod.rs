@@ -67,6 +67,7 @@ use tokio::time::{interval, timeout};
 use tracing::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
+use utoipa::openapi::OpenApi;
 
 /// The controller, the **C** in MVC.
 ///
@@ -279,6 +280,12 @@ pub trait Controller: Sync + Send {
     /// you won't need to override this method.
     fn controller_name(&self) -> &'static str {
         std::any::type_name::<Self>()
+    }
+}
+
+impl utoipa::Modify for dyn Controller {
+    fn modify(&self, openapi: &mut OpenApi) {
+        self.auth().modify(openapi);
     }
 }
 
