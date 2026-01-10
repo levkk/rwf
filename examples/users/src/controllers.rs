@@ -15,7 +15,7 @@ impl PageController for Signup {
     async fn get(&self, request: &Request) -> Result<Response, Error> {
         let user = request.user::<User>(Pool::pool()).await?;
 
-        if let Some(_) = user {
+        if user.is_some() {
             return Ok(Response::new().redirect("/profile"));
         }
 

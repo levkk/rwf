@@ -39,10 +39,7 @@ impl<T: FromRow> Picked<T> {
     /// Call on the OK Result of `Self::from_row(&self, row)` to get a HashMap<Column, Value>
     /// containing the Query Result in a convinient Form.
     pub fn map(self) -> HashMap<Column, Value> {
-        self.columns
-            .into_iter()
-            .zip(self.data.into_iter())
-            .collect()
+        self.columns.into_iter().zip(self.data).collect()
     }
 
     /// Call on the Ok Result of `Self::from_row(&self, row)` to get a `Column` by its alias as well
@@ -174,8 +171,8 @@ impl<T: FromRow> TryFrom<Query<T>> for Picked<T> {
     }
 }
 
-impl<T: FromRow> Into<Query<T>> for Picked<T> {
-    fn into(self) -> Query<T> {
-        Query::Picked(self)
+impl<T: FromRow> From<Picked<T>> for Query<T> {
+    fn from(val: Picked<T>) -> Self {
+        Query::Picked(val)
     }
 }

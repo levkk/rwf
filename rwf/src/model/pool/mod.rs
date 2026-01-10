@@ -58,7 +58,7 @@ static POOL: OnceCell<Pool> = OnceCell::new();
 ///
 /// Use [`Pool::pool`] instead.
 pub fn get_pool() -> Pool {
-    POOL.get_or_init(|| Pool::from_env()).clone()
+    POOL.get_or_init(Pool::from_env).clone()
 }
 
 /// Get a connection from the pool.
@@ -373,7 +373,7 @@ impl Pool {
     /// otherwise it will be automatically rolled back.
     pub async fn transaction(&self) -> Result<Transaction, Error> {
         let connection = self.get().await?;
-        Ok(Transaction::new(connection).await?)
+        Transaction::new(connection).await
     }
 
     pub async fn with_transaction<Fut, R>(

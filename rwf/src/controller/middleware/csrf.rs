@@ -71,16 +71,12 @@ impl Middleware for Csrf {
             }
         }
 
-        match request.form_data() {
-            Ok(form_data) => {
-                if let Some(token) = form_data.get::<String>(CSRF_INPUT) {
-                    if csrf_token_validate(&token, &session_id) {
-                        return Ok(Outcome::Forward(request));
-                    }
+        if let Ok(form_data) = request.form_data() {
+            if let Some(token) = form_data.get::<String>(CSRF_INPUT) {
+                if csrf_token_validate(&token, &session_id) {
+                    return Ok(Outcome::Forward(request));
                 }
             }
-
-            Err(_) => (),
         }
 
         Ok(Outcome::Stop(request, Response::csrf_error()))
@@ -128,13 +124,13 @@ impl utoipa::Modify for Csrf {
             .schema(Some(csrf_token.clone()))
             .build();
         for path in openapi.paths.paths.values_mut() {
-            for operation in [path.post.as_mut(), path.put.as_mut(), path.patch.as_mut()].iter_mut()
+            for ref mut op in [path.post.as_mut(), path.put.as_mut(), path.patch.as_mut()]
+                .iter_mut()
+                .flatten()
             {
-                if let Some(ref mut op) = operation {
-                    if let Some(ref mut params) = op.parameters {
-                        params.push(param_query.clone());
-                        params.push(param_header.clone())
-                    }
+                if let Some(ref mut params) = op.parameters {
+                    params.push(param_query.clone());
+                    params.push(param_header.clone())
                 }
             }
         }

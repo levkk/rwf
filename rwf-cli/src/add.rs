@@ -78,6 +78,6 @@ async fn controller_internal(name: &str, page: bool, overwrite: bool) -> Result<
 
     created(path.display().to_string());
 
-    modules(&mod_path).await?;
+    modules(mod_path).await?;
     Ok(())
 }

@@ -255,20 +255,16 @@ impl Server {
                 let request = match Request::read(peer_addr, &mut stream).await {
                     Ok(request) => request,
                     Err(ref err) => {
-                        match err {
-                            Error::ContentTooLarge(head) => {
-                                let response = Response::content_too_large();
-                                let _ = Self::send_response(&mut stream, response).await;
+                        if let Error::ContentTooLarge(head) = err {
+                            let response = Response::content_too_large();
+                            let _ = Self::send_response(&mut stream, response).await;
 
-                                info!(
-                                    "{} {} {} 413",
-                                    head.method().to_string().purple(),
-                                    head.path().base().purple(),
-                                    std::any::type_name::<Self>().green(),
-                                );
-                            }
-
-                            _ => (),
+                            info!(
+                                "{} {} {} 413",
+                                head.method().to_string().purple(),
+                                head.path().base().purple(),
+                                std::any::type_name::<Self>().green(),
+                            );
                         }
                         debug!(
                             "{} client {:?} disconnected: {}",

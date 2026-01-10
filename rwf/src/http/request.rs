@@ -155,7 +155,7 @@ impl Request {
     pub fn parameter<T: ToParameter>(&self, name: &str) -> Result<Option<T>, Error> {
         if let Some(ref params) = self.params {
             if let Some(parameter) = params.parameter(self.path().base(), name) {
-                return Ok(Some(T::to_parameter(&parameter)?));
+                return Ok(Some(T::to_parameter(parameter)?));
             }
         }
 

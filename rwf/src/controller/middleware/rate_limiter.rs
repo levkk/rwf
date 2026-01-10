@@ -111,7 +111,7 @@ impl Middleware for RateLimiter {
             .map(|s| crate::peer_addr(s))
         {
             Some(Some(peer)) => peer,
-            _ => request.peer().clone(),
+            _ => *request.peer(),
         };
 
         // Get current time before locking mutex.
@@ -204,19 +204,20 @@ impl utoipa::Modify for RateLimiter {
                 "blocked_ratelimit_respons",
             ));
         for path in openapi.paths.paths.values_mut() {
-            for operation in [
+            for ref mut op in [
                 &mut path.get,
                 &mut path.post,
                 &mut path.put,
                 &mut path.patch,
                 &mut path.delete,
                 &mut path.head,
-            ] {
-                if let Some(ref mut op) = operation {
-                    op.responses
-                        .responses
-                        .insert("429".to_string(), response.clone());
-                }
+            ]
+            .into_iter()
+            .flatten()
+            {
+                op.responses
+                    .responses
+                    .insert("429".to_string(), response.clone());
             }
         }
     }

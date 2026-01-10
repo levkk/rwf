@@ -103,9 +103,9 @@ impl Body {
         match self {
             File { metadata, .. } => metadata.len() as usize,
             Bytes(bytes) => bytes.len(),
-            Html(html) => html.as_bytes().len(),
+            Html(html) => html.len(),
             Json(json) => json.len(),
-            Text(text) => text.as_bytes().len(),
+            Text(text) => text.len(),
             FileInclude { bytes, .. } => bytes.len(),
         }
     }

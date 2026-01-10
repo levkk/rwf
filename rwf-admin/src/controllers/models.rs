@@ -31,7 +31,6 @@ impl PageController for ModelController {
             .get::<String>("columns")
             .unwrap_or("".to_string())
             .split(",")
-            .into_iter()
             .map(|c| c.trim().to_string())
             .filter(|c| !c.is_empty())
             .collect::<Vec<_>>();
@@ -43,12 +42,7 @@ impl PageController for ModelController {
                 .into_iter()
                 .filter(|c| !c.skip())
                 .collect::<Vec<_>>();
-            let order_by = if columns
-                .iter()
-                .find(|c| c.column_name == "id")
-                .take()
-                .is_some()
-            {
+            let order_by = if columns.iter().find(|c| c.column_name == "id").is_some() {
                 "ORDER BY id DESC "
             } else {
                 ""
@@ -61,7 +55,7 @@ impl PageController for ModelController {
             let selected_columns = columns
                 .clone()
                 .into_iter()
-                .filter(|c| selected_columns.contains(&c) || selected_columns.is_empty())
+                .filter(|c| selected_columns.contains(c) || selected_columns.is_empty())
                 .collect::<Vec<_>>();
 
             if !columns.is_empty() {

@@ -78,29 +78,30 @@ impl utoipa::Modify for SecureId {
                 .insert("encrypted_id".to_string(), encrypted_id);
         }
         for path in openapi.paths.paths.values_mut() {
-            for operation in [
+            for ref mut op in [
                 &mut path.get,
                 &mut path.post,
                 &mut path.put,
                 &mut path.patch,
                 &mut path.delete,
                 &mut path.head,
-            ] {
-                if let Some(ref mut op) = operation {
-                    if let Some(ref mut params) = op.parameters {
-                        for param in params.iter_mut() {
-                            if param.name.eq("id")
-                                && param
-                                    .parameter_in
-                                    .eq(&utoipa::openapi::path::ParameterIn::Path)
-                            {
-                                param.description = Some("The encrypted id of the Database object. Prevents leaking internal data.".to_string());
-                                param.schema = Some(utoipa::openapi::RefOr::Ref(
-                                    utoipa::openapi::Ref::from_schema_name("encrypted_id"),
-                                ));
-                                param.style = Some(utoipa::openapi::path::ParameterStyle::Simple);
-                                param.required = utoipa::openapi::Required::True;
-                            }
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(ref mut params) = op.parameters {
+                    for param in params.iter_mut() {
+                        if param.name.eq("id")
+                            && param
+                                .parameter_in
+                                .eq(&utoipa::openapi::path::ParameterIn::Path)
+                        {
+                            param.description = Some("The encrypted id of the Database object. Prevents leaking internal data.".to_string());
+                            param.schema = Some(utoipa::openapi::RefOr::Ref(
+                                utoipa::openapi::Ref::from_schema_name("encrypted_id"),
+                            ));
+                            param.style = Some(utoipa::openapi::path::ParameterStyle::Simple);
+                            param.required = utoipa::openapi::Required::True;
                         }
                     }
                 }

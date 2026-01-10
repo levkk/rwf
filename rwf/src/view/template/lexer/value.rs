@@ -258,12 +258,12 @@ impl Value {
                 "to_uppercase" | "upcase" => Value::String(value.to_uppercase()),
                 "to_lowercase" | "downcase" => Value::String(value.to_lowercase()),
                 "trim" => Value::String(value.trim().to_string()),
-                "capitalize" => Value::String(crate::capitalize(&value)),
-                "camelize" | "to_PascalCase" => Value::String(crate::pascal_case(&value)),
-                "underscore" | "to_snake_case" => Value::String(crate::snake_case(&value)),
-                "title" => Value::String(crate::title_case(&value)),
-                "urlencode" => Value::String(crate::http::urlencode(&value)),
-                "urldecode" => Value::String(crate::http::urldecode(&value)),
+                "capitalize" => Value::String(crate::capitalize(value)),
+                "camelize" | "to_PascalCase" => Value::String(crate::pascal_case(value)),
+                "underscore" | "to_snake_case" => Value::String(crate::snake_case(value)),
+                "title" => Value::String(crate::title_case(value)),
+                "urlencode" => Value::String(crate::http::urlencode(value)),
+                "urldecode" => Value::String(crate::http::urldecode(value)),
                 "len" => Value::Integer(value.len() as i64),
                 "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
                 "br" => Value::SafeString(crate::safe_html(value).replace("\n", "<br>")),
@@ -315,7 +315,7 @@ impl Value {
                     }
 
                     "contains" => match &args {
-                        &[needle] => Value::Boolean(list.contains(&needle)),
+                        &[needle] => Value::Boolean(list.contains(needle)),
 
                         _ => Value::Boolean(false),
                     },
@@ -334,7 +334,6 @@ impl Value {
                 "iter" => Value::List(
                     hash.keys()
                         .cloned()
-                        .into_iter()
                         .zip(hash.values().cloned())
                         .map(|(k, v)| Value::List(vec![Value::String(k), v]))
                         .collect::<Vec<_>>(),
@@ -356,7 +355,7 @@ impl Value {
                 },
 
                 "decrypt_number" => match &args {
-                    &[Value::String(n)] => match crate::crypto::decrypt_number(&n) {
+                    &[Value::String(n)] => match crate::crypto::decrypt_number(n) {
                         Ok(n) => Value::Integer(n),
                         Err(_) => Value::Null,
                     },
@@ -396,9 +395,9 @@ impl Value {
                     _ => Value::Null,
                 },
 
-                "default" => match &args {
-                    &[Value::Null, default_value] => default_value.clone(),
-                    &[value, _] => value.clone(),
+                "default" => match args {
+                    [Value::Null, default_value] => default_value.clone(),
+                    [value, _] => value.clone(),
                     _ => Value::Null,
                 },
 
@@ -443,16 +442,16 @@ impl Value {
     }
 
     pub fn type_name(&self) -> &'static str {
-        match self {
-            &Value::Null => "null",
-            &Value::Integer(_) => "integer",
-            &Value::Float(_) => "float",
-            &Value::Boolean(_) => "boolean",
-            &Value::Hash(_) => "hash",
-            &Value::Interpreter => "global",
-            &Value::List(_) => "list",
-            &Value::String(_) => "string",
-            &Value::SafeString(_) => "safe_string",
+        match *self {
+            Value::Null => "null",
+            Value::Integer(_) => "integer",
+            Value::Float(_) => "float",
+            Value::Boolean(_) => "boolean",
+            Value::Hash(_) => "hash",
+            Value::Interpreter => "global",
+            Value::List(_) => "list",
+            Value::String(_) => "string",
+            Value::SafeString(_) => "safe_string",
         }
     }
 }

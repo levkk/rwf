@@ -230,7 +230,7 @@ impl Response {
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
         // Session set manually on the request already.
         if let Some(ref session) = self.session {
-            self.cookies.add_session(&session)?;
+            self.cookies.add_session(session)?;
         } else {
             let session = request.session();
 

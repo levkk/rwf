@@ -16,7 +16,5 @@ impl Middleware for LoggedInCheck {
     }
 }
 impl rwf::prelude::Modify for LoggedInCheck {
-    fn modify(&self, _openapi: &mut OpenApi) {
-        ()
-    }
+    fn modify(&self, _openapi: &mut OpenApi) {}
 }

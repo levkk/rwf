@@ -21,7 +21,7 @@ pub struct SignupController {
 impl Default for SignupController {
     fn default() -> SignupController {
         SignupController {
-            middleware: MiddlewareSet::new(vec![LoggedInCheck::default().middleware()]),
+            middleware: MiddlewareSet::new(vec![LoggedInCheck.middleware()]),
         }
     }
 }

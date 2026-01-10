@@ -29,7 +29,7 @@ impl<T: Model> Update<T> {
     pub fn new(model: T) -> Self {
         let columns = T::column_names();
         let values = model.values();
-        Self::from_columns(model.id(), &columns, &values)
+        Self::from_columns(model.id(), columns, &values)
     }
 
     /// Create an update query for specific columns and values only.

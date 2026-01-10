@@ -208,7 +208,7 @@ impl ToValue for f32 {
 
 impl ToValue for IpAddr {
     fn to_value(&self) -> Value {
-        Value::IpAddr(self.clone())
+        Value::IpAddr(*self)
     }
 }
 
@@ -220,7 +220,7 @@ impl ToValue for Option<IpAddr> {
 
 impl ToValue for Uuid {
     fn to_value(&self) -> Value {
-        Value::Uuid(self.clone())
+        Value::Uuid(*self)
     }
 }
 
@@ -379,11 +379,11 @@ impl tokio_postgres::types::ToSql for Value {
                 if let Some(value) = value.deref() {
                     tokio_postgres::types::ToSql::to_sql(&value, ty, out)
                 } else {
-                    return Ok(IsNull::Yes);
+                    Ok(IsNull::Yes)
                 }
             }
-            Value::Null => return Ok(IsNull::Yes),
-            value => return Err(Error::OrmSerializationError(value.clone()).boxed()),
+            Value::Null => Ok(IsNull::Yes),
+            value => Err(Error::OrmSerializationError(value.clone()).boxed()),
         }
     }
 
@@ -467,7 +467,7 @@ impl ToSql for Value {
             Function((name, args)) => format!(
                 r#""{}"({})"#,
                 name.escape().to_lowercase(),
-                args.into_iter()
+                args.iter()
                     .map(|v| v.to_sql())
                     .collect::<Vec<_>>()
                     .join(", ")

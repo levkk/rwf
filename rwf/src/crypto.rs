@@ -86,7 +86,7 @@ impl Encrypted {
     }
 
     fn to_bytes(&self) -> Result<String, Error> {
-        Ok(self.to_base64()?)
+        self.to_base64()
     }
 }
 
@@ -203,7 +203,7 @@ pub fn decrypt_number(s: &str) -> Result<i64, Error> {
     // Remove the pretty format.
     let s = s.replace("-", "");
 
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(Error::Generic("incorrect secure id format"));
     }
 

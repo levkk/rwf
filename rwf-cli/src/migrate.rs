@@ -40,7 +40,7 @@ pub async fn add(name: &str) {
         create_dir(&path)
             .await
             .expect("cannot create migrations directory");
-        created(format!("created \"migrations\" directory"));
+        created("created \"migrations\" directory".to_string());
     }
 
     for suffix in ["up", "down"] {

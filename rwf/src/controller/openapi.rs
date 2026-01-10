@@ -130,7 +130,7 @@ struct OpenapiNester {
     map: RwLock<BTreeMap<String, OpenApiNesterOptions>>,
 }
 
-static RWF_OPENAPIS: Lazy<OpenapiNester> = Lazy::new(|| OpenapiNester::default());
+static RWF_OPENAPIS: Lazy<OpenapiNester> = Lazy::new(OpenapiNester::default);
 
 pub fn registrer_controller(path: impl ToString, openapi: impl IntoOpenApiNesterOption) {
     RWF_OPENAPIS

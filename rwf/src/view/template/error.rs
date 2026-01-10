@@ -58,7 +58,7 @@ impl Error {
                         prefix,
                         path.as_ref().display(),
                         vec![' '; prefix.len()].into_iter().collect::<String>(),
-                        self.to_string()
+                        self
                     ));
                 } else {
                     return self;
@@ -74,7 +74,7 @@ impl Error {
         };
 
         let context = source.lines().nth(std::cmp::max(1, token.line()) - 1); // std::fs lines start at 0
-        let leading_spaces = if let Some(ref context) = context {
+        let leading_spaces = if let Some(context) = context {
             context.len() - context.trim().len()
         } else {
             0

@@ -37,9 +37,9 @@ impl PathWithRegex {
         // Parameter regex groups start at 1 since the first group
         // is the path base URL.
         let mut i = 1;
-        let mut iter = path.base().split("/");
+        let iter = path.base().split("/");
         let mut regex = Vec::new();
-        while let Some(part) = iter.next() {
+        for part in iter {
             let re = if part.starts_with(":") {
                 // Parameter name and group number.
                 params.insert(part[1..].to_owned(), i);

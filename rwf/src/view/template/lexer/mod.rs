@@ -290,7 +290,7 @@ impl<'a> Lexer<'a> {
                         let mut string = String::new();
 
                         // Look for the closing `"`
-                        while let Some(c) = iter.next() {
+                        for c in iter.by_ref() {
                             match c {
                                 '"' => {
                                     self.tokens
@@ -418,7 +418,7 @@ impl<'a> Lexer<'a> {
             .tokens
             .into_iter()
             // Remove spaces from output, the lexer handled it, the parser doesn't need to.
-            .filter(|token| &token.token != &Token::Space)
+            .filter(|token| token.token != Token::Space)
             .collect())
     }
 

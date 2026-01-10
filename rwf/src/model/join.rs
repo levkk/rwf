@@ -186,8 +186,8 @@ impl<S: Model, T: Model> Joined<S, T> {
     }
 }
 
-impl<S: Model, T: Model> Into<Joins> for Joined<S, T> {
-    fn into(self) -> Joins {
-        self.joins
+impl<S: Model, T: Model> From<Joined<S, T>> for Joins {
+    fn from(val: Joined<S, T>) -> Self {
+        val.joins
     }
 }

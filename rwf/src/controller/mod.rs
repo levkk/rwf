@@ -30,10 +30,10 @@ pub mod auth;
 pub mod engine;
 pub mod error;
 pub mod middleware;
+pub mod oidc;
 pub mod ser;
 pub mod static_files;
 pub mod turbo_stream;
-pub mod oidc;
 
 #[cfg(feature = "wsgi")]
 pub mod wsgi;
@@ -632,7 +632,7 @@ pub trait ModelController: Controller {
         let mut conn = get_connection().await?;
 
         let model = Query::Insert(Insert::<Self::Model>::from_columns(
-            &Self::Model::column_names(),
+            Self::Model::column_names(),
             &model.values(),
         ))
         .fetch(&mut conn)

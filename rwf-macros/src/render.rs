@@ -24,9 +24,9 @@ impl TurboStreamInput {
     fn render_input(&self) -> RenderInput {
         RenderInput {
             request: self.request.clone(),
-            _comma_0: self._comma_0.clone(),
+            _comma_0: self._comma_0,
             template_name: self.template_name.clone(),
-            _comma_1: self._comma_2.clone(),
+            _comma_1: self._comma_2,
             context: self.context.clone(),
             code: None,
             _comma_2: None,

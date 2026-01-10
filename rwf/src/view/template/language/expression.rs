@@ -75,13 +75,11 @@ impl Expression {
                     let value = Value::Interpreter;
                     match value.call(term.name(), &[], context) {
                         Ok(value) => Ok(value),
-                        Err(Error::UnknownMethod(_, _)) => {
-                            return Err(Error::UndefinedVariable(name))
-                        }
-                        Err(err) => return Err(err),
+                        Err(Error::UnknownMethod(_, _)) => Err(Error::UndefinedVariable(name)),
+                        Err(err) => Err(err),
                     }
                 }
-                Err(err) => return Err(err),
+                Err(err) => Err(err),
             },
 
             Expression::Binary { left, op, right } => {
@@ -426,7 +424,7 @@ impl Expression {
                 }
             }
 
-            None => return Ok(left),
+            None => Ok(left),
         }
     }
 }

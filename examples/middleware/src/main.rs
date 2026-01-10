@@ -18,9 +18,7 @@ impl Middleware for BlockBadHeader {
     }
 }
 impl utoipa::Modify for BlockBadHeader {
-    fn modify(&self, _openapi: &mut utoipa::openapi::OpenApi) {
-        ()
-    }
+    fn modify(&self, _openapi: &mut utoipa::openapi::OpenApi) {}
 }
 
 struct IndexController {
@@ -43,7 +41,7 @@ async fn main() -> Result<(), Error> {
     Logger::init();
 
     Server::new(vec![IndexController {
-        middleware: MiddlewareSet::new(vec![BlockBadHeader::default().middleware()]),
+        middleware: MiddlewareSet::new(vec![BlockBadHeader.middleware()]),
     }
     .route("/")])
     .launch()

@@ -90,11 +90,11 @@ async fn main() -> Result<(), Error> {
     Logger::init();
 
     Server::new(vec![
-        IndexController::default().route("/"),
+        IndexController.route("/"),
         BasicAuthController::new().route("/basic"),
-        LoginController::default().route("/login"),
+        LoginController.route("/login"),
         ProtectedAreaController::new().route("/protected"),
-        LogoutController::default().route("/logout"),
+        LogoutController.route("/logout"),
     ])
     .launch()
     .await?;

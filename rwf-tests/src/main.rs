@@ -15,9 +15,12 @@ use rwf::{
 };
 use rwf_macros::{generate_openapi_model_controller, Context};
 
-use std::time::Instant;
 use openidconnect::core::{CoreGenderClaim, CoreIdTokenFields, CoreTokenType};
-use openidconnect::{AccessToken, EmptyAdditionalClaims, OAuth2TokenResponse, RefreshToken, StandardTokenResponse, UserInfoClaims};
+use openidconnect::{
+    AccessToken, EmptyAdditionalClaims, OAuth2TokenResponse, RefreshToken, StandardTokenResponse,
+    UserInfoClaims,
+};
+use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
 mod components;
@@ -28,10 +31,8 @@ use crate::models::CreateUserCallback;
 use models::{Order, OrderItem, Product, User};
 
 use rwf::controller::middleware::SecureId;
-use rwf::controller::{
-    BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
-};
-use rwf::controller::oidc::{OidcController, OidcAuthentication, OidcUser as OUser};
+use rwf::controller::oidc::{OidcAuthentication, OidcController, OidcUser as OUser};
+use rwf::controller::{BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter};
 #[derive(Debug, Clone, Serialize, Deserialize, macros::Model, ToSchema, ToResponse)]
 struct OidcUser {
     id: Option<i64>,
@@ -40,45 +41,66 @@ struct OidcUser {
     email: String,
     access: String,
     refresh: String,
-    expire: OffsetDateTime
+    expire: OffsetDateTime,
 }
 
 #[async_trait]
 impl OUser for OidcUser {
-    async fn from_token(token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>, userinfo: UserInfoClaims<EmptyAdditionalClaims, CoreGenderClaim>) -> Result<Self, rwf::model::Error> {
-                     let name = userinfo.standard_claims().preferred_username().unwrap().to_string();
-                     let sub = uuid::Uuid::parse_str(userinfo.standard_claims().subject().to_string().as_str()).unwrap();
-                     let email = userinfo.standard_claims().email().unwrap().to_string();
-                     let access = token.access_token().secret().clone();
-                     let refresh = token.refresh_token().unwrap().secret().clone();
-                     let expire  = OffsetDateTime::now_utc().checked_add(Duration::nanoseconds(token.expires_in().unwrap().as_nanos() as i64)).unwrap();
+    async fn from_token(
+        token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>,
+        userinfo: UserInfoClaims<EmptyAdditionalClaims, CoreGenderClaim>,
+    ) -> Result<Self, rwf::model::Error> {
+        let name = userinfo
+            .standard_claims()
+            .preferred_username()
+            .unwrap()
+            .to_string();
+        let sub = uuid::Uuid::parse_str(userinfo.standard_claims().subject().to_string().as_str())
+            .unwrap();
+        let email = userinfo.standard_claims().email().unwrap().to_string();
+        let access = token.access_token().secret().clone();
+        let refresh = token.refresh_token().unwrap().secret().clone();
+        let expire = OffsetDateTime::now_utc()
+            .checked_add(Duration::nanoseconds(
+                token.expires_in().unwrap().as_nanos() as i64,
+            ))
+            .unwrap();
 
-                     let mut conn = get_connection().await?;
-                     OidcUser::find_or_create_by(&[
-                         ("name", name.to_value()),
-                         ("sub", sub.to_value()),
-                         ("email", email.to_value()),
-                         ("access", access.to_value()),
-                         ("refresh", refresh.to_value()),
-                         ("expire", expire.to_value())
-                     ]).unique_by(&["sub"]).fetch(&mut conn).await
-                 }
-                 fn access_token(&self) -> AccessToken {
-                     AccessToken::new(self.access.clone())
-                 }
-                 fn refresh_token(&self) -> RefreshToken {
-                     RefreshToken::new(self.refresh.clone())
-             }
-     fn expire(&self) -> &OffsetDateTime {
-          &self.expire
-     }
-     fn update_token(mut self, token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>) -> Self {
-         self.access = token.access_token().secret().clone();
-         self.refresh = token.refresh_token().unwrap().secret().clone();
-         self.expire = OffsetDateTime::now_utc().checked_add(Duration::nanoseconds(token.expires_in().unwrap().as_nanos() as i64)).unwrap();
-         self
-     }
-
+        let mut conn = get_connection().await?;
+        OidcUser::find_or_create_by(&[
+            ("name", name.to_value()),
+            ("sub", sub.to_value()),
+            ("email", email.to_value()),
+            ("access", access.to_value()),
+            ("refresh", refresh.to_value()),
+            ("expire", expire.to_value()),
+        ])
+        .unique_by(&["sub"])
+        .fetch(&mut conn)
+        .await
+    }
+    fn access_token(&self) -> AccessToken {
+        AccessToken::new(self.access.clone())
+    }
+    fn refresh_token(&self) -> RefreshToken {
+        RefreshToken::new(self.refresh.clone())
+    }
+    fn expire(&self) -> &OffsetDateTime {
+        &self.expire
+    }
+    fn update_token(
+        mut self,
+        token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>,
+    ) -> Self {
+        self.access = token.access_token().secret().clone();
+        self.refresh = token.refresh_token().unwrap().secret().clone();
+        self.expire = OffsetDateTime::now_utc()
+            .checked_add(Duration::nanoseconds(
+                token.expires_in().unwrap().as_nanos() as i64,
+            ))
+            .unwrap();
+        self
+    }
 }
 
 struct BaseController {
@@ -178,7 +200,7 @@ struct ProductController {
 impl Default for ProductController {
     fn default() -> Self {
         Self {
-            auth: OidcAuthentication::<OidcUser>::default().handler()
+            auth: OidcAuthentication::<OidcUser>::default().handler(),
         }
     }
 }
@@ -191,7 +213,7 @@ struct OrderItemController {
 impl Default for OrderItemController {
     fn default() -> Self {
         Self {
-            auth: OidcAuthentication::<OidcUser>::default().handler()
+            auth: OidcAuthentication::<OidcUser>::default().handler(),
         }
     }
 }
@@ -252,7 +274,6 @@ struct IndexController;
 impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let encs = (1..29)
-            .into_iter()
             .map(|i| encrypt_number(i).unwrap())
             .collect::<Vec<String>>();
         render!(request, "templates/index.html", "encs" => encs)
@@ -261,7 +282,9 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    rustls::crypto::ring::default_provider().install_default().unwrap();
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .unwrap();
     register_callback!(CreateUserCallback, CallbackKind::Insert);
 
     fmt()
@@ -381,7 +404,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .exists(&mut conn)
         .await?;
 
-    assert_eq!(exists, true);
+    assert!(exists);
 
     let count = User::all().filter("id", 2).count(&mut conn).await?;
 

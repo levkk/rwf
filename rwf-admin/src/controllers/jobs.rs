@@ -47,7 +47,7 @@ impl JobsContext {
             running,
             jobs,
             latency,
-            title: format!("Jobs | Rust Web Framework"),
+            title: "Jobs | Rust Web Framework".to_string(),
         })
     }
 }

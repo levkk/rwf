@@ -1,4 +1,3 @@
-use proc_macro2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use quote::{format_ident, ToTokens};
@@ -87,10 +86,10 @@ impl TypeParser {
 
         operations
             .into_iter()
-            .zip(paths.into_iter())
-            .zip(params.into_iter().zip(requests.into_iter()))
+            .zip(paths)
+            .zip(params.into_iter().zip(requests))
             .map(|((o, p), (par, req))| (o, p, par, req))
-            .zip(responses.into_iter().zip(funcs.into_iter()))
+            .zip(responses.into_iter().zip(funcs))
             .map(|((o, p, par, req), (res, func))| (o, p, par, req, res, func))
             .map(|(o, p, par, req, res, func)| {
                 let endpoint_tag = LitStr::new({

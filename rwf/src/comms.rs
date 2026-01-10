@@ -28,7 +28,7 @@ pub enum Error {
     SendError(#[from] SendError<Message>),
 }
 
-static MESSAGES: Lazy<Messages> = Lazy::new(|| Messages::new());
+static MESSAGES: Lazy<Messages> = Lazy::new(Messages::new);
 static DEFAULT_TOPIC: &str = "default";
 
 fn get_comms() -> &'static Messages {
@@ -134,10 +134,7 @@ impl Messages {
     /// Get a websocket message sender that will send messages to _everyone_ connected.
     pub fn websocket_notify(&self, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
-        let entries = guard
-            .iter()
-            .map(|(_, websocket)| websocket.clone())
-            .collect::<Vec<_>>();
+        let entries = guard.values().cloned().collect::<Vec<_>>();
 
         Broadcast { everyone: entries }
     }

@@ -124,7 +124,7 @@ impl PartialEq for Column {
                     .as_value
                     .as_ref()
                     .unwrap()
-                    .eq(&other.as_value.as_ref().unwrap())
+                    .eq(other.as_value.as_ref().unwrap())
                 && self.alias.eq(&other.alias)
         } else {
             self.table_name.eq(&other.table_name)
@@ -161,12 +161,10 @@ impl ToSql for Column {
         };
         if self.agg.is_none() && self.column_name.eq(&self.alias) {
             sql
+        } else if self.agg.is_none() {
+            format!(r#"{} as "{}""#, sql, self.alias.escape())
         } else {
-            if self.agg.is_none() {
-                format!(r#"{} as "{}""#, sql, self.alias.escape())
-            } else {
-                format!(r#"{}({}) as "{}""#, self.agg, sql, self.alias.escape())
-            }
+            format!(r#"{}({}) as "{}""#, self.agg, sql, self.alias.escape())
         }
     }
 }
@@ -232,7 +230,7 @@ impl Column {
         self
     }
     pub fn get_alias(&self) -> &str {
-        &self.alias.as_str()
+        self.alias.as_str()
     }
 }
 

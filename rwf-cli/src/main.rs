@@ -127,7 +127,7 @@ async fn main() {
     Logger::init();
 
     if !check_root() {
-        eprintln!("{}", "rwf-cli must run from the root of a cargo project",);
+        eprintln!("rwf-cli must run from the root of a cargo project",);
         std::process::exit(1);
     }
 

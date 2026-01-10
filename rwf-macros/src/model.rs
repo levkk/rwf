@@ -129,20 +129,12 @@ fn handle_override(
 ) -> proc_macro2::TokenStream {
     let mut overrides = attributes
         .iter()
-        .filter(|attr| {
-            attr.path()
-                .segments
-                .first()
-                .expect("segment")
-                .ident
-                .to_string()
-                == name
-        })
+        .filter(|attr| attr.path().segments.first().expect("segment").ident == name)
         .map(|attr| match &attr.meta {
             Meta::List(list) => {
                 let segment = list.path.segments.first();
 
-                if let Some(_) = segment {
+                if segment.is_some() {
                     let tokens = &list.tokens;
                     match name {
                         "table_name" => {

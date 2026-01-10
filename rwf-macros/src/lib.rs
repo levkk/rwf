@@ -212,7 +212,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
                         let path = list.path.segments.first();
                         let tokens = &list.tokens;
 
-                        if let Some(_) = path {
+                        if path.is_some() {
                             quote! {
                                 fn auth(&self) -> &rwf::controller::AuthHandler {
                                     &self.#tokens
@@ -231,7 +231,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
                         let path = list.path.segments.first();
                         let tokens = &list.tokens;
 
-                        if let Some(_) = path {
+                        if path.is_some() {
                             quote! {
                                 fn middleware(&self) -> &rwf::controller::MiddlewareSet {
                                     &self.#tokens
@@ -680,7 +680,7 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         ReturnType::Type(_, ref typ) => match *typ.clone() {
             Type::Path(path) => {
                 if let Some(output) = path.path.segments.last() {
-                    output.ident.to_string() == "Result"
+                    output.ident == "Result"
                 } else {
                     true
                 }
@@ -704,15 +704,13 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
                 std::result::Result::Ok(#name().await)
             }
         }
+    } else if result {
+        quote! {
+            std::result::Result::Ok(#name(request).await?)
+        }
     } else {
-        if result {
-            quote! {
-                std::result::Result::Ok(#name(request).await?)
-            }
-        } else {
-            quote! {
-                std::result::Result::Ok(#name(request).await)
-            }
+        quote! {
+            std::result::Result::Ok(#name(request).await)
         }
     };
 

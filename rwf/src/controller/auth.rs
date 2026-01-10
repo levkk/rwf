@@ -37,19 +37,20 @@ impl utoipa::Modify for AuthHandler {
         let unauthorized_response =
             utoipa::openapi::Response::new("An Unauthorized access attempted");
         for path in openapi.paths.paths.values_mut() {
-            for operation in [
+            for ref mut op in [
                 &mut path.get,
                 &mut path.post,
                 &mut path.put,
                 &mut path.patch,
                 &mut path.head,
-            ] {
-                if let Some(ref mut op) = operation {
-                    op.responses
-                        .responses
-                        .entry("401".to_string())
-                        .or_insert(utoipa::openapi::RefOr::T(unauthorized_response.clone()));
-                }
+            ]
+            .into_iter()
+            .flatten()
+            {
+                op.responses
+                    .responses
+                    .entry("401".to_string())
+                    .or_insert(utoipa::openapi::RefOr::T(unauthorized_response.clone()));
             }
         }
     }
@@ -184,7 +185,7 @@ impl utoipa::Modify for BasicAuth {
             openapi.security.as_mut().unwrap().push(requirement.clone());
         }
         for path in &mut openapi.paths.paths {
-            for operation in [
+            for ref mut op in [
                 &mut path.1.get,
                 &mut path.1.post,
                 &mut path.1.delete,
@@ -192,13 +193,12 @@ impl utoipa::Modify for BasicAuth {
                 &mut path.1.put,
             ]
             .into_iter()
+            .flatten()
             {
-                if let Some(ref mut op) = operation {
-                    if let Some(ref mut sec) = op.security {
-                        sec.push(requirement.clone())
-                    } else {
-                        op.security = Some(vec![requirement.clone()]);
-                    }
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
                 }
             }
         }
@@ -251,7 +251,7 @@ impl utoipa::Modify for Token {
             )
         }
         for path in &mut openapi.paths.paths {
-            for operation in [
+            for ref mut op in [
                 &mut path.1.get,
                 &mut path.1.post,
                 &mut path.1.delete,
@@ -259,13 +259,12 @@ impl utoipa::Modify for Token {
                 &mut path.1.put,
             ]
             .into_iter()
+            .flatten()
             {
-                if let Some(ref mut op) = operation {
-                    if let Some(ref mut sec) = op.security {
-                        sec.push(requirement.clone())
-                    } else {
-                        op.security = Some(vec![requirement.clone()]);
-                    }
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
                 }
             }
         }
@@ -480,7 +479,7 @@ impl utoipa::Modify for SessionAuth {
             );
         }
         for path in &mut openapi.paths.paths {
-            for operation in [
+            for ref mut op in [
                 &mut path.1.get,
                 &mut path.1.post,
                 &mut path.1.delete,
@@ -488,13 +487,12 @@ impl utoipa::Modify for SessionAuth {
                 &mut path.1.put,
             ]
             .into_iter()
+            .flatten()
             {
-                if let Some(ref mut op) = operation {
-                    if let Some(ref mut sec) = op.security {
-                        sec.push(requirement.clone())
-                    } else {
-                        op.security = Some(vec![requirement.clone()]);
-                    }
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
                 }
             }
         }

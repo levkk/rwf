@@ -144,7 +144,7 @@ pub async fn package(
 
     if let Some(config) = config {
         if config.is_file() {
-            if let Err(_) = Config::load(&config) {
+            if Config::load(&config).is_err() {
                 warning(format!(
                     "{} doesn't seem to be be valid Rwf config file, but we'll use it anyway",
                     config.display()

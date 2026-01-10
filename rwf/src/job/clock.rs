@@ -80,7 +80,7 @@ impl Clock {
             .client()
             .query(&format!("SELECT pg_try_advisory_lock({})", LOCK), &[])
             .await?;
-        if let Some(row) = rows.get(0) {
+        if let Some(row) = rows.first() {
             Ok(row.try_get::<_, bool>(0)?)
         } else {
             Ok(false)

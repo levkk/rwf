@@ -335,9 +335,9 @@ impl StaticFiles {
                     _ => continue,
                 }
             }
-            Ok(self
-                .initialized
-                .store(true, std::sync::atomic::Ordering::Release))
+            self.initialized
+                .store(true, std::sync::atomic::Ordering::Release);
+            Ok(())
         } else {
             Ok(())
         }
@@ -387,7 +387,7 @@ impl Controller for StaticFiles {
             .collect::<PathBuf>();
 
         // Replace the prefix with the root.
-        let path = PathBuf::from(self.root.join(path));
+        let path = self.root.join(path);
 
         debug!("{} -> {}", request.path().path(), path.display());
 
@@ -423,15 +423,13 @@ impl Controller for StaticFiles {
                             if meta.modified.ne(&modified) {
                                 meta.update(self.file_etag(&path).await, modified, &mut conn)
                                     .await?
+                            } else if let Some(response) =
+                                StaticFileMeta::check_request(request, &mut conn).await
+                            {
+                                return Ok(response
+                                    .header("cache-control", self.cache_control.to_string()));
                             } else {
-                                if let Some(response) =
-                                    StaticFileMeta::check_request(request, &mut conn).await
-                                {
-                                    return Ok(response
-                                        .header("cache-control", self.cache_control.to_string()));
-                                } else {
-                                    meta
-                                }
+                                meta
                             }
                         }
                         None => {

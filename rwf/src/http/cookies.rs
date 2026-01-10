@@ -131,7 +131,7 @@ impl Cookies {
     /// Convert cookies to `Set-Cookie` headers which will be sent to the client.
     pub fn to_headers(&self) -> Vec<u8> {
         let mut headers = vec![];
-        for (_, cookie) in &self.cookies {
+        for cookie in self.cookies.values() {
             headers.extend_from_slice(format!("set-cookie: {}\r\n", cookie).as_bytes());
         }
         headers
@@ -141,7 +141,7 @@ impl Cookies {
 impl std::fmt::Display for Cookies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut result = Vec::new();
-        for (_name, cookie) in &self.cookies {
+        for cookie in self.cookies.values() {
             result.push(cookie.to_string());
         }
         write!(f, "{}", result.join("; "))
@@ -195,7 +195,7 @@ impl Cookie {
     fn parse(value: &str) -> Option<Self> {
         let mut parts = value.split(";");
         let mut builder = CookieBuilder::new();
-        let _cookie = if let Some(cookie) = parts.next() {
+        if let Some(cookie) = parts.next() {
             match Self::key_value(cookie) {
                 (Some(key), Some(value)) => builder = builder.name(&key).value(urldecode(&value)),
                 (Some(key), None) => builder = builder.name(&key),
