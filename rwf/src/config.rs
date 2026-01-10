@@ -1,6 +1,7 @@
 //! Server configuration handler.
 //!
 //! Parses `rwf.toml` configuration file and makes settings globally available.
+
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
@@ -19,7 +20,9 @@ use rustls::pki_types::CertificateDer;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::sync::Arc;
+use openidconnect::{ClientId, ClientSecret, IssuerUrl, RedirectUrl};
 use thiserror::Error;
+use crate::prelude::ToSchema;
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
@@ -86,6 +89,10 @@ pub struct Config {
     /// Packaging configuration.
     #[serde(default = "PackageConfig::default")]
     pub package: PackageConfig,
+
+    /// OIDC Configuration
+    #[serde(default = "OidcConfig::default")]
+    pub oidc: OidcConfig
 }
 
 impl Default for Config {
@@ -97,6 +104,7 @@ impl Default for Config {
             database: DatabaseConfig::default(),
             websocket: WebsocketConfig::default(),
             package: PackageConfig::default(),
+            oidc: OidcConfig::default(),
         }
         .transform()
         .unwrap()
@@ -576,6 +584,59 @@ impl DatabaseConfig {
     }
 }
 
+#[derive(Debug, Clone, ToSchema, Serialize, Deserialize)]
+pub struct OidcConfig {
+    #[serde(default = "OidcConfig::default_client_id")]
+    #[schema(format=Password, value_type=String)]
+    pub client_id: Option<ClientId>,
+    #[serde(default = "OidcConfig::default_client_secret")]
+    #[schema(format=Password, value_type=String)]
+    pub client_secret: Option<ClientSecret>,
+    #[serde(default = "OidcConfig::default_redirect_url")]
+    #[schema(format=Uri, value_type=String)]
+    pub redirect_url: Option<RedirectUrl>,
+    #[serde(default = "OidcConfig::default_discovery_url")]
+    #[schema(format=Uri, value_type=String)]
+    pub discovery_url: Option<IssuerUrl>,
+}
+
+impl OidcConfig {
+    pub fn froom_env() -> Self {
+        Self {
+            client_id: Self::default_client_id(),
+            client_secret: Self::default_client_secret(),
+            discovery_url: Self::default_discovery_url(),
+            redirect_url: Self::default_redirect_url(),
+        }
+    }
+    pub fn default_client_id() -> Option<ClientId> {
+        var("RWF_OIDC_CLIENT").map(|id| ClientId::new(id)).ok()
+    }
+    pub fn default_client_secret() -> Option<ClientSecret> {
+        var("RWF_OIDC_SECRET").map(|sec| ClientSecret::new(sec)).ok()
+    }
+    pub fn default_redirect_url() -> Option<RedirectUrl> {
+        var("RWF_OIDC_REDIRECT").map(|redirect| RedirectUrl::new(redirect).expect("Initial Userinput need to be valid")).ok()
+    }
+    pub fn default_discovery_url() -> Option<IssuerUrl> {
+        var("RWF_OIDC_DISCOVERY").map(|issuer|  IssuerUrl::new(issuer).expect("Initial Userinput need to be valid")).ok()
+    }
+    pub fn everything_set(&self) -> bool {
+        self.discovery_url.is_some() && self.client_secret.is_some() && self.redirect_url.is_some() && self.client_id.is_some()
+    }
+}
+
+impl Default for OidcConfig {
+    fn default() -> Self {
+        Self {
+            client_id: None,
+            client_secret: None,
+            redirect_url: None,
+            discovery_url: None
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -644,3 +705,4 @@ impl PackageConfig {
         vec![]
     }
 }
+

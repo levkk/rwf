@@ -50,6 +50,10 @@ pub enum Outcome {
 /// # use rwf::controller::middleware::prelude::*;
 /// struct RequireHeader;
 ///
+/// impl rwf::prelude::Modify for RequireHeader {
+///     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) { () }
+/// }
+///
 /// #[async_trait]
 /// impl Middleware for  RequireHeader {
 ///     // Process request and determine if it should be

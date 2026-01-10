@@ -33,6 +33,7 @@ pub mod middleware;
 pub mod ser;
 pub mod static_files;
 pub mod turbo_stream;
+pub mod oidc;
 
 #[cfg(feature = "wsgi")]
 pub mod wsgi;

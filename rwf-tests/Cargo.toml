@@ -16,3 +16,8 @@ serde_json = "1"
 serde = "*"
 parking_lot = "*"
 tracing = "0.1.44"
+openidconnect = { version = "4.0.1", features = ["reqwest", "rustls-tls"] }
+reqwest = { version = "0.13.1", features = ["rustls-native-certs"] }
+rustls = { version = "0.23.36", features = ["ring"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["formatting", "serde", "parsing", "macros"] }
