@@ -62,6 +62,8 @@ utoipa = {features = ["yaml", "time", "uuid","ulid", "url", "rc_schema", "non_st
 utoipa-redoc = "6.0.0"
 utoipa-rapidoc = "6.0.0"
 lazy_static = "1.5.0"
+openidconnect = { version = "4.0.1", features = ["reqwest"] }
+url = { version = "2.5.8", features = ["serde"] }
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use rwf::crypto::encrypt_number;
-use rwf::model::{Column, Model, Pool, Value};
+use rwf::model::{get_connection, Column, Model, Pool, Value};
 use rwf::view::Templates;
 use rwf::{
     controller::{AuthHandler, SessionId, StaticFiles, WebsocketController},
@@ -16,6 +16,8 @@ use rwf::{
 use rwf_macros::{generate_openapi_model_controller, Context};
 
 use std::time::Instant;
+use openidconnect::core::{CoreGenderClaim, CoreIdTokenFields, CoreTokenType};
+use openidconnect::{AccessToken, EmptyAdditionalClaims, OAuth2TokenResponse, RefreshToken, StandardTokenResponse, UserInfoClaims};
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
 mod components;
@@ -27,8 +29,57 @@ use models::{Order, OrderItem, Product, User};
 
 use rwf::controller::middleware::SecureId;
 use rwf::controller::{
-    AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
+    BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
 };
+use rwf::controller::oidc::{OidcController, OidcAuthentication, OidcUser as OUser};
+#[derive(Debug, Clone, Serialize, Deserialize, macros::Model, ToSchema, ToResponse)]
+struct OidcUser {
+    id: Option<i64>,
+    sub: Uuid,
+    name: String,
+    email: String,
+    access: String,
+    refresh: String,
+    expire: OffsetDateTime
+}
+
+#[async_trait]
+impl OUser for OidcUser {
+    async fn from_token(token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>, userinfo: UserInfoClaims<EmptyAdditionalClaims, CoreGenderClaim>) -> Result<Self, rwf::model::Error> {
+                     let name = userinfo.standard_claims().preferred_username().unwrap().to_string();
+                     let sub = uuid::Uuid::parse_str(userinfo.standard_claims().subject().to_string().as_str()).unwrap();
+                     let email = userinfo.standard_claims().email().unwrap().to_string();
+                     let access = token.access_token().secret().clone();
+                     let refresh = token.refresh_token().unwrap().secret().clone();
+                     let expire  = OffsetDateTime::now_utc().checked_add(Duration::nanoseconds(token.expires_in().unwrap().as_nanos() as i64)).unwrap();
+
+                     let mut conn = get_connection().await?;
+                     OidcUser::find_or_create_by(&[
+                         ("name", name.to_value()),
+                         ("sub", sub.to_value()),
+                         ("email", email.to_value()),
+                         ("access", access.to_value()),
+                         ("refresh", refresh.to_value()),
+                         ("expire", expire.to_value())
+                     ]).unique_by(&["sub"]).fetch(&mut conn).await
+                 }
+                 fn access_token(&self) -> AccessToken {
+                     AccessToken::new(self.access.clone())
+                 }
+                 fn refresh_token(&self) -> RefreshToken {
+                     RefreshToken::new(self.refresh.clone())
+             }
+     fn expire(&self) -> &OffsetDateTime {
+          &self.expire
+     }
+     fn update_token(mut self, token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>) -> Self {
+         self.access = token.access_token().secret().clone();
+         self.refresh = token.refresh_token().unwrap().secret().clone();
+         self.expire = OffsetDateTime::now_utc().checked_add(Duration::nanoseconds(token.expires_in().unwrap().as_nanos() as i64)).unwrap();
+         self
+     }
+
+}
 
 struct BaseController {
     id: String,
@@ -81,7 +132,7 @@ impl RestController for BasePlayerController {
 }
 
 #[generate_openapi_model_controller(i64, User)]
-#[derive(Clone, rwf::macros::ModelController)]
+#[derive(Clone, macros::ModelController)]
 #[auth(auth)]
 struct UserController {
     auth: AuthHandler,
@@ -99,7 +150,7 @@ impl Default for UserController {
 }
 
 #[generate_openapi_model_controller(i64, Order)]
-#[derive(Clone, rwf::macros::ModelController)]
+#[derive(Clone, macros::ModelController)]
 #[auth(auth)]
 #[middleware(middleware)]
 struct OrderController {
@@ -108,11 +159,9 @@ struct OrderController {
 }
 impl Default for OrderController {
     fn default() -> Self {
+        let auth: OidcAuthentication<OidcUser> = OidcAuthentication::default();
         Self {
-            auth: rwf::controller::auth::Token {
-                token: "testToken".to_string(),
-            }
-            .handler(),
+            auth: auth.handler(),
             middleware: MiddlewareSet::new(vec![
                 RateLimiter::per_second(10).middleware(),
                 SecureId::default().middleware(),
@@ -121,7 +170,7 @@ impl Default for OrderController {
     }
 }
 #[generate_openapi_model_controller(i64, Product)]
-#[derive(Clone, rwf::macros::ModelController)]
+#[derive(Clone, macros::ModelController)]
 #[auth(auth)]
 struct ProductController {
     auth: AuthHandler,
@@ -129,12 +178,12 @@ struct ProductController {
 impl Default for ProductController {
     fn default() -> Self {
         Self {
-            auth: AllowAll.handler(),
+            auth: OidcAuthentication::<OidcUser>::default().handler()
         }
     }
 }
 #[generate_openapi_model_controller(i64, OrderItem)]
-#[derive(Clone, rwf::macros::ModelController)]
+#[derive(Clone, macros::ModelController)]
 #[auth(auth)]
 struct OrderItemController {
     auth: AuthHandler,
@@ -142,7 +191,7 @@ struct OrderItemController {
 impl Default for OrderItemController {
     fn default() -> Self {
         Self {
-            auth: AllowAll.handler(),
+            auth: OidcAuthentication::<OidcUser>::default().handler()
         }
     }
 }
@@ -212,6 +261,7 @@ impl Controller for IndexController {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    rustls::crypto::ring::default_provider().install_default().unwrap();
     register_callback!(CreateUserCallback, CallbackKind::Insert);
 
     fmt()
@@ -429,7 +479,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use rwf_admin::*;
 
     install()?;
-    let engine = engine().auth(AuthHandler::new(rwf::controller::auth::BasicAuth {
+    let engine = engine().auth(AuthHandler::new(BasicAuth {
         user: "rwf_admin".to_string(),
         password: "SPbgE5uipuPr7BVDXjifOFqdlQxVVPi".to_string(),
     }));
@@ -452,6 +502,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         crud!("/api/products" => ProductController),
         crud!("/api/orders" => OrderController),
         crud!("/api/orderitems" => OrderItemController),
+        route!("/oidc" => OidcController::<OidcUser>),
     ])
     .launch()
     .await?;
