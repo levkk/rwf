@@ -119,6 +119,17 @@ impl IntoOpenApiNesterOption for utoipa::openapi::OpenApi {
         OpenApiNesterOptions::Value(self)
     }
 }
+impl IntoOpenApiNesterOption for OpenApiNesterOptions {
+    fn into_nester_option(self) -> OpenApiNesterOptions {
+        self
+    }
+}
+impl<T: Controller + utoipa::OpenApi> IntoOpenApiNesterOption for &T {
+    fn into_nester_option(self) -> OpenApiNesterOptions {
+        OpenApiNesterOptions::Fn(T::openapi)
+    }
+}
+
 impl IntoOpenApiNesterOption for fn() -> utoipa::openapi::OpenApi {
     fn into_nester_option(self) -> OpenApiNesterOptions {
         OpenApiNesterOptions::Fn(self)

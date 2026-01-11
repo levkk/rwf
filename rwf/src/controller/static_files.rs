@@ -12,7 +12,7 @@ use crate::model::value::{ToValue, Value};
 use crate::{
     http::{Body, Handler, Request, Response},
     model::{get_connection, FromRow, Model},
-    prelude::ToConnectionRequest,
+    prelude::{utoipa, OpenApi, ToConnectionRequest},
 };
 use async_trait::async_trait;
 use base64::Engine;
@@ -25,7 +25,7 @@ use std::{
 use time::{macros::format_description, Duration, OffsetDateTime};
 use tokio::fs::File;
 use tracing::{debug, warn};
-use utoipa::OpenApi;
+use utoipa::Modify;
 
 /// Cache control header.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -343,9 +343,12 @@ impl StaticFiles {
     }
 
     pub fn handler(self) -> Handler {
+        let mut specs = Self::openapi();
+        self.auth().modify(&mut specs);
+        self.middleware().modify(&mut specs);
         crate::controller::openapi::registrer_controller(
             self.prefix.as_path().to_str().unwrap(),
-            Self::openapi(),
+            specs,
         );
         Handler::wildcard(self.prefix.display().to_string().as_str(), self)
     }
