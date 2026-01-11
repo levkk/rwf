@@ -32,10 +32,18 @@ impl Default for SecureId {
 impl Middleware for SecureId {
     async fn handle_request(&self, mut request: Request) -> Result<Outcome, Error> {
         let id = request.parameter::<String>("id");
-
-        if let Ok(mut data) = request.json_raw() {
-            if let Some(arr) = data.as_array_mut() {
-                for obj in arr.iter_mut() {
+        if self.transform_response {
+            if let Ok(mut data) = request.json_raw() {
+                if let Some(arr) = data.as_array_mut() {
+                    for obj in arr.iter_mut() {
+                        if let Some(id) = obj.get_mut("id") {
+                            if let Some(enc_id) = id.as_str() {
+                                *id = serde_json::json!(decrypt_number(enc_id)?);
+                            }
+                        }
+                    }
+                    request.replace_body(serde_json::to_vec(&data)?);
+                } else if let Some(obj) = data.as_object_mut() {
                     if let Some(id) = obj.get_mut("id") {
                         if let Some(enc_id) = id.as_str() {
                             *id = serde_json::json!(decrypt_number(enc_id)?);
@@ -43,14 +51,7 @@ impl Middleware for SecureId {
                     }
                 }
                 request.replace_body(serde_json::to_vec(&data)?);
-            } else if let Some(obj) = data.as_object_mut() {
-                if let Some(id) = obj.get_mut("id") {
-                    if let Some(enc_id) = id.as_str() {
-                        *id = serde_json::json!(decrypt_number(enc_id)?);
-                    }
-                }
             }
-            request.replace_body(serde_json::to_vec(&data)?);
         }
 
         if let Ok(Some(id)) = id {
@@ -80,24 +81,28 @@ impl Middleware for SecureId {
         _request: &Request,
         response: Response,
     ) -> Result<Response, Error> {
-        Ok(if let Body::Json(ref data) = response.get_body() {
-            let mut data: serde_json::Value = serde_json::from_slice(data)?;
-            if let Some(arr) = data.as_array_mut() {
-                for obj in arr.iter_mut() {
+        Ok(if self.transform_response {
+            if let Body::Json(ref data) = response.get_body() {
+                let mut data: serde_json::Value = serde_json::from_slice(data)?;
+                if let Some(arr) = data.as_array_mut() {
+                    for obj in arr.iter_mut() {
+                        if let Some(id) = obj.get_mut("id") {
+                            if let Some(num_id) = id.as_i64() {
+                                *id = serde_json::json!(encrypt_number(num_id)?);
+                            }
+                        }
+                    }
+                } else if let Some(obj) = data.as_object_mut() {
                     if let Some(id) = obj.get_mut("id") {
                         if let Some(num_id) = id.as_i64() {
                             *id = serde_json::json!(encrypt_number(num_id)?);
                         }
                     }
                 }
-            } else if let Some(obj) = data.as_object_mut() {
-                if let Some(id) = obj.get_mut("id") {
-                    if let Some(num_id) = id.as_i64() {
-                        *id = serde_json::json!(encrypt_number(num_id)?);
-                    }
-                }
+                response.body(Body::Json(serde_json::to_vec(&data)?))
+            } else {
+                response
             }
-            response.body(Body::Json(serde_json::to_vec(&data)?))
         } else {
             response
         })
@@ -124,53 +129,56 @@ impl utoipa::Modify for SecureId {
                 .insert("encrypted_id".to_string(), encrypted_id);
             let encrypted_id =
                 utoipa::openapi::RefOr::Ref(utoipa::openapi::Ref::from_schema_name("encrypted_id"));
-            for schema in components.schemas.values_mut() {
-                if let utoipa::openapi::RefOr::T(schema) = schema {
-                    if let utoipa::openapi::schema::Schema::Object(obj) = schema {
-                        if obj.schema_type
-                            == utoipa::openapi::schema::SchemaType::Type(
-                                utoipa::openapi::schema::Type::Object,
-                            )
-                        {
-                            if let Some(id) = obj.properties.get_mut("id") {
-                                *id = encrypted_id.clone();
+            if self.transform_response {
+                for schema in components.schemas.values_mut() {
+                    if let utoipa::openapi::RefOr::T(schema) = schema {
+                        if let utoipa::openapi::schema::Schema::Object(obj) = schema {
+                            if obj.schema_type
+                                == utoipa::openapi::schema::SchemaType::Type(
+                                    utoipa::openapi::schema::Type::Object,
+                                )
+                            {
+                                if let Some(id) = obj.properties.get_mut("id") {
+                                    *id = encrypted_id.clone();
+                                }
                             }
                         }
                     }
                 }
-            }
-            for response in components.responses.values_mut() {
-                if let utoipa::openapi::RefOr::T(res) = response {
-                    for content in res.content.values_mut() {
-                        if let Some(example) = content.example.as_mut() {
-                            if let Some(id) = example.get_mut("id") {
-                                if let Some(num_id) = id.as_i64() {
-                                    *id = serde_json::json!(encrypt_number(num_id).unwrap());
+                for response in components.responses.values_mut() {
+                    if let utoipa::openapi::RefOr::T(res) = response {
+                        for content in res.content.values_mut() {
+                            if let Some(example) = content.example.as_mut() {
+                                if let Some(id) = example.get_mut("id") {
+                                    if let Some(num_id) = id.as_i64() {
+                                        *id = serde_json::json!(encrypt_number(num_id).unwrap());
+                                    }
                                 }
                             }
-                        }
-                        for example in content.examples.values_mut() {
-                            if let utoipa::openapi::RefOr::T(example) = example {
-                                if let Some(val) = example.value.as_mut() {
-                                    if let Some(id) = val.get_mut("id") {
-                                        if let Some(num_id) = id.as_i64() {
-                                            *id =
-                                                serde_json::json!(encrypt_number(num_id).unwrap());
+                            for example in content.examples.values_mut() {
+                                if let utoipa::openapi::RefOr::T(example) = example {
+                                    if let Some(val) = example.value.as_mut() {
+                                        if let Some(id) = val.get_mut("id") {
+                                            if let Some(num_id) = id.as_i64() {
+                                                *id = serde_json::json!(
+                                                    encrypt_number(num_id).unwrap()
+                                                );
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        if let Some(schema) = content.schema.as_mut() {
-                            if let utoipa::openapi::RefOr::T(schema) = schema {
-                                if let utoipa::openapi::schema::Schema::Object(obj) = schema {
-                                    if obj.schema_type
-                                        == utoipa::openapi::schema::SchemaType::Type(
-                                            utoipa::openapi::schema::Type::Object,
-                                        )
-                                    {
-                                        if let Some(id) = obj.properties.get_mut("id") {
-                                            *id = encrypted_id.clone();
+                            if let Some(schema) = content.schema.as_mut() {
+                                if let utoipa::openapi::RefOr::T(schema) = schema {
+                                    if let utoipa::openapi::schema::Schema::Object(obj) = schema {
+                                        if obj.schema_type
+                                            == utoipa::openapi::schema::SchemaType::Type(
+                                                utoipa::openapi::schema::Type::Object,
+                                            )
+                                        {
+                                            if let Some(id) = obj.properties.get_mut("id") {
+                                                *id = encrypted_id.clone();
+                                            }
                                         }
                                     }
                                 }
