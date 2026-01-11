@@ -20,11 +20,10 @@ pub fn generate_controller4(
     let path_impl = targs.gen_oapi();
     let apiname = format_ident!("{}OpenapiDoc", model);
     let resource = targs.ty.clone();
-    if input
+    if !input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("resource"))
-        .is_none()
+        .any(|attr| attr.path().is_ident("resource"))
     {
         input.attrs.push(parse_quote!(#[resource(#resource)]))
     }

@@ -42,7 +42,7 @@ impl PageController for ModelController {
                 .into_iter()
                 .filter(|c| !c.skip())
                 .collect::<Vec<_>>();
-            let order_by = if columns.iter().find(|c| c.column_name == "id").is_some() {
+            let order_by = if columns.iter().any(|c| c.column_name == "id") {
                 "ORDER BY id DESC "
             } else {
                 ""

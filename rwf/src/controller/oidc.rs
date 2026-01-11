@@ -83,7 +83,7 @@ async fn clients(
     if !config.everything_set() {
         return Err(Error::Config(crate::config::Error::NoConfig));
     }
-    if let None = rustls::crypto::CryptoProvider::get_default() {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
         rustls::crypto::ring::default_provider()
             .install_default()
             .unwrap();

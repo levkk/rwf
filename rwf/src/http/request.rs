@@ -393,9 +393,9 @@ impl Request {
 
     pub(crate) fn replace_body(&mut self, body: Vec<u8>) {
         self.inner = Arc::new(Inner {
-            body: body,
+            body,
             cookies: self.inner.cookies.clone(),
-            peer: self.inner.peer.clone(),
+            peer: self.inner.peer,
         });
     }
 }
