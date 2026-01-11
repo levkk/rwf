@@ -13,7 +13,7 @@ use rwf::{
     prelude::*,
     register_callback,
 };
-use rwf_macros::{generate_openapi_model_controller, Context};
+use rwf_macros::{generate_openapi_model_controller, generate_openapi_specs, Context};
 use std::time::Instant;
 use tracing_subscriber::{filter::LevelFilter, fmt, util::SubscriberInitExt, EnvFilter};
 
@@ -29,6 +29,8 @@ use rwf::controller::oidc::{OidcUser as OUser, *};
 use rwf::controller::{
     AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
 };
+use rwf::http::Handler;
+
 #[derive(Debug, Clone, Serialize, Deserialize, macros::Model, ToSchema, ToResponse)]
 struct OidcUser {
     #[schema(minimum = 1, example = 128, format = "Int16")]
@@ -137,7 +139,7 @@ impl Controller for BaseController {
         RestController::handle(self, request).await
     }
 }
-
+#[generate_openapi_specs]
 #[async_trait]
 impl RestController for BaseController {
     type Resource = String;
@@ -155,7 +157,7 @@ impl Controller for BasePlayerController {
         RestController::handle(self, request).await
     }
 }
-
+#[generate_openapi_specs]
 #[async_trait]
 impl RestController for BasePlayerController {
     type Resource = i64;
@@ -165,7 +167,7 @@ impl RestController for BasePlayerController {
         //     Ok(_) => (),
         //     Err(err) => error!(err),
         // };
-        Ok(Response::new().html("list all the players"))
+        Ok(Response::new().html("list all the players").code(202))
     }
 
     async fn get(&self, request: &Request, id: &i64) -> Result<Response, Error> {
@@ -174,6 +176,9 @@ impl RestController for BasePlayerController {
             .websocket()
             .send(Message::Text("controller websocket".into()))?;
         Ok(Response::new().html(format!("<h1>base player controller, id: {}</h1>", id)))
+    }
+    async fn delete(&self, _request: &Request, _id: &Self::Resource) -> Result<Response, Error> {
+        Ok(Response::not_implemented())
     }
 }
 
@@ -295,6 +300,7 @@ impl WebsocketController for MyWebsocketController {
 
 struct IndexController;
 
+#[generate_openapi_specs]
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
@@ -539,7 +545,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: "5".to_string(),
         }
         .route("/base"),
-        BasePlayerController {}.route("/base/player"),
+        BasePlayerController {}.rest("/base/player"),
         route!("/openapi" => OpenApiController),
         engine!("/admin" => engine),
         rwf_admin::static_files()?,

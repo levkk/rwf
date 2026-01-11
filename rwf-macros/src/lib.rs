@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 
 use syn::{
     parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, Data, DeriveInput,
-    Expr, ItemFn, Meta, ReturnType, Token, Type, Visibility,
+    Expr, ItemFn, ItemImpl, Meta, ReturnType, Token, Type, Visibility,
 };
 
 use quote::{quote, ToTokens};
@@ -748,6 +748,17 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn generate_openapi_specs(args: TokenStream, input: TokenStream) -> TokenStream {
+    let controller = parse_macro_input!(input as ItemImpl);
+    if args.is_empty() {
+        openapi::generate_api_specs_controller(controller, None).into()
+    } else {
+        let json_type = parse_macro_input!(args as Type);
+        openapi::generate_api_specs_controller(controller, Some(json_type)).into()
+    }
 }
 
 #[proc_macro_attribute]
