@@ -8,7 +8,7 @@ use syn::parse::{Parse, ParseStream};
 use syn::{
     parse_quote, Expr, ExprMethodCall, ImplItem, ItemStruct, Lit, LitStr, Stmt, Token, Type,
 };
-#[allow(unused)]
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ResponseTypes {
     HTML,
@@ -156,6 +156,8 @@ fn parse_call(expr: &Expr, acc: &mut Vec<Response>) {
                 acc.push(Response::from(ResponseTypes::NotFound))
             } else if func.contains("bad_request") {
                 acc.push(Response::from(ResponseTypes::BadRequest))
+            } else if func.contains("forbidden") {
+                acc.push(Response::from(ResponseTypes::Forbidden))
             }
         }
     } else if let Expr::MethodCall(call) = expr {
@@ -182,6 +184,10 @@ fn parse_call(expr: &Expr, acc: &mut Vec<Response>) {
             acc.push(Response::from(ResponseTypes::HTML))
         } else if expr_macro.mac.path.is_ident("turbo_stream") {
             acc.push(Response::from(ResponseTypes::TURBO))
+        }
+    } else if let Expr::Match(expr_match) = expr {
+        for arm in expr_match.arms.iter() {
+            parse_call(arm.body.as_ref(), acc)
         }
     }
 }
@@ -216,13 +222,13 @@ pub fn generate_api_specs_controller(
                     if pth.is_ident("Controller") {
                         if !visited {
                             input.items.push(parse_quote!{
-                                fn route(self, path: &str) -> Handler
+                                fn route(self, path: &str) -> rwf::http::Handler
                                 where Self: Sized + 'static,
                                 {
                                     let mut spec = #apiname :: openapi() ;
                                     <dyn rwf::controller::Controller>::modify(&self, &mut spec);
                                     rwf::controller::openapi::registrer_controller(path.to_string(), spec);
-                                    Handler::route(path, self)
+                                    rwf::http::Handler::route(path, self)
                                 }
                             });
                             input.to_tokens(&mut outputt);
@@ -233,13 +239,13 @@ pub fn generate_api_specs_controller(
                         if fnimpl.sig.ident.ne("handle") {
                             if !visited {
                                 input.items.push(parse_quote!{
-                                fn route(self, path: &str) -> Handler
+                                fn route(self, path: &str) -> rwf::http::Handler
                                 where Self: Sized + 'static,
                                 {
                                     let mut spec = #apiname :: openapi() ;
                                     <dyn rwf::controller::Controller>::modify(&self, &mut spec);
                                     rwf::controller::openapi::registrer_controller(path.to_string(), spec);
-                                    Handler::route(path, self)
+                                    rwf::http::Handler::route(path, self)
                                 }
                             });
                                 input.to_tokens(&mut outputt);
@@ -255,13 +261,13 @@ pub fn generate_api_specs_controller(
                     } else if pth.is_ident("RestController") {
                         if !visited {
                             input.items.push(parse_quote!{
-                                fn rest(self, path: &str) -> Handler
+                                fn rest(self, path: &str) -> rwf::http::Handler
                                 where Self: Sized + 'static,
                                 {
                                     let mut spec = #apiname :: openapi() ;
                                     <dyn rwf::controller::Controller>::modify(&self, &mut spec);
                                     rwf::controller::openapi::registrer_controller(path.to_string(), spec);
-                                    Handler::rest(path, self)
+                                    rwf::http::Handler::rest(path, self)
                                 }
                             });
                             input.to_tokens(&mut outputt);
@@ -308,6 +314,7 @@ pub fn generate_api_specs_controller(
                                 #(
                                     #acc
                                 ),*
+                                , (status = 500, description = "A InternalServerError occoured")
                             )
                         )]
                         fn #fnname(request: &Request) -> Result<Response, rwf::controller::Error> {
