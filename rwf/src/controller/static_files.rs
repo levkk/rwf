@@ -8,6 +8,7 @@
 //! To change this behavior, create the controller with [`StaticFiles::serve`] and
 //! then call [`StaticFiles::prefix`] to set the URL prefix to whatever you want.
 use super::{Controller, Error};
+use crate::model::value::{ToValue, Value};
 use crate::{
     http::{Body, Handler, Request, Response},
     model::{get_connection, FromRow, Model},
@@ -24,8 +25,7 @@ use std::{
 use time::{macros::format_description, Duration, OffsetDateTime};
 use tokio::fs::File;
 use tracing::{debug, warn};
-
-use crate::model::value::{ToValue, Value};
+use utoipa::OpenApi;
 
 /// Cache control header.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -220,6 +220,8 @@ fn default_etag_generator(data: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(hash.as_slice())
 }
 /// Static files controller.
+#[derive(crate::prelude::OpenApi)]
+#[openapi(paths(get_static_file))]
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
@@ -227,6 +229,33 @@ pub struct StaticFiles {
     cache_control: CacheControl,
     etag_generator: fn(&[u8]) -> String,
     initialized: std::sync::atomic::AtomicBool,
+}
+#[allow(unused)]
+#[crate::prelude::utoipa::path(
+    get,
+    path="/*",
+    tags=["static", "files"],
+    summary="Static File Handler",
+    responses(
+        (status = 200, description = "File found and returned",
+            content(
+                (String = "text/plain", example = "Hello World!"),
+                (String = "text/html", example = "<h1>Hello World!</h1>"),
+                (Vec<u8> = "application/octet-stream"),
+            ),
+            headers(
+                ("Cache-Control" = String, description="Applied Cache-Control"),
+                ("ETag" = String, description="ETag of the Response Content. Thus If-None-Match Request Headers are Supported"),
+                ("Last-Modified" = OffsetDateTime, description = "Modification TimeStamp of the Resource. Thus If-Modified-Since Requests are supported."),
+            )
+        ),
+        (status = 404, description = "Requested File was not found"),
+        (status = 304, description = "Requested file was not modified."),
+        (status = 500, description = "Server Error")
+    )
+)]
+fn get_static_file(_request: &Request) -> Result<Response, crate::controller::Error> {
+    Ok(Response::not_implemented())
 }
 
 impl StaticFiles {
@@ -314,6 +343,10 @@ impl StaticFiles {
     }
 
     pub fn handler(self) -> Handler {
+        crate::controller::openapi::registrer_controller(
+            self.prefix.as_path().to_str().unwrap(),
+            Self::openapi(),
+        );
         Handler::wildcard(self.prefix.display().to_string().as_str(), self)
     }
     pub async fn initialize(&self) -> Result<(), Error> {
