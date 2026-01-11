@@ -220,10 +220,17 @@ struct IndexController;
 #[async_trait]
 impl Controller for IndexController {
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
-        let encs = (1..29)
-            .map(|i| encrypt_number(i).unwrap())
-            .collect::<Vec<String>>();
-        render!(request, "templates/index.html", "encs" => encs)
+        // Test Multible 200 Responses supported in openapi Specs
+        match request.query().get::<bool>("text") {
+            Some(true) => Ok(Response::new().text("Hallo World")),
+            Some(false) => Ok(Response::new().json({})?),
+            None => {
+                let encs = (1..29)
+                    .map(|i| encrypt_number(i).unwrap())
+                    .collect::<Vec<String>>();
+                render!(request, "templates/index.html", "encs" => encs)
+            }
+        }
     }
 }
 

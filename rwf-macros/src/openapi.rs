@@ -2,6 +2,7 @@ use crate::snake_case;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use quote::{format_ident, ToTokens};
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::str::FromStr;
 use syn::parse::{Parse, ParseStream};
@@ -36,6 +37,19 @@ impl ResponseTypes {
             ResponseTypes::Redirect => 302,
         }
     }
+    fn content_type(&self) -> &str {
+        match self {
+            ResponseTypes::HTML => "text/html",
+            ResponseTypes::JSON => "application/json",
+            ResponseTypes::TEXT => "text/plain",
+            ResponseTypes::TURBO => "text/vnd.turbo-stream.html",
+            ResponseTypes::NotImplemented => "",
+            ResponseTypes::NotFound => "",
+            ResponseTypes::Forbidden => "",
+            ResponseTypes::BadRequest => "",
+            ResponseTypes::Redirect => "",
+        }
+    }
 }
 #[derive(Default)]
 struct ResponseBuilder {
@@ -46,14 +60,17 @@ struct Response {
     ty: ResponseTypes,
     code: Lit,
     json: Option<Type>,
+    int: u16,
 }
 impl From<ResponseTypes> for Response {
     fn from(value: ResponseTypes) -> Self {
         let code = Lit::new(Literal::from_str(value.default_code().to_string().as_str()).unwrap());
+        let int = value.default_code();
         Self {
             ty: value,
             code,
             json: None,
+            int,
         }
     }
 }
@@ -63,11 +80,19 @@ impl ResponseBuilder {
             panic!("Failed to Infer Response type")
         }
         let ty = self.ty.unwrap();
+
         if self.code.is_some() {
+            let code = self.code.unwrap();
+            let int = if let Lit::Int(ref i) = &code {
+                i.base10_parse::<u16>().unwrap()
+            } else {
+                panic!("Invalid Code Literal. Failed to parse u16")
+            };
             Response {
                 ty,
-                code: self.code.unwrap(),
+                code,
                 json: None,
+                int,
             }
         } else {
             Response::from(ty)
@@ -113,6 +138,61 @@ impl ToTokens for Response {
             (status = #code, #ty #json)
         }
         .to_tokens(tokens);
+    }
+}
+
+struct Responses {
+    inner: BTreeMap<u16, Vec<Response>>,
+}
+
+impl From<Vec<Response>> for Responses {
+    fn from(value: Vec<Response>) -> Self {
+        let mut inner = BTreeMap::new();
+        for val in value {
+            inner.entry(val.int).or_insert(Vec::new()).push(val);
+        }
+        Responses { inner }
+    }
+}
+
+impl ToTokens for Responses {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let mut inner = Vec::new();
+        for (_, v) in self.inner.iter() {
+            if v.len() == 1 {
+                inner.push(v.first().unwrap().to_token_stream());
+            } else {
+                let mut content = Vec::new();
+                for res in v.iter() {
+                    let content_type = res.ty.content_type();
+                    if res.json.is_some() {
+                        let typ = res.json.as_ref().unwrap();
+                        content.push(quote! {(#typ = #content_type)});
+                    } else if res.ty == ResponseTypes::HTML {
+                        content.push(quote! {(String= #content_type)});
+                    } else if res.ty == ResponseTypes::JSON {
+                        content.push(quote! {(serde_json::Value = #content_type)});
+                    } else if res.ty == ResponseTypes::TEXT {
+                        content.push(quote! {(String = #content_type)})
+                    } else if res.ty == ResponseTypes::TURBO {
+                        content.push(quote! {(String = #content_type)})
+                    } else {
+                        content.clear();
+                        inner.push(res.to_token_stream());
+                        break;
+                    }
+                }
+                if !content.is_empty() {
+                    let status = v.first().unwrap().code.clone();
+                    let description = "A multi content Response";
+                    let contents = quote! {#(#content),*};
+                    inner.push(
+                        quote! {(status = #status, description = #description, content(#contents))},
+                    );
+                }
+            }
+        }
+        quote! {#(#inner),*}.to_tokens(tokens);
     }
 }
 
@@ -306,16 +386,14 @@ pub fn generate_api_specs_controller(
                             res.json = json.clone()
                         }
                     }
+                    let responses = Responses::from(acc).to_token_stream();
+                    let responses = quote! {responses(#responses , (status=500, description="An Internal Server Error"))};
+                    //eprintln!("{}", responses);
                     let generate = quote! {
                         #[rwf::prelude::utoipa::path(
                             #method,
                             path=#path,
-                            responses(
-                                #(
-                                    #acc
-                                ),*
-                                , (status = 500, description = "A InternalServerError occoured")
-                            )
+                            #responses
                         )]
                         fn #fnname(request: &Request) -> Result<Response, rwf::controller::Error> {
                             Ok(Response::not_implemented())
