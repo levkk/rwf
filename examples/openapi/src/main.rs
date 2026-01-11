@@ -1,6 +1,7 @@
 use rwf::controller::middleware::SecureId;
 use rwf::controller::{Middleware, MiddlewareSet, ModelController, OpenApiController};
 use rwf::macros::generate_openapi_model_controller;
+use rwf::model::migrate;
 use rwf::prelude::*;
 
 /// A Model that can be used in the OpenApi Spec
@@ -36,14 +37,13 @@ impl Default for ProductController {
 
 #[tokio::main]
 async fn main() -> Result<(), rwf::http::Error> {
-    // Create a handler to make the specs available
-    //let apictrl = crud!("/product" => ProductController);
-    // Create a handler without the overwrite of the id field
+    migrate().await?;
 
-    let apictrl = ProductController {
-        middleware: MiddlewareSet::default(),
-    }
-    .crud("/prod");
+    // Create a handler to make the specs available
+    let apictrl = crud!("/product" => ProductController);
+
+    // Create a handler without the overwrite of the id field
+    //let apictrl = ProductController {middleware: MiddlewareSet::default()}.crud("/prod");
 
     // Makes the OpenApi Specs available under /openapi/yaml or /openapi/json
     // Serve an API Browser under /openapi/redoc and /openapi/rapidoc

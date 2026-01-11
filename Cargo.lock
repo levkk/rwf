@@ -2976,6 +2976,7 @@ dependencies = [
  "utoipa",
  "utoipa-rapidoc",
  "utoipa-redoc",
+ "utoipa-scalar",
  "uuid",
 ]
 
@@ -4145,6 +4146,17 @@ name = "utoipa-redoc"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6427547f6db7ec006cbbef95f7565952a16f362e298b416d2d497d9706fef72d"
+dependencies = [
+ "serde",
+ "serde_json",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-scalar"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59559e1509172f6b26c1cdbc7247c4ddd1ac6560fe94b584f81ee489b141f719"
 dependencies = [
  "serde",
  "serde_json",
