@@ -1,0 +1,5 @@
+[general]
+secret_key = "CdWgtiuvbY/1TqdfENb3Sq/mVdIvdIOdO4On1x3inIc="
+
+[database]
+name = "rwf_openapi"

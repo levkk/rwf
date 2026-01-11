@@ -211,7 +211,7 @@ impl OpenApiController {
         OpenApiTargets::from_str(path.as_str()).unwrap()
     }
 
-    fn rwfapi() -> utoipa::openapi::OpenApi {
+    pub fn rwfapi() -> utoipa::openapi::OpenApi {
         let mut rwfapi = Self::openapi();
         for (k, v) in RWF_OPENAPIS.map.read().unwrap().iter() {
             let path = if !k.starts_with("/") {

@@ -1,0 +1,365 @@
+openapi: 3.1.0
+info:
+  title: rwf
+  description: OpenAPI definitions and informations about the RWF crate. Also provides API/Type descriptions for Models / ModelController
+  contact:
+    name: levkk
+    url: https://github.com/levkk?tab=packages
+    email: none@cf.org
+  license:
+    name: MIT
+    url: https://github.com/levkk/rwf/blob/main/LICENSE
+  version: 0.2.1
+paths:
+  /openapi/json:
+    get:
+      tags:
+      - OpenAPI
+      operationId: openapi_json
+      responses:
+        '200':
+          description: OpenAPI JSON
+          content:
+            application/json: {}
+        '401':
+          description: An Unauthorized access attempted
+  /openapi/yaml:
+    get:
+      tags:
+      - OpenAPI
+      operationId: openapi_yaml
+      responses:
+        '200':
+          description: OpenAPI YAML
+          content:
+            application/yank: {}
+        '401':
+          description: An Unauthorized access attempted
+  /openapi/redoc:
+    get:
+      tags:
+      - OpenAPI
+      operationId: openapi_redoc
+      responses:
+        '200':
+          description: Redoc API Browser
+          content:
+            text/html: {}
+        '401':
+          description: An Unauthorized access attempted
+  /openapi/rapidoc:
+    get:
+      tags:
+      - OpenAPI
+      operationId: openapi_rapidoc
+      responses:
+        '200':
+          description: Rapidoc API Browser
+          content:
+            application/html: {}
+        '401':
+          description: An Unauthorized access attempted
+  /product/:
+    get:
+      tags:
+      - ModelController
+      - Product
+      - CollectionUrl
+      operationId: list_products
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '401':
+          description: An Unauthorized access attempted
+        '500':
+          description: Server Error
+    post:
+      tags:
+      - ModelController
+      - Product
+      - CollectionUrl
+      operationId: create_products
+      requestBody:
+        description: The new Model to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid User Input
+        '401':
+          description: An Unauthorized access attempted
+        '500':
+          description: Server Error
+  /product/{id}:
+    get:
+      tags:
+      - ModelController
+      - Product
+      - InstanceUrl
+      operationId: get_products
+      parameters:
+      - name: id
+        in: path
+        description: The encrypted id of the Database object. Prevents leaking internal data.
+        required: true
+        schema:
+          $ref: '#/components/schemas/encrypted_id'
+        style: simple
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          description: An Unauthorized access attempted
+        '404':
+          description: No such model found
+        '500':
+          description: Server Error
+    put:
+      tags:
+      - ModelController
+      - Product
+      - InstanceUrl
+      operationId: update_products
+      parameters:
+      - name: id
+        in: path
+        description: The encrypted id of the Database object. Prevents leaking internal data.
+        required: true
+        schema:
+          $ref: '#/components/schemas/encrypted_id'
+        style: simple
+      - name: rwf_csrf_token
+        in: query
+        description: CSRF Token located in the Form Body
+        required: false
+        schema:
+          $ref: '#/components/schemas/csrf_token'
+        style: form
+      - name: X-CSRF-Token
+        in: header
+        description: CSRF Token located in the Header.
+        required: false
+        schema:
+          $ref: '#/components/schemas/csrf_token'
+        style: simple
+      requestBody:
+        description: Full Model for full update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid User Input
+        '401':
+          description: An Unauthorized access attempted
+        '500':
+          description: Server Error
+    delete:
+      tags:
+      - ModelController
+      - Product
+      - InstanceUrl
+      operationId: delete_products
+      parameters:
+      - name: id
+        in: path
+        description: The encrypted id of the Database object. Prevents leaking internal data.
+        required: true
+        schema:
+          $ref: '#/components/schemas/encrypted_id'
+        style: simple
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: No such model found
+        '500':
+          description: Server Error
+    patch:
+      tags:
+      - ModelController
+      - Product
+      - InstanceUrl
+      operationId: patch_products
+      parameters:
+      - name: id
+        in: path
+        description: The encrypted id of the Database object. Prevents leaking internal data.
+        required: true
+        schema:
+          $ref: '#/components/schemas/encrypted_id'
+        style: simple
+      - name: rwf_csrf_token
+        in: query
+        description: CSRF Token located in the Form Body
+        required: false
+        schema:
+          $ref: '#/components/schemas/csrf_token'
+        style: form
+      - name: X-CSRF-Token
+        in: header
+        description: CSRF Token located in the Header.
+        required: false
+        schema:
+          $ref: '#/components/schemas/csrf_token'
+        style: simple
+      requestBody:
+        description: Partial Model for partial update
+        content:
+          application/json: {}
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid User Input
+        '401':
+          description: An Unauthorized access attempted
+        '404':
+          description: No such model found
+        '500':
+          description: Server Error
+components:
+  schemas:
+    Product:
+      type: object
+      description: Product Representation with available Stock and Price
+      required:
+      - name
+      - price
+      - stock
+      properties:
+        id:
+          $ref: '#/components/schemas/encrypted_id'
+        name:
+          type: string
+          example: Product Name
+        price:
+          type: number
+          format: Double
+          example: 5.99
+          multipleOf: 0.01
+          minimum: 0.01
+        stock:
+          type: integer
+          format: Int64
+          example: 1000
+          minimum: 0
+      examples:
+      - id: 1
+        name: Test Product
+        price: 4.5
+        stock: 1000
+    csrf_token:
+      type: string
+      format: password
+      description: A CSRF Token
+      examples:
+      - eyJjIjpbMTc5LDkxLDE4NSwyOCw0MCw2MiwyMzYsMjA4LDU1LDIxNywyMDUsMTkxLDQ2LDE2MSwxNTEsMTcyLDExMyw3OCwzNiw2NiwxLDE5MywxMzksOSwyNTAsMjE4LDUyLDEwOCwyMTksMTU1LDQwXSwibiI6WzEzNiwxMDIsODEsMTQ4LDExNSwyNDMsMjMsMTksNDcsMjksNTgsMTE5XX0
+    encrypted_id:
+      type: string
+      title: DatabaseId
+      description: A encrypted Databse primary key.
+      examples:
+      - e6e05b70a3df18bba4-d8a7a181f8ddc7e3dc-b3e0802f893e18ac7b-1a7413461f2933db4d
+      - bfa92b26a4d5697cf4-054fe33e65ea46cd65-4076868dcf09460259-6c5edb29435835445e
+      - 58fd8716eb4e8abddc-45a324a9168941591d-c62defceb6598caca1-0b5746fea492ed8c59
+  responses:
+    Product:
+      description: A possible Product Response
+      content:
+        application/json:
+          schema:
+            type: object
+            description: A Model that can be used in the OpenApi Spec
+            required:
+            - name
+            - price
+            - stock
+            properties:
+              id:
+                $ref: '#/components/schemas/encrypted_id'
+              name:
+                type: string
+                example: Product Name
+              price:
+                type: number
+                format: Double
+                example: 5.99
+                multipleOf: 0.01
+                minimum: 0.01
+              stock:
+                type: integer
+                format: Int64
+                example: 1000
+                minimum: 0
+          examples:
+            ExampleProduct:
+              summary: Example Response Product
+              value:
+                id: e82cea81f77c187959-bdca814db891080646-cfb6e56617f145980f-1078fb9dd10d65fc18
+                name: Test Product
+                price: 4.5
+                stock: 1000
+security:
+- {}
+tags:
+- name: OpenAPI
+  description: Related to OpenAPI itself
+- name: Model
+  description: MOdel/ModdelController related Enndpoints
+- name: RWF
+  description: The OpenAPI Specs of RWF. Metainformations about RWF and the guys working on. Informations about anything what have to do whith an impplementation has a different Tag
+  externalDocs:
+    url: https://github.com/levkk/rwf/
+    description: Link to the git, as any Question could find a answer there
+externalDocs:
+  url: https://rustwebframework.org/
+  description: Getting started Dcumentation
