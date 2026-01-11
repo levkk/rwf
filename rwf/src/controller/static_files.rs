@@ -8,6 +8,7 @@
 //! To change this behavior, create the controller with [`StaticFiles::serve`] and
 //! then call [`StaticFiles::prefix`] to set the URL prefix to whatever you want.
 use super::{Controller, Error};
+use crate::model::value::{ToValue, Value};
 use crate::{
     http::{Body, Handler, Request, Response},
     model::{get_connection, FromRow, Model},
@@ -25,7 +26,6 @@ use time::{macros::format_description, Duration, OffsetDateTime};
 use tokio::fs::File;
 use tracing::{debug, warn};
 use utoipa::OpenApi;
-use crate::model::value::{ToValue, Value};
 
 /// Cache control header.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -221,9 +221,7 @@ fn default_etag_generator(data: &[u8]) -> String {
 }
 /// Static files controller.
 #[derive(crate::prelude::OpenApi)]
-#[openapi(
-    paths(get_static_file)
-)]
+#[openapi(paths(get_static_file))]
 pub struct StaticFiles {
     prefix: PathBuf,
     root: PathBuf,
@@ -345,7 +343,10 @@ impl StaticFiles {
     }
 
     pub fn handler(self) -> Handler {
-        crate::controller::openapi::registrer_controller(self.prefix.as_path().to_str().unwrap(), Self::openapi());
+        crate::controller::openapi::registrer_controller(
+            self.prefix.as_path().to_str().unwrap(),
+            Self::openapi(),
+        );
         Handler::wildcard(self.prefix.display().to_string().as_str(), self)
     }
     pub async fn initialize(&self) -> Result<(), Error> {
