@@ -40,7 +40,10 @@ async fn main() -> Result<(), rwf::http::Error> {
     //let apictrl = crud!("/product" => ProductController);
     // Create a handler without the overwrite of the id field
 
-    let apictrl = ProductController { middleware: MiddlewareSet::default(), }.crud("/prod");
+    let apictrl = ProductController {
+        middleware: MiddlewareSet::default(),
+    }
+    .crud("/prod");
 
     // Makes the OpenApi Specs available under /openapi/yaml or /openapi/json
     // Serve an API Browser under /openapi/redoc and /openapi/rapidoc
