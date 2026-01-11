@@ -24,6 +24,7 @@ pub use async_trait::async_trait;
 pub use time::{Duration, OffsetDateTime};
 pub use tokio;
 
+pub use crate::model::callbacks::{Callback, CallbackKind};
 pub use macros::{
     context, controller, crud, engine, render, render_include, rest, route, turbo_stream,
 };
