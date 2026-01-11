@@ -43,6 +43,10 @@ pub trait Association<T: Model>: Model {
     fn construct_left_join() -> Join {
         Self::construct_join().replace_kind(JoinKind::Left)
     }
+
+    fn construct_outer_join() -> Join {
+        Self::construct_join().replace_kind(JoinKind::Outer)
+    }
     fn construct_join() -> Join {
         use AssociationType::*;
 

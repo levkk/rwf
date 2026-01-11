@@ -549,6 +549,17 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn join_outer<F: Association<T>>(self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.join(F::construct_outer_join())),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(F::construct_outer_join());
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
     pub fn join_nested<F: Association<T>, G: Model>(self, joined: Joined<F, G>) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_joins(joined.into())),
@@ -1368,7 +1379,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// # Example
     /// ```
     /// # use rwf::prelude::*;
-    /// # use rwf::model::ToSql;
+    /// # use rwf::model::{Joins, ToSql};
     /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[has_many(Project)]
     /// struct User {
@@ -1383,6 +1394,10 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// }
     ///
     /// let join = User::join::<Project>();
+    /// assert_eq!(
+    ///     Joins::from(join).joins().iter().next().unwrap().to_sql(),
+    ///     format!(r#"INNER JOIN "projects" ON "users"."id" = "projects"."user_id""#)
+    /// )
     /// ```
     fn join<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_join())
@@ -1394,7 +1409,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// # Example
     /// ```
     /// use rwf::prelude::*;
-    /// use rwf::model::ToSql;
+    /// use rwf::model::{Joins, ToSql};
     /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
     /// #[has_many(Project)]
     /// struct User {
@@ -1408,9 +1423,44 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     ///     name: String
     /// }
     /// let join = User::join_left::<Project>();
+    /// assert_eq!(
+    ///     Joins::from(join).joins().first().unwrap().to_sql(),
+    ///     format!(r#"LEFT JOIN "projects" ON "users"."id" = "projects"."user_id""#)
+    /// )
     /// ```
     fn join_left<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_left_join())
+    }
+
+    /// Join this Model to another model with which it has a relationship. The join kind is a outer
+    /// join. The relationship should be declared in advance using an annotation.
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::ToSql;
+    /// use rwf::model::Joins;
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     email: String
+    /// }
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String
+    /// }
+    /// let join = User::join_outer::<Project>();
+    /// assert_eq!(
+    ///     Joins::from(join).joins().first().unwrap().to_sql(),
+    ///     format!(r#"OUTER JOIN "projects" ON "users"."id" = "projects"."user_id""#)
+    /// )
+    /// ```
+
+    fn join_outer<F: Association<Self>>() -> Joined<Self, F> {
+        Joined::new(F::construct_outer_join())
     }
 
     /// Filter all records which have a relationship to this model. Used for fetching multiple records at once
@@ -1450,6 +1500,37 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
             .map(|fk| fk.id())
             .collect::<Vec<_>>();
         F::all().filter(Self::foreign_key(), fks.as_slice())
+    }
+
+    /// Query a `Model` for all instances which are related to this `Model`
+    ///
+    /// # Example
+    /// ```
+    /// use rwf::prelude::*;
+    /// use rwf::model::ToSql;
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    /// #[has_many(Project)]
+    /// struct User {
+    ///    id: Option<i64>,
+    ///    email: String,
+    /// }
+    /// #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    /// #[belongs_to(User)]
+    /// struct Project {
+    ///     user_id: i64,
+    ///     name: String,
+    /// }
+    ///
+    ///  let alice = User { id: Some(1), email: "alice@test.com".into() };
+    ///  let projects = alice.associated::<Project>();
+    ///
+    ///  assert_eq!(
+    ///     projects.to_sql(),
+    ///     r#"SELECT * FROM "projects" WHERE "projects"."user_id" = $1"#
+    ///  );
+    /// ```
+    fn associated<F: Association<Self>>(&self) -> Query<F> {
+        F::all().filter(Self::foreign_key(), self.id())
     }
 
     /// Save a model into the database. If a record already exists, it will be updated. If this is a new record,
@@ -1690,24 +1771,24 @@ mod test {
     }
 
     impl Model for User {
-        fn id(&self) -> Value {
-            Value::Integer(self.id)
-        }
-
         fn table_name() -> &'static str {
             "users"
-        }
-
-        fn foreign_key() -> &'static str {
-            "user_id"
         }
 
         fn column_names() -> &'static [&'static str] {
             &["email", "password"]
         }
 
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn values(&self) -> Vec<Value> {
             vec![self.email.to_value(), self.password.to_value()]
+        }
+
+        fn foreign_key() -> &'static str {
+            "user_id"
         }
     }
 
@@ -1719,24 +1800,24 @@ mod test {
     }
 
     impl Model for Order {
-        fn id(&self) -> Value {
-            Value::Integer(self.id)
-        }
-
         fn table_name() -> &'static str {
             "orders"
-        }
-
-        fn foreign_key() -> &'static str {
-            "order_id"
         }
 
         fn column_names() -> &'static [&'static str] {
             &["user_id", "amount"]
         }
 
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn values(&self) -> Vec<Value> {
             vec![self.user_id.to_value(), self.amount.to_value()]
+        }
+
+        fn foreign_key() -> &'static str {
+            "order_id"
         }
     }
 
@@ -1748,24 +1829,24 @@ mod test {
     }
 
     impl Model for OrderItem {
-        fn id(&self) -> Value {
-            Value::Integer(self.id)
-        }
-
         fn table_name() -> &'static str {
             "order_items"
-        }
-
-        fn foreign_key() -> &'static str {
-            "order_item_id"
         }
 
         fn column_names() -> &'static [&'static str] {
             &["order_id", "product_id"]
         }
 
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn values(&self) -> Vec<Value> {
             vec![self.order_id.to_value(), self.product_id.to_value()]
+        }
+
+        fn foreign_key() -> &'static str {
+            "order_item_id"
         }
     }
 
@@ -1776,24 +1857,24 @@ mod test {
     }
 
     impl Model for Product {
-        fn id(&self) -> Value {
-            Value::Integer(self.id)
-        }
-
         fn table_name() -> &'static str {
             "products"
-        }
-
-        fn foreign_key() -> &'static str {
-            "product_id"
         }
 
         fn column_names() -> &'static [&'static str] {
             &["name"]
         }
 
+        fn id(&self) -> Value {
+            Value::Integer(self.id)
+        }
+
         fn values(&self) -> Vec<Value> {
             vec![self.name.to_value()]
+        }
+
+        fn foreign_key() -> &'static str {
+            "product_id"
         }
     }
 
