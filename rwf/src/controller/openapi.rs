@@ -37,6 +37,7 @@ enum OpenApiTargets {
     Json,
     Redoc,
     Rapidoc,
+    Scalar,
 }
 #[allow(unused)]
 #[utoipa::path(
@@ -87,6 +88,7 @@ impl FromStr for OpenApiTargets {
             "json" => Ok(OpenApiTargets::Json),
             "redoc" => Ok(OpenApiTargets::Redoc),
             "rapidoc" => Ok(OpenApiTargets::Rapidoc),
+            "scalar" => Ok(OpenApiTargets::Scalar),
             _ => Ok(OpenApiTargets::Info),
         }
     }
@@ -159,6 +161,7 @@ impl std::fmt::Display for OpenApiTargets {
             OpenApiTargets::Json => write!(f, "json"),
             OpenApiTargets::Redoc => write!(f, "redoc"),
             OpenApiTargets::Rapidoc => write!(f, "rapidoc"),
+            OpenApiTargets::Scalar => write!(f, "scalar"),
         }
     }
 }
@@ -182,8 +185,8 @@ impl Controller for OpenApiController {
         lazy_static::lazy_static! {
             static ref RWFAPI: utoipa::openapi::OpenApi = OpenApiController::rwfapi();
             static ref REDOC: utoipa_redoc::Redoc<utoipa::openapi::OpenApi> = utoipa_redoc::Redoc::new(OpenApiController::rwfapi());
+            static ref SCALAR: utoipa_scalar::Scalar<utoipa::openapi::OpenApi> = utoipa_scalar::Scalar::new(OpenApiController::rwfapi());
         };
-
         Ok(match self.match_url(request) {
             OpenApiTargets::Info => {
                 Response::new().redirect(format!("{}/json", self.mount.get().unwrap()))
@@ -192,6 +195,7 @@ impl Controller for OpenApiController {
                 Response::new().text(RWFAPI.to_yaml().map_err(|e| Error::Error(Box::new(e)))?)
             }
             OpenApiTargets::Json => Response::new().json(RWFAPI.deref())?,
+            OpenApiTargets::Scalar => Response::new().html(SCALAR.to_html()),
             OpenApiTargets::Redoc => Response::new().html(REDOC.to_html()),
             OpenApiTargets::Rapidoc => Response::new().html(
                 utoipa_rapidoc::RapiDoc::new(format!("{}/json", self.mount.get().unwrap()))
@@ -211,7 +215,7 @@ impl OpenApiController {
         OpenApiTargets::from_str(path.as_str()).unwrap()
     }
 
-    fn rwfapi() -> utoipa::openapi::OpenApi {
+    pub fn rwfapi() -> utoipa::openapi::OpenApi {
         let mut rwfapi = Self::openapi();
         for (k, v) in RWF_OPENAPIS.map.read().unwrap().iter() {
             let path = if !k.starts_with("/") {

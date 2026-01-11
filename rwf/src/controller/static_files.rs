@@ -344,8 +344,7 @@ impl StaticFiles {
 
     pub fn handler(self) -> Handler {
         let mut specs = Self::openapi();
-        self.auth().modify(&mut specs);
-        self.middleware().modify(&mut specs);
+        <dyn Controller>::modify(&self, &mut specs);
         crate::controller::openapi::registrer_controller(
             self.prefix.as_path().to_str().unwrap(),
             specs,

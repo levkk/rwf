@@ -1,0 +1,11 @@
+[general]
+secret_key = "WcPlOPnQzEJ/yPI4VCFhpofKnTE1uNbvl2tQsyAyz1g="
+
+[database]
+name = "rwf_oidc"
+
+[oidc]
+client_id="rwf_oidc_client"
+client_secret="rwf_oidc_secret"
+redirect_url="http://127.0.0.1:8000/oidc"
+discovery_url="https://oidc.rwf.tld/"

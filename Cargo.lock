@@ -1932,6 +1932,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "oidc"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1948,6 +1958,17 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "openapi"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+ "serde",
+ "serde_json",
+ "serde_norway",
+ "tokio",
+]
 
 [[package]]
 name = "openidconnect"
@@ -2965,6 +2986,7 @@ dependencies = [
  "utoipa",
  "utoipa-rapidoc",
  "utoipa-redoc",
+ "utoipa-scalar",
  "uuid",
 ]
 
@@ -4093,16 +4115,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "utoipa-config"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06638ae95f08a14f307292bcf2e8ae34b6adbec526190a46a83d27363007a81e"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "utoipa-gen"
 version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d79d08d92ab8af4c5e8a6da20c47ae3f61a0f1dabc1997cdf2d082b757ca08b"
 dependencies = [
+ "once_cell",
  "proc-macro2",
  "quote",
  "syn",
  "ulid",
  "url",
+ "utoipa-config",
  "uuid",
 ]
 
@@ -4122,6 +4156,17 @@ name = "utoipa-redoc"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6427547f6db7ec006cbbef95f7565952a16f362e298b416d2d497d9706fef72d"
+dependencies = [
+ "serde",
+ "serde_json",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-scalar"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59559e1509172f6b26c1cdbc7247c4ddd1ac6560fe94b584f81ee489b141f719"
 dependencies = [
  "serde",
  "serde_json",
