@@ -336,7 +336,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut del_cnt = delq.fetch_all(&mut conn).await?;
     del_cnt.sort_by(|u1, u2| u1.id.cmp(&u2.id));
     assert_eq!(del_cnt, vec![user1, user2]);
-    
 
     conn.client()
         .query(
