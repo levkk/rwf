@@ -45,7 +45,7 @@ impl Controller for IndexController {
 async fn main() {
     Logger::init();
 
-    Server::new(vec![IndexController::default().route("/")])
+    Server::new(vec![IndexController.route("/")])
         .launch()
         .await
         .expect("error shutting down server");

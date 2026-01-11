@@ -26,8 +26,6 @@ impl Logger {
         INITIALIZED.get_or_init(|| {
             setup_logging();
             get_config().log_info();
-
-            ()
         });
     }
 }

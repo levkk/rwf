@@ -14,7 +14,7 @@ pub async fn controller(name: &str) -> Result<(), Error> {
 
         removed(path.display().to_string());
 
-        modules(&mod_path).await?;
+        modules(mod_path).await?;
     } else {
         error(format!("{} doesn't exist", path.display()));
     }

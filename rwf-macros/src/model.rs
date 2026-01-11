@@ -129,20 +129,12 @@ fn handle_override(
 ) -> proc_macro2::TokenStream {
     let mut overrides = attributes
         .iter()
-        .filter(|attr| {
-            attr.path()
-                .segments
-                .first()
-                .expect("segment")
-                .ident
-                .to_string()
-                == name
-        })
+        .filter(|attr| attr.path().segments.first().expect("segment").ident == name)
         .map(|attr| match &attr.meta {
             Meta::List(list) => {
                 let segment = list.path.segments.first();
 
-                if let Some(_) = segment {
+                if segment.is_some() {
                     let tokens = &list.tokens;
                     match name {
                         "table_name" => {
@@ -282,6 +274,42 @@ fn handle_relationships(input: &DeriveInput, attributes: &[Attribute]) -> proc_m
         #(#rels)*
     }
 }
+
+/// Relevant again, once we create OpenApi Models from Scratch
+
+/*
+pub fn handle_generate_full_model(mut input: ItemStruct) -> proc_macro2::TokenStream {
+    let mut data = proc_macro2::TokenStream::new();
+    input.attrs.push(
+            parse_quote!(
+                    #[derive(Clone, rwf_macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::prelude::ToSchema, rwf::prelude::ToResponse)]
+            )
+    );
+    let model_name = input.ident.clone();
+    for field in &mut input.fields {
+        let fname = field.ident.as_ref().unwrap();
+        eprintln!("{}", fname);
+        if fname.eq("id") {
+            field.attrs.push(parse_quote!(
+                #[schema(minimum=1, format="Int64")]
+            ))
+        }
+    }
+    //let pkey_type = input.fields.iter().filter(|f| f.ident.is_some()).find(|f|
+    //    f.ident.as_ref().unwrap().clone().to_string().eq("id")
+    //).map(|f| f.ty.clone()).unwrap();
+    eprintln!("{:?}", model_name);
+    //let pkey_type = quote!{#pkey_type}.to_string().replace("Option", "").trim().strip_prefix("<").unwrap().strip_suffix(">").unwrap().trim().replace("\"", "");
+    input.to_tokens(&mut data);
+    /*quote!{
+            impl rwf :: controller :: PkeyParamGenerator for #model_name
+    {
+        fn param(val : impl IntoPkey) -> rwf :: controller :: ModelPkeyParam
+        { rwf :: controller :: ModelPkeyParam :: from(val.pkey_type() ) }
+    }
+        }.to_tokens(&mut data);*/
+    data.into_token_stream()
+}*/
 
 #[cfg(test)]
 mod test {

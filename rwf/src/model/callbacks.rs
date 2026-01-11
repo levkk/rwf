@@ -98,7 +98,7 @@ impl CallbackRegistry {
     }
 }
 
-pub static CALLBACK_REGISTRY: Lazy<CallbackRegistry> = Lazy::new(|| CallbackRegistry::default());
+pub static CALLBACK_REGISTRY: Lazy<CallbackRegistry> = Lazy::new(CallbackRegistry::default);
 
 /// The Callback itself.
 /// # Example

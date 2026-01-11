@@ -309,7 +309,7 @@ impl ToSql for Filter {
     fn to_sql(&self) -> String {
         self.clauses
             .iter()
-            .map(|s| format!("{}", s.to_sql()))
+            .map(|s| s.to_sql().to_string())
             .collect::<Vec<_>>()
             .join(&format!(" {} ", self.op.to_sql()))
     }

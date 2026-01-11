@@ -12,6 +12,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
+use utoipa::openapi::OpenApi;
 use uuid::Uuid;
 
 use crate::analytics::Request as AnalyticsRequest;
@@ -32,10 +33,7 @@ struct AnalyticsCookie {
 
 impl AnalyticsCookie {
     fn uuid(&self) -> Option<Uuid> {
-        match Uuid::parse_str(&self.uuid) {
-            Ok(uuid) => Some(uuid),
-            Err(_) => None,
-        }
+        Uuid::parse_str(&self.uuid).ok()
     }
 
     pub fn new() -> Self {
@@ -59,10 +57,7 @@ impl AnalyticsCookie {
 
     fn from_network(s: &str) -> Option<Self> {
         match general_purpose::STANDARD_NO_PAD.decode(s) {
-            Ok(v) => match serde_json::from_slice::<Self>(&v) {
-                Ok(cookie) => Some(cookie),
-                Err(_) => None,
-            },
+            Ok(v) => serde_json::from_slice::<Self>(&v).ok(),
 
             Err(_) => None,
         }
@@ -101,7 +96,7 @@ impl Middleware for RequestTracker {
         let (create, cookie) = match request
             .cookies()
             .get(COOKIE_NAME)
-            .map(|cookie| AnalyticsCookie::from_network(&cookie.value()))
+            .map(|cookie| AnalyticsCookie::from_network(cookie.value()))
         {
             Some(Some(cookie)) => (cookie.should_renew(), cookie),
             _ => (true, AnalyticsCookie::new()),
@@ -135,6 +130,10 @@ impl Middleware for RequestTracker {
 
         Ok(response)
     }
+}
+
+impl utoipa::Modify for RequestTracker {
+    fn modify(&self, _openapi: &mut OpenApi) {}
 }
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 use rwf::controller::middleware::prelude::*;
+use rwf::prelude::utoipa::openapi::OpenApi;
 
 // If a user is already logged in, redirect them to the chat page.
 #[derive(Default)]
@@ -13,4 +14,7 @@ impl Middleware for LoggedInCheck {
 
         Ok(Outcome::Forward(request))
     }
+}
+impl rwf::prelude::Modify for LoggedInCheck {
+    fn modify(&self, _openapi: &mut OpenApi) {}
 }

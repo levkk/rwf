@@ -3,13 +3,14 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn, Meta,
-    ReturnType, Token, Type, Visibility,
+    parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, Data, DeriveInput,
+    Expr, ItemFn, Meta, ReturnType, Token, Type, Visibility,
 };
 
-use quote::quote;
+use quote::{quote, ToTokens};
 
 mod model;
+mod openapi;
 mod prelude;
 mod render;
 
@@ -169,7 +170,7 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
 /// This implements mappings between the `Controller`
 /// trait and the struct implementing
 /// the `ModelController` trait.
-#[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf))]
+#[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf, resource))]
 pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -179,6 +180,14 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
 
         _ => panic!("macro can only be used on structs"),
     };
+    let resource: Type = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("resource"))
+        .map_or(parse_quote!(i64), |attr| {
+            attr.parse_args::<syn::Type>()
+                .expect("Invalid Resource Type")
+        });
 
     quote! {
        #[rwf::async_trait]
@@ -189,6 +198,11 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
                 rwf::controller::ModelController::handle(self, request).await
             }
         }
+        #[rwf::async_trait]
+        impl rwf::controller::RestController for #ident {
+            type Resource = #resource;
+        }
+
     }.into()
 }
 
@@ -211,7 +225,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
                         let path = list.path.segments.first();
                         let tokens = &list.tokens;
 
-                        if let Some(_) = path {
+                        if path.is_some() {
                             quote! {
                                 fn auth(&self) -> &rwf::controller::AuthHandler {
                                     &self.#tokens
@@ -230,7 +244,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
                         let path = list.path.segments.first();
                         let tokens = &list.tokens;
 
-                        if let Some(_) = path {
+                        if path.is_some() {
                             quote! {
                                 fn middleware(&self) -> &rwf::controller::MiddlewareSet {
                                     &self.#tokens
@@ -679,7 +693,7 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         ReturnType::Type(_, ref typ) => match *typ.clone() {
             Type::Path(path) => {
                 if let Some(output) = path.path.segments.last() {
-                    output.ident.to_string() == "Result"
+                    output.ident == "Result"
                 } else {
                     true
                 }
@@ -703,15 +717,13 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
                 std::result::Result::Ok(#name().await)
             }
         }
+    } else if result {
+        quote! {
+            std::result::Result::Ok(#name(request).await?)
+        }
     } else {
-        if result {
-            quote! {
-                std::result::Result::Ok(#name(request).await?)
-            }
-        } else {
-            quote! {
-                std::result::Result::Ok(#name(request).await)
-            }
+        quote! {
+            std::result::Result::Ok(#name(request).await)
         }
     };
 
@@ -736,4 +748,24 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn generate_openapi_model_controller(args: TokenStream, input: TokenStream) -> TokenStream {
+    //let working_on = input.clone();
+    //let mut res = model::handle_generate_full_model(parse_macro_input!(working_on));
+    //eprintln!("{}", res);
+    let controller_on = input.clone();
+    let args_on = args.clone();
+
+    let mut output = proc_macro2::TokenStream::new();
+
+    let controller = openapi::generate_controller4(
+        parse_macro_input!(controller_on),
+        parse_macro_input!(args_on),
+    );
+    //eprintln!("{}", controller);
+    controller.to_tokens(&mut output);
+    output.into()
+    //response.into()
 }

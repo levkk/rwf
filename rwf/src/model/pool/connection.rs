@@ -103,7 +103,7 @@ impl Connection {
             .query_cached("SELECT current_database()::text, current_user::text", &[])
             .await?;
 
-        let row = info.get(0).unwrap();
+        let row = info.first().unwrap();
         let user: String = row.get::<_, String>(1);
         let database: String = row.get::<_, String>(0);
 
@@ -130,7 +130,7 @@ impl Connection {
             &self.cache[query]
         };
 
-        match self.client().query(statement, &params).await {
+        match self.client().query(statement, params).await {
             Ok(rows) => Ok(rows),
             Err(err) => {
                 // If schema changed, we better close this connection entirely

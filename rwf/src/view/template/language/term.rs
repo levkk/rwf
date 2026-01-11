@@ -34,7 +34,7 @@ impl Term {
         match self {
             Term::Constant(value) => Ok(value.clone()),
             Term::Variable(name) => context
-                .get(&name)
+                .get(name)
                 .ok_or(Error::UndefinedVariable(name.clone())),
             Term::Function(_f) => todo!("function evaluate"),
         }

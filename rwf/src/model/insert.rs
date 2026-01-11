@@ -14,10 +14,7 @@ pub struct Insert<T> {
 
 impl<T: Model> Insert<T> {
     pub fn new(model: T) -> Self {
-        let columns = T::column_names()
-            .into_iter()
-            .map(|column| Column::name(column))
-            .collect();
+        let columns = T::column_names().iter().map(Column::name).collect();
         let values = model.values();
         let mut placeholders = Placeholders::new();
         for value in values {

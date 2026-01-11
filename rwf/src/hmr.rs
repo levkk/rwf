@@ -29,8 +29,8 @@ pub fn hmr(path: PathBuf) {
     let last_reload = Arc::new(Mutex::new(Instant::now()));
 
     tokio::task::spawn(async move {
-        let mut watcher = notify::recommended_watcher(move |res: Result<Event>| match res {
-            Ok(event) => {
+        let mut watcher = notify::recommended_watcher(move |res: Result<Event>| {
+            if let Ok(event) = res {
                 match event.kind {
                     EventKind::Access(AccessKind::Close(AccessMode::Write))
                     | EventKind::Modify(ModifyKind::Data(_)) => {
@@ -46,7 +46,6 @@ pub fn hmr(path: PathBuf) {
                     _ => {}
                 };
             }
-            Err(_) => {}
         })?;
 
         watcher.watch(&path, RecursiveMode::Recursive)?;

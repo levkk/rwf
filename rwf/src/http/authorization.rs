@@ -40,19 +40,13 @@ impl Authorization {
                     None => None,
                 },
 
-                "Bearer" => match parts.next() {
-                    Some(auth) => Some(Authorization::Bearer {
-                        token: auth.to_owned(),
-                    }),
-                    None => None,
-                },
+                "Bearer" => parts.next().map(|auth| Authorization::Bearer {
+                    token: auth.to_owned(),
+                }),
 
-                "Token" => match parts.next() {
-                    Some(auth) => Some(Authorization::Token {
-                        token: auth.to_owned(),
-                    }),
-                    None => None,
-                },
+                "Token" => parts.next().map(|auth| Authorization::Token {
+                    token: auth.to_owned(),
+                }),
 
                 _ => None,
             },

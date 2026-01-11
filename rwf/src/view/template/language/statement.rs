@@ -68,7 +68,7 @@ impl Statement {
     pub fn evaluate(&self, context: &Context) -> Result<String, Error> {
         match self {
             Statement::Render(path) => {
-                let template = Template::load(&path)?;
+                let template = Template::load(path)?;
                 template.render(context)
             }
             Statement::PrintText(text) => Ok(text.clone()),
@@ -79,7 +79,7 @@ impl Statement {
                 ..
             } => {
                 let mut result = String::new();
-                let truthy = match expression.evaluate(&context) {
+                let truthy = match expression.evaluate(context) {
                     Ok(result) => result.truthy(),
                     Err(Error::UndefinedVariable(name)) => match expression {
                         Expression::Term { .. } => false,
@@ -91,11 +91,11 @@ impl Statement {
 
                 if truthy {
                     for statement in if_body {
-                        result.push_str(&statement.evaluate(&context)?);
+                        result.push_str(&statement.evaluate(context)?);
                     }
                 } else {
                     for statement in else_body {
-                        result.push_str(&statement.evaluate(&context)?);
+                        result.push_str(&statement.evaluate(context)?);
                     }
                 }
 
@@ -122,7 +122,6 @@ impl Statement {
                     Value::Hash(hash) => hash
                         .keys()
                         .cloned()
-                        .into_iter()
                         .zip(hash.values().cloned())
                         .map(|(k, v)| Value::List(vec![Value::String(k), v]))
                         .collect::<Vec<_>>(),
@@ -138,7 +137,7 @@ impl Statement {
                     match variable {
                         // Convert the variable to a value from the list.
                         Term::Variable(name) => {
-                            for_context.set(&name, value)?;
+                            for_context.set(name, value)?;
                         }
                         Term::Constant(_) => (), // Looks like just a loop with no variables
                         _ => todo!(),            // Function call is interesting

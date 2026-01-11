@@ -73,11 +73,7 @@ impl TableColumn {
     }
 
     pub fn skip(&self) -> bool {
-        if self.column_default.starts_with("nextval(") {
-            true
-        } else {
-            false
-        }
+        self.column_default.starts_with("nextval(")
     }
 }
 

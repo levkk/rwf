@@ -31,8 +31,10 @@
 //! [general]
 //! csrf_protection = false
 //! ```
+
 use super::prelude::*;
 use crate::{crypto::csrf_token_validate, http::Method};
+use utoipa::openapi::OpenApi;
 
 /// CSRF HTTP header name.
 pub static CSRF_HEADER: &str = "X-CSRF-Token";
@@ -69,18 +71,68 @@ impl Middleware for Csrf {
             }
         }
 
-        match request.form_data() {
-            Ok(form_data) => {
-                if let Some(token) = form_data.get::<String>(CSRF_INPUT) {
-                    if csrf_token_validate(&token, &session_id) {
-                        return Ok(Outcome::Forward(request));
-                    }
+        if let Ok(form_data) = request.form_data() {
+            if let Some(token) = form_data.get::<String>(CSRF_INPUT) {
+                if csrf_token_validate(&token, &session_id) {
+                    return Ok(Outcome::Forward(request));
                 }
             }
-
-            Err(_) => (),
         }
 
         Ok(Outcome::Stop(request, Response::csrf_error()))
+    }
+}
+
+impl utoipa::Modify for Csrf {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let csrf_token = utoipa::openapi::schema::Schema::Object(
+            utoipa::openapi::Object::builder()
+                .description(Some("A CSRF Token".to_string()))
+                .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                    utoipa::openapi::schema::KnownFormat::Password,
+                )))
+                .schema_type(utoipa::openapi::Type::String)
+                .examples(vec![serde_json::json!(crate::crypto::csrf_token(
+                    crate::controller::SessionId::from(1234)
+                        .to_string()
+                        .as_str()
+                )
+                .unwrap())])
+                .build(),
+        );
+        if let Some(ref mut componenets) = openapi.components {
+            componenets.schemas.insert(
+                "csrf_token".to_string(),
+                utoipa::openapi::RefOr::T(csrf_token),
+            );
+        }
+        let csrf_token =
+            utoipa::openapi::RefOr::Ref(utoipa::openapi::Ref::from_schema_name("csrf_token"));
+        let param_header = utoipa::openapi::path::ParameterBuilder::new()
+            .name(CSRF_HEADER)
+            .parameter_in(utoipa::openapi::path::ParameterIn::Header)
+            .description(Some("CSRF Token located in the Header."))
+            .style(Some(utoipa::openapi::path::ParameterStyle::Simple))
+            .schema(Some(csrf_token.clone()))
+            .build();
+        let param_query = utoipa::openapi::path::ParameterBuilder::new()
+            .name(CSRF_INPUT)
+            .parameter_in(utoipa::openapi::path::ParameterIn::Query)
+            .style(Some(utoipa::openapi::path::ParameterStyle::Form))
+            .description(Some("CSRF Token located in the Form Body"))
+            .style(Some(utoipa::openapi::path::ParameterStyle::Form))
+            .schema(Some(csrf_token.clone()))
+            .build();
+        for path in openapi.paths.paths.values_mut() {
+            for ref mut op in [path.post.as_mut(), path.put.as_mut(), path.patch.as_mut()]
+                .iter_mut()
+                .flatten()
+            {
+                if let Some(ref mut params) = op.parameters {
+                    params.push(param_query.clone());
+                    params.push(param_header.clone())
+                }
+            }
+        }
     }
 }

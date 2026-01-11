@@ -91,7 +91,7 @@ impl Path {
         let path = if path.starts_with("/") {
             path.to_string()
         } else {
-            "/".to_string() + &path
+            "/".to_string() + path
         };
 
         // Parse the query.
@@ -125,7 +125,7 @@ impl Path {
     /// `/engine/users/1` with the base `/engine` removed is `/users/1`.
     pub fn pop_base(&self, base: &Path) -> Self {
         let mut new_base = String::new();
-        let mut iter = base.base().chars().into_iter();
+        let mut iter = base.base().chars();
         for c in self.base.chars() {
             if let Some(c2) = iter.next() {
                 if c2 == c {

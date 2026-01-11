@@ -122,7 +122,7 @@ impl Head {
             .collect::<Vec<_>>();
 
         let method = request
-            .get(0)
+            .first()
             .ok_or(Error::MalformedRequest("method"))?
             .to_string();
         let method = Method::try_from(method)?;
@@ -148,7 +148,7 @@ impl Head {
                     .map(|s| s.trim().to_string())
                     .collect::<Vec<_>>();
                 let name = header
-                    .get(0)
+                    .first()
                     .ok_or(Error::MalformedRequest("header name"))?
                     .to_lowercase();
                 let value = header
@@ -170,10 +170,7 @@ impl Head {
     /// Get the value of the `Authorization` header, if any is set. The header is parsed and if the
     /// authorization type is supported, an [`crate::http::Authorization`] is returned.
     pub fn authorization(&self) -> Option<Authorization> {
-        Authorization::parse(match self.header("authorization") {
-            Some(authorization) => authorization,
-            None => return None,
-        })
+        Authorization::parse(self.header("authorization")?)
     }
 
     /// Get cookies manager for this request.
@@ -181,7 +178,7 @@ impl Head {
     /// Cookies storage is used to retrieve regular and encrypted cookies.
     pub fn cookies(&self) -> Cookies {
         if let Some(cookie) = self.headers.get("cookie") {
-            Cookies::parse(&cookie)
+            Cookies::parse(cookie)
         } else {
             Cookies::default()
         }
@@ -227,11 +224,7 @@ impl Head {
     /// This may not always be set, e.g., when using `Content-Encoding: chunked`.
     pub fn content_length(&self) -> Option<usize> {
         if let Some(cl) = self.headers.get("content-length") {
-            if let Ok(cl) = cl.parse::<usize>() {
-                Some(cl)
-            } else {
-                None
-            }
+            cl.parse::<usize>().ok()
         } else {
             None
         }
@@ -283,14 +276,14 @@ impl Head {
             let b = stream.read_u8().await?;
             bytes_remaining -= 1;
 
-            if b == '\r' as u8 {
+            if b == b'\r' {
                 cr = true;
                 if lf {
                     return Err(std::io::Error::other(Error::MalformedRequest(
                         "nl before cr",
                     )));
                 }
-            } else if b == '\n' as u8 {
+            } else if b == b'\n' {
                 lf = true;
             } else {
                 buf.push(b);

@@ -1,6 +1,7 @@
 //! Server configuration handler.
 //!
 //! Parses `rwf.toml` configuration file and makes settings globally available.
+
 use aes::Aes128;
 use aes_gcm_siv::{AesGcmSiv, Key};
 use once_cell::sync::OnceCell;
@@ -14,6 +15,8 @@ use tracing::{error, info, warn};
 use crate::controller::middleware::csrf::Csrf;
 use crate::controller::middleware::{request_tracker::RequestTracker, Middleware};
 use crate::controller::{AuthHandler, MiddlewareSet};
+use crate::prelude::ToSchema;
+use openidconnect::{ClientId, ClientSecret, IssuerUrl, RedirectUrl};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::CertificateDer;
 use serde::{Deserialize, Serialize};
@@ -56,7 +59,7 @@ pub enum Error {
 ///
 /// Safe to call from anywhere.
 pub fn get_config() -> &'static Config {
-    CONFIG.get_or_init(|| Config::load_default())
+    CONFIG.get_or_init(Config::load_default)
 }
 
 /// Rwf configuration file. Can be deserialized
@@ -86,6 +89,10 @@ pub struct Config {
     /// Packaging configuration.
     #[serde(default = "PackageConfig::default")]
     pub package: PackageConfig,
+
+    /// OIDC Configuration
+    #[serde(default = "OidcConfig::default")]
+    pub oidc: OidcConfig,
 }
 
 impl Default for Config {
@@ -97,6 +104,7 @@ impl Default for Config {
             database: DatabaseConfig::default(),
             websocket: WebsocketConfig::default(),
             package: PackageConfig::default(),
+            oidc: OidcConfig::default(),
         }
         .transform()
         .unwrap()
@@ -316,7 +324,7 @@ impl General {
 
         let bytes = rand::thread_rng().gen::<[u8; 256 / 8]>();
 
-        general_purpose::STANDARD.encode(&bytes)
+        general_purpose::STANDARD.encode(bytes)
     }
 
     fn default_cache_templates() -> bool {
@@ -482,10 +490,7 @@ pub(crate) enum DBTlsConfig {
 impl DatabaseConfig {
     fn default_idle_timeout() -> usize {
         match var("RWF_DATABASE_IDLE_TIMEOUT") {
-            Ok(timeout) => match timeout.parse() {
-                Ok(timeout) => timeout,
-                Err(_) => 3600 * 1000,
-            },
+            Ok(timeout) => timeout.parse().unwrap_or(3600 * 1000),
 
             Err(_) => 3600 * 1000,
         }
@@ -499,10 +504,7 @@ impl DatabaseConfig {
 
     fn default_checkout_timeout() -> usize {
         match var("RWF_DATABASE_CHECKOUT_TIMEOUT") {
-            Ok(timeout) => match timeout.parse() {
-                Ok(timeout) => timeout,
-                Err(_) => 5 * 1000,
-            },
+            Ok(timeout) => timeout.parse().unwrap_or(5 * 1000),
 
             Err(_) => 5 * 1000,
         }
@@ -573,6 +575,55 @@ impl DatabaseConfig {
             let tls = postgres_rustls::MakeTlsConnector::new(connector);
             Ok(DBTlsConfig::On(tls))
         }
+    }
+}
+
+#[derive(Debug, Clone, ToSchema, Serialize, Deserialize, Default)]
+pub struct OidcConfig {
+    #[serde(default = "OidcConfig::default_client_id")]
+    #[schema(format=Password, value_type=String)]
+    pub client_id: Option<ClientId>,
+    #[serde(default = "OidcConfig::default_client_secret")]
+    #[schema(format=Password, value_type=String)]
+    pub client_secret: Option<ClientSecret>,
+    #[serde(default = "OidcConfig::default_redirect_url")]
+    #[schema(format=Uri, value_type=String)]
+    pub redirect_url: Option<RedirectUrl>,
+    #[serde(default = "OidcConfig::default_discovery_url")]
+    #[schema(format=Uri, value_type=String)]
+    pub discovery_url: Option<IssuerUrl>,
+}
+
+impl OidcConfig {
+    pub fn froom_env() -> Self {
+        Self {
+            client_id: Self::default_client_id(),
+            client_secret: Self::default_client_secret(),
+            discovery_url: Self::default_discovery_url(),
+            redirect_url: Self::default_redirect_url(),
+        }
+    }
+    pub fn default_client_id() -> Option<ClientId> {
+        var("RWF_OIDC_CLIENT").map(ClientId::new).ok()
+    }
+    pub fn default_client_secret() -> Option<ClientSecret> {
+        var("RWF_OIDC_SECRET").map(ClientSecret::new).ok()
+    }
+    pub fn default_redirect_url() -> Option<RedirectUrl> {
+        var("RWF_OIDC_REDIRECT")
+            .map(|redirect| RedirectUrl::new(redirect).expect("Initial Userinput need to be valid"))
+            .ok()
+    }
+    pub fn default_discovery_url() -> Option<IssuerUrl> {
+        var("RWF_OIDC_DISCOVERY")
+            .map(|issuer| IssuerUrl::new(issuer).expect("Initial Userinput need to be valid"))
+            .ok()
+    }
+    pub fn everything_set(&self) -> bool {
+        self.discovery_url.is_some()
+            && self.client_secret.is_some()
+            && self.redirect_url.is_some()
+            && self.client_id.is_some()
     }
 }
 

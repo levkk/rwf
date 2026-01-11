@@ -28,7 +28,7 @@ pub enum Error {
     SendError(#[from] SendError<Message>),
 }
 
-static MESSAGES: Lazy<Messages> = Lazy::new(|| Messages::new());
+static MESSAGES: Lazy<Messages> = Lazy::new(Messages::new);
 static DEFAULT_TOPIC: &str = "default";
 
 fn get_comms() -> &'static Messages {
@@ -134,10 +134,7 @@ impl Messages {
     /// Get a websocket message sender that will send messages to _everyone_ connected.
     pub fn websocket_notify(&self, _topic: &str) -> Broadcast {
         let guard = self.websocket.lock();
-        let entries = guard
-            .iter()
-            .map(|(_, websocket)| websocket.clone())
-            .collect::<Vec<_>>();
+        let entries = guard.values().cloned().collect::<Vec<_>>();
 
         Broadcast { everyone: entries }
     }
@@ -244,13 +241,13 @@ impl IntoSessionId for SessionId {
 
 impl IntoSessionId for &i64 {
     fn into_session_id(self) -> SessionId {
-        SessionId::Authenticated(*self)
+        SessionId::from(*self)
     }
 }
 
 impl IntoSessionId for i64 {
     fn into_session_id(self) -> SessionId {
-        SessionId::Authenticated(self)
+        SessionId::from(self)
     }
 }
 
@@ -258,7 +255,10 @@ impl<T: Model> IntoSessionId for &T {
     fn into_session_id(self) -> SessionId {
         match self.id() {
             Value::Optional(user_id) => match *user_id {
-                Some(Value::Integer(user_id)) => SessionId::Authenticated(user_id),
+                Some(Value::Integer(user_id)) => SessionId::from(user_id),
+                Some(Value::BigInt(user_id)) => SessionId::from(user_id),
+                Some(Value::SmallInt(user_id)) => SessionId::from(user_id),
+                Some(Value::Int(user_id)) => SessionId::from(user_id),
                 _ => panic!("session id cannot be extrated"),
             },
             _ => panic!("session id cannot be extracted"),
@@ -307,7 +307,7 @@ mod test {
 
     #[test]
     fn test_websocket_sender() {
-        let session = SessionId::Authenticated(5);
+        let session = SessionId::from(5);
         let websocket = Comms::websocket(&session);
         websocket.send(Message::Text("test".into())).unwrap();
 
@@ -321,20 +321,20 @@ mod test {
                 "users"
             }
 
-            fn foreign_key() -> &'static str {
-                "user_id"
-            }
-
             fn column_names() -> &'static [&'static str] {
                 &[]
+            }
+
+            fn id(&self) -> Value {
+                self.id.to_value()
             }
 
             fn values(&self) -> Vec<Value> {
                 vec![]
             }
 
-            fn id(&self) -> Value {
-                self.id.to_value()
+            fn foreign_key() -> &'static str {
+                "user_id"
             }
         }
 

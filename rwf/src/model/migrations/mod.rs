@@ -100,7 +100,7 @@ impl MigrationFile {
 
 impl Migrations {
     fn root_path() -> Result<PathBuf, Error> {
-        let path = PathBuf::from(current_dir()?.join(Path::new("migrations")));
+        let path = current_dir()?.join(Path::new("migrations"));
 
         if !path.is_dir() {
             info!(r#"No migrations available, skipping"#);

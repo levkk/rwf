@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::{Cookies, Error, FormData, FromFormData, Head, Params, Response, ToParameter};
+use crate::controller::auth::{IdType, ToIdType};
 use crate::prelude::ToConnectionRequest;
 use crate::{
     config::get_config,
@@ -155,7 +156,7 @@ impl Request {
     pub fn parameter<T: ToParameter>(&self, name: &str) -> Result<Option<T>, Error> {
         if let Some(ref params) = self.params {
             if let Some(parameter) = params.parameter(self.path().base(), name) {
-                return Ok(Some(T::to_parameter(&parameter)?));
+                return Ok(Some(T::to_parameter(parameter)?));
             }
         }
 
@@ -243,7 +244,7 @@ impl Request {
 
     /// Get the authenticated user's ID. Combined with the `?` operator,
     /// will return `401 - Unauthorized` if not logged in.
-    pub fn user_id(&self) -> Result<i64, Error> {
+    pub fn user_id(&self) -> Result<IdType, Error> {
         match self.session_id() {
             SessionId::Authenticated(id) => Ok(id),
             _ => Err(Error::Unauthorized),
@@ -328,9 +329,9 @@ impl Request {
     /// # let request = Request::default();
     /// let response = request.login(1234);
     /// ```
-    pub fn login(&self, user_id: i64) -> Response {
+    pub fn login(&self, user_id: impl ToIdType) -> Response {
         let mut session = self.session.clone();
-        session.session_id = SessionId::Authenticated(user_id);
+        session.session_id = SessionId::from(user_id);
         Response::new().set_session(session).html("")
     }
 
@@ -358,8 +359,8 @@ impl Request {
             match value {
                 Value::Integer(user_id) => Ok(self.login(user_id)),
                 Value::BigInt(user_id) => Ok(self.login(user_id)),
-                Value::Int(user_id) => Ok(self.login(user_id as i64)),
-                Value::SmallInt(user_id) => Ok(self.login(user_id as i64)),
+                Value::Int(user_id) => Ok(self.login(user_id)),
+                Value::SmallInt(user_id) => Ok(self.login(user_id)),
                 _ => Err(Error::UserIdNotAnInteger),
             }
         };
@@ -388,6 +389,14 @@ impl Request {
 
     pub(crate) fn renew_session(&self) -> bool {
         self.renew_session
+    }
+
+    pub(crate) fn replace_body(&mut self, body: Vec<u8>) {
+        self.inner = Arc::new(Inner {
+            body,
+            cookies: self.inner.cookies.clone(),
+            peer: self.inner.peer,
+        });
     }
 }
 

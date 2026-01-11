@@ -77,7 +77,7 @@ mod models {
         pub async fn make_admin(mut self) -> Result<Self, Error> {
             self.admin = true;
             let mut conn = Pool::connection().await?;
-            Ok(self.save().fetch(&mut conn).await?)
+            self.save().fetch(&mut conn).await
         }
 
         pub async fn remove_admin(mut self) -> Result<Self, Error> {
@@ -157,7 +157,7 @@ mod models {
 
             let mut conn = Pool::connection().await?;
 
-            Ok(self.save().fetch(&mut conn).await?)
+            self.save().fetch(&mut conn).await
         }
     }
 

@@ -21,9 +21,9 @@ async fn main() -> Result<(), Error> {
 
     Migrations::migrate().await?;
 
-    Worker::new(vec![MyJob::default().job()])
+    Worker::new(vec![MyJob.job()])
         .clock(vec![
-            MyJob::default().schedule(serde_json::Value::Null, "*/5 * * * * *")?
+            MyJob.schedule(serde_json::Value::Null, "*/5 * * * * *")?
         ])
         .start()
         .await?;

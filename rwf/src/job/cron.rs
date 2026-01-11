@@ -105,7 +105,7 @@ impl Cron {
                 dow: CronValue::parse(parts[4])?,
             }),
 
-            _ => return Err(Error::CronValueError),
+            _ => Err(Error::CronValueError),
         }
     }
 

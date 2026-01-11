@@ -16,6 +16,8 @@ use time::{Duration, OffsetDateTime};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
+use utoipa::openapi;
+use utoipa::openapi::{OpenApi, SecurityRequirement};
 
 /// An authentication mechanism wrapper that can be attached to a controller.
 #[derive(Clone)]
@@ -26,6 +28,31 @@ pub struct AuthHandler {
 impl Default for AuthHandler {
     fn default() -> Self {
         Self::new(AllowAll {})
+    }
+}
+
+impl utoipa::Modify for AuthHandler {
+    fn modify(&self, openapi: &mut OpenApi) {
+        self.auth().modify(openapi);
+        let unauthorized_response =
+            utoipa::openapi::Response::new("An Unauthorized access attempted");
+        for path in openapi.paths.paths.values_mut() {
+            for ref mut op in [
+                &mut path.get,
+                &mut path.post,
+                &mut path.put,
+                &mut path.patch,
+                &mut path.head,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                op.responses
+                    .responses
+                    .entry("401".to_string())
+                    .or_insert(utoipa::openapi::RefOr::T(unauthorized_response.clone()));
+            }
+        }
     }
 }
 
@@ -46,7 +73,7 @@ impl AuthHandler {
 /// Authenticators need to implement this trait.
 #[async_trait]
 #[allow(unused_variables)]
-pub trait Authentication: Sync + Send {
+pub trait Authentication: Sync + Send + utoipa::Modify {
     /// Perform the authentication and allow or deny the request from
     /// going forward.
     async fn authorize(&self, request: &Request) -> Result<bool, Error>;
@@ -70,6 +97,16 @@ pub trait Authentication: Sync + Send {
 /// Allow all requests. This is the default authentication method for all controllers.
 pub struct AllowAll;
 
+impl utoipa::Modify for AllowAll {
+    fn modify(&self, openapi: &mut OpenApi) {
+        if let Some(ref mut sec) = openapi.security {
+            sec.push(SecurityRequirement::default());
+        } else {
+            openapi.security = Some(vec![SecurityRequirement::default()]);
+        }
+    }
+}
+
 #[async_trait]
 impl Authentication for AllowAll {
     async fn authorize(&self, _request: &Request) -> Result<bool, Error> {
@@ -82,6 +119,18 @@ impl Authentication for AllowAll {
 /// Not particularly useful, since there is no way to override it,
 /// but it is included to demonstrate how authentication works.
 pub struct DenyAll;
+
+impl utoipa::Modify for DenyAll {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let scopes: Vec<String> = Vec::new();
+        let requirement = SecurityRequirement::new("not_existent_security_scheme", scopes);
+        if let Some(ref mut sec) = openapi.security {
+            sec.push(requirement)
+        } else {
+            openapi.security = Some(vec![requirement]);
+        }
+    }
+}
 
 #[async_trait]
 impl Authentication for DenyAll {
@@ -115,6 +164,47 @@ impl Authentication for BasicAuth {
     }
 }
 
+impl utoipa::Modify for BasicAuth {
+    fn modify(&self, openapi: &mut OpenApi) {
+        if let Some(ref mut components) = openapi.components {
+            components.add_security_scheme(
+                "http_basic_auth",
+                openapi::security::SecurityScheme::Http(
+                    openapi::security::HttpBuilder::new()
+                        .scheme(openapi::security::HttpAuthScheme::Basic)
+                        .description(Some("A Path protected by a HTTP Basic AUth middleware"))
+                        .build(),
+                ),
+            )
+        }
+        let scopes: Vec<String> = Vec::new();
+        let requirement = SecurityRequirement::new("http_basic_auth", scopes);
+        if openapi.security.is_none() {
+            openapi.security = Some(vec![requirement.clone()]);
+        } else {
+            openapi.security.as_mut().unwrap().push(requirement.clone());
+        }
+        for path in &mut openapi.paths.paths {
+            for ref mut op in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
+                }
+            }
+        }
+    }
+}
+
 /// Static token authentication (basically a passphrase).
 ///
 /// Not very secure since the token can leak, but helpful if you need
@@ -137,13 +227,131 @@ impl Authentication for Token {
     }
 }
 
+impl utoipa::Modify for Token {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let scopes: Vec<String> = Vec::new();
+        let requirement = SecurityRequirement::new("token_auth", scopes);
+        if let Some(ref mut sec) = openapi.security {
+            sec.push(requirement.clone())
+        } else {
+            openapi.security = Some(vec![requirement.clone()]);
+        }
+
+        if let Some(ref mut components) = openapi.components {
+            let mut token_header = openapi::security::ApiKeyValue::new("Authorization:");
+            token_header.description = Some(
+                "A Authorization Header holdig a Token. The Value must begin with 'Token'"
+                    .to_string(),
+            );
+            components.add_security_scheme(
+                "token_auth",
+                openapi::security::SecurityScheme::ApiKey(openapi::security::ApiKey::Header(
+                    token_header,
+                )),
+            )
+        }
+        for path in &mut openapi.paths.paths {
+            for ref mut op in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub enum IdType {
+    Small(i16),
+    Normal(i32),
+    Big(i64),
+}
+
+impl From<i16> for IdType {
+    fn from(value: i16) -> Self {
+        Self::Small(value)
+    }
+}
+impl From<i32> for IdType {
+    fn from(value: i32) -> Self {
+        Self::Normal(value)
+    }
+}
+impl From<i64> for IdType {
+    fn from(value: i64) -> Self {
+        Self::Big(value)
+    }
+}
+impl crate::model::value::ToValue for IdType {
+    fn to_value(&self) -> crate::model::value::Value {
+        match self {
+            Self::Small(value) => crate::model::value::Value::SmallInt(*value),
+            Self::Normal(value) => crate::model::value::Value::Int(*value),
+            Self::Big(value) => crate::model::value::Value::BigInt(*value),
+        }
+    }
+}
+
+pub trait ToIdType {
+    fn to_id_type(&self) -> IdType;
+}
+
+impl ToIdType for i16 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl ToIdType for i32 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl ToIdType for i64 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl std::fmt::Display for IdType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Small(value) => write!(f, "{}", value),
+            Self::Normal(value) => write!(f, "{}", value),
+            Self::Big(value) => write!(f, "{}", value),
+        }
+    }
+}
 /// Type of session provided by the client in the request.
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum SessionId {
     /// Guest user. All visitors are given a guest session.
     Guest(String),
     /// Authenticated user. This user has passed an authentication challenge, e.g. username and password.
-    Authenticated(i64),
+    Authenticated(IdType),
+}
+
+impl<T: ToIdType> From<T> for SessionId {
+    fn from(value: T) -> Self {
+        Self::Authenticated(value.to_id_type())
+    }
+}
+impl From<String> for SessionId {
+    fn from(value: String) -> Self {
+        Self::Guest(value)
+    }
 }
 
 impl SessionId {
@@ -164,7 +372,7 @@ impl SessionId {
 
     /// Get the user's ID. This is an arbitrary integer, but
     /// should ideally be the primary key of a `"users"` table, if such exists.
-    pub fn user_id(&self) -> Option<i64> {
+    pub fn user_id(&self) -> Option<IdType> {
         match self {
             SessionId::Authenticated(id) => Some(*id),
             _ => None,
@@ -257,9 +465,12 @@ impl Session {
     }
 
     /// Create new session with this payload, authenticated to a particular user.
-    pub fn new_authenticated(payload: impl Serialize, user_id: i64) -> Result<Self, Error> {
+    pub fn new_authenticated(
+        payload: impl Serialize,
+        user_id: impl ToIdType,
+    ) -> Result<Self, Error> {
         let mut session = Self::new(payload)?;
-        session.session_id = SessionId::Authenticated(user_id);
+        session.session_id = SessionId::from(user_id);
 
         Ok(session)
     }
@@ -322,6 +533,45 @@ impl SessionAuth {
     pub fn redirect(url: impl ToString) -> Self {
         Self {
             redirect: Some(url.to_string()),
+        }
+    }
+}
+
+impl utoipa::Modify for SessionAuth {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let scopes: Vec<String> = Vec::new();
+        let requirement = SecurityRequirement::new("session_auth", scopes);
+        if let Some(ref mut sec) = openapi.security {
+            sec.push(requirement.clone());
+        } else {
+            openapi.security = Some(vec![requirement.clone()]);
+        }
+
+        if let Some(ref mut components) = openapi.components {
+            components.add_security_scheme(
+                "session_auth",
+                openapi::security::SecurityScheme::ApiKey(openapi::security::ApiKey::Cookie(
+                    openapi::security::ApiKeyValue::new("rwf_session"),
+                )),
+            );
+        }
+        for path in &mut openapi.paths.paths {
+            for ref mut op in [
+                &mut path.1.get,
+                &mut path.1.post,
+                &mut path.1.delete,
+                &mut path.1.patch,
+                &mut path.1.put,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(ref mut sec) = op.security {
+                    sec.push(requirement.clone())
+                } else {
+                    op.security = Some(vec![requirement.clone()]);
+                }
+            }
         }
     }
 }

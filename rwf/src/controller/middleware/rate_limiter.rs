@@ -18,6 +18,7 @@ use super::{
     Middleware, Outcome,
 };
 use async_trait::async_trait;
+use utoipa::openapi::OpenApi;
 
 #[derive(Default, Debug)]
 struct State {
@@ -110,7 +111,7 @@ impl Middleware for RateLimiter {
             .map(|s| crate::peer_addr(s))
         {
             Some(Some(peer)) => peer,
-            _ => request.peer().clone(),
+            _ => *request.peer(),
         };
 
         // Get current time before locking mutex.
@@ -164,6 +165,60 @@ impl Middleware for RateLimiter {
             Ok(response.header("x-rwf-request-rate", rate.to_string()))
         } else {
             Ok(response)
+        }
+    }
+}
+
+impl utoipa::Modify for RateLimiter {
+    fn modify(&self, openapi: &mut OpenApi) {
+        let ratelimit_header = utoipa::openapi::HeaderBuilder::new()
+            .description(Some(
+                "Header containing the current Request rate of the client.",
+            ))
+            .schema(utoipa::openapi::schema::Schema::Object(
+                utoipa::openapi::schema::Object::builder()
+                    .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                        utoipa::openapi::schema::KnownFormat::Float,
+                    )))
+                    .exclusive_minimum(Some(0))
+                    .build(),
+            ))
+            .build();
+        let blocked_ratelimit_respons = utoipa::openapi::Response::builder()
+            .description("Desnied Request because the Ratelimit exeeded.")
+            .build();
+        if let Some(ref mut components) = openapi.components {
+            for res in components.responses.values_mut() {
+                if let utoipa::openapi::RefOr::T(res) = res {
+                    res.headers
+                        .insert("x-rwf-request-rate".to_string(), ratelimit_header.clone());
+                }
+            }
+            components.responses.insert(
+                "blocked_ratelimit_respons".to_string(),
+                utoipa::openapi::RefOr::T(blocked_ratelimit_respons),
+            );
+        }
+        let response: utoipa::openapi::RefOr<utoipa::openapi::Response> =
+            utoipa::openapi::RefOr::Ref(utoipa::openapi::Ref::from_response_name(
+                "blocked_ratelimit_respons",
+            ));
+        for path in openapi.paths.paths.values_mut() {
+            for ref mut op in [
+                &mut path.get,
+                &mut path.post,
+                &mut path.put,
+                &mut path.patch,
+                &mut path.delete,
+                &mut path.head,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                op.responses
+                    .responses
+                    .insert("429".to_string(), response.clone());
+            }
         }
     }
 }

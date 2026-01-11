@@ -49,7 +49,7 @@ async fn main() -> Result<(), Error> {
         .start()
         .await?;
 
-    Server::new(vec![IndexController::default().route("/")])
+    Server::new(vec![IndexController.route("/")])
         .launch()
         .await?;
 

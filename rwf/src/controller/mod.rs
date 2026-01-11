@@ -30,6 +30,7 @@ pub mod auth;
 pub mod engine;
 pub mod error;
 pub mod middleware;
+pub mod oidc;
 pub mod ser;
 pub mod static_files;
 pub mod turbo_stream;
@@ -39,17 +40,12 @@ pub mod wsgi;
 #[cfg(feature = "wsgi")]
 pub use wsgi::WsgiController;
 
+pub mod openapi;
 #[cfg(feature = "rack")]
 pub mod rack;
+
 #[cfg(feature = "rack")]
 pub use rack::RackController;
-
-pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
-pub use engine::Engine;
-pub use error::Error;
-pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
-pub use static_files::{CacheControl, StaticFiles};
-pub use turbo_stream::TurboStream;
 
 use super::http::{
     websocket::{self, DataFrame},
@@ -59,12 +55,20 @@ use super::model::{get_connection, Insert, Model, Query, ToValue, Update, Value}
 use crate::colors::MaybeColorize;
 use crate::comms::Comms;
 use crate::config::get_config;
+pub use auth::{AllowAll, AuthHandler, Authentication, BasicAuth, DenyAll, Session, SessionId};
+pub use engine::Engine;
+pub use error::Error;
+pub use middleware::{Middleware, MiddlewareHandler, MiddlewareSet, Outcome, RateLimiter};
+pub use openapi::OpenApiController;
+pub use static_files::{CacheControl, StaticFiles};
+pub use turbo_stream::TurboStream;
 
 use tokio::select;
 use tokio::time::{interval, timeout};
 use tracing::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
+use utoipa::openapi::OpenApi;
 
 /// The controller, the **C** in MVC.
 ///
@@ -280,6 +284,13 @@ pub trait Controller: Sync + Send {
     }
 }
 
+impl utoipa::Modify for dyn Controller {
+    fn modify(&self, openapi: &mut OpenApi) {
+        self.auth().modify(openapi);
+        self.middleware().modify(openapi);
+    }
+}
+
 /// A controller that splits GET and POST requests into two different methods.
 ///
 /// Most web apps using templates would want to implement the `PageController` which splits up `GET` from `POST` requests,
@@ -387,7 +398,7 @@ pub trait RestController: Controller {
     ///
     /// Rust is a typed language, this makes handling IDs easier by specifying the
     /// expected data type. Inputs not matching this data type will be rejected.
-    type Resource: ToParameter;
+    type Resource: ToParameter + ToValue;
 
     /// Figure out which method to call based on request method
     /// and path.
@@ -522,14 +533,14 @@ pub trait RestController: Controller {
 /// }
 /// ```
 #[async_trait]
-pub trait ModelController: Controller {
+pub trait ModelController: Controller + RestController {
     /// The database model.
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;
 
     /// Handle the request to this controller.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        let parameter = request.parameter::<i64>("id");
+        let parameter = request.parameter::<Self::Resource>("id");
 
         match parameter {
             Ok(Some(id)) => match method {
@@ -592,13 +603,10 @@ pub trait ModelController: Controller {
     }
 
     /// Fetch a model record identified by its primary key.
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
-        match Self::Model::find_by(Self::Model::primary_key(), *id)
-            .fetch(&mut conn)
-            .await
-        {
+        match Self::Model::find(id.to_value()).fetch(&mut conn).await {
             Ok(model) => match Response::new().json(model) {
                 Ok(response) => Ok(response),
                 Err(err) => Ok(Response::internal_error(err)),
@@ -621,7 +629,7 @@ pub trait ModelController: Controller {
         let mut conn = get_connection().await?;
 
         let model = Query::Insert(Insert::<Self::Model>::from_columns(
-            &Self::Model::column_names(),
+            Self::Model::column_names(),
             &model.values(),
         ))
         .fetch(&mut conn)
@@ -631,13 +639,12 @@ pub trait ModelController: Controller {
     }
 
     /// Update existing model record.
-    async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn update(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         // The REST spec requires the entire model to be sent over for a PUT.
         let model = request.json::<Self::Model>()?;
-
         // The id field is immutable, but let's do a sanity check here just to
         // be sure the client sent the right model.
-        if model.id() != Value::Integer(*id) {
+        if model.id() != Value::Optional(Box::new(Some(id.to_value()))) {
             return Ok(Response::bad_request());
         }
 
@@ -647,10 +654,9 @@ pub trait ModelController: Controller {
     }
 
     /// Removes a record if exists.
-    async fn delete(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn delete(&self, _request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
-
-        match Self::Model::find_by(Self::Model::primary_key(), *id)
+        match Self::Model::find(id.to_value())
             .fetch_optional(&mut conn)
             .await
         {
@@ -667,9 +673,9 @@ pub trait ModelController: Controller {
     }
 
     /// Partially update an existing model record.
-    async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn patch(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
-        let exists = Self::Model::find(*id).count(&mut conn).await?;
+        let exists = Self::Model::find(id.to_value()).count(&mut conn).await?;
 
         if exists == 0 {
             return Ok(Response::not_found());
@@ -691,11 +697,92 @@ pub trait ModelController: Controller {
             }
         }
 
-        let model = Query::Update(Update::<Self::Model>::from_columns(*id, &columns, &values))
-            .fetch(&mut conn)
-            .await?;
+        let model = Query::Update(Update::<Self::Model>::from_columns(
+            id.to_value(),
+            &columns,
+            &values,
+        ))
+        .fetch(&mut conn)
+        .await?;
 
         Ok(Response::new().json(model)?)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct ModelListQuery {
+    page: Option<i32>,
+    page_size: Option<i32>,
+}
+
+impl Default for ModelListQuery {
+    fn default() -> Self {
+        Self {
+            page: Some(1),
+            page_size: Some(25),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, utoipa::ToSchema)]
+pub enum PKeyTypes {
+    Small(i16),
+    Middle(i32),
+    Large(i64),
+}
+
+pub trait IntoPkey {
+    fn pkey_type(&self) -> PKeyTypes;
+}
+impl IntoPkey for i16 {
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Small(*self)
+    }
+}
+
+impl IntoPkey for i32 {
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Middle(*self)
+    }
+}
+
+impl IntoPkey for i64 {
+    fn pkey_type(&self) -> PKeyTypes {
+        PKeyTypes::Large(*self)
+    }
+}
+
+impl<T> From<T> for PKeyTypes
+where
+    T: IntoPkey,
+{
+    fn from(value: T) -> Self {
+        value.pkey_type()
+    }
+}
+
+impl Default for PKeyTypes {
+    fn default() -> Self {
+        PKeyTypes::Large(1)
+    }
+}
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Path)]
+pub struct ModelPkeyParam {
+    id: PKeyTypes,
+}
+impl From<PKeyTypes> for ModelPkeyParam {
+    fn from(value: PKeyTypes) -> Self {
+        ModelPkeyParam { id: value }
+    }
+}
+
+pub trait PkeyParamGenerator {
+    fn param(val: impl IntoPkey) -> ModelPkeyParam {
+        ModelPkeyParam {
+            id: val.pkey_type(),
+        }
     }
 }
 

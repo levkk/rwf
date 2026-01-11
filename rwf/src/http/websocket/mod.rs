@@ -216,7 +216,7 @@ impl Meta {
             127 => {
                 let mut len = [0u8; 8];
                 stream.read_exact(&mut len).await?;
-                u64::from_be_bytes(len) as u64
+                u64::from_be_bytes(len)
             }
 
             _ => return Err(Error::MalformedRequest("websocket len")),
@@ -257,7 +257,7 @@ impl Meta {
             0b00000000
         };
 
-        let _len = if self.len <= 125 {
+        if self.len <= 125 {
             buf.push(self.len as u8 | masked);
         } else if self.len < u16::MAX as usize {
             buf.push(126 | masked);
@@ -301,7 +301,7 @@ impl Message {
     /// Get message length.
     pub fn len(&self) -> usize {
         match self {
-            Self::Text(text) => text.as_bytes().len(),
+            Self::Text(text) => text.len(),
             Self::Binary(bytes) => bytes.len(),
         }
     }
@@ -318,7 +318,7 @@ impl Message {
         meta: &Meta,
         stream: &mut (impl AsyncRead + Unpin),
     ) -> Result<Self, Error> {
-        let mut msg = vec![0u8; meta.len() as usize];
+        let mut msg = vec![0u8; meta.len()];
 
         stream.read_exact(&mut msg).await?;
 

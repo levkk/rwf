@@ -224,13 +224,17 @@ impl Response {
         }
     }
 
+    pub fn get_body(&self) -> &Body {
+        &self.body
+    }
+
     /// Create a response from a request. *This is used internally automatically.*
     ///
     /// This makes sure a valid session cookie is set on all responses.
     pub fn from_request(mut self, request: &Request) -> Result<Self, Error> {
         // Session set manually on the request already.
         if let Some(ref session) = self.session {
-            self.cookies.add_session(&session)?;
+            self.cookies.add_session(session)?;
         } else {
             let session = request.session();
 

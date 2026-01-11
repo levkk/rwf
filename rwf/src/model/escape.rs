@@ -31,7 +31,7 @@ impl Escape for Value {
             List(values) => format!(
                 "{{{}}}", // '{1, 2, 3}'
                 values
-                    .into_iter()
+                    .iter()
                     .map(|value| value.escape())
                     .collect::<Vec<_>>()
                     .join(", ")

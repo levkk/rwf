@@ -48,8 +48,8 @@ impl Query {
             }
 
             // Decode any URL-encoded values back into UTF-8.
-            let key = urldecode(&key_value.next().expect("path query key"));
-            let value = urldecode(&key_value.next().unwrap_or(&"")); // ?key=&value=two
+            let key = urldecode(key_value.next().expect("path query key"));
+            let value = urldecode(key_value.next().unwrap_or("")); // ?key=&value=two
 
             query.insert(key, value);
         }
@@ -72,10 +72,7 @@ impl Query {
     /// ```
     pub fn get<T: FromStr>(&self, name: &str) -> Option<T> {
         match self.query.get(name) {
-            Some(value) => match urldecode(value).parse::<T>() {
-                Ok(value) => Some(value),
-                Err(_) => None,
-            },
+            Some(value) => urldecode(value).parse::<T>().ok(),
 
             None => None,
         }
@@ -106,7 +103,7 @@ impl Query {
     /// )
     /// ```
     pub fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(&self.query).unwrap_or(serde_json::Value::default())
+        serde_json::to_value(&self.query).unwrap_or_default()
     }
 
     /// An owning iterator over the query.

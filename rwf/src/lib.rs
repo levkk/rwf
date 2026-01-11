@@ -131,20 +131,18 @@ pub fn snake_case(string: &str) -> String {
 /// Convert the first letter of the stirng to uppercase lettering.
 pub fn capitalize(string: &str) -> String {
     let mut iter = string.chars();
-    let uppercase = match iter.next() {
+
+    match iter.next() {
         None => String::new(),
         Some(letter) => letter.to_uppercase().chain(iter).collect(),
-    };
-
-    uppercase
+    }
 }
 
 /// Convert string to title case.
 pub fn title_case(string: &str) -> String {
     string
         .split(" ")
-        .into_iter()
-        .map(|s| capitalize(s))
+        .map(capitalize)
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -153,7 +151,7 @@ pub fn title_case(string: &str) -> String {
 pub fn pascal_case(string: &str) -> String {
     string
         .split("_")
-        .map(|s| capitalize(s))
+        .map(capitalize)
         .collect::<Vec<_>>()
         .join("")
 }
@@ -170,7 +168,7 @@ pub fn peer_addr(addr: &str) -> Option<SocketAddr> {
 
     if let Ok(mut iter) = addr.to_socket_addrs() {
         if let Some(addr) = iter.next() {
-            return Some(addr.clone());
+            return Some(addr);
         }
     }
 

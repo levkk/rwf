@@ -40,9 +40,9 @@ impl FormData {
                 Err(Error::MalformedRequest("multipart missing boundary"))
             }
         } else {
-            return Err(Error::MalformedRequest(
+            Err(Error::MalformedRequest(
                 "only \"application/x-www-form-urlencoded\" and \"multipart/form-data\" are supported",
-            ));
+            ))
         }
     }
 
@@ -74,10 +74,7 @@ impl FormData {
                 if let Some(entry) = entry {
                     if entry.content_disposition.filename.is_none() {
                         if let Ok(s) = entry.to_string() {
-                            match T::from_str(&s) {
-                                Ok(s) => Some(s),
-                                Err(_) => None,
-                            }
+                            T::from_str(&s).ok()
                         } else {
                             None
                         }
@@ -117,7 +114,6 @@ impl FormData {
                     .into_iter()
                     .filter(|entry| entry.1.content_disposition.filename.is_none())
                     .map(|entry| (entry.0, entry.1.to_string().unwrap_or("".to_string())))
-                    .into_iter()
                     .collect::<BTreeMap<String, String>>();
                 entries.into_iter()
             }
@@ -234,7 +230,7 @@ impl Multipart {
     /// Read multi-part body from request's body.
     fn read(body: &[u8], boundary: &str) -> Result<Self, Error> {
         let mut entries = BTreeMap::new();
-        let mut reader = body.into_iter();
+        let mut reader = body.iter();
 
         let start_boundary = format!("--{}", boundary).as_bytes().to_vec();
         let end_boundary = format!("--{}--", boundary).as_bytes().to_vec();
@@ -317,7 +313,7 @@ pub struct ContentDisposition {
 impl ContentDisposition {
     // Parse the Content-Disposition header.
     fn parse(header: &str) -> Result<ContentDisposition, Error> {
-        let mut names = header.split(":").into_iter().map(|s| s.trim());
+        let mut names = header.split(":").map(|s| s.trim());
 
         if let Some(header) = names.next() {
             if header.to_lowercase() != "content-disposition" {
@@ -328,14 +324,14 @@ impl ContentDisposition {
         }
 
         if let Some(params) = names.next() {
-            let mut params = params.split(";").into_iter().map(|s| urldecode(s.trim()));
+            let mut params = params.split(";").map(|s| urldecode(s.trim()));
             let _form_data = params.next();
 
             let mut content_name: Option<String> = None;
             let mut filename: Option<String> = None;
 
             for param in params {
-                let mut parts = param.split("=").into_iter();
+                let mut parts = param.split("=");
                 let name = parts.next();
                 let value = parts.next();
 

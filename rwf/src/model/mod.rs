@@ -275,7 +275,7 @@ impl<T: Model> Query<T> {
     pub fn select(table_name: impl ToString) -> Self {
         Query::Select(Select::new(
             table_name.to_string().as_str(),
-            &T::primary_key(),
+            T::primary_key(),
         ))
     }
 
@@ -650,15 +650,13 @@ impl<T: Model> Query<T> {
         columns: &[(impl ToColumn, impl ToAggregation, Option<impl ToString>)],
     ) -> Self {
         match self {
-            Query::Select(select) => {
-                return Query::Picked(Picked::from(select)).select_aggregated(columns)
-            }
+            Query::Select(select) => Query::Picked(Picked::from(select)).select_aggregated(columns),
             Query::Picked(mut picked) => {
                 for (col, agg, alias) in columns {
                     let alias = alias.as_ref().map(|alias| alias.to_string());
                     picked = picked.add_column(col, agg, alias);
                 }
-                return Query::Picked(picked);
+                Query::Picked(picked)
             }
             _ => self,
         }
@@ -1030,7 +1028,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     fn columns() -> Vec<Column> {
         Self::column_names()
             .iter()
-            .map(|name| Self::column(*name))
+            .map(|name| Self::column(name))
             .collect::<Vec<Column>>()
     }
 

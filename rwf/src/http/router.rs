@@ -79,7 +79,7 @@ impl Router {
     ///
     /// Used at server startup.
     pub fn log_routes(&self) {
-        let mut handlers = self.handlers.iter().map(|s| s).collect::<Vec<_>>();
+        let mut handlers = self.handlers.iter().collect::<Vec<_>>();
         handlers.sort_by_key(|s| s.path().path());
         for handler in handlers {
             let indicator = match handler.path_with_regex().path_type() {
