@@ -1,0 +1,20 @@
+<html>
+    <head>
+        <title>OpenApi TestPage</title>
+        <%= rwf_head %>
+    </head>
+    <body>
+    <%= rwf_turbo_stream("/turbo-stream") %>
+        <ul id="list">
+
+        </ul>
+        <div>
+            <form method="post">
+                <%= csrf_token %>
+                <label for="data">Neues Element: </label>
+                <input id="data" type="text" name="data">
+                <input type="submit" value="Send">
+            </form>
+        </div>
+    </body>
+</html>

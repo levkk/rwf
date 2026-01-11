@@ -352,6 +352,12 @@ pub trait PageController: Controller {
             Ok(Response::method_not_allowed())
         }
     }
+    fn route(self, path: &str) -> Handler
+    where
+        Self: Sized + 'static,
+    {
+        Handler::route(path, self)
+    }
 }
 
 /// REST controller, which splits requests into 6 REST verbs.

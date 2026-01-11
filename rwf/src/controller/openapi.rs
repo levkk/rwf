@@ -220,6 +220,8 @@ impl OpenApiController {
         for (k, v) in RWF_OPENAPIS.map.read().unwrap().iter() {
             let path = if !k.starts_with("/") {
                 format!("/{}", k)
+            } else if k.eq("/") {
+                "".to_string()
             } else {
                 k.to_string()
             };

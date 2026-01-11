@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 
 use syn::{
     parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, Data, DeriveInput,
-    Expr, ItemFn, Meta, ReturnType, Token, Type, Visibility,
+    Expr, ItemFn, ItemImpl, Meta, ReturnType, Token, Type, Visibility,
 };
 
 use quote::{quote, ToTokens};
@@ -279,7 +279,7 @@ fn handle_overrides(attributes: &[Attribute]) -> proc_macro2::TokenStream {
 /// This implements mappings between the `Controller`
 /// trait and the struct implementing
 /// the `PageController` trait.
-#[proc_macro_derive(PageController, attributes(auth, middleware, skip_csrf))]
+#[proc_macro_derive(PageController, attributes(auth, middleware, skip_csrf, openapi))]
 pub fn derive_page_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -297,6 +297,9 @@ pub fn derive_page_controller(input: TokenStream) -> TokenStream {
 
             async fn handle(&self, request: &rwf::http::Request) -> Result<rwf::http::Response, rwf::controller::Error> {
                 rwf::controller::PageController::handle(self, request).await
+            }
+            fn route(self, path: &str) -> rwf::http::Handler {
+                rwf::controller::PageController::route(self, path)
             }
         }
     }.into()
@@ -543,7 +546,7 @@ pub fn route(input: TokenStream) -> TokenStream {
     let controller = iter.next().unwrap();
 
     quote! {
-        #controller::default().route(#route)
+        rwf::controller::Controller::route(#controller::default(), #route)
     }
     .into()
 }
@@ -748,6 +751,17 @@ pub fn controller(_args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn generate_openapi_specs(args: TokenStream, input: TokenStream) -> TokenStream {
+    let controller = parse_macro_input!(input as ItemImpl);
+    if args.is_empty() {
+        openapi::generate_api_specs_controller(controller, None).into()
+    } else {
+        let json_type = parse_macro_input!(args as Type);
+        openapi::generate_api_specs_controller(controller, Some(json_type)).into()
+    }
 }
 
 #[proc_macro_attribute]
