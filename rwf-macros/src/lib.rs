@@ -3,8 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::{
-    parse, parse_macro_input, punctuated::Punctuated, Attribute, Data, DeriveInput, Expr, ItemFn,
-    Meta, ReturnType, Token, Type, Visibility,
+    parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, Data, DeriveInput,
+    Expr, ItemFn, Meta, ReturnType, Token, Type, Visibility,
 };
 
 use quote::{quote, ToTokens};
@@ -170,7 +170,7 @@ pub fn derive_websocket_controller(input: TokenStream) -> TokenStream {
 /// This implements mappings between the `Controller`
 /// trait and the struct implementing
 /// the `ModelController` trait.
-#[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf))]
+#[proc_macro_derive(ModelController, attributes(auth, middleware, skip_csrf, resource))]
 pub fn derive_model_controller(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let overrides = handle_overrides(&input.attrs);
@@ -180,6 +180,14 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
 
         _ => panic!("macro can only be used on structs"),
     };
+    let resource: Type = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("resource"))
+        .map_or(parse_quote!(i64), |attr| {
+            attr.parse_args::<syn::Type>()
+                .expect("Invalid Resource Type")
+        });
 
     quote! {
        #[rwf::async_trait]
@@ -190,6 +198,11 @@ pub fn derive_model_controller(input: TokenStream) -> TokenStream {
                 rwf::controller::ModelController::handle(self, request).await
             }
         }
+        #[rwf::async_trait]
+        impl rwf::controller::RestController for #ident {
+            type Resource = #resource;
+        }
+
     }.into()
 }
 
@@ -746,8 +759,6 @@ pub fn generate_openapi_model_controller(args: TokenStream, input: TokenStream) 
     let args_on = args.clone();
 
     let mut output = proc_macro2::TokenStream::new();
-    let orig: proc_macro2::TokenStream = input.clone().into();
-    orig.to_tokens(&mut output);
 
     let controller = openapi::generate_controller4(
         parse_macro_input!(controller_on),

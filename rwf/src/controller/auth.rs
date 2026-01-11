@@ -271,13 +271,87 @@ impl utoipa::Modify for Token {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub enum IdType {
+    Small(i16),
+    Normal(i32),
+    Big(i64),
+}
+
+impl From<i16> for IdType {
+    fn from(value: i16) -> Self {
+        Self::Small(value)
+    }
+}
+impl From<i32> for IdType {
+    fn from(value: i32) -> Self {
+        Self::Normal(value)
+    }
+}
+impl From<i64> for IdType {
+    fn from(value: i64) -> Self {
+        Self::Big(value)
+    }
+}
+impl crate::model::value::ToValue for IdType {
+    fn to_value(&self) -> crate::model::value::Value {
+        match self {
+            Self::Small(value) => crate::model::value::Value::SmallInt(*value),
+            Self::Normal(value) => crate::model::value::Value::Int(*value),
+            Self::Big(value) => crate::model::value::Value::BigInt(*value),
+        }
+    }
+}
+
+pub trait ToIdType {
+    fn to_id_type(&self) -> IdType;
+}
+
+impl ToIdType for i16 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl ToIdType for i32 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl ToIdType for i64 {
+    fn to_id_type(&self) -> IdType {
+        IdType::from(*self)
+    }
+}
+
+impl std::fmt::Display for IdType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Small(value) => write!(f, "{}", value),
+            Self::Normal(value) => write!(f, "{}", value),
+            Self::Big(value) => write!(f, "{}", value),
+        }
+    }
+}
 /// Type of session provided by the client in the request.
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum SessionId {
     /// Guest user. All visitors are given a guest session.
     Guest(String),
     /// Authenticated user. This user has passed an authentication challenge, e.g. username and password.
-    Authenticated(i64),
+    Authenticated(IdType),
+}
+
+impl<T: ToIdType> From<T> for SessionId {
+    fn from(value: T) -> Self {
+        Self::Authenticated(value.to_id_type())
+    }
+}
+impl From<String> for SessionId {
+    fn from(value: String) -> Self {
+        Self::Guest(value)
+    }
 }
 
 impl SessionId {
@@ -298,7 +372,7 @@ impl SessionId {
 
     /// Get the user's ID. This is an arbitrary integer, but
     /// should ideally be the primary key of a `"users"` table, if such exists.
-    pub fn user_id(&self) -> Option<i64> {
+    pub fn user_id(&self) -> Option<IdType> {
         match self {
             SessionId::Authenticated(id) => Some(*id),
             _ => None,
@@ -391,9 +465,12 @@ impl Session {
     }
 
     /// Create new session with this payload, authenticated to a particular user.
-    pub fn new_authenticated(payload: impl Serialize, user_id: i64) -> Result<Self, Error> {
+    pub fn new_authenticated(
+        payload: impl Serialize,
+        user_id: impl ToIdType,
+    ) -> Result<Self, Error> {
         let mut session = Self::new(payload)?;
-        session.session_id = SessionId::Authenticated(user_id);
+        session.session_id = SessionId::from(user_id);
 
         Ok(session)
     }

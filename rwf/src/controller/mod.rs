@@ -398,7 +398,7 @@ pub trait RestController: Controller {
     ///
     /// Rust is a typed language, this makes handling IDs easier by specifying the
     /// expected data type. Inputs not matching this data type will be rejected.
-    type Resource: ToParameter;
+    type Resource: ToParameter + ToValue;
 
     /// Figure out which method to call based on request method
     /// and path.
@@ -533,14 +533,14 @@ pub trait RestController: Controller {
 /// }
 /// ```
 #[async_trait]
-pub trait ModelController: Controller {
+pub trait ModelController: Controller + RestController {
     /// The database model.
     type Model: Model + Serialize + Send + Sync + for<'a> Deserialize<'a>;
 
     /// Handle the request to this controller.
     async fn handle(&self, request: &Request) -> Result<Response, Error> {
         let method = request.method();
-        let parameter = request.parameter::<i64>("id");
+        let parameter = request.parameter::<Self::Resource>("id");
 
         match parameter {
             Ok(Some(id)) => match method {
@@ -603,13 +603,10 @@ pub trait ModelController: Controller {
     }
 
     /// Fetch a model record identified by its primary key.
-    async fn get(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn get(&self, _request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
 
-        match Self::Model::find_by(Self::Model::primary_key(), *id)
-            .fetch(&mut conn)
-            .await
-        {
+        match Self::Model::find(id.to_value()).fetch(&mut conn).await {
             Ok(model) => match Response::new().json(model) {
                 Ok(response) => Ok(response),
                 Err(err) => Ok(Response::internal_error(err)),
@@ -642,13 +639,12 @@ pub trait ModelController: Controller {
     }
 
     /// Update existing model record.
-    async fn update(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn update(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         // The REST spec requires the entire model to be sent over for a PUT.
         let model = request.json::<Self::Model>()?;
-
         // The id field is immutable, but let's do a sanity check here just to
         // be sure the client sent the right model.
-        if model.id() != Value::Integer(*id) {
+        if model.id() != Value::Optional(Box::new(Some(id.to_value()))) {
             return Ok(Response::bad_request());
         }
 
@@ -658,10 +654,9 @@ pub trait ModelController: Controller {
     }
 
     /// Removes a record if exists.
-    async fn delete(&self, _request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn delete(&self, _request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
-
-        match Self::Model::find_by(Self::Model::primary_key(), *id)
+        match Self::Model::find(id.to_value())
             .fetch_optional(&mut conn)
             .await
         {
@@ -678,9 +673,9 @@ pub trait ModelController: Controller {
     }
 
     /// Partially update an existing model record.
-    async fn patch(&self, request: &Request, id: &i64) -> Result<Response, Error> {
+    async fn patch(&self, request: &Request, id: &Self::Resource) -> Result<Response, Error> {
         let mut conn = get_connection().await?;
-        let exists = Self::Model::find(*id).count(&mut conn).await?;
+        let exists = Self::Model::find(id.to_value()).count(&mut conn).await?;
 
         if exists == 0 {
             return Ok(Response::not_found());
@@ -702,9 +697,13 @@ pub trait ModelController: Controller {
             }
         }
 
-        let model = Query::Update(Update::<Self::Model>::from_columns(*id, &columns, &values))
-            .fetch(&mut conn)
-            .await?;
+        let model = Query::Update(Update::<Self::Model>::from_columns(
+            id.to_value(),
+            &columns,
+            &values,
+        ))
+        .fetch(&mut conn)
+        .await?;
 
         Ok(Response::new().json(model)?)
     }

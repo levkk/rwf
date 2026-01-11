@@ -93,7 +93,7 @@ impl utoipa::Modify for Csrf {
                 )))
                 .schema_type(utoipa::openapi::Type::String)
                 .examples(vec![serde_json::json!(crate::crypto::csrf_token(
-                    crate::controller::SessionId::Authenticated(1234)
+                    crate::controller::SessionId::from(1234)
                         .to_string()
                         .as_str()
                 )

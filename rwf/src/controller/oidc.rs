@@ -1,25 +1,29 @@
+use openidconnect::core::CoreTokenIntrospectionResponse;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreAuthenticationFlow, CoreClient, CoreErrorResponseType,
-    CoreGenderClaim, CoreJsonWebKey, CoreJweContentEncryptionAlgorithm, CoreProviderMetadata,
-    CoreRevocableToken, CoreRevocationErrorResponse, CoreTokenResponse,
+    CoreJsonWebKey, CoreJweContentEncryptionAlgorithm, CoreProviderMetadata, CoreRevocableToken,
+    CoreRevocationErrorResponse, CoreTokenResponse,
 };
-use openidconnect::core::{CoreIdTokenFields, CoreTokenIntrospectionResponse, CoreTokenType};
 use openidconnect::{
-    reqwest, AccessToken, AccessTokenHash, AuthorizationCode, Client, CsrfToken,
-    EmptyAdditionalClaims, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier,
-    RefreshToken, StandardErrorResponse, StandardTokenResponse, TokenResponse, UserInfoClaims,
+    reqwest, AccessTokenHash, AuthorizationCode, Client, CsrfToken, Nonce, PkceCodeChallenge,
+    PkceCodeVerifier, StandardErrorResponse, TokenResponse,
 };
 use openidconnect::{EndpointMaybeSet, EndpointNotSet, EndpointSet};
+
+pub use openidconnect::core::{CoreGenderClaim, CoreIdTokenFields, CoreTokenType};
+pub use openidconnect::{
+    AccessToken, EmptyAdditionalClaims, OAuth2TokenResponse, RefreshToken, StandardTokenResponse,
+    UserInfoClaims,
+};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
 use crate::prelude::*;
 
-use once_cell::sync::Lazy;
-use tokio::sync::RwLock;
-
 use crate::config::get_config;
 use crate::model::get_connection;
+use once_cell::sync::Lazy;
+use tokio::sync::RwLock;
 use tracing::debug;
 
 type RWFOidcClient = Client<
@@ -78,6 +82,11 @@ async fn clients(
 ) -> Result<(reqwest::Client, RWFOidcClient), Error> {
     if !config.everything_set() {
         return Err(Error::Config(crate::config::Error::NoConfig));
+    }
+    if let None = rustls::crypto::CryptoProvider::get_default() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .unwrap();
     }
     let http_client = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
@@ -166,8 +175,10 @@ pub trait OidcUser: Model {
         userinfo: UserInfoClaims<EmptyAdditionalClaims, CoreGenderClaim>,
     ) -> Result<Self, crate::model::Error>;
     /// Getter for the AccessToken, hereby is ensured we have access to it so calls on the user behalf's are possible
+    /// As `openidconnect::AccessToken` not implements `tokio_postgres::FromSql` the user is responsible to Store e.g. String Value an return a new AccessToken from the Secret Value.
     fn access_token(&self) -> AccessToken;
     /// Getter for the refresh token, so the access token can be renewed whenever it expires,
+    /// /// As `openidconnect::RefreshToken` not implements `tokio_postgres::FromSql` the user is responsible to Store e.g. String Value an return a new AccessToken from the Secret Value.
     fn refresh_token(&self) -> RefreshToken;
     /// The Timestamp when the access token will be expired.
     fn expire(&self) -> &OffsetDateTime;
@@ -177,6 +188,7 @@ pub trait OidcUser: Model {
     /// Exchange the tokens stored with the User for new onces
     fn update_token(self, token: StandardTokenResponse<CoreIdTokenFields, CoreTokenType>) -> Self;
 }
+
 #[derive(Debug, Clone)]
 pub struct OidcAuthentication<U: OidcUser> {
     _marker: PhantomData<U>,

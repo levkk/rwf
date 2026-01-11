@@ -224,6 +224,10 @@ impl Response {
         }
     }
 
+    pub fn get_body(&self) -> &Body {
+        &self.body
+    }
+
     /// Create a response from a request. *This is used internally automatically.*
     ///
     /// This makes sure a valid session cookie is set on all responses.

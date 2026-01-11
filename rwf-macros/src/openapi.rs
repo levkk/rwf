@@ -4,25 +4,32 @@ use quote::{format_ident, ToTokens};
 
 use crate::snake_case;
 use syn::parse::{Parse, ParseStream};
-use syn::{ItemStruct, LitStr, Token, Type};
+use syn::{parse_quote, ItemStruct, LitStr, Token, Type};
 
-pub fn generate_controller4(input: ItemStruct, targs: TypeParserInput) -> proc_macro2::TokenStream {
+pub fn generate_controller4(
+    mut input: ItemStruct,
+    targs: TypeParserInput,
+) -> proc_macro2::TokenStream {
     let targs = targs.into_type_parser(&input);
 
     let paths = targs.gen_doc_paths();
     let mut output = proc_macro2::TokenStream::new();
 
     let model = targs.model.clone();
-    let pkey_type = targs.ty.clone();
     let ctrl = targs.ctrl.clone();
     let path_impl = targs.gen_oapi();
     let apiname = format_ident!("{}OpenapiDoc", model);
-
+    let resource = targs.ty.clone();
+    if input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("resource"))
+        .is_none()
+    {
+        input.attrs.push(parse_quote!(#[resource(#resource)]))
+    }
+    input.to_tokens(&mut output);
     quote! {
-        impl rwf::controller::RestController for #ctrl {
-            type Resource = #pkey_type;
-        }
-
         impl rwf::controller::ModelController for #ctrl {
             type Model = #model;
 
@@ -191,7 +198,6 @@ impl TypeParser {
             quote! {
                 (status = 200, body=#model),
                 (status = 400, description = "Invalid User Input"),
-                (status = 404, description = "No such model found"),
                 (status = 500, description = "Server Error")
             },
             quote! {

@@ -56,10 +56,12 @@ impl Callback<User> for CreateUserCallback {
 #[allow(dead_code)]
 #[schema(
     title = "An exaple Order",
-    description = "A Order in the DB System. Referebces the user who made the order and is refereenced by all related order items"
+    description = "A Order in the DB System. Referebces the user who made the order and is refereenced by all related order items",
+    examples(json!({"user_id": 64, "name": "Test Order"}))
 )]
 #[response(
-    description = "Rerpresentation of a single Order azzoziated with the buying User and ordere3d Items"
+    description = "Rerpresentation of a single Order azzoziated with the buying User and ordere3d Items",
+    examples(("InsertResponse" = (summary = "Response of a minimal Insert", value = json!({"id": 128, "user_id": 64, "name": "Test Order"}))))
 )]
 pub struct Order {
     #[schema(minimum = 1, example = 128, format = "Int64")]

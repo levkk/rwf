@@ -40,6 +40,9 @@ impl Controller for SecureUserController {
     }
 }
 
+impl RestController for SecureUserController {
+    type Resource = i64;
+}
 impl ModelController for SecureUserController {
     type Model = User;
 }
