@@ -203,7 +203,12 @@ impl OpenApiController {
     fn rwfapi() -> utoipa::openapi::OpenApi {
         let mut rwfapi = Self::openapi();
         for (k, v) in RWF_OPENAPIS.map.read().unwrap().iter() {
-            rwfapi = rwfapi.nest(k, v.get_openapi())
+            let path = if !k.starts_with("/") {
+                format!("/{}", k)
+            } else {
+                k.to_string()
+            };
+            rwfapi = rwfapi.nest(path, v.get_openapi())
         }
         rwfapi
     }

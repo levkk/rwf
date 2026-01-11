@@ -103,7 +103,7 @@ impl TypeParser {
                                                }, Span::call_site());
                 if o.eq("get") || o.eq("delete") {
                     quote! {
-                        #[utoipa::path(
+                        #[rwf::prelude::utoipa::path(
                             #o,
                             path=#p,
                             #par,
@@ -116,7 +116,7 @@ impl TypeParser {
                     }
                 } else if o.eq("post") {
                     quote! {
-                        #[utoipa::path(
+                        #[rwf::prelude::utoipa::path(
                             #o,
                             path=#p,
                             #req,
@@ -129,7 +129,7 @@ impl TypeParser {
                     }
                 } else {
                     quote! {
-                        #[utoipa::path(
+                        #[rwf::prelude::utoipa::path(
                             #o,
                             path=#p,
                             #par,
