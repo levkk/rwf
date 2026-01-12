@@ -1,5 +1,8 @@
 //! Implements database migrations, a deterministic mechanism to change the database schema.
+pub mod bootstrap;
+mod migrations;
 pub mod model;
+
 use crate::config::get_config;
 use crate::model::{get_connection, get_pool, start_transaction, Model};
 use model::Migration;

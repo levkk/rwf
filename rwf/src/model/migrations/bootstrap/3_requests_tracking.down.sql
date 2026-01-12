@@ -1,0 +1,1 @@
+DROP TABLE rwf_requests;

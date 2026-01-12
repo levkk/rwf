@@ -2981,6 +2981,7 @@ dependencies = [
  "rwf-ruby",
  "serde",
  "serde_json",
+ "serde_norway",
  "serde_regex",
  "sha1",
  "tempdir",
@@ -3036,6 +3037,7 @@ version = "0.2.1"
 dependencies = [
  "macrotest",
  "pluralizer",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "syn",

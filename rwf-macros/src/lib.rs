@@ -783,3 +783,9 @@ pub fn generate_openapi_model_controller(args: TokenStream, input: TokenStream) 
     output.into()
     //response.into()
 }
+
+#[proc_macro]
+pub fn generate_internal_migrations(input: TokenStream) -> TokenStream {
+    prelude::build_migratiosn(parse_macro_input!(input as prelude::Migrations));
+    TokenStream::new()
+}
