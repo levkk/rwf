@@ -6,7 +6,6 @@ use std::path::PathBuf;
 
 use super::Direction;
 
-use super::bootstrap::RwfDatabaseSchema;
 /// A record of a database migration.
 #[derive(Clone, crate::prelude::Deserialize)]
 #[allow(dead_code)]

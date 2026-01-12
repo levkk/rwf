@@ -29,6 +29,7 @@ use rwf::controller::middleware::SecureId;
 use rwf::controller::{
     AllowAll, BasicAuth, Middleware, MiddlewareSet, OpenApiController, RateLimiter,
 };
+use rwf::model::migrations::rollback_internal;
 
 #[generate_openapi_model_controller(i16, OidcUser)]
 #[derive(macros::ModelController)]
@@ -248,6 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     rollback().await?;
+    rollback_internal(None).await?;
     migrate().await?;
 
     let pool = Pool::from_env();

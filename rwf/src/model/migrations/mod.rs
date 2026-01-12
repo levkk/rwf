@@ -4,7 +4,7 @@ mod migrations;
 pub mod model;
 
 use crate::config::get_config;
-use crate::model::{get_connection, get_pool, start_transaction, Model};
+use crate::model::{get_connection, get_pool, start_transaction, Model, ToValue};
 use model::Migration;
 
 use super::Error;
@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
 
+use crate::model::migrations::bootstrap::RwfDatabaseSchema;
+use crate::model::pool::Transaction;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use time::OffsetDateTime;
@@ -158,25 +160,7 @@ impl Migrations {
             HashMap::new()
         };
 
-        let log_queries = get_config().general.log_queries;
-
         let mut conn = start_transaction().await?;
-
-        // Create some necessary tables.
-        // TODO: Move jobs to an internal migration.
-        // TODO: Add support for internal migrations.
-        let queries = include_str!("bootstrap.sql")
-            .split(";")
-            .map(|q| q.trim())
-            .filter(|q| !q.is_empty());
-
-        for query in queries {
-            if log_queries {
-                info!("{}", query);
-            }
-
-            conn.client().execute(query, &[]).await?;
-        }
 
         let mut migrations = vec![];
 
@@ -314,14 +298,103 @@ impl Migrations {
     }
 }
 
+/// Ensure all required internal Tables exists
+async fn create_schema_tables(tx: &mut Transaction, log_queries: bool) -> Result<(), Error> {
+    let query = RwfDatabaseSchema::create_table();
+    if log_queries {
+        info!("{}", query);
+    }
+    tx.query_cached(query.as_str(), &[]).await?;
+
+    for query in bootstrap::RwfSchemaMigration::create_table() {
+        if log_queries {
+            info!("{}", query);
+        }
+        tx.query_cached(query.as_str(), &[]).await?;
+    }
+    Ok(())
+}
+/// Update known Schemas
+async fn update_database_schema(tx: &mut Transaction, log_queries: bool) -> Result<(), Error> {
+    let migrations = migrations::migrations();
+    let new_migrations = match RwfDatabaseSchema::latest_version(&mut (*tx)).await {
+        Ok(schema) => migrations
+            .into_iter()
+            .filter(|migration| migration.id > schema.id)
+            .collect::<Vec<_>>(),
+        Err(Error::RecordNotFound) => migrations,
+        Err(e) => return Err(e),
+    };
+    for migration in new_migrations {
+        migration.create(tx, log_queries).await?;
+    }
+    Ok(())
+}
+
+/// Executes all internal Migrations in down Direction
+pub async fn rollback_internal(version: Option<i64>) -> Result<(), Error> {
+    let mut tx = start_transaction().await?;
+    let log_queries = get_config().general.log_queries;
+    create_schema_tables(&mut tx, log_queries).await?;
+    update_database_schema(&mut tx, log_queries).await?;
+    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
+    let migrations = if let Some(version) = version {
+        RwfDatabaseSchema::all().filter_gt("id", version.to_value())
+    } else {
+        RwfDatabaseSchema::all()
+    };
+    let migrations = if let Some(active_version) = active_version {
+        migrations.filter_lte("id", active_version.id())
+    } else {
+        migrations
+    }
+    .order(("id", "desc"))
+    .fetch_all(&mut tx)
+    .await?;
+
+    for migration in migrations {
+        migration.down_stmts(&mut tx, log_queries).await?;
+    }
+    tx.commit().await
+}
+
+/// Execute internal migrations in up Direction
+pub async fn migrate_internal(version: Option<i64>) -> Result<(), Error> {
+    let mut tx = start_transaction().await?;
+    let log_queries = get_config().general.log_queries;
+    create_schema_tables(&mut tx, log_queries).await?;
+    update_database_schema(&mut tx, log_queries).await?;
+    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
+    let migrations = if let Some(version) = version {
+        RwfDatabaseSchema::all().filter_lte("id", version.to_value())
+    } else {
+        RwfDatabaseSchema::all()
+    };
+    let migrations = if let Some(active_version) = active_version {
+        migrations.filter_gt("id", active_version.id())
+    } else {
+        migrations
+    }
+    .order(("id", "asc"))
+    .fetch_all(&mut tx)
+    .await?;
+
+    for migration in migrations {
+        migration.up_stmts(&mut tx, log_queries).await?;
+    }
+    tx.commit().await
+}
+
 /// Execute all migrations in the up direction.
 pub async fn migrate() -> Result<Migrations, Error> {
+    migrate_internal(None).await?;
     Migrations::sync().await?.apply(Direction::Up, None).await
 }
 
 /// Execute all migrations in the down direction. **This will effectively
 /// destroy all tables and data in your database.**
 pub async fn rollback() -> Result<Migrations, Error> {
+    migrate_internal(None).await?;
     Migrations::sync().await?.apply(Direction::Down, None).await
 }
 
