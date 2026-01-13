@@ -1,0 +1,16 @@
+version: 4
+name: rwf_static_file_metas
+description:  Enable ETag / LastModified / If-None-Match / If-Modified-Since Header Support for the StaticFile Controller
+state: TESTING
+up:
+  - table:
+      rwf_static_file_metas
+    columns:
+      - id
+      - path
+      - etag
+      - modified
+  - index:
+      - UNIQUE path
+down: restore
+required_for: StaticFile Controller. Enables Support for 304 Responses.

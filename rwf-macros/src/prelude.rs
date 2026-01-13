@@ -169,8 +169,10 @@ fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut Exp
         let mut i = inner.into_values();
         let a = i.next().unwrap();
         let b = i.next().unwrap();
+        let c = i.next().unwrap();
         let adir = a.direction.clone();
         let bdir = b.direction.clone();
+        let cdir = c.direction.clone();
         let id = a.id.clone();
         let name = a.name.clone();
         let fn1 = input
@@ -183,7 +185,12 @@ fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut Exp
             .join(b.path.file_name().unwrap())
             .to_string_lossy()
             .to_string();
-        let res = parse_quote! {RwfDatabaseSchema {id: #id, name: #name.to_string(), #adir: include_str!(#fn1).to_string(), #bdir: include_str!(#fn2).to_string() }};
+        let fn3 = input
+            .bootstap
+            .join(c.path.file_name().unwrap())
+            .to_string_lossy()
+            .to_string();
+        let res = parse_quote! {RwfDatabaseSchema {id: #id, name: #name.to_string(), #adir: include_str!(#fn1).to_string(), #bdir: include_str!(#fn2).to_string(), #cdir: include_str!(#fn3).to_string()  } };
         slice.elems.push(res);
         idx += 1;
     }

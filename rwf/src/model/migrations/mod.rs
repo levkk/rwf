@@ -385,9 +385,29 @@ pub async fn migrate_internal(version: Option<i64>) -> Result<(), Error> {
     tx.commit().await
 }
 
+pub fn info(version: Option<i64>) {
+    if version.is_none() {
+        for mig in migrations::migrations() {
+            let desc = mig.description();
+            let name = desc.get("name").unwrap().as_str().unwrap();
+            let version = desc.get("version").unwrap().as_i64().unwrap();
+            eprintln!("Scheme {} is applied by version {}", name, version);
+        }
+    } else {
+        let version = version.unwrap();
+        for mig in migrations::migrations() {
+            if mig.id == version {
+                eprintln!("{}", serde_norway::to_string(&mig.description()).unwrap());
+            }
+        }
+    }
+}
+
+pub static SETUP_VERSION: Option<i64> = Some(4);
+
 /// Execute all migrations in the up direction.
 pub async fn migrate() -> Result<Migrations, Error> {
-    migrate_internal(None).await?;
+    migrate_internal(SETUP_VERSION).await?;
     Migrations::sync().await?.apply(Direction::Up, None).await
 }
 
@@ -401,6 +421,13 @@ pub async fn rollback() -> Result<Migrations, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_internal_migration_description() {
+        for mig in super::migrations::migrations() {
+            eprintln!("{:?}", mig.description())
+        }
+    }
 
     #[test]
     fn test_migration_file_names() {

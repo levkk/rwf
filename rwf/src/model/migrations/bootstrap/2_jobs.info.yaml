@@ -1,0 +1,26 @@
+version: 2
+name: jobs
+description:  Enables Background JOb Support.
+state: STABLE
+up:
+  - table:
+      rwf_jobs
+    columns:
+      - id
+      - name
+      - args
+      - created_at
+      - start_after
+      - started_at
+      - attempts
+      - retries
+      - completed_at
+      - error
+  - index:
+      - rwf_jobs_pending_idx
+      - rwf_jobs_runnin_idx
+      - rwf_jobs_name_completed_at_idx
+down: restore
+required_for:
+  - Background Jobs
+  - Cron Jobs

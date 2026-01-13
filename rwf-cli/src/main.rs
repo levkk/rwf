@@ -83,6 +83,23 @@ enum Migrate {
         #[arg(long, short, help = "Migration name", default_value = "unnamed")]
         name: String,
     },
+
+    /// Update the internal schema
+    Upgrade {
+        #[arg(long, help = "Schema Version")]
+        version: Option<i64>,
+    },
+
+    /// Restore an older schema
+    Downgrade {
+        #[arg(long, help = "Schema Version")]
+        version: Option<i64>,
+    },
+    /// Returns Information about the different schema Versions
+    Info {
+        #[arg(long, help = "Version to get spcific information about")]
+        version: Option<i64>,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -137,9 +154,20 @@ async fn main() {
         Subcommands::Migrate(migrate) => match migrate.command {
             Migrate::Run { version } => migrate::migrate(version).await,
             Migrate::Revert { version } => migrate::revert(version).await,
+            Migrate::Upgrade { version } => migrate::upgrade(version).await,
+            Migrate::Downgrade { version } => migrate::downgrade(version).await,
+            Migrate::Info { version } => migrate::infos(version).await,
             Migrate::Flush { yes } => {
                 if yes {
-                    migrate::revert(None).await;
+                    let minv = rwf::model::migrations::Migrations::sync()
+                        .await
+                        .expect("Failed to load the migrations")
+                        .migrations()
+                        .first()
+                        .map(|mig| mig.version);
+                    migrate::revert(minv.clone()).await;
+                    migrate::downgrade(None).await;
+                    migrate::upgrade(rwf::model::migrations::SETUP_VERSION).await;
                     migrate::migrate(None).await;
                     let mut conn = Pool::connection()
                         .await

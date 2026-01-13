@@ -22,6 +22,7 @@ pub(crate) struct RwfDatabaseSchema {
     pub(super) name: String,
     pub(super) up: String,
     pub(super) down: String,
+    pub(super) info: String,
 }
 
 #[derive(
@@ -51,6 +52,7 @@ impl crate::model::FromRow for RwfDatabaseSchema {
             name: row.try_get("name")?,
             up: row.try_get("up")?,
             down: row.try_get("down")?,
+            info: row.try_get("info")?,
         })
     }
 }
@@ -61,7 +63,7 @@ impl Model for RwfDatabaseSchema {
     }
 
     fn column_names() -> &'static [&'static str] {
-        &["name", "up", "down"]
+        &["name", "up", "down", "info"]
     }
 
     fn id(&self) -> Value {
@@ -73,6 +75,7 @@ impl Model for RwfDatabaseSchema {
             self.name.to_value(),
             self.up.to_value(),
             self.down.to_value(),
+            self.info.to_value(),
         ]
     }
 
@@ -196,7 +199,7 @@ impl RwfDatabaseSchema {
                 (id bigint primary key,
                 name varchar(255) not null unique,
                 up text not null,
-                down text not null)"#,
+                down text not null, info text not null)"#,
             Self::table_name()
         )
     }
@@ -323,6 +326,10 @@ impl RwfDatabaseSchema {
         conn: impl ToConnectionRequest<'_>,
     ) -> Result<Option<Self>, Error> {
         Self::find_by_sql("SELECT * FROM rwf_database_schema INNER JOIN (SELECT migrations.rwf_database_schema_id from (select max(id) as id , rwf_database_schema_id from rwf_schema_migration group by rwf_database_schema_id) as migrations inner join rwf_schema_migration ON migrations.id = rwf_schema_migration.id where state = 'APPLIED') as mapplied ON rwf_database_schema.id = rwf_database_schema_id ORDER By id DESC LIMIT 1;", &[]).fetch_optional(conn).await
+    }
+
+    pub(crate) fn description(&self) -> serde_norway::Value {
+        serde_norway::from_str(self.info.as_str()).unwrap()
     }
 }
 
