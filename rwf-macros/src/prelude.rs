@@ -116,7 +116,8 @@ fn latest_id(migrate_file: &File, f: &ItemFn) -> Option<i64> {
     None
 }
 
-fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut ExprArray) {
+fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut ExprArray) -> bool {
+    let mut any_changes = false;
     let bootstrap = input.prefix.join(input.bootstap.clone());
     let files = bootstrap
         .read_dir()
@@ -161,6 +162,7 @@ fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut Exp
         if mig.id <= current_id {
             continue;
         } else {
+            any_changes = true;
             let parse_path_include = input
                 .bootstap
                 .join(mig.path.file_name().unwrap().to_string_lossy().to_string())
@@ -184,17 +186,19 @@ fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut Exp
             }));
         }
     }
+    any_changes
 }
 
 pub fn build_migratiosn(input: MigrationsPath) {
     let mut output = proc_macro2::TokenStream::new();
     let mut f = gen_migration_fn();
     let migrate = input.prefix.join(input.migrate.clone());
-    if migrate.is_file() {
+    let changed = if migrate.is_file() {
         let mut migrate_file =
             parse_file(std::fs::read_to_string(migrate.clone()).unwrap().as_str()).unwrap();
         let current_id = latest_id(&migrate_file, &f).unwrap_or(0);
         //eprintln!("{}", current_id);
+        let mut changed = false;
         for item in migrate_file.items.iter_mut() {
             if let Item::Fn(item_fn) = item {
                 if item_fn.sig.ident == f.sig.ident {
@@ -202,7 +206,7 @@ pub fn build_migratiosn(input: MigrationsPath) {
                         if let Stmt::Expr(Expr::MethodCall(ref mut meth), ..) = stmt {
                             if let Expr::Array(ref mut arr) = meth.receiver.as_mut() {
                                 //eprintln!("{}", arr.to_token_stream());
-                                parse_new_migrations(&input, current_id, arr);
+                                changed = parse_new_migrations(&input, current_id, arr)
                                 //eprintln!("{}", arr.to_token_stream());
                             }
                         }
@@ -211,6 +215,7 @@ pub fn build_migratiosn(input: MigrationsPath) {
             }
         }
         migrate_file.to_tokens(&mut output);
+        changed
     } else {
         gen_imports(&mut output);
 
@@ -219,7 +224,7 @@ pub fn build_migratiosn(input: MigrationsPath) {
             bracket_token: Bracket::default(),
             elems: Punctuated::default(),
         };
-        parse_new_migrations(&input, 0, &mut slice);
+        let changed = parse_new_migrations(&input, 0, &mut slice);
         let slice = Expr::Array(slice);
         let call = Expr::MethodCall(ExprMethodCall {
             attrs: vec![],
@@ -231,9 +236,10 @@ pub fn build_migratiosn(input: MigrationsPath) {
             args: Default::default(),
         });
         f.block.stmts.push(Stmt::Expr(call, None));
-        f.to_tokens(&mut output)
-    }
-    if !output.is_empty() {
+        f.to_tokens(&mut output);
+        changed
+    };
+    if changed {
         let res = prettyplease::unparse(&parse_file(output.to_string().as_str()).unwrap());
         std::fs::write(migrate, res).unwrap();
     }
