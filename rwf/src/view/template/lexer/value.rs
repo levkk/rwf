@@ -617,6 +617,8 @@ impl ToTemplateValue for crate::model::Value {
                 use time::format_description::well_known::Rfc2822;
                 timestamp.format(&Rfc2822)?.to_template_value()
             }
+            ModelValue::Date(date) => Ok(Value::String(date.to_string())),
+            ModelValue::Time(time) => Ok(Value::String(time.to_string())),
             ModelValue::IpAddr(addr) => Ok(Value::String(addr.to_string())),
             ModelValue::Uuid(uuid) => Ok(Value::String(uuid.to_string())),
             ModelValue::List(list) => {

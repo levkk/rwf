@@ -1,0 +1,14 @@
+migration: dee183ea-f0ca-11f0-b610-2218e57cbd42
+name: rwf_static_file_metas
+description:  Enable ETag / LastModified / If-None-Match / If-Modified-Since Header Support for the StaticFile Controller
+kind: INTERNAL
+down:
+  - DROP TABLE rwf_static_file_metas
+up:
+  - |
+    CREATE TABLE IF NOT EXISTS rwf_static_file_metas (
+        id BIGSERIAL PRIMARY KEY,
+        path VARCHAR NOT NULL UNIQUE,
+        etag VARCHAR NOT NULL,
+        modified TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )

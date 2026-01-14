@@ -1,11 +1,49 @@
 use crate::macros;
 use crate::model::pool::Transaction;
-use crate::model::{AssociationType, Error, Escape, Insert, Model, Query, ToSql, ToValue, Value};
+use crate::model::{AssociationType, Error, Escape, Model, Scope, ToSql, ToValue, Value};
 use crate::prelude::ToConnectionRequest;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio_postgres::Row;
 use tracing::info;
+
+macro_rules! migration_enum {
+    ($name:ident, $($opt:ident),*) => {
+        #[derive(Debug, Clone, Copy, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+        pub(crate) enum $name {
+            $($opt),*
+        }
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                match self {
+                    $(
+                        $name::$opt => write!(f, stringify!($opt))
+                    ),*
+                }
+            }
+        }
+        impl std::str::FromStr for $name {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s.to_uppercase().as_str() {
+                    $(
+                        stringify!($opt) => Ok($name::$opt)
+                    ),*
+                    , _ => Err(format!("Invalid variant {} for enum {}", s, stringify!($name)))
+                }
+            }
+        }
+
+        impl ToValue for $name {
+            fn to_value(&self) -> Value {
+                Value::String(self.to_string())
+            }
+        }
+    };
+}
+
+migration_enum!(SchemaState, UNKNOWN, CREATED, APPLIED, UNAPPLIED, REMOVED);
+migration_enum!(SchemaKind, INTERNAL, FEATURE);
 
 #[derive(
     Debug,
@@ -18,11 +56,54 @@ use tracing::info;
     PartialEq,
 )]
 pub(crate) struct RwfDatabaseSchema {
-    pub(super) id: i64,
+    pub(super) id: Option<i64>,
+    pub(super) migration: uuid::Uuid,
     pub(super) name: String,
-    pub(super) up: String,
-    pub(super) down: String,
-    pub(super) info: String,
+    pub(super) requires: Option<uuid::Uuid>,
+    pub(super) kind: String,
+    pub(super) up: Vec<String>,
+    pub(super) down: Vec<String>,
+    pub(super) description: String,
+}
+
+pub(crate) fn parse_database_schema(data: &str) -> RwfDatabaseSchema {
+    let yaml: serde_norway::Value = serde_norway::from_str(data.trim()).unwrap();
+    RwfDatabaseSchema {
+        id: None,
+        migration: yaml
+            .get("migration")
+            .unwrap()
+            .as_str()
+            .map(|uuid| uuid::Uuid::parse_str(uuid).unwrap())
+            .unwrap(),
+        name: yaml.get("name").unwrap().as_str().unwrap().to_string(),
+        requires: yaml
+            .get("requires")
+            .map(|value| uuid::Uuid::parse_str(value.as_str().unwrap()).unwrap()),
+        kind: yaml.get("kind").unwrap().as_str().unwrap().to_owned(),
+        up: yaml
+            .get("up")
+            .unwrap()
+            .as_sequence()
+            .unwrap()
+            .into_iter()
+            .map(|val| val.as_str().unwrap().to_string())
+            .collect(),
+        down: yaml
+            .get("down")
+            .unwrap()
+            .as_sequence()
+            .unwrap()
+            .into_iter()
+            .map(|val| val.as_str().unwrap().to_string())
+            .collect(),
+        description: yaml
+            .get("description")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+    }
 }
 
 #[derive(
@@ -49,10 +130,13 @@ impl crate::model::FromRow for RwfDatabaseSchema {
     {
         Ok(Self {
             id: row.try_get("id")?,
+            migration: row.try_get("migration")?,
             name: row.try_get("name")?,
+            requires: row.try_get("requires")?,
+            kind: row.try_get("kind")?,
             up: row.try_get("up")?,
             down: row.try_get("down")?,
-            info: row.try_get("info")?,
+            description: row.try_get("description")?,
         })
     }
 }
@@ -63,7 +147,15 @@ impl Model for RwfDatabaseSchema {
     }
 
     fn column_names() -> &'static [&'static str] {
-        &["name", "up", "down", "info"]
+        &[
+            "migration",
+            "name",
+            "requires",
+            "kind",
+            "up",
+            "down",
+            "description",
+        ]
     }
 
     fn id(&self) -> Value {
@@ -72,10 +164,23 @@ impl Model for RwfDatabaseSchema {
 
     fn values(&self) -> Vec<Value> {
         vec![
+            self.migration.to_value(),
             self.name.to_value(),
-            self.up.to_value(),
-            self.down.to_value(),
-            self.info.to_value(),
+            self.requires.to_value(),
+            self.kind.to_value(),
+            self.up
+                .iter()
+                .map(|stmt| stmt.to_value())
+                .collect::<Vec<_>>()
+                .as_slice()
+                .to_value(),
+            self.down
+                .iter()
+                .map(|stmt| stmt.to_value())
+                .collect::<Vec<_>>()
+                .as_slice()
+                .to_value(),
+            self.description.to_value(),
         ]
     }
 
@@ -130,40 +235,6 @@ impl crate::model::Association<RwfSchemaMigration> for RwfDatabaseSchema {
 
 impl crate::model::Association<RwfDatabaseSchema> for RwfSchemaMigration {}
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) enum SchemaState {
-    UNKNOWN,
-    CREATED,
-    REMOVED,
-    APPLIED,
-    UNAPPLIED,
-}
-
-impl std::fmt::Display for SchemaState {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::UNKNOWN => write!(f, "UNKNOWN"),
-            Self::CREATED => write!(f, "CREATED"),
-            Self::REMOVED => write!(f, "REMOVED"),
-            Self::APPLIED => write!(f, "APPLIED"),
-            Self::UNAPPLIED => write!(f, "UNAPPLIED"),
-        }
-    }
-}
-
-impl std::str::FromStr for SchemaState {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().as_str() {
-            "UNKNOWN" => Ok(Self::UNKNOWN),
-            "CREATED" => Ok(Self::CREATED),
-            "REMOVED" => Ok(Self::REMOVED),
-            "APPLIED" => Ok(Self::APPLIED),
-            "UNAPPLIED" => Ok(Self::UNAPPLIED),
-            _ => Err("Unknown SchemaState"),
-        }
-    }
-}
 #[allow(unused)]
 impl SchemaState {
     fn active(&self) -> bool {
@@ -174,14 +245,6 @@ impl SchemaState {
     }
     fn created(&self) -> bool {
         self.eq(&Self::CREATED)
-    }
-    fn removed(&self) -> bool {
-        self.eq(&Self::REMOVED)
-    }
-}
-impl ToValue for SchemaState {
-    fn to_value(&self) -> Value {
-        Value::String(self.to_string())
     }
 }
 
@@ -196,11 +259,21 @@ impl RwfDatabaseSchema {
     pub(crate) fn create_table() -> String {
         format!(
             r#"CREATE TABLE IF NOT EXISTS "{}"
-                (id bigint primary key,
+                (id bigserial primary key,
+                migration uuid not null unique,
                 name varchar(255) not null unique,
-                up text not null,
-                down text not null, info text not null)"#,
+                requires uuid default null,
+                kind varchar(15) not null,
+                up text[] not null,
+                down text[] not null,
+                description text not null)"#,
             Self::table_name()
+        )
+    }
+    pub(crate) fn description(&self) -> String {
+        format!(
+            "Migration '{}'\t\t--\t\t{}\t\t{}",
+            self.migration, self.name, self.description
         )
     }
     pub(crate) async fn up_stmts(
@@ -208,17 +281,12 @@ impl RwfDatabaseSchema {
         tx: &mut Transaction,
         log_queries: bool,
     ) -> Result<(), Error> {
-        let stmts = self
-            .up
-            .split(";")
-            .map(|s| s.trim())
-            .filter(|stmt| !stmt.is_empty())
-            .collect::<Vec<_>>();
+        info!("Apply InternalMiigration {}\t{}", self.name, self.migration);
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), self.id()),
             ("state", SchemaState::APPLIED.to_value()),
         ]);
-        for stmt in stmts {
+        for stmt in &self.up {
             if log_queries {
                 info!("{}", stmt);
             }
@@ -232,17 +300,15 @@ impl RwfDatabaseSchema {
         tx: &mut Transaction,
         log_queries: bool,
     ) -> Result<(), Error> {
-        let stmts = self
-            .down
-            .split(";")
-            .map(|s| s.trim())
-            .filter(|stmt| !stmt.is_empty())
-            .collect::<Vec<_>>();
+        info!(
+            "Revert InternalMiigration {}\t{}",
+            self.name, self.migration
+        );
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), self.id()),
             ("state", SchemaState::UNAPPLIED.to_value()),
         ]);
-        for stmt in stmts {
+        for stmt in &self.down {
             if log_queries {
                 info!("{}", stmt);
             }
@@ -256,20 +322,16 @@ impl RwfDatabaseSchema {
         tx: &mut Transaction,
         log_queries: bool,
     ) -> Result<(), Error> {
-        let mut values = vec![self.id()];
-        values.extend(self.values());
-        let applied: Query<Self> = Query::Insert(Insert::from_columns(
-            Self::all_columns().as_slice(),
-            values.as_slice(),
-        ));
-        let migrate = RwfSchemaMigration::create(&[
-            (Self::foreign_key(), self.id()),
-            ("state", SchemaState::CREATED.to_value()),
-        ]);
+        let applied = self.clone().save();
         if log_queries {
             info!("{}", applied.to_sql());
         }
-        applied.fetch(&mut (*tx)).await?;
+        let applied = applied.fetch(&mut (*tx)).await?;
+        let migrate = RwfSchemaMigration::create(&[
+            (Self::foreign_key(), applied.id()),
+            ("state", SchemaState::CREATED.to_value()),
+        ]);
+
         if log_queries {
             info!("{}", migrate.to_sql());
         }
@@ -325,11 +387,11 @@ impl RwfDatabaseSchema {
     pub(crate) async fn max_active_version(
         conn: impl ToConnectionRequest<'_>,
     ) -> Result<Option<Self>, Error> {
-        Self::find_by_sql("SELECT * FROM rwf_database_schema INNER JOIN (SELECT migrations.rwf_database_schema_id from (select max(id) as id , rwf_database_schema_id from rwf_schema_migration group by rwf_database_schema_id) as migrations inner join rwf_schema_migration ON migrations.id = rwf_schema_migration.id where state = 'APPLIED') as mapplied ON rwf_database_schema.id = rwf_database_schema_id ORDER By id DESC LIMIT 1;", &[]).fetch_optional(conn).await
+        Self::find_by_sql("SELECT * FROM rwf_database_schema INNER JOIN (SELECT migrations.rwf_database_schema_id from (select max(id) as id , rwf_database_schema_id from rwf_schema_migration group by rwf_database_schema_id) as migrations inner join rwf_schema_migration ON migrations.id = rwf_schema_migration.id where state = 'APPLIED') as mapplied ON rwf_database_schema.id = rwf_database_schema_id WHERE kind = 'INTERNAL' ORDER By id DESC LIMIT 1;", &[]).fetch_optional(conn).await
     }
 
-    pub(crate) fn description(&self) -> serde_norway::Value {
-        serde_norway::from_str(self.info.as_str()).unwrap()
+    pub(crate) fn internal_migrations() -> Scope<Self> {
+        Self::filter("kind", SchemaKind::INTERNAL.to_value())
     }
 }
 

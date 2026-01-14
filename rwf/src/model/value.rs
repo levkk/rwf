@@ -4,9 +4,8 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 use uuid::Uuid;
 
-use std::{hash::Hash, net::IpAddr, ops::RangeInclusive};
-
 use super::{Column, Error, Escape, ToSql};
+use std::{hash::Hash, net::IpAddr, ops::RangeInclusive};
 
 /// A value that can be converted to and from the database.
 ///
@@ -35,6 +34,10 @@ pub enum Value {
     TimestampT(OffsetDateTime),
     /// `TIMESTAMP`
     Timestamp(PrimitiveDateTime),
+    /// DATE
+    Date(time::Date),
+    /// TIME
+    Time(time::Time),
     /// `INET`
     IpAddr(IpAddr),
     /// `UUID`
@@ -371,6 +374,8 @@ impl tokio_postgres::types::ToSql for Value {
             Value::Boolean(b) => b.to_sql(ty, out),
             Value::TimestampT(timestamp) => timestamp.to_sql(ty, out),
             Value::Timestamp(timestamp) => timestamp.to_sql(ty, out),
+            Value::Date(date) => date.to_sql(ty, out),
+            Value::Time(time) => time.to_sql(ty, out),
             Value::IpAddr(ip) => ip.to_sql(ty, out),
             Value::Uuid(uuid) => uuid.to_sql(ty, out),
             Value::List(values) => values.to_sql(ty, out),
@@ -412,6 +417,8 @@ impl<'a> tokio_postgres::types::FromSql<'a> for Value {
             &Type::INET => Ok(Value::IpAddr(IpAddr::from_sql(ty, raw)?)),
             &Type::TIMESTAMPTZ => Ok(Value::TimestampT(OffsetDateTime::from_sql(ty, raw)?)),
             &Type::TIMESTAMP => Ok(Value::Timestamp(PrimitiveDateTime::from_sql(ty, raw)?)),
+            &Type::DATE => Ok(Value::Date(time::Date::from_sql(ty, raw)?)),
+            &Type::TIME => Ok(Value::Time(time::Time::from_sql(ty, raw)?)),
             &Type::UUID => Ok(Value::Uuid(Uuid::from_sql(ty, raw)?)),
 
             ty => todo!("unimplemented conversion from {:?} to rust", ty),
@@ -529,6 +536,8 @@ impl From<Value> for serde_json::Value {
                 use time::format_description::well_known::Rfc2822;
                 serde_json::Value::String(timestamp.format(&Rfc2822).unwrap())
             }
+            Value::Date(date) => serde_json::Value::String(date.to_string()),
+            Value::Time(time) => serde_json::Value::String(time.to_string()),
             Value::List(list) => {
                 let mut values = vec![];
                 for v in list {
@@ -549,6 +558,7 @@ impl From<Value> for serde_json::Value {
 #[cfg(test)]
 mod test {
     use super::*;
+    use time::macros::format_description;
 
     #[test]
     fn test_range_i64() {
@@ -561,5 +571,35 @@ mod test {
         let value = Value::Function(("lower".into(), vec!["my string".to_value()]));
 
         assert_eq!(value.to_sql(), r#""lower"('my string')"#);
+    }
+
+    #[test]
+    fn test_date_serialization() {
+        let value = Value::Date(
+            time::Date::parse("1970-01-01", format_description!("[year]-[month]-[day]")).unwrap(),
+        );
+        assert_eq!(
+            serde_json::Value::from(value),
+            serde_json::Value::String("1970-01-01".to_string())
+        );
+    }
+
+    #[test]
+    fn test_time_serialization() {
+        let value = Value::Time(
+            time::Time::parse("09:30:00", format_description!("[hour]:[minute]:[second]")).unwrap(),
+        );
+        assert_eq!(
+            serde_json::Value::from(value),
+            serde_json::Value::String("9:30:00.0".to_string())
+        );
+
+        let value = Value::Time(
+            time::Time::parse("21:21:21", format_description!("[hour]:[minute]:[second]")).unwrap(),
+        );
+        assert_eq!(
+            serde_json::Value::from(value),
+            serde_json::Value::String("21:21:21.0".to_string())
+        );
     }
 }

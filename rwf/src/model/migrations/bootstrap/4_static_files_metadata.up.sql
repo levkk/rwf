@@ -1,6 +1,0 @@
-CREATE TABLE IF NOT EXISTS rwf_static_file_metas (
-    id BIGSERIAL PRIMARY KEY,
-    path VARCHAR NOT NULL UNIQUE,
-    etag VARCHAR NOT NULL,
-    modified TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);

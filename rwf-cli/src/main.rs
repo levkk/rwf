@@ -87,18 +87,18 @@ enum Migrate {
     /// Update the internal schema
     Upgrade {
         #[arg(long, help = "Schema Version")]
-        version: Option<i64>,
+        version: Option<uuid::Uuid>,
     },
 
     /// Restore an older schema
     Downgrade {
         #[arg(long, help = "Schema Version")]
-        version: Option<i64>,
+        version: Option<uuid::Uuid>,
     },
     /// Returns Information about the different schema Versions
     Info {
         #[arg(long, help = "Version to get spcific information about")]
-        version: Option<i64>,
+        version: Option<uuid::Uuid>,
     },
 }
 
@@ -167,7 +167,7 @@ async fn main() {
                         .map(|mig| mig.version);
                     migrate::revert(minv.clone()).await;
                     migrate::downgrade(None).await;
-                    migrate::upgrade(rwf::model::migrations::SETUP_VERSION).await;
+                    migrate::upgrade(None).await;
                     migrate::migrate(None).await;
                     let mut conn = Pool::connection()
                         .await

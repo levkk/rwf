@@ -3028,6 +3028,7 @@ dependencies = [
  "time",
  "tokio",
  "toml 0.8.23",
+ "uuid",
  "which 7.0.3",
 ]
 

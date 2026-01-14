@@ -1,1 +1,0 @@
-DROP TABLE rwf_static_file_metas;

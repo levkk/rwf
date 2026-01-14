@@ -1,14 +1,13 @@
 use crate::Expr;
 pub use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{format_ident, ToTokens};
-use std::collections::HashMap;
+use quote::ToTokens;
 use std::path::PathBuf;
 
 pub use quote::quote;
 pub use syn::parse::*;
 use syn::punctuated::Punctuated;
-use syn::token::Bracket;
+use syn::token::{Brace, Bracket, Paren};
 pub use syn::*;
 
 pub struct MigrationsPath {
@@ -37,26 +36,24 @@ impl Parse for MigrationsPath {
 
 #[derive(Debug)]
 struct IncludeMigration {
-    direction: Ident,
     id: i64,
-    name: String,
     path: PathBuf,
 }
 fn parse_file_name(name: String, path: PathBuf) -> IncludeMigration {
     let mut i = name.split(".").take(2);
     let mut name_comp = i.next().unwrap().splitn(2, "_");
-    let direction = format_ident!("{}", i.next().unwrap().to_string());
     let id = name_comp.next().unwrap().parse::<i64>().unwrap();
-    let name = name_comp.next().unwrap().to_string();
-    IncludeMigration {
-        direction,
-        id,
-        name,
-        path,
-    }
+    IncludeMigration { id, path }
 }
 
 fn gen_imports(output: &mut proc_macro2::TokenStream) {
+    let mut items = Punctuated::new();
+    items.push(UseTree::Name(UseName {
+        ident: Ident::new("RwfDatabaseSchema", Span::call_site()),
+    }));
+    items.push(UseTree::Name(UseName {
+        ident: Ident::new("parse_database_schema", Span::call_site()),
+    }));
     ItemUse {
         attrs: vec![],
         vis: Visibility::Inherited,
@@ -68,8 +65,9 @@ fn gen_imports(output: &mut proc_macro2::TokenStream) {
             tree: Box::new(UseTree::Path(UsePath {
                 ident: Ident::new("bootstrap", Span::call_site()),
                 colon2_token: Token![::](Span::call_site()),
-                tree: Box::new(UseTree::Name(UseName {
-                    ident: Ident::new("RwfDatabaseSchema", Span::call_site()),
+                tree: Box::new(UseTree::Group(UseGroup {
+                    brace_token: Brace::default(),
+                    items,
                 })),
             })),
         }),
@@ -101,27 +99,14 @@ fn gen_migration_fn() -> ItemFn {
     }
 }
 
-fn latest_id(migrate_file: &File, f: &ItemFn) -> Option<LitInt> {
+fn latest_id(migrate_file: &File, f: &ItemFn) -> Option<i64> {
     for item in migrate_file.items.iter() {
         if let Item::Fn(item_fn) = item {
             if item_fn.sig.ident == f.sig.ident {
                 for stmt in item_fn.block.stmts.iter() {
                     if let Stmt::Expr(Expr::MethodCall(meth), ..) = stmt {
                         if let Expr::Array(arr) = meth.receiver.as_ref() {
-                            if let Some(Expr::Struct(migr)) = arr.elems.last() {
-                                if let Some(f) =
-                                    migr.fields.iter().find(|field| match &field.member {
-                                        Member::Named(ident) => ident.eq("id"),
-                                        _ => false,
-                                    })
-                                {
-                                    if let Expr::Lit(expr_lit) = &f.expr {
-                                        if let Lit::Int(lit) = &expr_lit.lit {
-                                            return Some(lit.to_owned());
-                                        }
-                                    }
-                                }
-                            }
+                            return Some(arr.elems.len() as i64);
                         }
                     }
                 }
@@ -144,55 +129,60 @@ fn parse_new_migrations(input: &MigrationsPath, current_id: i64, slice: &mut Exp
         })
         .map(|path| path.path())
         .collect::<Vec<_>>();
-    let mut map: HashMap<i64, HashMap<Ident, IncludeMigration>> = HashMap::new();
+
     for file in files.into_iter() {
         let mig = parse_file_name(
             file.file_name().unwrap().to_string_lossy().to_string(),
             file,
         );
+        let mut parse_path = Punctuated::new();
+        parse_path.push(PathSegment {
+            ident: Ident::new("parse_database_schema", Span::call_site()),
+            arguments: Default::default(),
+        });
+        let mut include_str_macro_path = Punctuated::new();
+        include_str_macro_path.push(PathSegment {
+            ident: Ident::new("include_str", Span::call_site()),
+            arguments: Default::default(),
+        });
+        let include_str_macro_path = Path {
+            leading_colon: None,
+            segments: include_str_macro_path,
+        };
+        let parse_call = Expr::Path(ExprPath {
+            attrs: vec![],
+            qself: None,
+            path: Path {
+                leading_colon: None,
+                segments: parse_path,
+            },
+        });
         //eprintln!("{} - {:?}", current_id, mig);
         if mig.id <= current_id {
             continue;
         } else {
-            map.entry(mig.id.clone())
-                .or_default()
-                .entry(mig.direction.clone())
-                .insert_entry(mig);
+            let parse_path_include = input
+                .bootstap
+                .join(mig.path.file_name().unwrap().to_string_lossy().to_string())
+                .to_string_lossy()
+                .to_string();
+            let mut args = Punctuated::new();
+            args.push(Expr::Macro(ExprMacro {
+                attrs: vec![],
+                mac: Macro {
+                    path: include_str_macro_path.clone(),
+                    bang_token: Default::default(),
+                    delimiter: MacroDelimiter::Paren(Paren::default()),
+                    tokens: parse_path_include.to_token_stream(),
+                },
+            }));
+            slice.elems.push(Expr::Call(ExprCall {
+                attrs: vec![],
+                func: Box::new(parse_call.clone()),
+                paren_token: Default::default(),
+                args,
+            }));
         }
-    }
-    let mut idx = current_id + 1;
-    loop {
-        if !map.contains_key(&idx) {
-            break;
-        }
-        let inner = map.remove(&idx).unwrap();
-        let mut i = inner.into_values();
-        let a = i.next().unwrap();
-        let b = i.next().unwrap();
-        let c = i.next().unwrap();
-        let adir = a.direction.clone();
-        let bdir = b.direction.clone();
-        let cdir = c.direction.clone();
-        let id = a.id.clone();
-        let name = a.name.clone();
-        let fn1 = input
-            .bootstap
-            .join(a.path.file_name().unwrap())
-            .to_string_lossy()
-            .to_string();
-        let fn2 = input
-            .bootstap
-            .join(b.path.file_name().unwrap())
-            .to_string_lossy()
-            .to_string();
-        let fn3 = input
-            .bootstap
-            .join(c.path.file_name().unwrap())
-            .to_string_lossy()
-            .to_string();
-        let res = parse_quote! {RwfDatabaseSchema {id: #id, name: #name.to_string(), #adir: include_str!(#fn1).to_string(), #bdir: include_str!(#fn2).to_string(), #cdir: include_str!(#fn3).to_string()  } };
-        slice.elems.push(res);
-        idx += 1;
     }
 }
 
@@ -202,11 +192,8 @@ pub fn build_migratiosn(input: MigrationsPath) {
     let migrate = input.prefix.join(input.migrate.clone());
     if migrate.is_file() {
         let mut migrate_file =
-            syn::parse_file(std::fs::read_to_string(migrate.clone()).unwrap().as_str()).unwrap();
-        let current_id = latest_id(&migrate_file, &f)
-            .unwrap_or(LitInt::new("0", Span::call_site()))
-            .base10_parse::<i64>()
-            .unwrap();
+            parse_file(std::fs::read_to_string(migrate.clone()).unwrap().as_str()).unwrap();
+        let current_id = latest_id(&migrate_file, &f).unwrap_or(0);
         //eprintln!("{}", current_id);
         for item in migrate_file.items.iter_mut() {
             if let Item::Fn(item_fn) = item {
@@ -247,7 +234,7 @@ pub fn build_migratiosn(input: MigrationsPath) {
         f.to_tokens(&mut output)
     }
     if !output.is_empty() {
-        let res = prettyplease::unparse(&syn::parse_file(output.to_string().as_str()).unwrap());
+        let res = prettyplease::unparse(&parse_file(output.to_string().as_str()).unwrap());
         std::fs::write(migrate, res).unwrap();
     }
 }

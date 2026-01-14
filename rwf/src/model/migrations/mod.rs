@@ -288,12 +288,14 @@ impl Migrations {
 
     /// Execute all migrations in the up direction.
     pub async fn migrate() -> Result<Migrations, Error> {
+        migrate_internal(None).await?;
         Migrations::sync().await?.apply(Direction::Up, None).await
     }
 
     /// Execute all migrations in the down direction. **This will effectively
     /// destroy all tables and data in your database.**
     pub async fn flush() -> Result<Migrations, Error> {
+        migrate_internal(None).await?;
         Migrations::sync().await?.apply(Direction::Down, None).await
     }
 }
@@ -315,6 +317,7 @@ async fn create_schema_tables(tx: &mut Transaction, log_queries: bool) -> Result
     Ok(())
 }
 /// Update known Schemas
+
 async fn update_database_schema(tx: &mut Transaction, log_queries: bool) -> Result<(), Error> {
     let migrations = migrations::migrations();
     let new_migrations = match RwfDatabaseSchema::latest_version(&mut (*tx)).await {
@@ -332,22 +335,26 @@ async fn update_database_schema(tx: &mut Transaction, log_queries: bool) -> Resu
 }
 
 /// Executes all internal Migrations in down Direction
-pub async fn rollback_internal(version: Option<i64>) -> Result<(), Error> {
+pub async fn rollback_internal(migration_version: Option<uuid::Uuid>) -> Result<(), Error> {
     let mut tx = start_transaction().await?;
     let log_queries = get_config().general.log_queries;
     create_schema_tables(&mut tx, log_queries).await?;
     update_database_schema(&mut tx, log_queries).await?;
     let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
-    let migrations = if let Some(version) = version {
-        RwfDatabaseSchema::all().filter_gt("id", version.to_value())
+    let target_version = if let Some(target) = migration_version {
+        RwfDatabaseSchema::find_by("migration", target)
+            .fetch(&mut tx)
+            .await?
+            .id()
     } else {
-        RwfDatabaseSchema::all()
+        0.to_value()
     };
-    let migrations = if let Some(active_version) = active_version {
-        migrations.filter_lte("id", active_version.id())
+    let migrations = if let Some(version) = active_version {
+        RwfDatabaseSchema::internal_migrations().filter_lte("id", version.id())
     } else {
-        migrations
+        RwfDatabaseSchema::internal_migrations()
     }
+    .filter_gte("id", target_version)
     .order(("id", "desc"))
     .fetch_all(&mut tx)
     .await?;
@@ -359,22 +366,26 @@ pub async fn rollback_internal(version: Option<i64>) -> Result<(), Error> {
 }
 
 /// Execute internal migrations in up Direction
-pub async fn migrate_internal(version: Option<i64>) -> Result<(), Error> {
+pub async fn migrate_internal(migration_version: Option<uuid::Uuid>) -> Result<(), Error> {
     let mut tx = start_transaction().await?;
     let log_queries = get_config().general.log_queries;
     create_schema_tables(&mut tx, log_queries).await?;
     update_database_schema(&mut tx, log_queries).await?;
-    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
-    let migrations = if let Some(version) = version {
-        RwfDatabaseSchema::all().filter_lte("id", version.to_value())
+    let target_version = if let Some(target) = migration_version {
+        RwfDatabaseSchema::find_by("migration", target)
+            .fetch(&mut tx)
+            .await?
+            .id()
     } else {
-        RwfDatabaseSchema::all()
+        i64::MAX.to_value()
     };
-    let migrations = if let Some(active_version) = active_version {
-        migrations.filter_gt("id", active_version.id())
+    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
+    let migrations = if let Some(version) = active_version {
+        RwfDatabaseSchema::internal_migrations().filter_gte("id", version.id())
     } else {
-        migrations
+        RwfDatabaseSchema::internal_migrations()
     }
+    .filter_lte("id", target_version)
     .order(("id", "asc"))
     .fetch_all(&mut tx)
     .await?;
@@ -385,49 +396,37 @@ pub async fn migrate_internal(version: Option<i64>) -> Result<(), Error> {
     tx.commit().await
 }
 
-pub fn info(version: Option<i64>) {
+pub fn info(version: Option<uuid::Uuid>) {
     if version.is_none() {
         for mig in migrations::migrations() {
-            let desc = mig.description();
-            let name = desc.get("name").unwrap().as_str().unwrap();
-            let version = desc.get("version").unwrap().as_i64().unwrap();
-            eprintln!("Scheme {} is applied by version {}", name, version);
+            eprintln!("{}", mig.description());
         }
     } else {
         let version = version.unwrap();
         for mig in migrations::migrations() {
-            if mig.id == version {
-                eprintln!("{}", serde_norway::to_string(&mig.description()).unwrap());
+            if mig.migration == version {
+                eprintln!("{}", serde_norway::to_string(&mig).unwrap());
             }
         }
     }
 }
 
-pub static SETUP_VERSION: Option<i64> = Some(4);
-
 /// Execute all migrations in the up direction.
 pub async fn migrate() -> Result<Migrations, Error> {
-    migrate_internal(SETUP_VERSION).await?;
-    Migrations::sync().await?.apply(Direction::Up, None).await
+    Migrations::migrate().await
+    //Migrations::sync().await?.apply(Direction::Up, None).await
 }
 
 /// Execute all migrations in the down direction. **This will effectively
 /// destroy all tables and data in your database.**
 pub async fn rollback() -> Result<Migrations, Error> {
-    migrate_internal(None).await?;
-    Migrations::sync().await?.apply(Direction::Down, None).await
+    Migrations::flush().await
+    //Migrations::sync().await?.apply(Direction::Down, None).await
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_internal_migration_description() {
-        for mig in super::migrations::migrations() {
-            eprintln!("{:?}", mig.description())
-        }
-    }
 
     #[test]
     fn test_migration_file_names() {

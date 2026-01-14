@@ -7,23 +7,23 @@ use tokio::fs::{create_dir, File};
 
 use crate::logging::created;
 
-pub async fn infos(version: Option<i64>) {
-    rwf::model::migrations::info(version);
+pub async fn infos(migration: Option<uuid::Uuid>) {
+    rwf::model::migrations::info(migration);
 }
-pub async fn upgrade(version: Option<i64>) {
+pub async fn upgrade(version: Option<uuid::Uuid>) {
     rwf::model::migrations::migrate_internal(version)
         .await
         .expect("Failed to apply internal schema migrations.");
 }
 
-pub async fn downgrade(version: Option<i64>) {
+pub async fn downgrade(version: Option<uuid::Uuid>) {
     rwf::model::migrations::rollback_internal(version)
         .await
         .expect("Failed to rollback internal schema")
 }
 
 pub async fn migrate(version: Option<i64>) {
-    rwf::model::migrations::migrate_internal(rwf::model::migrations::SETUP_VERSION)
+    rwf::model::migrations::migrate_internal(None)
         .await
         .expect("Failed to apply internal migrations.");
     let migrations = Migrations::sync().await.expect("failed to sync migrations");
