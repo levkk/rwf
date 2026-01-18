@@ -23,7 +23,7 @@ pub struct Record {
 ///    email: String
 /// }
 /// let all_users: rwf::model::Select<User> = rwf::model::Select::new(User::table_name(), User::primary_key()).filter_gt("id", 5);
-/// let temp = all_users.clone().to_temporary("allusr");
+/// let temp = all_users.clone().to_temporary("allusr", 0);
 /// assert_eq!(temp.to_sql(), r#""allusr" AS (SELECT * FROM "users" WHERE "users"."id" > $1)"#);
 /// assert_eq!(all_users.placeholders().get(1), temp.placeholders().get(1));
 /// assert_eq!(all_users.placeholders().values().len(), temp.placeholders().values().len())

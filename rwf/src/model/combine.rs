@@ -24,7 +24,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let union = Combine::union(User::find(1));
     /// assert!(union.is_ok());
-    /// assert_eq!(union.unwrap().to_sql(), r#"UNION SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(union.unwrap().to_sql(), r#"UNION (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn union(q: Query<T>) -> Result<Self, super::Error> {
         match q {
@@ -46,7 +46,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let union = Combine::union_all(User::find(1));
     /// assert!(union.is_ok());
-    /// assert_eq!(union.unwrap().to_sql(), r#"UNION ALL SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(union.unwrap().to_sql(), r#"UNION ALL (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn union_all(q: Query<T>) -> Result<Self, super::Error> {
         match q {
@@ -68,7 +68,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let intersect = Combine::intersect(User::find(1));
     /// assert!(intersect.is_ok());
-    /// assert_eq!(intersect.unwrap().to_sql(), r#"INTERSECT SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(intersect.unwrap().to_sql(), r#"INTERSECT (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn intersect(q: Query<T>) -> Result<Self, super::Error> {
         match q {
@@ -90,7 +90,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let intersect = Combine::intersect_all(User::find(1));
     /// assert!(intersect.is_ok());
-    /// assert_eq!(intersect.unwrap().to_sql(), r#"INTERSECT ALL SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(intersect.unwrap().to_sql(), r#"INTERSECT ALL (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn intersect_all(q: Query<T>) -> Result<Self, super::Error> {
         match q {
@@ -112,7 +112,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let exclude = Combine::except(User::find(1));
     /// assert!(exclude.is_ok());
-    /// assert_eq!(exclude.unwrap().to_sql(), r#"EXCEPT SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(exclude.unwrap().to_sql(), r#"EXCEPT (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn except(q: Query<T>) -> Result<Self, super::Error> {
         match q {
@@ -134,7 +134,7 @@ impl<T: FromRow> Combine<T> {
     /// }
     /// let exclude = Combine::except_all(User::find(1));
     /// assert!(exclude.is_ok());
-    /// assert_eq!(exclude.unwrap().to_sql(), r#"EXCEPT ALL SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1"#);
+    /// assert_eq!(exclude.unwrap().to_sql(), r#"EXCEPT ALL (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1)"#);
     /// ```
     pub fn except_all(q: Query<T>) -> Result<Self, super::Error> {
         match q {
