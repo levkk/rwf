@@ -2,10 +2,12 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Column, Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, ToSql,
-    ToValue, Value, WhereClause,
+    Column, Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, Query,
+    ToSql, ToValue, Value, WhereClause,
 };
 
+use crate::model::combine::{Combine, Combines};
+use crate::model::temporary::With;
 use std::marker::PhantomData;
 
 #[derive(PartialEq, Debug)]
@@ -18,7 +20,7 @@ enum Op {
     LesserEqualThan,
 }
 
-#[derive(Debug, Default, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Select<T: FromRow + ?Sized> {
     pub table_name: String,
     pub primary_key: String,
@@ -30,6 +32,8 @@ pub struct Select<T: FromRow + ?Sized> {
     pub joins: Joins,
     pub(super) lock: Lock,
     pub(super) group: bool,
+    pub(super) combines: Combines<T>,
+    pub(super) with: With,
     _phantom: PhantomData<T>,
 }
 
@@ -47,6 +51,8 @@ impl<T: FromRow> Select<T> {
             joins: Joins::default(),
             lock: Lock::default(),
             group: false,
+            combines: Combines::default(),
+            with: With::default(),
             _phantom: PhantomData,
         }
     }
@@ -91,6 +97,7 @@ impl<T: FromRow> Select<T> {
         join_op: JoinOp,
         op: Op,
     ) -> Self {
+        let placeholder_id = self.where_clause.placeholders();
         let mut filter = Filter::default();
 
         let column = {
@@ -135,6 +142,9 @@ impl<T: FromRow> Select<T> {
             JoinOp::Or => self.where_clause.or(filter),
         };
 
+        if self.where_clause.placeholders() > placeholder_id {
+            self.combines.inc_placeholders()
+        }
         self
     }
 
@@ -196,8 +206,16 @@ impl<T: FromRow> Select<T> {
         self
     }
 
-    pub fn placeholders(&self) -> &Placeholders {
-        &self.placeholders
+    pub fn placeholders(&self) -> Placeholders {
+        if self.combines.is_empty() && self.with.is_empty() {
+            self.placeholders.clone()
+        } else {
+            let mut placeholders = vec![];
+            placeholders.extend(self.with.placeholders());
+            placeholders.push(self.placeholders.clone());
+            placeholders.extend(self.combines.placeholders());
+            Placeholders::from_iter(placeholders)
+        }
     }
 
     pub fn where_clause(&self) -> &WhereClause {
@@ -245,6 +263,75 @@ impl<T: FromRow> Select<T> {
         self.columns = self.columns.count();
         self
     }
+
+    fn combine(mut self, mut other: Combine<T>) -> Self {
+        let withs = other.take_with();
+        let with_offset = self.with.offset();
+        if !withs.is_empty() {
+            let offset = self.with.extend(withs);
+            self.where_clause.add_offset(offset);
+            self.combines.add_offset(offset);
+        }
+        let offset =
+            self.combines.placeholders_id() + self.where_clause.placeholders() as i32 + with_offset;
+        other.add_offset(offset);
+        self.combines.add_query(other);
+        self
+    }
+    pub fn add_union(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::union(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn add_union_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::union_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn add_intersect(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::intersect(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn add_intersect_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::intersect_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn add_except(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::except(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn add_except_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::except_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    pub fn with<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self {
+        let offset = self.with.with_query(other, alias);
+        self.where_clause.add_offset(offset);
+        self.combines.add_offset(offset);
+        self
+    }
+    pub fn with_recursive<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self {
+        let offset = self.with.with_recursive(other, alias);
+        self.where_clause.add_offset(offset);
+        self.combines.add_offset(offset);
+        self
+    }
 }
 
 impl<T: FromRow> ToSql for Select<T> {
@@ -255,7 +342,15 @@ impl<T: FromRow> ToSql for Select<T> {
             "".to_string()
         };
         format!(
-            r#"SELECT {} FROM "{}"{}{}{}{}{}{}"#,
+            r#"{}{}SELECT {} FROM "{}"{}{}{}{}{}{}{}{}"#,
+            self.with.to_sql(),
+            {
+                if !self.combines.is_empty() {
+                    "("
+                } else {
+                    ""
+                }
+            },
             self.columns.to_sql(),
             self.table_name.escape(),
             self.joins.to_sql(),
@@ -264,6 +359,14 @@ impl<T: FromRow> ToSql for Select<T> {
             self.order_by.to_sql(),
             self.limit.to_sql(),
             self.lock.to_sql(),
+            {
+                if !self.combines.is_empty() {
+                    ")"
+                } else {
+                    ""
+                }
+            },
+            self.combines.to_sql()
         )
     }
 }

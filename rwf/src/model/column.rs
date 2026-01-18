@@ -162,9 +162,9 @@ impl ToSql for Column {
         if self.agg.is_none() && self.column_name.eq(&self.alias) {
             sql
         } else if self.agg.is_none() {
-            format!(r#"{} as "{}""#, sql, self.alias.escape())
+            format!(r#"{} AS "{}""#, sql, self.alias.escape())
         } else {
-            format!(r#"{}({}) as "{}""#, self.agg, sql, self.alias.escape())
+            format!(r#"{}({}) AS "{}""#, self.agg, sql, self.alias.escape())
         }
     }
 }

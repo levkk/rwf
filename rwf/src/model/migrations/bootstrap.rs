@@ -1,6 +1,6 @@
 use crate::macros;
 use crate::model::pool::Transaction;
-use crate::model::{AssociationType, Error, Escape, Model, Scope, ToSql, ToValue, Value};
+use crate::model::{AssociationType, Error, Escape, Join, Model, Scope, ToSql, ToValue, Value};
 use crate::prelude::ToConnectionRequest;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -262,11 +262,12 @@ impl RwfDatabaseSchema {
                 (id bigserial primary key,
                 migration uuid not null unique,
                 name varchar(255) not null unique,
-                requires uuid default null,
+                requires uuid default null REFERENCES "{}"(migration) ON UPDATE CASCADE ON DELETE CASCADE,
                 kind varchar(15) not null,
                 up text[] not null,
                 down text[] not null,
                 description text not null)"#,
+            Self::table_name(),
             Self::table_name()
         )
     }
@@ -384,14 +385,67 @@ impl RwfDatabaseSchema {
             .fetch(conn)
             .await
     }
-    pub(crate) async fn max_active_version(
-        conn: impl ToConnectionRequest<'_>,
-    ) -> Result<Option<Self>, Error> {
-        Self::find_by_sql("SELECT * FROM rwf_database_schema INNER JOIN (SELECT migrations.rwf_database_schema_id from (select max(id) as id , rwf_database_schema_id from rwf_schema_migration group by rwf_database_schema_id) as migrations inner join rwf_schema_migration ON migrations.id = rwf_schema_migration.id where state = 'APPLIED') as mapplied ON rwf_database_schema.id = rwf_database_schema_id WHERE kind = 'INTERNAL' ORDER By id DESC LIMIT 1;", &[]).fetch_optional(conn).await
+    pub(crate) fn max_active_version() -> Scope<Self> {
+        Self::internal_migrations()
+            .with(
+                RwfSchemaMigration::all()
+                    .select_aggregated(&[("id", "MAX", Some("max"))])
+                    .group_by(&["rwf_database_schema_id"]),
+                "latest",
+            )
+            .with(
+                RwfSchemaMigration::all()
+                    .add_join(Join::new(
+                        RwfSchemaMigration::table_name(),
+                        "latest",
+                        "max",
+                        "id",
+                    ))
+                    .filter("state", SchemaState::APPLIED.to_value())
+                    .last_one(),
+                "active",
+            )
+            .add_join(Join::new(
+                RwfDatabaseSchema::table_name(),
+                "active",
+                "rwf_database_schema_id",
+                "id",
+            ))
     }
 
     pub(crate) fn internal_migrations() -> Scope<Self> {
         Self::filter("kind", SchemaKind::INTERNAL.to_value())
+    }
+    pub(crate) fn internal_migration_root() -> Scope<Self> {
+        Self::internal_migrations()
+            .first_one()
+            .filter("requires", Value::Null)
+    }
+    pub(crate) fn full_migration_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        if let Some(target) = target {
+            Self::internal_migrations()
+                .filter("migration", target.to_value())
+                .union(Self::all().add_join(Join::new(
+                    Self::table_name(),
+                    "recurse",
+                    "requires",
+                    "migration",
+                )))
+                .select_recursive_with("recurse")
+        } else {
+            Self::internal_migration_root()
+                .union(Self::internal_migrations().add_join(Join::new(
+                    Self::table_name(),
+                    "recurse",
+                    "migration",
+                    "requires",
+                )))
+                .select_recursive_with("recurse")
+        }
+    }
+
+    pub(crate) fn migration_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        Self::full_migration_chain(target).except(Self::max_active_version())
     }
 }
 

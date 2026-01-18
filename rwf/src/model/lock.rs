@@ -1,7 +1,7 @@
 //! Implements `FOR UPDATE` SQL locking primitive.
 use super::ToSql;
 
-#[derive(Debug, Default, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Lock {
     lock: bool,
     skip_locked: bool,

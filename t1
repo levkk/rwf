@@ -1,0 +1,1 @@
+"SELECT \"employees\".* FROM \"employees\" INNER JOIN \"employees\" AS \"e\" ON \"e\".\"boss\" = \"employees\".\"id\" WHERE \"employees\".\"boss\" IS NULL LIMIT 1"

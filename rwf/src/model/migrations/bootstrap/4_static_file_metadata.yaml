@@ -1,4 +1,5 @@
 migration: dee183ea-f0ca-11f0-b610-2218e57cbd42
+requires: 5d1dfd30-f0c9-11f0-a384-2218e57cbd42
 name: rwf_static_file_metas
 description:  Enable ETag / LastModified / If-None-Match / If-Modified-Since Header Support for the StaticFile Controller
 kind: INTERNAL

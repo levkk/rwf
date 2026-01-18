@@ -1,7 +1,9 @@
 //! `$1`, `$2`, etc. query placeholders used by prepared statements.
 use super::Value;
 
-#[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
+#[derive(
+    Debug, Clone, Default, crate::prelude::Deserialize, crate::prelude::Serialize, PartialEq,
+)]
 pub struct Placeholders {
     values: Vec<Value>,
 }
@@ -36,5 +38,15 @@ impl Placeholders {
 impl From<Vec<Value>> for Placeholders {
     fn from(values: Vec<Value>) -> Self {
         Placeholders { values }
+    }
+}
+
+impl FromIterator<Placeholders> for Placeholders {
+    fn from_iter<T: IntoIterator<Item = Placeholders>>(iter: T) -> Self {
+        let mut values = Vec::new();
+        for item in iter.into_iter() {
+            values.extend(item.values.into_iter());
+        }
+        Self::from(values)
     }
 }

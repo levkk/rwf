@@ -1,5 +1,9 @@
 //! Implements the `WHERE` clause for `SELECT`, `UPDATE`, and `DELETE` statements.
+
 use super::{Column, ToSql, ToValue, Value};
+use crate::model::filter::Comparison::{
+    Equal, GreaterEqualThan, GreaterThan, In, LesserEqualThan, LesserThan, NotEqual, NotIn,
+};
 
 /// The WHERE clause of a SQL query.
 #[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -43,6 +47,21 @@ impl Comparison {
             GreaterEqualThan((_, v)) => v.placeholder(),
             LesserEqualThan((_, v)) => v.placeholder(),
             _ => false,
+        }
+    }
+    fn add_offset(&mut self, offset: i32) {
+        if let Value::Placeholder(val) = match self {
+            Equal((_, v)) => v,
+            In((_, v)) => v,
+            NotIn((_, v)) => v,
+            NotEqual((_, v)) => v,
+            GreaterThan((_, v)) => v,
+            GreaterEqualThan((_, v)) => v,
+            LesserThan((_, v)) => v,
+            LesserEqualThan((_, v)) => v,
+            _ => return,
+        } {
+            *val += offset;
         }
     }
 }
@@ -124,6 +143,9 @@ impl WhereClause {
 
     pub fn placeholders(&self) -> usize {
         self.filter.placeholders()
+    }
+    pub fn add_offset(&mut self, offset: i32) {
+        self.filter.add_offset(offset)
     }
 }
 
@@ -271,6 +293,11 @@ impl Filter {
                 }
             })
             .sum()
+    }
+    pub fn add_offset(&mut self, offset: i32) {
+        self.clauses
+            .iter_mut()
+            .for_each(|clause| clause.add_offset(offset));
     }
 
     pub fn insert_columns(&self) -> (Vec<Column>, Vec<Value>) {

@@ -12,6 +12,7 @@ use tracing::{error, info};
 
 pub mod callbacks;
 pub mod column;
+pub mod combine;
 pub mod delete;
 pub mod error;
 pub mod escape;
@@ -30,9 +31,11 @@ pub mod pool;
 pub mod prelude;
 pub mod row;
 pub mod select;
+pub mod temporary;
 pub mod update;
 pub mod value;
 
+use crate::model::join::JoinKind;
 pub use column::{Column, Columns, ToColumn};
 pub use delete::Delete;
 pub use error::Error;
@@ -209,7 +212,7 @@ pub trait ToSql {
 ///     }
 /// }
 /// ```
-#[derive(Debug, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub enum Query<T: FromRow + ?Sized = Row> {
     /// Represents a `SELECT` query.
     Select(Select<T>),
@@ -277,6 +280,28 @@ impl<T: Model> Query<T> {
             table_name.to_string().as_str(),
             T::primary_key(),
         ))
+    }
+    /// Construct a WITH RECURSIVE query from the current one.
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct T {
+    ///     id: Option<i64>
+    /// }
+    /// assert_eq!(
+    ///     T::find_by_sql("VALUES(1) UNION SELECT id+1 FROM t WHERE id < 100", &[]).select_recursive_with("t").to_sql(),
+    ///     r#"WITH RECURSIVE "t"(id) AS (VALUES(1) UNION SELECT id+1 FROM t WHERE id < 100) SELECT * FROM "t""#
+    /// );
+    /// ```
+    pub fn select_recursive_with(self, alias: &str) -> Self {
+        let mut select = Select::new(alias, T::primary_key()).with_recursive(self, alias);
+        if let Some(last) = select.with.last() {
+            if last.fields_empty() {
+                last.fields(T::all_columns())
+            }
+        }
+        Self::Select(select)
     }
 
     /// Create a query that selects one row from the relation. The rows are not ordered and any row can be returned.
@@ -351,6 +376,7 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(_) => self.first_many(1),
+            Picked(_) => self.first_many(1),
             _ => self,
         }
     }
@@ -386,7 +412,85 @@ impl<T: Model> Query<T> {
 
                 Select(select.limit(n).order_by(order_by))
             }
+            Picked(mut picked) => {
+                let table_name = picked.select.table_name.clone();
+                let order_by = if picked.select.order_by.is_empty() {
+                    OrderBy::asc(Column::new(table_name.as_str(), &picked.select.primary_key))
+                } else {
+                    picked.select.order_by.clone()
+                };
+                picked.select = picked.select.limit(n).order_by(order_by);
+                Picked(picked)
+            }
 
+            _ => self,
+        }
+    }
+    /// Create a query that selects the last row from the database. The rows are ordered
+    ///  by primary key in descending order unless an ordering already exists.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().last_one();
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" DESC LIMIT 1"#);
+    /// ```
+    pub fn last_one(self) -> Self {
+        match self {
+            Query::Select(_) => self.last_many(1),
+            Query::Picked(_) => self.last_many(1),
+            _ => self,
+        }
+    }
+
+    /// Creates a query that selects last _n_ rows from the database. Rows are sorted
+    /// by primary key in descending order unless an ordering exists.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let query = User::all().last_many(25);
+    /// assert_eq!(query.to_sql(), r#"SELECT * FROM "users" ORDER BY "users"."id" DESC LIMIT 25"#);
+    /// ```
+    pub fn last_many(self, n: i64) -> Self {
+        use Query::*;
+
+        match self {
+            Select(select) => {
+                let table_name = select.table_name.clone();
+                let order_by = if select.order_by.is_empty() {
+                    OrderBy::desc(Column::new(table_name.as_str(), &select.primary_key))
+                } else {
+                    select.order_by.clone()
+                };
+                Select(select.limit(n).order_by(order_by))
+            }
+            Picked(mut picked) => {
+                let table_name = picked.select.table_name.clone();
+                let order_by = if picked.select.order_by.is_empty() {
+                    OrderBy::desc(Column::new(table_name.as_str(), &picked.select.primary_key))
+                } else {
+                    picked.select.order_by.clone()
+                };
+                picked.select = picked.select.limit(n).order_by(order_by);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -571,6 +675,79 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Add an arbitrary Join to the Query
+    /// # Example
+    /// ```
+    /// use rwf::model::join::{JoinKind, Join};
+    /// use rwf::model::value::Value;
+    /// use rwf::model::column::Column;
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model, Clone)]
+    /// struct Employee {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     boss: Option<i64>
+    /// }
+    /// assert_eq!(
+    ///     Employee::all().add_join(Employee::join_with::<Employee>("boss", "id").alias("e")).filter(Column::new("e", "boss"), Value::Null).to_sql(),
+    ///     r#"SELECT "employees".* FROM "employees" INNER JOIN "employees" AS "e" ON "e"."id" = "employees"."boss" WHERE "e"."boss" IS NULL"#
+    /// )
+    /// ```
+    pub fn add_join(self, join: Join) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.join(join)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.join(join);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    /// Add an arbitrary nested join to a Query
+    /// # Example
+    /// ```
+    /// use rwf::model::join::{JoinKind, Join};
+    /// use rwf::model::value::Value;
+    /// use rwf::model::column::Column;
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model, Clone)]
+    /// struct Employee {
+    ///     id: Option<i64>,
+    ///     name: String,
+    /// }
+    /// ##[derive(rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model, Clone)]
+    /// struct EmployeeRelation {
+    ///     id: Option<i64>,
+    ///     subordinate_id: i64,
+    ///     boss_id: i64
+    /// }
+    ///
+    /// assert_eq!(
+    ///     Employee::all().add_nested_join(Employee::joined_with::<EmployeeRelation>("id", "subordinate_id").add_join::<Employee>(EmployeeRelation::join_with::<Employee>("boss_id", "id").alias("e"))).to_sql(),
+    ///     r#"SELECT "employees".* FROM "employees" INNER JOIN "employee_relations" ON "employee_relations"."subordinate_id" = "employees"."id" INNER JOIN "employees" AS "e" ON "e"."id" = "employee_relations"."boss_id""#
+    /// );
+    ///
+    /// assert_eq!(
+    ///     Employee::all().add_nested_join(Employee::joined_with::<EmployeeRelation>("id", "subordinate_id").add_join::<Employee>(EmployeeRelation::join_with::<Employee>("boss_id", "id").alias("e"))).to_sql(),
+    ///     Employee::all().add_join(Employee::join_with::<EmployeeRelation>("id", "subordinate_id")).add_join(EmployeeRelation::join_with::<Employee>("boss_id", "id").alias("e")).to_sql()
+    /// )
+    ///
+    /// ```
+    pub fn add_nested_join<S: Model>(self, joined: Joined<T, S>) -> Self {
+        match self {
+            Query::Select(mut select) => {
+                select.columns = select.columns.table_name(T::table_name());
+                Query::Select(select.add_joins(joined.into()))
+            }
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_joins(joined.into());
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
     pub fn lock(self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.lock()),
@@ -702,6 +879,90 @@ impl<T: Model> Query<T> {
         }
     }
 
+    pub fn union(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_union(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_union(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    pub fn union_all(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_union_all(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_union_all(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+    pub fn intersect(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_intersect(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_intersect(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+    pub fn intersect_all(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_intersect_all(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_intersect_all(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+    pub fn except(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_except(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_except(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+    pub fn except_all(self, other: Self) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.add_except_all(other)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.add_except_all(other);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    pub fn with<U: Model>(self, other: Query<U>, alias: impl ToString) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.with(other, alias)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.with(other, alias);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
+    pub fn with_recursive<U: Model>(self, other: Query<U>, alias: impl ToString) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.with_recursive(other, alias)),
+            Query::Picked(mut picked) => {
+                picked.select = picked.select.with_recursive(other, alias);
+                Query::Picked(picked)
+            }
+            _ => self,
+        }
+    }
+
     async fn execute_internal(
         &self,
         client: impl ToConnectionRequest<'_>,
@@ -719,6 +980,7 @@ impl<T: Model> Query<T> {
                 let query = self.to_sql();
                 let placeholdres = { select.placeholders() };
                 let values = placeholdres.values();
+
                 client.query_cached(&query, &values).await
             }
 
@@ -744,7 +1006,8 @@ impl<T: Model> Query<T> {
 
             Query::InsertIfNotExists { select, insert, .. } => {
                 let query = select.to_sql();
-                let values = select.placeholders().values();
+                let placeholders = select.placeholders();
+                let values = placeholders.values();
                 let result = client.query_cached(&query, &values).await;
 
                 let result = match result {
@@ -1373,6 +1636,58 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
         Self::all().order(order)
     }
 
+    /// Created an arbitrary Join
+    /// # Example
+    /// ```
+    /// use rwf::model::join::{JoinKind, Join};
+    /// use rwf::model::value::Value;
+    /// use rwf::model::column::Column;
+    /// use rwf::model::Model;
+    /// #[derive(rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model, Clone)]
+    /// struct Employee {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     boss: Option<i64>
+    /// }
+    /// assert_eq!(
+    ///     Employee::join_with::<Employee>("id", "boss"),
+    ///     Join::new(Employee::table_name(), Employee::table_name(), "boss", "id")
+    /// );
+    /// ```
+    fn join_with<U: Model>(self_column: impl ToColumn, other_column: impl ToColumn) -> Join {
+        Join {
+            kind: JoinKind::Inner,
+            table_name: U::table_name().to_string(),
+            table_column: other_column.to_column().qualify(U::table_name()),
+            foreign_column: self_column.to_column().qualify(Self::table_name()),
+            alias: None,
+        }
+    }
+    /// Creates an arbitrary Joined
+    /// # Example
+    /// ```
+    /// use rwf::model::join::{JoinKind, Join, Joined};
+    /// use rwf::model::value::Value;
+    /// use rwf::model::column::Column;
+    /// use rwf::model::Model;
+    /// #[derive(rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model, Clone, Debug)]
+    /// struct Employee {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     boss: Option<i64>
+    /// }
+    /// assert_eq!(
+    ///     Employee::joined_with::<Employee>("id", "boss"),
+    ///     Joined::new(Join::new(Employee::table_name(), Employee::table_name(), "boss", "id"))
+    /// );
+    /// ```
+    fn joined_with<U: Model>(
+        self_column: impl ToColumn,
+        other_column: impl ToColumn,
+    ) -> Joined<Self, U> {
+        Joined::new(Self::join_with::<U>(self_column, other_column))
+    }
+
     /// Join this model to another model with which it has a relationship. The relationship should be declared
     /// in advance using an annotation.
     ///
@@ -1759,7 +2074,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
 
 #[cfg(test)]
 mod test {
-    use super::join::AssociationType;
+    use super::join::{AssociationType, JoinKind};
     use super::*;
     use tokio_postgres::row::Row;
 
@@ -2081,7 +2396,7 @@ mod test {
         let query = User::all().select_aggregated(&[("id", "sum", None::<String>)]);
         assert_eq!(
             query.to_sql(),
-            r#"SELECT SUM("users"."id") as "id" FROM "users""#
+            r#"SELECT SUM("users"."id") AS "id" FROM "users""#
         );
     }
     #[test]
@@ -2091,7 +2406,7 @@ mod test {
             .group_by(&["order_id"]);
         assert_eq!(
             query.to_sql(),
-            r#"SELECT COUNT("order_items"."id") as "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#
+            r#"SELECT COUNT("order_items"."id") AS "cnt_id", "order_items"."order_id" FROM "order_items" GROUP BY "order_items"."order_id" "#
         );
     }
     #[test]
@@ -2108,6 +2423,102 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_union() {
+        let q = User::find(1).union(User::find(2));
+        assert_eq!(
+            q.to_sql(),
+            r#"(SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1) UNION (SELECT * FROM "users" WHERE "users"."id" = $2 LIMIT 1)"#
+        );
+        if let Query::Select(select) = q {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![Value::Int(1), Value::Int(2)])
+            )
+        }
+    }
+
+    #[test]
+    fn test_union_then_filter() {
+        let q1 = User::all().union(User::find(2)).find_by("id", 1);
+        let q2 = User::find(1).union(User::find(2));
+        assert_eq!(q1.to_sql(), q2.to_sql(),);
+        if let Query::Select(select1) = q1 {
+            if let Query::Select(select2) = q2 {
+                assert_eq!(select1.placeholders(), select2.placeholders(),)
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclude() {
+        let q = User::all().except(User::all().filter_lt("id", 10));
+        assert_eq!(
+            q.to_sql(),
+            r#"(SELECT * FROM "users") EXCEPT (SELECT * FROM "users" WHERE "users"."id" < $1)"#
+        )
+    }
+
+    #[test]
+    fn test_intersect() {
+        let q = User::all().intersect(User::all().filter_gte("id", 10));
+        assert_eq!(
+            q.to_sql(),
+            r#"(SELECT * FROM "users") INTERSECT (SELECT * FROM "users" WHERE "users"."id" >= $1)"#
+        )
+    }
+
+    #[test]
+    fn test_with() {
+        let mut with = temporary::With::default();
+        assert_eq!(with.with_query(User::find(1), "first_user"), 1);
+        assert_eq!(
+            with.with_query(
+                User::all().filter_lt("id", 10).filter_gt("id", 5),
+                "some_users"
+            ),
+            2
+        );
+        assert_eq!(
+            with.to_sql(),
+            r#"WITH "first_user" AS (SELECT * FROM "users" WHERE "users"."id" = $1 LIMIT 1), "some_users" AS (SELECT * FROM "users" WHERE "users"."id" < $2 AND "users"."id" > $3) "#
+        );
+        assert_eq!(
+            Placeholders::from_iter(with.placeholders()),
+            Placeholders::from(vec![Value::Int(1), Value::Int(10), Value::Int(5)])
+        )
+    }
+    #[test]
+    fn test_recursive_with() {
+        let recurse = OrderItem::filter("order_id", 3)
+            .union(
+                Query::Select(Select::new("recurse", "id"))
+                    .add_join(Join {
+                        kind: JoinKind::Inner,
+                        table_name: "order_items".to_string(),
+                        table_column: Column::new("order_items", "order_id"),
+                        foreign_column: Column::new("recurse", "order_id"),
+                        alias: None,
+                    })
+                    .filter_gt(
+                        Column::new("recurse", "id"),
+                        Value::Column(Column::new("order_items", "id")),
+                    ),
+            )
+            .select_recursive_with("recurse");
+        assert_eq!(
+            recurse.to_sql(),
+            r#"WITH RECURSIVE "recurse"(id, order_id, product_id) AS ((SELECT * FROM "order_items" WHERE "order_items"."order_id" = $1) UNION (SELECT "recurse".* FROM "recurse" INNER JOIN "order_items" ON "order_items"."order_id" = "recurse"."order_id" WHERE "recurse"."id" > "order_items"."id")) SELECT * FROM "recurse""#
+        );
+        if let Query::Select(select) = recurse {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![Value::Int(3)])
+            );
+        } else {
+            panic!("Expected SELECT QUERY")
+        }
+    }
     #[tokio::test]
     async fn test_fetch_picked() {
         let mut conn = get_connection().await.unwrap();

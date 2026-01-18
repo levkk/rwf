@@ -13,7 +13,7 @@ use super::*;
 ///
 /// Only the 'SELECT' Part is implemented by `Picked<T>` Everything else (FROM, JOIN, WHERE, GROUP) is
 /// taken from the underlaying `Select<T>`
-#[derive(Debug, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Picked<T: FromRow> {
     pub select: Select<T>,
     columns: Vec<Column>,
@@ -125,7 +125,8 @@ impl<T: FromRow> ToSql for Picked<T> {
             .collect::<Vec<_>>()
             .join(", ");
         format!(
-            r#"SELECT {} FROM "{}"{}{}{}{}{}{}"#,
+            r#"{}SELECT {} FROM "{}"{}{}{}{}{}{}{}"#,
+            self.select.with.to_sql(),
             columns,
             self.select.table_name.escape(),
             self.select.joins.to_sql(),
@@ -134,6 +135,7 @@ impl<T: FromRow> ToSql for Picked<T> {
             self.select.order_by.to_sql(),
             self.select.limit.to_sql(),
             self.select.lock.to_sql(),
+            self.select.combines.to_sql()
         )
     }
 }

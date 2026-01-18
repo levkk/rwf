@@ -1,5 +1,6 @@
 migration: 5d1dfd30-f0c9-11f0-a384-2218e57cbd42
 name: requests tracking
+requires: 132a43b0-f0c8-11f0-8542-2218e57cbd42
 description:  Enables Analytics functionality. Allows to keep track about users and called endpoints
 kind: INTERNAL
 down:

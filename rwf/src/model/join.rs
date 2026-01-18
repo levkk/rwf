@@ -1,9 +1,11 @@
 //! Implements joining tables in a `SELECT` query.
-use super::{Column, Escape, Model, ToSql};
+
+use super::{Column, Escape, Model, ToColumn, ToSql};
+use std::fmt::Formatter;
 use std::marker::PhantomData;
 
 /// Type of relationship between models.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Copy)]
 pub enum AssociationType {
     /// Many-to-one relationship.
     BelongsTo,
@@ -61,10 +63,11 @@ pub trait Association<T: Model>: Model {
                     table_name,
                     table_column,
                     foreign_column,
+                    alias: None,
                 }
             }
 
-            // INNER JOIN "orders ON "orders"."user_id" = "users"."id"
+            // INNER JOIN "orders" ON "orders"."user_id" = "users"."id"
             // HasOne is enforced by having a UNIQUE index on the foreign key.
             HasMany | HasOne => {
                 let table_name = Self::table_name().to_string();
@@ -75,40 +78,70 @@ pub trait Association<T: Model>: Model {
                     table_name,
                     table_column,
                     foreign_column,
+                    alias: None,
                 }
             }
         }
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Copy,
+    Clone,
+    crate::prelude::Deserialize,
+    crate::prelude::Serialize,
+)]
 pub enum JoinKind {
     Inner,
     Left,
     Outer,
 }
 
-impl ToString for JoinKind {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for JoinKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            JoinKind::Inner => "INNER JOIN",
-            JoinKind::Left => "LEFT JOIN",
-            JoinKind::Outer => "OUTER JOIN",
+            JoinKind::Inner => write!(f, "INNER JOIN"),
+            JoinKind::Left => write!(f, "LEFT JOIN"),
+            JoinKind::Outer => write!(f, "OUTER JOIN"),
         }
-        .to_string()
     }
 }
 
-#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize, PartialEq, Eq)]
 pub struct Join {
-    kind: JoinKind,
-    table_name: String,
-    table_column: Column,
-    foreign_column: Column,
+    pub(super) kind: JoinKind,
+    pub(super) table_name: String,
+    pub(super) table_column: Column,
+    pub(super) foreign_column: Column,
+    pub(super) alias: Option<String>,
 }
 
 impl Join {
-    fn replace_kind(mut self, kind: JoinKind) -> Self {
+    pub fn new(
+        name: impl ToString,
+        table_name: impl ToString,
+        table_column: impl ToColumn,
+        foreign_column: impl ToColumn,
+    ) -> Self {
+        Self {
+            kind: JoinKind::Inner,
+            table_name: table_name.to_string(),
+            table_column: table_column.to_column().qualify(table_name.to_string()),
+            foreign_column: foreign_column.to_column().qualify(name),
+            alias: None,
+        }
+    }
+    pub fn alias(mut self, alias: impl ToString) -> Self {
+        self.alias = Some(alias.to_string());
+        self.table_column = self.table_column.qualify(alias.to_string());
+        self
+    }
+    pub fn replace_kind(mut self, kind: JoinKind) -> Self {
         self.kind = kind;
         self
     }
@@ -117,16 +150,22 @@ impl Join {
 impl ToSql for Join {
     fn to_sql(&self) -> String {
         format!(
-            r#"{} "{}" ON {} = {}"#,
+            r#"{} "{}"{} ON {} = {}"#,
             self.kind.to_string(),
             self.table_name.escape(),
+            self.alias
+                .as_ref()
+                .map(|alias| format!(r#" AS "{}""#, alias.escape()))
+                .unwrap_or(String::new()),
             self.table_column.to_sql(),
             self.foreign_column.to_sql(),
         )
     }
 }
 
-#[derive(Debug, Clone, Default, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(
+    Debug, Clone, Default, crate::prelude::Deserialize, crate::prelude::Serialize, PartialEq, Eq,
+)]
 pub struct Joins {
     joins: Vec<Join>,
 }
@@ -163,12 +202,20 @@ impl ToSql for Joins {
     }
 }
 
-#[derive(Debug, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(Debug, crate::prelude::Deserialize, crate::prelude::Serialize, Clone)]
 pub struct Joined<S: Model, T: Model> {
     a: PhantomData<S>,
     b: PhantomData<T>,
     joins: Joins,
 }
+
+impl<S: Model, T: Model> PartialEq for Joined<S, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.joins.eq(&other.joins)
+    }
+}
+
+impl<S: Model, T: Model> Eq for Joined<S, T> {}
 
 impl<S: Model, T: Model> Joined<S, T> {
     pub fn new(join: Join) -> Self {
@@ -182,6 +229,14 @@ impl<S: Model, T: Model> Joined<S, T> {
     pub fn join<U: Association<T>>(self) -> Joined<S, U> {
         let joins = self.joins.clone();
         let joins = joins.add(U::construct_join());
+        Joined {
+            a: PhantomData,
+            b: PhantomData,
+            joins,
+        }
+    }
+    pub fn add_join<U: Model>(self, join: Join) -> Joined<S, U> {
+        let joins = self.joins.clone().add(join);
         Joined {
             a: PhantomData,
             b: PhantomData,

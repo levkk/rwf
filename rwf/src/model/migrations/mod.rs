@@ -21,6 +21,16 @@ use time::OffsetDateTime;
 use tokio::fs::{read_dir, read_to_string};
 use tracing::{error, info};
 
+/// Pseudo Module to keep things working in case migrations.rs needs to be recreated by Macro
+/*
+mod migrations {
+    use crate::model::migrations::model::Migration;
+
+    pub fn migrations() -> Vec<RwfDatabaseSchema> {
+        vec![]
+    }
+}
+*/
 /// Migrations found in the `"migrations"` folder. Some of them
 /// may not be applied yet.
 pub struct Migrations {
@@ -340,7 +350,9 @@ pub async fn rollback_internal(migration_version: Option<uuid::Uuid>) -> Result<
     let log_queries = get_config().general.log_queries;
     create_schema_tables(&mut tx, log_queries).await?;
     update_database_schema(&mut tx, log_queries).await?;
-    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
+    let active_version = RwfDatabaseSchema::max_active_version()
+        .fetch_optional(&mut tx)
+        .await?;
     let target_version = if let Some(target) = migration_version {
         RwfDatabaseSchema::find_by("migration", target)
             .fetch(&mut tx)
@@ -379,7 +391,9 @@ pub async fn migrate_internal(migration_version: Option<uuid::Uuid>) -> Result<(
     } else {
         i64::MAX.to_value()
     };
-    let active_version = RwfDatabaseSchema::max_active_version(&mut tx).await?;
+    let active_version = RwfDatabaseSchema::max_active_version()
+        .fetch_optional(&mut tx)
+        .await?;
     let migrations = if let Some(version) = active_version {
         RwfDatabaseSchema::internal_migrations().filter_gte("id", version.id())
     } else {
@@ -427,6 +441,87 @@ pub async fn rollback() -> Result<Migrations, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::model::migrations::bootstrap::{SchemaKind, SchemaState};
+    use crate::model::{Placeholders, Query, ToSql, Value};
+
+    #[test]
+    fn test_latest_active_version() {
+        let latest_active = RwfDatabaseSchema::max_active_version();
+        assert_eq!(
+            latest_active.to_sql(),
+            r#"WITH "latest" AS (SELECT MAX("rwf_schema_migration"."id") AS "max", "rwf_schema_migration"."rwf_database_schema_id" FROM "rwf_schema_migration" GROUP BY "rwf_schema_migration"."rwf_database_schema_id"), "active" AS (SELECT "rwf_schema_migration".* FROM "rwf_schema_migration" INNER JOIN "latest" ON "latest"."max" = "rwf_schema_migration"."id" WHERE "rwf_schema_migration"."state" = $1 ORDER BY "rwf_schema_migration"."id" DESC LIMIT 1) SELECT "rwf_database_schema".* FROM "rwf_database_schema" INNER JOIN "active" ON "active"."rwf_database_schema_id" = "rwf_database_schema"."id" WHERE "rwf_database_schema"."kind" = $2"#
+        );
+        if let Query::Select(select) = latest_active {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![
+                    SchemaState::APPLIED.to_value(),
+                    SchemaKind::INTERNAL.to_value()
+                ])
+            )
+        } else {
+            panic!("Expected SELECT statement")
+        }
+    }
+    #[test]
+    fn test_full_migration_chain() {
+        let chain = RwfDatabaseSchema::full_migration_chain(None);
+        assert_eq!(
+            chain.to_sql(),
+            r#"WITH RECURSIVE "recurse"(id, migration, name, requires, kind, up, down, description) AS ((SELECT * FROM "rwf_database_schema" WHERE "rwf_database_schema"."kind" = $1 AND "rwf_database_schema"."requires" IS NULL ORDER BY "rwf_database_schema"."id" ASC LIMIT 1) UNION (SELECT "rwf_database_schema".* FROM "rwf_database_schema" INNER JOIN "recurse" ON "recurse"."migration" = "rwf_database_schema"."requires" WHERE "rwf_database_schema"."kind" = $2)) SELECT * FROM "recurse""#
+        );
+        if let Query::Select(select) = chain {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![
+                    Value::String("INTERNAL".to_string()),
+                    Value::String("INTERNAL".to_string())
+                ])
+            );
+        } else {
+            panic!("Expected SELECT QUERY")
+        }
+    }
+
+    #[test]
+    fn test_migration_chain() {
+        let chain = RwfDatabaseSchema::migration_chain(None);
+        assert_eq!(
+            chain.to_sql(),
+            r#"WITH RECURSIVE "recurse"(id, migration, name, requires, kind, up, down, description) AS ((SELECT * FROM "rwf_database_schema" WHERE "rwf_database_schema"."kind" = $1 AND "rwf_database_schema"."requires" IS NULL ORDER BY "rwf_database_schema"."id" ASC LIMIT 1) UNION (SELECT "rwf_database_schema".* FROM "rwf_database_schema" INNER JOIN "recurse" ON "recurse"."migration" = "rwf_database_schema"."requires" WHERE "rwf_database_schema"."kind" = $2)), "latest" AS (SELECT MAX("rwf_schema_migration"."id") AS "max", "rwf_schema_migration"."rwf_database_schema_id" FROM "rwf_schema_migration" GROUP BY "rwf_schema_migration"."rwf_database_schema_id"), "active" AS (SELECT "rwf_schema_migration".* FROM "rwf_schema_migration" INNER JOIN "latest" ON "latest"."max" = "rwf_schema_migration"."id" WHERE "rwf_schema_migration"."state" = $3 ORDER BY "rwf_schema_migration"."id" DESC LIMIT 1) (SELECT * FROM "recurse") EXCEPT (SELECT "rwf_database_schema".* FROM "rwf_database_schema" INNER JOIN "active" ON "active"."rwf_database_schema_id" = "rwf_database_schema"."id" WHERE "rwf_database_schema"."kind" = $4)"#
+        );
+        if let Query::Select(ref select) = chain {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![
+                    SchemaKind::INTERNAL.to_value(),
+                    SchemaKind::INTERNAL.to_value(),
+                    SchemaState::APPLIED.to_value(),
+                    SchemaKind::INTERNAL.to_value()
+                ])
+            )
+        } else {
+            panic!("Expected SELECT statement")
+        }
+    }
+
+    #[test]
+    fn test_migration_chain_target() {
+        let target = uuid::Uuid::parse_str("dee183ea-f0ca-11f0-b610-2218e57cbd42").unwrap();
+        let chain = RwfDatabaseSchema::full_migration_chain(Some(target.clone()));
+        assert_eq!(
+            chain.to_sql(),
+            r#"WITH RECURSIVE "recurse"(id, migration, name, requires, kind, up, down, description) AS ((SELECT * FROM "rwf_database_schema" WHERE "rwf_database_schema"."kind" = $1 AND "rwf_database_schema"."migration" = $2) UNION (SELECT "rwf_database_schema".* FROM "rwf_database_schema" INNER JOIN "recurse" ON "recurse"."requires" = "rwf_database_schema"."migration")) SELECT * FROM "recurse""#
+        );
+        if let Query::Select(select) = chain {
+            assert_eq!(
+                select.placeholders(),
+                Placeholders::from(vec![SchemaKind::INTERNAL.to_value(), Value::Uuid(target)])
+            );
+        } else {
+            panic!("Expected SELECT QUERY")
+        }
+    }
 
     #[test]
     fn test_migration_file_names() {

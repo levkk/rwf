@@ -4,7 +4,7 @@ use super::{
 };
 use std::marker::PhantomData;
 
-#[derive(Debug, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Update<T> {
     table_name: String,
     primary_key: String,

@@ -2,7 +2,7 @@
 use super::{Column, Escape, FromRow, Model, Placeholders, Select, ToSql, WhereClause};
 use std::marker::PhantomData;
 
-#[derive(Debug, Clone, crate::prelude::Deserialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Delete<T> {
     table_name: String,
     primary_key: String,
