@@ -256,20 +256,26 @@ impl From<&RwfSchemaMigration> for SchemaState {
 
 #[allow(unused)]
 impl RwfDatabaseSchema {
-    pub(crate) fn create_table() -> String {
-        format!(
-            r#"CREATE TABLE IF NOT EXISTS "{}"
-                (id bigserial primary key,
-                migration uuid not null unique,
-                name varchar(255) not null unique,
-                requires uuid default null REFERENCES "{}"(migration) ON UPDATE CASCADE ON DELETE CASCADE,
-                kind varchar(15) not null,
-                up text[] not null,
-                down text[] not null,
-                description text not null)"#,
-            Self::table_name(),
-            Self::table_name()
-        )
+    pub(crate) fn create_table() -> Vec<String> {
+        vec![
+            format!(
+                r#"CREATE TABLE IF NOT EXISTS "{}"
+                    (id bigserial primary key,
+                    migration uuid not null unique,
+                    name varchar(255) not null unique,
+                    requires uuid default null REFERENCES "{}"(migration) ON UPDATE CASCADE ON DELETE CASCADE,
+                    kind varchar(15) not null,
+                    up text[] not null,
+                    down text[] not null,
+                    description text not null)"#,
+                Self::table_name(),
+                Self::table_name()
+            ),
+            format!(
+                r#"CREATE INDEX IF NOT EXISTS "rwf_database_schema_requires" ON "{}"(requires)"#,
+                Self::table_name()
+            ),
+        ]
     }
     pub(crate) fn description(&self) -> String {
         format!(
@@ -385,31 +391,31 @@ impl RwfDatabaseSchema {
             .fetch(conn)
             .await
     }
-    pub(crate) fn max_active_version() -> Scope<Self> {
-        Self::internal_migrations()
+    pub(crate) fn max_applied_internal_migration() -> Scope<Self> {
+        Self::all()
             .with(
-                RwfSchemaMigration::all()
-                    .select_aggregated(&[("id", "MAX", Some("max"))])
-                    .group_by(&["rwf_database_schema_id"]),
-                "latest",
-            )
-            .with(
-                RwfSchemaMigration::all()
-                    .add_join(Join::new(
-                        RwfSchemaMigration::table_name(),
-                        "latest",
-                        "max",
-                        "id",
-                    ))
-                    .filter("state", SchemaState::APPLIED.to_value())
-                    .last_one(),
-                "active",
+                RwfSchemaMigration::last_applied_internal_migration(),
+                "latest_active_internal",
             )
             .add_join(Join::new(
-                RwfDatabaseSchema::table_name(),
-                "active",
-                "rwf_database_schema_id",
-                "id",
+                Self::table_name(),
+                "latest_active_internal",
+                Self::foreign_key(),
+                Self::primary_key(),
+            ))
+    }
+
+    pub(crate) fn applied_internal_migrations() -> Scope<Self> {
+        Self::all()
+            .with(
+                RwfSchemaMigration::latest_applied_internal_migrations(),
+                "active_internal",
+            )
+            .add_join(Join::new(
+                Self::table_name(),
+                "active_internal",
+                Self::foreign_key(),
+                Self::primary_key(),
             ))
     }
 
@@ -444,8 +450,35 @@ impl RwfDatabaseSchema {
         }
     }
 
+    pub(crate) fn full_rollback_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        if let Some(target) = target {
+            Self::internal_migrations()
+                .filter("requires", target.to_value())
+                .union(Self::internal_migrations().add_join(Join::new(
+                    Self::table_name(),
+                    "recurse",
+                    "migration",
+                    "requires",
+                )))
+                .select_recursive_with("recurse")
+        } else {
+            Self::internal_migration_root()
+                .union(Self::internal_migrations().add_join(Join::new(
+                    Self::table_name(),
+                    "recurse",
+                    "migration",
+                    "requires",
+                )))
+                .select_recursive_with("recurse")
+        }
+    }
+
+    pub(crate) fn rollback_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        Self::full_rollback_chain(target).intersect(Self::applied_internal_migrations())
+    }
+
     pub(crate) fn migration_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
-        Self::full_migration_chain(target).except(Self::max_active_version())
+        Self::full_migration_chain(target).except(Self::applied_internal_migrations())
     }
 }
 
@@ -473,6 +506,36 @@ impl RwfSchemaMigration {
                 Self::table_name().escape()
             ),
         ]
+    }
+    pub(crate) fn latest_migrations() -> Scope<Self> {
+        Self::all()
+            .with(
+                Self::all()
+                    .select_aggregated(&[("id", "MAX", Some("max"))])
+                    .group_by(&["rwf_database_schema_id"]),
+                "latest_migrations",
+            )
+            .add_join(Join::new(
+                Self::table_name(),
+                "latest_migrations",
+                "max",
+                Self::primary_key(),
+            ))
+    }
+    pub(crate) fn latest_applied_migrations() -> Scope<Self> {
+        Self::latest_migrations().filter("state", SchemaState::APPLIED.to_value())
+    }
+
+    pub(crate) fn latest_applied_internal_migrations() -> Scope<Self> {
+        Self::latest_applied_migrations()
+            .join::<RwfDatabaseSchema>()
+            .filter(RwfDatabaseSchema::column("kind"), SchemaKind::INTERNAL)
+    }
+
+    pub(crate) fn last_applied_internal_migration() -> Scope<Self> {
+        Self::latest_applied_internal_migrations()
+            .order((Self::column(RwfDatabaseSchema::foreign_key()), "desc"))
+            .last_one()
     }
 }
 

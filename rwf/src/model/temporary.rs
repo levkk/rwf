@@ -161,6 +161,10 @@ impl ToTemporaryQuery for TemporaryQuery {
                 stmt.push(char);
             }
         }
+        if dolla_seen {
+            offset += 1;
+            stmt.add_assign(offset.to_string().as_str());
+        }
         TemporaryQuery {
             alias: self.alias,
             recursive: self.recursive,
@@ -211,6 +215,7 @@ impl With {
             .push(query.to_temporary(alias, offset).recursive(recurive));
         self.offset() - offset
     }
+
     pub(super) fn extend(&mut self, other: Self) -> i32 {
         let mut offset = 0;
         for query in other.0.into_iter() {
@@ -220,19 +225,28 @@ impl With {
         }
         offset
     }
-
-    pub fn with_query<T: FromRow>(&mut self, query: Query<T>, alias: impl ToString) -> i32 {
+    fn merge_with<T: FromRow>(&mut self, query: &mut Query<T>) -> i32 {
         match query {
-            Query::Select(select) => self.add(select, alias, false),
-            Query::Picked(picked) => self.add(picked, alias, false),
+            Query::Select(select) => self.extend(std::mem::take(&mut select.with)),
+            Query::Picked(picked) => self.extend(std::mem::take(&mut picked.select.with)),
+            _ => 0,
+        }
+    }
+
+    pub fn with_query<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
+        let offset = self.merge_with(&mut query);
+        match query {
+            Query::Select(select) => self.add(select, alias, false) + offset,
+            Query::Picked(picked) => self.add(picked, alias, false) + offset,
             Query::Raw { .. } => self.add(query, alias, false),
             _ => 0,
         }
     }
-    pub fn with_recursive<T: FromRow>(&mut self, query: Query<T>, alias: impl ToString) -> i32 {
+    pub fn with_recursive<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
+        let offset = self.merge_with(&mut query);
         match query {
-            Query::Select(select) => self.add(select, alias, true),
-            Query::Picked(picked) => self.add(picked, alias, true),
+            Query::Select(select) => self.add(select, alias, true) + offset,
+            Query::Picked(picked) => self.add(picked, alias, true) + offset,
             Query::Raw { .. } => self.add(query, alias, true),
             _ => 0,
         }
