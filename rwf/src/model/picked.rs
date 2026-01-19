@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use super::*;
 use crate::model::column::ToAggregation;
+use crate::model::select::FilterQuery;
 use crate::model::temporary::{With, WithQuery};
 
 /// A Struct extending a SELECT Query with the ability to return only specified columns as well as
@@ -106,6 +107,27 @@ impl<T: FromRow> Picked<T> {
             columns: self.columns.clone(),
             data,
         })
+    }
+}
+impl<T: FromRow> FilterQuery for Picked<T> {
+    fn get_table_name(&self) -> &str {
+        self.select.get_table_name()
+    }
+
+    fn get_where_clause(&self) -> &WhereClause {
+        self.select.get_where_clause()
+    }
+
+    fn get_placeholders(&self) -> &Placeholders {
+        self.select.get_placeholders()
+    }
+
+    fn get_where_clause_mut(&mut self) -> &mut WhereClause {
+        self.select.get_where_clause_mut()
+    }
+
+    fn get_placeholders_mut(&mut self) -> &mut Placeholders {
+        self.select.get_placeholders_mut()
     }
 }
 impl<T: FromRow> WithQuery for Picked<T> {

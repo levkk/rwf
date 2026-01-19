@@ -2,6 +2,7 @@
 use super::{
     Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue, WhereClause,
 };
+use crate::model::select::FilterQuery;
 use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
@@ -58,6 +59,28 @@ impl<T: Model> Update<T> {
             self.placeholders.add(&value.to_value());
         }
         self
+    }
+}
+
+impl<T: FromRow> FilterQuery for Update<T> {
+    fn get_table_name(&self) -> &str {
+        self.table_name.as_str()
+    }
+
+    fn get_where_clause(&self) -> &WhereClause {
+        &self.where_clause
+    }
+
+    fn get_placeholders(&self) -> &Placeholders {
+        &self.placeholders
+    }
+
+    fn get_where_clause_mut(&mut self) -> &mut WhereClause {
+        &mut self.where_clause
+    }
+
+    fn get_placeholders_mut(&mut self) -> &mut Placeholders {
+        &mut self.placeholders
     }
 }
 

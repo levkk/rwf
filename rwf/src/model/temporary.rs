@@ -16,6 +16,7 @@ pub struct Record {
 ///```
 /// use rwf::model::temporary::{TemporaryQuery, ToTemporaryQuery, WithQuery};
 /// use rwf::model::{ToSql, Model, Query};
+/// use rwf::model::select::FilterQuery;;
 /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
 /// struct User {
 ///    id: Option<i64>,

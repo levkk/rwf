@@ -1,5 +1,9 @@
 //! Implements the `DELETE` statement.
-use super::{Column, Escape, FromRow, Model, Placeholders, Select, ToSql, WhereClause};
+use super::{
+    Association, Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue,
+    WhereClause,
+};
+use crate::model::select::FilterQuery;
 use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
@@ -26,6 +30,81 @@ impl<T: Model> Delete<T> {
             using: vec![],
         }
     }
+    pub fn using(mut self, using: impl ToString) -> Self {
+        self.using.push(using.to_string());
+        self
+    }
+
+    /// Use a Foreign Key Constraint as Condition for a `Deltete` Query
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, Query, ToSql, Delete};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[has_many(Order)]
+    /// struct User {
+    ///     id: Option<i64>
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[has_many(OrderItem)]
+    /// #[belongs_to(User)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     user_id: i64
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[belongs_to(Order)]
+    /// struct OrderItem {
+    ///     id: Option<i64>,
+    ///     order_id: i64
+    /// }
+    /// assert_eq!(
+    ///     Delete::empty().using_join::<User>().to_sql(),
+    ///     r#"DELETE FROM "orders" USING "users" WHERE "orders"."user_id" = "users"."id" RETURNING *"#
+    /// );
+    /// assert_eq!(
+    ///     Delete::empty().using_join::<OrderItem>().to_sql(),
+    ///     r#"DELETE FROM "orders" USING "order_items" WHERE "orders"."id" = "order_items"."order_id" RETURNING *"#
+    /// );
+    ///
+    /// ```
+    pub fn using_join<F: Association<T>>(self) -> Self {
+        if F::belongs_to() {
+            self.filter_and(
+                T::primary_key(),
+                T::foreign_key()
+                    .to_column()
+                    .qualify(F::table_name())
+                    .to_value(),
+            )
+        } else {
+            self.filter_and(
+                F::foreign_key(),
+                F::primary_key()
+                    .to_column()
+                    .qualify(F::table_name())
+                    .to_value(),
+            )
+        }
+        .using(F::table_name())
+    }
+}
+
+impl<T: Model, C: ToColumn, V: ToValue> FromIterator<(C, V)> for Delete<T> {
+    fn from_iter<I: for<'a> IntoIterator<Item = (C, V)>>(iter: I) -> Self {
+        let query = Self::empty();
+        iter.into_iter()
+            .fold(query, |q, (c, v)| q.filter_and(c, v.to_value()))
+    }
+}
+
+impl<T: Model, C: ToColumn, V: ToValue> From<&[(C, V)]> for Delete<T> {
+    fn from(v: &[(C, V)]) -> Self {
+        Self::from_iter(
+            v.into_iter()
+                .map(|(c, v)| (c.to_column(), v.to_value()))
+                .collect::<Vec<_>>(),
+        )
+    }
 }
 
 impl<T: Model> From<Select<T>> for Delete<T> {
@@ -49,12 +128,47 @@ impl<T: Model> From<T> for Delete<T> {
 
 impl<T: FromRow> ToSql for Delete<T> {
     fn to_sql(&self) -> String {
+        let using = if self.using.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " USING {}",
+                self.using
+                    .iter()
+                    .map(|s| format!(r#""{}""#, s.escape()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
         format!(
-            r#"{}DELETE FROM "{}"{} RETURNING *"#,
+            r#"{}DELETE FROM "{}"{}{} RETURNING *"#,
             self.with.to_sql(),
             self.table_name.escape(),
+            using,
             self.where_clause.to_sql(),
         )
+    }
+}
+
+impl<T: FromRow> FilterQuery for Delete<T> {
+    fn get_table_name(&self) -> &str {
+        self.table_name.as_str()
+    }
+
+    fn get_where_clause(&self) -> &WhereClause {
+        &self.where_clause
+    }
+
+    fn get_placeholders(&self) -> &Placeholders {
+        &self.placeholders
+    }
+
+    fn get_where_clause_mut(&mut self) -> &mut WhereClause {
+        &mut self.where_clause
+    }
+
+    fn get_placeholders_mut(&mut self) -> &mut Placeholders {
+        &mut self.placeholders
     }
 }
 
@@ -137,5 +251,17 @@ mod tests {
             query.to_sql(),
             r#"DELETE FROM "users" WHERE "users"."id" = 3 RETURNING *"#
         )
+    }
+    #[test]
+    fn test_from_iter() {
+        let delete = Delete::<User>::from([("name", "John")].as_slice());
+        assert_eq!(
+            delete.to_sql(),
+            r#"DELETE FROM "users" WHERE "users"."name" = $1 RETURNING *"#
+        );
+        assert_eq!(
+            delete.get_placeholders(),
+            &Placeholders::from(vec!["John".to_value()])
+        );
     }
 }

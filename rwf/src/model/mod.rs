@@ -36,6 +36,7 @@ pub mod update;
 pub mod value;
 
 use crate::model::join::JoinKind;
+use crate::model::select::FilterQuery;
 use crate::model::temporary::WithQuery;
 pub use column::{Column, Columns, ToColumn};
 pub use delete::Delete;

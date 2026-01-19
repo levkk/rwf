@@ -1,4 +1,5 @@
 use super::{FromRow, Placeholders, Query, ToSql};
+use crate::model::select::FilterQuery;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 
@@ -253,8 +254,8 @@ impl<T: FromRow> Combines<T> {
         self.inner
             .iter()
             .map(|combine| match combine.deref() {
-                Query::Select(select) => select.where_clause().placeholders() as i32,
-                Query::Picked(picked) => picked.select.where_clause().placeholders() as i32,
+                Query::Select(select) => select.get_where_clause().placeholders() as i32,
+                Query::Picked(picked) => picked.select.get_where_clause().placeholders() as i32,
                 _ => panic!("Combine is only implemented for SELECT Statements"),
             })
             .sum()
