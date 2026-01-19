@@ -1,5 +1,10 @@
 //! Implements the `SELECT` query.
-use super::{Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue};
+use super::{
+    Column, Escape, FilterQuery, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue,
+    WhereClause,
+};
+use crate::model::filter::JoinOp;
+use crate::model::select::Op;
 use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
@@ -7,6 +12,33 @@ use std::marker::PhantomData;
 enum InsertValues<T: FromRow> {
     Values(Placeholders, i32),
     Select(Select<T>),
+}
+
+impl<T: FromRow> InsertValues<T> {
+    pub fn is_select(&self) -> bool {
+        match self {
+            Self::Select(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T: FromRow> AsRef<Placeholders> for InsertValues<T> {
+    fn as_ref(&self) -> &Placeholders {
+        match &self {
+            Self::Values(placeholders, _) => placeholders,
+            Self::Select(select) => select.get_placeholders(),
+        }
+    }
+}
+
+impl<T: FromRow> AsMut<Placeholders> for InsertValues<T> {
+    fn as_mut(&mut self) -> &mut Placeholders {
+        match self {
+            Self::Values(placeholders, _) => placeholders,
+            Self::Select(select) => select.get_placeholders_mut(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -65,6 +97,61 @@ impl<T: Model> Insert<T> {
 
     pub fn unique_by(mut self, columns: &[impl ToColumn]) -> Self {
         self.unique_by = columns.iter().map(|c| c.to_column()).collect();
+        self
+    }
+
+    pub fn is_select(&self) -> bool {
+        self.values.is_select()
+    }
+}
+
+impl<T: FromRow> FilterQuery for Insert<T> {
+    fn get_table_name(&self) -> &str {
+        self.table_name.as_str()
+    }
+
+    fn get_where_clause(&self) -> &WhereClause {
+        match &self.values {
+            InsertValues::Select(select) => &select.get_where_clause(),
+            InsertValues::Values(..) => unimplemented!(
+                "FilterQuery is only implemented for INSERT where the source is a SELECT Statement"
+            ),
+        }
+    }
+
+    fn get_placeholders(&self) -> &Placeholders {
+        self.values.as_ref()
+    }
+
+    fn get_where_clause_mut(&mut self) -> &mut WhereClause {
+        match &mut self.values {
+            InsertValues::Select(select) => select.get_where_clause_mut(),
+            InsertValues::Values(..) => unimplemented!(
+                "FilterQuery is only implemented for INSERT where the source is a SELECT Statement"
+            ),
+        }
+    }
+
+    fn get_placeholders_mut(&mut self) -> &mut Placeholders {
+        self.values.as_mut()
+    }
+
+    fn filter(
+        mut self,
+        column: impl ToColumn,
+        value: impl ToValue,
+        join_op: JoinOp,
+        op: Op,
+    ) -> Self {
+        match self.values {
+            InsertValues::Values(placeholders, offset) => {
+                self.values = InsertValues::Values(placeholders, offset)
+            }
+            InsertValues::Select(select) => {
+                self.values =
+                    InsertValues::Select(select.filter_internal(column, value, join_op, op))
+            }
+        }
         self
     }
 }

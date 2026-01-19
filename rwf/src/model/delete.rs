@@ -30,6 +30,30 @@ impl<T: Model> Delete<T> {
             using: vec![],
         }
     }
+
+    /// Use another Table to select the entries that will be deleted
+    /// # Example
+    /// ```
+    /// use aes::cipher::typenum::Or;
+    /// use time::{Date, Month};
+    /// use rwf::model::{Column, Delete, Placeholders};
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     user_id: i64,
+    ///     date: Date
+    /// }
+    /// let delete: Delete<Order> = Delete::empty().using("users").filter_and("user_id", Column::new("users", "id")).filter_lt("date", Date::from_calendar_date(2024, Month::January, 1).unwrap());
+    /// assert_eq!(
+    ///     delete.to_sql(),
+    ///     r#"DELETE FROM "orders" USING "users" WHERE "orders"."user_id" = "users"."id" AND "orders"."date" < $1 RETURNING *"#
+    /// );
+    /// assert_eq!(
+    ///     delete.placeholders,
+    ///     Placeholders::from(vec![Date::from_calendar_date(2024, Month::January, 1).unwrap().to_value()])
+    /// );
+    /// ```
     pub fn using(mut self, using: impl ToString) -> Self {
         self.using.push(using.to_string());
         self

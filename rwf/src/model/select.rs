@@ -2,8 +2,8 @@
 use crate::model::{
     column::ToColumn,
     filter::{Filter, JoinOp},
-    Column, Columns, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy, Placeholders, Query,
-    ToSql, ToValue, Value, WhereClause,
+    Column, Columns, CombinedQuery, Escape, FromRow, Join, Joins, Limit, Lock, OrderBy,
+    Placeholders, ToSql, ToValue, Value, WhereClause,
 };
 
 use crate::model::combine::{Combine, Combines};
@@ -149,7 +149,9 @@ impl<T: FromRow> Select<T> {
         self.columns = self.columns.count();
         self
     }
+}
 
+impl<T: FromRow> CombinedQuery<T> for Select<T> {
     fn combine(mut self, mut other: Combine<T>) -> Self {
         let withs = other.take_with();
         let with_offset = self.get_with_offset();
@@ -160,48 +162,6 @@ impl<T: FromRow> Select<T> {
         other.add_offset(self.get_statement_offset() + with_offset);
         self.combines.add_query(other);
         self
-    }
-    pub fn add_union(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::union(other) {
-            self.combine(q)
-        } else {
-            self
-        }
-    }
-    pub fn add_union_all(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::union_all(other) {
-            self.combine(q)
-        } else {
-            self
-        }
-    }
-    pub fn add_intersect(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::intersect(other) {
-            self.combine(q)
-        } else {
-            self
-        }
-    }
-    pub fn add_intersect_all(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::intersect_all(other) {
-            self.combine(q)
-        } else {
-            self
-        }
-    }
-    pub fn add_except(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::except(other) {
-            self.combine(q)
-        } else {
-            self
-        }
-    }
-    pub fn add_except_all(self, other: Query<T>) -> Self {
-        if let Ok(q) = Combine::except_all(other) {
-            self.combine(q)
-        } else {
-            self
-        }
     }
 }
 
@@ -334,41 +294,243 @@ pub trait FilterQuery: Sized {
         self
     }
 
+    /// Creates a Equal or IN Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_and("name", "John");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" = $1"#
+    /// );
+    /// let select = select.filter_and("age", [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice());
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" = $1 AND "users"."age" = ANY($2)"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec!["John".to_value(), [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice().to_value()])
+    /// );
+    /// ```
     fn filter_and(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::Equals);
         self
     }
 
+    /// Creates a Equal or IN Operation and append it to the existing with an or operation.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_or("name", "John");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" = $1"#
+    /// );
+    /// let select = select.filter_or("age", [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice());
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."name" = $1) OR ("users"."age" = ANY($2))"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec!["John".to_value(), [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice().to_value()])
+    /// );
+    /// ```
     fn filter_or(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::Or, Op::Equals);
         self
     }
 
+    /// Creates a NotEqual or NotIN Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_not("name", "John");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" <> $1"#
+    /// );
+    /// let select = select.filter_not("age", [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice());
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" <> $1 AND "users"."age" <> ANY($2)"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec!["John".to_value(), [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice().to_value()])
+    /// );
+    /// ```
     fn filter_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::NotEquals);
         self
     }
 
+    /// Creates a NotEqual or NotIN Operation and append it to the existing by OR.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_or_not("name", "John");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" <> $1"#
+    /// );
+    /// let select = select.filter_or_not("age", [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice());
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."name" <> $1) OR ("users"."age" <> ANY($2))"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec!["John".to_value(), [21, 22, 23, 24, 25, 26, 27, 28, 29].as_slice().to_value()])
+    /// );
+    /// ```
     fn filter_or_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::Or, Op::NotEquals);
         self
     }
 
+    /// Creates a LessThen Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_lt("age", 21);
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."age" < $1"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec![21.to_value()])
+    /// );
+    /// ```
     fn filter_lt(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::LesserThan);
         self
     }
 
+    /// Creates a GreaterThen Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_gt("age", 17);
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."age" > $1"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec![17.to_value()])
+    /// );
+    /// ```
     fn filter_gt(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::GreaterThan);
         self
     }
-
+    /// Creates a GreaterThenOrEqual Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_gte("age", 18);
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."age" >= $1"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec![18.to_value()])
+    /// );
+    /// ```
     fn filter_gte(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::GreaterEqualThan);
         self
     }
-
+    /// Creates a LessThenOrEqual Operation and append it to the existing.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     age: i16,
+    ///     city: String
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_lte("age", 20);
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."age" <= $1"#
+    /// );
+    /// assert_eq!(
+    ///     select.placeholders,
+    ///     Placeholders::from(vec![20.to_value()])
+    /// );
+    /// ```
     fn filter_lte(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::LesserEqualThan);
         self

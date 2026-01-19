@@ -130,6 +130,13 @@ impl<T: FromRow> FilterQuery for Picked<T> {
         self.select.get_placeholders_mut()
     }
 }
+
+impl<T: FromRow> CombinedQuery<T> for Picked<T> {
+    fn combine(mut self, other: Combine<T>) -> Self {
+        self.select = self.select.combine(other);
+        self
+    }
+}
 impl<T: FromRow> WithQuery for Picked<T> {
     fn with_statements(&self) -> &With {
         self.select.with_statements()
