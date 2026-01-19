@@ -1,7 +1,7 @@
 use rwf::async_trait;
 use rwf::controller::oidc::{OidcUser as OUser, *};
 use rwf::model::callbacks::Callback;
-use rwf::model::{get_connection, Model, Scope, ToValue};
+use rwf::model::{get_connection, FilterQuery, Model, Scope, ToValue};
 use rwf::prelude::{utoipa, Deserialize, Serialize, ToResponse, ToSchema};
 use rwf_macros::Model;
 use time::{Duration, OffsetDateTime};

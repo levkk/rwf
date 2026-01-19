@@ -4,7 +4,7 @@
 //! to schedule jobs or fetch statistics about the job queue.
 use crate::colors::MaybeColorize;
 use crate::job::{clock::ScheduledJob, Error};
-use crate::model::{get_connection, FromRow, Model, Scope, ToValue, Value};
+use crate::model::{get_connection, FilterQuery, FromRow, Model, Scope, ToValue, Value};
 use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 

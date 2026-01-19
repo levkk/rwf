@@ -1,9 +1,9 @@
 //! Object-relational mapper (ORM), the **M** in MVC.
 //!
 //! See [documentation](https://levkk.github.io/rwf/models/) for detailed examples on how to use the ORM.
-use crate::colors::MaybeColorize;
 use crate::config::get_config;
 use crate::model::column::ToAggregation;
+use crate::{colors::MaybeColorize, model::filter::JoinOp, model::select::Op};
 
 use pool::ToConnectionRequest;
 use serde::Deserialize;
@@ -36,7 +36,6 @@ pub mod update;
 pub mod value;
 
 use crate::model::join::JoinKind;
-use crate::model::select::FilterQuery;
 use crate::model::temporary::WithQuery;
 pub use column::{Column, Columns, ToColumn};
 pub use delete::Delete;
@@ -55,7 +54,7 @@ pub use picked::Picked;
 pub use placeholders::Placeholders;
 pub use pool::{get_connection, get_pool, start_transaction, Connection, ConnectionGuard, Pool};
 pub use row::Row;
-pub use select::Select;
+pub use select::{FilterQuery, Select};
 pub use update::Update;
 pub use value::{ToValue, Value};
 
@@ -173,7 +172,7 @@ pub trait ToSql {
 ///
 /// ```
 /// # use rwf::macros::Model;
-/// # use rwf::model::{Model, Query, Select};
+/// # use rwf::model::{Model, Query, Select, FilterQuery};
 /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
 /// # struct User {
 /// #    id: Option<i64>,
@@ -201,7 +200,7 @@ pub trait ToSql {
 ///
 /// ```
 /// # use rwf::macros::Model;
-/// # use rwf::model::{Model, Query, Select, Scope};
+/// # use rwf::model::{Model, Query, Select, Scope, FilterQuery};
 /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
 /// # struct User {
 /// #    id: Option<i64>,
@@ -252,6 +251,85 @@ impl<T: FromRow> ToSql for Query<T> {
                 format!("{}; {};", select.to_sql(), insert.to_sql())
             }
             Picked(picked) => picked.to_sql(),
+        }
+    }
+}
+
+impl<T: Model> FilterQuery for Query<T> {
+    fn get_table_name(&self) -> &str {
+        match self {
+            Query::Select(select) => select.get_table_name(),
+            Query::Update(update) => update.get_table_name(),
+            Query::Delete(delete) => delete.get_table_name(),
+            Query::Picked(picked) => picked.get_table_name(),
+            Query::InsertIfNotExists { select, .. } => select.get_table_name(),
+            _ => T::table_name(),
+        }
+    }
+    fn get_where_clause(&self) -> &WhereClause {
+        match self {
+            Query::Select(select) => select.get_where_clause(),
+            Query::Update(update) => update.get_where_clause(),
+            Query::Delete(delete) => delete.get_where_clause(),
+            Query::Picked(picked) => picked.get_where_clause(),
+            Query::InsertIfNotExists { select, .. } => select.get_where_clause(),
+            _query => {
+                unimplemented!("FilterQuery is only implemented for SELECT, UPDATE and DELETE")
+            }
+        }
+    }
+    fn get_where_clause_mut(&mut self) -> &mut WhereClause {
+        match self {
+            Query::Select(select) => select.get_where_clause_mut(),
+            Query::Update(update) => update.get_where_clause_mut(),
+            Query::Delete(delete) => delete.get_where_clause_mut(),
+            Query::Picked(picked) => picked.get_where_clause_mut(),
+            Query::InsertIfNotExists { select, .. } => select.get_where_clause_mut(),
+            _query => {
+                unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
+            }
+        }
+    }
+    fn get_placeholders(&self) -> &Placeholders {
+        match self {
+            Query::Select(select) => select.get_placeholders(),
+            Query::Update(update) => update.get_placeholders(),
+            Query::Delete(delete) => delete.get_placeholders(),
+            Query::Picked(picked) => picked.get_placeholders(),
+            Query::InsertIfNotExists { select, .. } => select.get_placeholders(),
+            _query => {
+                unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
+            }
+        }
+    }
+    fn get_placeholders_mut(&mut self) -> &mut Placeholders {
+        match self {
+            Query::Select(select) => select.get_placeholders_mut(),
+            Query::Update(update) => update.get_placeholders_mut(),
+            Query::Delete(delete) => delete.get_placeholders_mut(),
+            Query::Picked(picked) => picked.get_placeholders_mut(),
+            Query::InsertIfNotExists { select, .. } => select.get_placeholders_mut(),
+            _query => {
+                unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
+            }
+        }
+    }
+    fn filter(self, column: impl ToColumn, value: impl ToValue, join_op: JoinOp, op: Op) -> Self {
+        match self {
+            Query::Select(select) => Query::Select(select.filter(column, value, join_op, op)),
+            Query::Update(update) => Query::Update(update.filter(column, value, join_op, op)),
+            Query::Delete(delete) => Query::Delete(delete.filter(column, value, join_op, op)),
+            Query::Picked(picked) => Query::Picked(picked.filter(column, value, join_op, op)),
+            Query::InsertIfNotExists {
+                select,
+                insert,
+                created,
+            } => Query::InsertIfNotExists {
+                select: select.filter(column, value, join_op, op),
+                insert,
+                created,
+            },
+            query => query,
         }
     }
 }
@@ -521,64 +599,7 @@ impl<T: Model> Query<T> {
     }
 
     pub fn filter(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-
-        match self {
-            Select(select) => Select(select.filter_and(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_and(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
-    }
-
-    pub fn filter_gt(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-        match self {
-            Select(select) => Select(select.filter_gt(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_gt(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
-    }
-
-    pub fn filter_gte(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-        match self {
-            Select(select) => Select(select.filter_gte(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_gte(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
-    }
-
-    pub fn filter_lt(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-        match self {
-            Select(select) => Select(select.filter_lt(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_lt(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
-    }
-
-    pub fn filter_lte(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-        match self {
-            Select(select) => Select(select.filter_lte(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_lte(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
+        self.filter_and(column, value)
     }
 
     pub fn or(self, f: fn(Self) -> Self) -> Self {
@@ -601,34 +622,12 @@ impl<T: Model> Query<T> {
         }
     }
 
-    pub fn filter_not(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self.not(column, value)
-    }
-
     pub fn not(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-
-        match self {
-            Select(select) => Select(select.filter_not(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_not(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
+        self.filter_not(column, value)
     }
 
     pub fn or_not(self, column: impl ToColumn, value: impl ToValue) -> Self {
-        use Query::*;
-
-        match self {
-            Select(select) => Select(select.filter_or_not(column, value)),
-            Picked(mut picked) => {
-                picked.select = picked.select.filter_or_not(column, value);
-                Picked(picked)
-            }
-            _ => self,
-        }
+        self.filter_or_not(column, value)
     }
 
     pub fn find_by(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
@@ -652,6 +651,9 @@ impl<T: Model> Query<T> {
     pub fn offset(self, offset: i64) -> Self {
         if let Query::Select(select) = self {
             Query::Select(select.offset(offset))
+        } else if let Query::Picked(mut picked) = self {
+            picked.select = picked.select.offset(offset);
+            Query::Picked(picked)
         } else {
             self
         }
@@ -661,6 +663,9 @@ impl<T: Model> Query<T> {
         if let Query::Select(mut select) = self {
             select.order_by = select.order_by + order.to_order_by();
             Query::Select(select)
+        } else if let Query::Picked(mut picked) = self {
+            picked.select.order_by = picked.select.order_by + order.to_order_by();
+            Query::Picked(picked)
         } else {
             self
         }
@@ -935,7 +940,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `UNION` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -960,7 +965,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `UNION ALL` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -984,7 +989,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `INTERSECT` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -1008,7 +1013,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `INTERSECT ALL` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -1032,7 +1037,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `EXCEPT` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -1056,7 +1061,7 @@ impl<T: Model> Query<T> {
     /// Construct a combined `Query` with a `EXCEPT ALL` Statement
     /// # Example
     /// ```
-    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::prelude::*;
     /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
     /// struct User {
     ///     id: Option<i64>,
@@ -2294,6 +2299,7 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
 mod test {
     use super::join::{AssociationType, JoinKind};
     use super::*;
+    use select::FilterQuery;
     use tokio_postgres::row::Row;
 
     #[derive(Debug, Clone, Default, crate::prelude::Deserialize)]
