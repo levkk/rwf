@@ -154,8 +154,8 @@ impl<T: FromRow> Combine<T> {
 
     pub(super) fn placeholders(&self) -> Placeholders {
         match self.deref() {
-            Query::Select(q) => q.placeholders(),
-            Query::Picked(q) => q.select.placeholders(),
+            Query::Select(q) => q.placeholders.clone(),
+            Query::Picked(q) => q.select.placeholders.clone(),
             _ => panic!("Combine is only defined for SELECT Statements"),
         }
     }

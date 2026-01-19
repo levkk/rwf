@@ -36,6 +36,7 @@ pub mod update;
 pub mod value;
 
 use crate::model::join::JoinKind;
+use crate::model::temporary::WithQuery;
 pub use column::{Column, Columns, ToColumn};
 pub use delete::Delete;
 pub use error::Error;
@@ -281,7 +282,7 @@ impl<T: Model> Query<T> {
             T::primary_key(),
         ))
     }
-    /// Construct a WITH RECURSIVE query from the current one.
+    /// Construct a WITH RECURSIVE query from the current one and select from.
     /// # Example
     /// ```
     /// use rwf::model::{Model, ToSql};
@@ -296,7 +297,30 @@ impl<T: Model> Query<T> {
     /// ```
     pub fn select_recursive_with(self, alias: &str) -> Self {
         let mut select = Select::new(alias, T::primary_key()).with_recursive(self, alias);
-        if let Some(last) = select.with.last() {
+        if let Some(last) = select.with_statements_mut().last() {
+            if last.fields_empty() {
+                last.fields(T::all_columns())
+            }
+        }
+        Self::Select(select)
+    }
+
+    /// Construct a WITH query from the current one and select from.
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct T {
+    ///     id: Option<i64>
+    /// }
+    /// assert_eq!(
+    ///     T::all().select_with("u").to_sql(),
+    ///     r#"WITH "u" AS (SELECT * FROM "ts") SELECT * FROM "u""#
+    /// );
+    /// ```
+    pub fn select_with(self, alias: &str) -> Self {
+        let mut select = Select::new(alias, T::primary_key()).with(self, alias);
+        if let Some(last) = select.with_statements_mut().last() {
             if last.fields_empty() {
                 last.fields(T::all_columns())
             }
@@ -500,6 +524,10 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(select) => Select(select.filter_and(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_and(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -508,6 +536,10 @@ impl<T: Model> Query<T> {
         use Query::*;
         match self {
             Select(select) => Select(select.filter_gt(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_gt(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -516,6 +548,10 @@ impl<T: Model> Query<T> {
         use Query::*;
         match self {
             Select(select) => Select(select.filter_gte(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_gte(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -524,6 +560,10 @@ impl<T: Model> Query<T> {
         use Query::*;
         match self {
             Select(select) => Select(select.filter_lt(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_lt(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -532,6 +572,10 @@ impl<T: Model> Query<T> {
         use Query::*;
         match self {
             Select(select) => Select(select.filter_lte(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_lte(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -565,6 +609,10 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(select) => Select(select.filter_not(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_not(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -574,6 +622,10 @@ impl<T: Model> Query<T> {
 
         match self {
             Select(select) => Select(select.filter_or_not(column, value)),
+            Picked(mut picked) => {
+                picked.select = picked.select.filter_or_not(column, value);
+                Picked(picked)
+            }
             _ => self,
         }
     }
@@ -879,6 +931,20 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Construct a combined `Query` with a `UNION` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_gt("id", 10).union(User::all().filter_lt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" > $1) UNION (SELECT * FROM "users" WHERE "users"."id" < $2)"#
+    /// )
+    /// ```
     pub fn union(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_union(other)),
@@ -890,6 +956,20 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Construct a combined `Query` with a `UNION ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_gt("id", 10).union_all(User::all().filter_lt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" > $1) UNION ALL (SELECT * FROM "users" WHERE "users"."id" < $2)"#
+    /// )
+    /// ```
     pub fn union_all(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_union_all(other)),
@@ -900,6 +980,20 @@ impl<T: Model> Query<T> {
             _ => self,
         }
     }
+    /// Construct a combined `Query` with a `INTERSECT` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).intersect(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) INTERSECT (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
     pub fn intersect(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_intersect(other)),
@@ -910,6 +1004,20 @@ impl<T: Model> Query<T> {
             _ => self,
         }
     }
+    /// Construct a combined `Query` with a `INTERSECT ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).intersect_all(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) INTERSECT ALL (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
     pub fn intersect_all(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_intersect_all(other)),
@@ -920,6 +1028,20 @@ impl<T: Model> Query<T> {
             _ => self,
         }
     }
+    /// Construct a combined `Query` with a `EXCEPT` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).except(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) EXCEPT (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
     pub fn except(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_except(other)),
@@ -930,6 +1052,20 @@ impl<T: Model> Query<T> {
             _ => self,
         }
     }
+    /// Construct a combined `Query` with a `EXCEPT ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).except_all(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) EXCEPT ALL (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
     pub fn except_all(self, other: Self) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.add_except_all(other)),
@@ -941,20 +1077,78 @@ impl<T: Model> Query<T> {
         }
     }
 
+    /// Construct a WITH Query and make it available to the current one.
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql};
+    /// use rwf::model::join::Join;
+    /// use rwf::model::value::ToValue;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[has_many(Order)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     low_credit: bool
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     user_id: i64,
+    ///     expensive: bool
+    /// }
+    /// assert_eq!(
+    ///     User::all().with(User::all().join::<Order>().filter("low_credit", true.to_value()).filter(Order::column("expensive"), true.to_value()), "to_investigate").add_join(Join::new(User::table_name(), "to_investigate", "id", "id")).to_sql(),
+    ///     r#"WITH "to_investigate" AS (SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" WHERE "users"."low_credit" = $1 AND "orders"."expensive" = $2) SELECT "users".* FROM "users" INNER JOIN "to_investigate" ON "to_investigate"."id" = "users"."id""#
+    /// )
+    /// ```
     pub fn with<U: Model>(self, other: Query<U>, alias: impl ToString) -> Self {
         match self {
             Query::Select(select) => Query::Select(select.with(other, alias)),
-            Query::Picked(mut picked) => {
-                picked.select = picked.select.with(other, alias);
-                Query::Picked(picked)
-            }
+            Query::Picked(picked) => Query::Picked(picked.with(other, alias)),
+            Query::Delete(delete) => Query::Delete(delete.with(other, alias)),
+            Query::Update(update) => Query::Update(update.with(other, alias)),
             _ => self,
         }
     }
 
+    /// Construct a recursive WITH Statement and make it available to the current one
+    /// # Example
+    /// ```
+    /// use rwf::model::{Model, ToSql, Value};
+    /// use rwf::model::join::Join;
+    /// use rwf::model::value::ToValue;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[belongs_to(Order)]
+    /// #[has_many(OrderItem)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     order_id: Option<i64>
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct OrderItem {
+    ///     id: Option<i64>,
+    ///     order_id: i64,
+    ///     item: String,
+    ///     price: f32
+    /// }
+    /// assert_eq!(
+    ///     OrderItem::all().with_recursive(Order::find_by("order_id", Value::Null).union(Order::all().add_join(Join::new(Order::table_name(), "recurse", "id", "order_id"))), "recurse").add_join(Join::new(OrderItem::table_name(), "recurse", "id", Order::foreign_key())).to_sql(),
+    ///     r#"WITH RECURSIVE "recurse"(id, order_id) AS ((SELECT * FROM "orders" WHERE "orders"."order_id" IS NULL LIMIT 1) UNION (SELECT "orders".* FROM "orders" INNER JOIN "recurse" ON "recurse"."id" = "orders"."order_id")) SELECT "order_items".* FROM "order_items" INNER JOIN "recurse" ON "recurse"."id" = "order_items"."order_id""#
+    /// )
+    ///
+    /// ```
     pub fn with_recursive<U: Model>(self, other: Query<U>, alias: impl ToString) -> Self {
         match self {
-            Query::Select(select) => Query::Select(select.with_recursive(other, alias)),
+            Query::Select(mut select) => {
+                select = select.with_recursive(other, alias);
+                if let Some(last) = select.with_statements_mut().last() {
+                    if last.fields_empty() {
+                        last.fields(U::all_columns());
+                    }
+                }
+                Query::Select(select)
+            }
             Query::Picked(mut picked) => {
                 picked.select = picked.select.with_recursive(other, alias);
                 Query::Picked(picked)
@@ -978,7 +1172,7 @@ impl<T: Model> Query<T> {
         let result = match self {
             Query::Select(select) => {
                 let query = self.to_sql();
-                let placeholdres = { select.placeholders() };
+                let placeholdres = select.placeholders();
                 let values = placeholdres.values();
 
                 client.query_cached(&query, &values).await
@@ -994,13 +1188,15 @@ impl<T: Model> Query<T> {
 
             Query::Update(update) => {
                 let query = self.to_sql();
-                let values = update.placeholders.values();
+                let placeholders = update.placeholders();
+                let values = placeholders.values();
                 client.query_cached(&query, &values).await
             }
 
             Query::Insert(insert) => {
                 let query = self.to_sql();
-                let values = insert.placeholders.values();
+                let placeholders = insert.placeholders();
+                let values = placeholders.values();
                 client.query_cached(&query, &values).await
             }
 
@@ -1020,7 +1216,8 @@ impl<T: Model> Query<T> {
 
                 if result.is_empty() {
                     let query = insert.to_sql();
-                    let values = insert.placeholders.values();
+                    let placeholders = insert.placeholders();
+                    let values = placeholders.values();
                     client.query_cached(&query, &values).await
                 } else {
                     Ok(result)
@@ -1030,14 +1227,15 @@ impl<T: Model> Query<T> {
             Query::Picked(picked) => {
                 let select = &picked.select;
                 let query = picked.to_sql();
-                let placeholdres = { select.placeholders() };
+                let placeholdres = select.placeholders();
                 let values = placeholdres.values();
                 client.query_cached(&query, &values).await
             }
 
             Query::Delete(delete) => {
                 let query = delete.to_sql();
-                let values = delete.placeholders.values();
+                let placeholders = delete.placeholders();
+                let values = placeholders.values();
                 client.query_cached(&query, &values).await
             }
         };
@@ -1082,10 +1280,10 @@ impl<T: Model> Query<T> {
     pub async fn explain(self, conn: impl ToConnectionRequest<'_>) -> Result<Explain, Error> {
         let query = format!("EXPLAIN {}", self.to_sql());
         let placeholders = match self {
-            Query::Select(select) => select.placeholders,
-            Query::Update(update) => update.placeholders,
-            Query::Insert(insert) => insert.placeholders,
-            Query::Picked(picked) => picked.select.placeholders,
+            Query::Select(select) => select.placeholders(),
+            Query::Update(update) => update.placeholders(),
+            Query::Insert(insert) => insert.placeholders(),
+            Query::Picked(picked) => picked.placeholders(),
             _ => todo!("explain"),
         };
 
@@ -2069,6 +2267,25 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     /// ```
     fn destroy(&self) -> Query<Self> {
         Self::find(self.id()).delete()
+    }
+
+    /// Construct a Delete Query for the model
+    /// # Example
+    /// ```
+    ///  use rwf::prelude::*;
+    ///  use rwf::model::ToSql;
+    ///  #[derive(Clone, macros::Model, rwf::prelude::Deserialize)]
+    ///  struct User {
+    ///     id: Option<i64>,
+    ///     email: String,
+    /// }
+    /// assert_eq!(
+    ///     User::delete().to_sql(),
+    ///     r#"DELETE FROM "users" RETURNING *"#
+    /// )
+    /// ```
+    fn delete() -> Query<Self> {
+        Query::Delete(Delete::empty())
     }
 }
 

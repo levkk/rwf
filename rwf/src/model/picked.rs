@@ -3,9 +3,9 @@
 
 use std::collections::HashMap;
 
-use crate::model::column::ToAggregation;
-
 use super::*;
+use crate::model::column::ToAggregation;
+use crate::model::temporary::{With, WithQuery};
 
 /// A Struct extending a SELECT Query with the ability to return only specified columns as well as
 /// aggregated ones. So it makes Queries like 'SELECT table.column FROM table' possible as well as
@@ -106,6 +106,26 @@ impl<T: FromRow> Picked<T> {
             columns: self.columns.clone(),
             data,
         })
+    }
+}
+impl<T: FromRow> WithQuery for Picked<T> {
+    fn with_statements(&self) -> &With {
+        self.select.with_statements()
+    }
+
+    fn with_statements_mut(&mut self) -> &mut With {
+        self.select.with_statements_mut()
+    }
+
+    fn get_statement_offset(&self) -> i32 {
+        self.select.get_statement_offset()
+    }
+
+    fn add_offset(&mut self, offset: i32) {
+        self.select.add_offset(offset);
+    }
+    fn placeholders(&self) -> Placeholders {
+        self.select.placeholders()
     }
 }
 

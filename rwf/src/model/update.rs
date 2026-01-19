@@ -2,6 +2,7 @@
 use super::{
     Column, Escape, FromRow, Model, Placeholders, Select, ToColumn, ToSql, ToValue, WhereClause,
 };
+use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -12,6 +13,7 @@ pub struct Update<T> {
     columns: Vec<Column>,
     where_clause: WhereClause,
     marker: PhantomData<T>,
+    with: With,
 }
 
 impl<T: Model> Update<T> {
@@ -23,6 +25,7 @@ impl<T: Model> Update<T> {
             columns: vec![],
             where_clause: WhereClause::default(),
             marker: PhantomData,
+            with: With::default(),
         }
     }
 
@@ -58,19 +61,42 @@ impl<T: Model> Update<T> {
     }
 }
 
+impl<T: FromRow> WithQuery for Update<T> {
+    fn with_statements(&self) -> &With {
+        &self.with
+    }
+
+    fn with_statements_mut(&mut self) -> &mut With {
+        &mut self.with
+    }
+
+    fn get_statement_offset(&self) -> i32 {
+        (self.where_clause.placeholders() + self.columns.len()) as i32
+    }
+
+    fn add_offset(&mut self, offset: i32) {
+        self.where_clause.add_offset(offset);
+    }
+    fn placeholders(&self) -> Placeholders {
+        let mut placeholders = self.with.placeholders();
+        placeholders.push(self.placeholders.clone());
+        Placeholders::from_iter(placeholders)
+    }
+}
+
 impl<T: Model> From<Select<T>> for Update<T> {
     fn from(select: Select<T>) -> Update<T> {
         let mut update = Update::empty();
         update.where_clause = select.where_clause;
         update.placeholders = select.placeholders;
-
+        update.with = select.with;
         update
     }
 }
 
 impl<T: FromRow> ToSql for Update<T> {
     fn to_sql(&self) -> String {
-        let where_placeholders = self.where_clause.placeholders();
+        let where_placeholders = self.where_clause.placeholders() + self.get_with_offset() as usize;
         let sets = self
             .columns
             .iter()
@@ -82,7 +108,8 @@ impl<T: FromRow> ToSql for Update<T> {
             .join(", ");
 
         format!(
-            r#"UPDATE "{}" SET {}{} RETURNING *"#,
+            r#"{}UPDATE "{}" SET {}{} RETURNING *"#,
+            self.with.to_sql(),
             self.table_name.escape(),
             sets,
             self.where_clause.to_sql(),

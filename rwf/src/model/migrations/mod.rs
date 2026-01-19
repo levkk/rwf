@@ -350,28 +350,7 @@ pub async fn rollback_internal(migration_version: Option<uuid::Uuid>) -> Result<
     let log_queries = get_config().general.log_queries;
     create_schema_tables(&mut tx, log_queries).await?;
     update_database_schema(&mut tx, log_queries).await?;
-    /*
-    let active_version = RwfDatabaseSchema::max_applied_internal_migration()
-        .fetch_optional(&mut tx)
-        .await?;
-    let target_version = if let Some(target) = migration_version {
-        RwfDatabaseSchema::find_by("migration", target)
-            .fetch(&mut tx)
-            .await?
-            .id()
-    } else {
-        0.to_value()
-    };
-    let migrations = if let Some(version) = active_version {
-        RwfDatabaseSchema::internal_migrations().filter_lte("id", version.id())
-    } else {
-        RwfDatabaseSchema::internal_migrations()
-    }
-    .filter_gte("id", target_version)
-    .order(("id", "desc"))
-    .fetch_all(&mut tx)
-    .await?;
-     */
+
     let chain_query = RwfDatabaseSchema::rollback_chain(migration_version);
     if log_queries {
         info!(
@@ -388,33 +367,14 @@ pub async fn rollback_internal(migration_version: Option<uuid::Uuid>) -> Result<
 }
 
 /// Execute internal migrations in up Direction
+/// TODO! Implement an locking mechanism or something like as actually all migration with `SchemaKind::Internal` will be applied always (unless already applied).   
+/// TODO! So if one want to revert e.g. latest internal migration, one has to run `migrate` and then `rollback_internal` to keep latest internal migration unapplied
 pub async fn migrate_internal(migration_version: Option<uuid::Uuid>) -> Result<(), Error> {
     let mut tx = start_transaction().await?;
     let log_queries = get_config().general.log_queries;
     create_schema_tables(&mut tx, log_queries).await?;
     update_database_schema(&mut tx, log_queries).await?;
-    /*
-    let target_version = if let Some(target) = migration_version {
-        RwfDatabaseSchema::find_by("migration", target)
-            .fetch(&mut tx)
-            .await?
-            .id()
-    } else {
-        i64::MAX.to_value()
-    };
-    let active_version = RwfDatabaseSchema::max_applied_internal_migration()
-        .fetch_optional(&mut tx)
-        .await?;
-    let migrations = if let Some(version) = active_version {
-        RwfDatabaseSchema::internal_migrations().filter_gte("id", version.id())
-    } else {
-        RwfDatabaseSchema::internal_migrations()
-    }
-    .filter_lte("id", target_version)
-    .order(("id", "asc"))
-    .fetch_all(&mut tx)
-    .await?;
-    */
+
     let chain_query = RwfDatabaseSchema::migration_chain(migration_version);
     if log_queries {
         info!(
@@ -462,7 +422,7 @@ pub async fn rollback() -> Result<Migrations, Error> {
 mod test {
     use super::*;
     use crate::model::migrations::bootstrap::{RwfSchemaMigration, SchemaKind, SchemaState};
-    use crate::model::{Placeholders, Query, ToSql, ToValue, Value};
+    use crate::model::{Placeholders, Query, ToSql, ToValue, Value, WithQuery};
     use uuid::uuid;
 
     #[test]

@@ -7,7 +7,7 @@ use crate::model::{
 };
 
 use crate::model::combine::{Combine, Combines};
-use crate::model::temporary::With;
+use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
 #[derive(PartialEq, Debug)]
@@ -205,19 +205,6 @@ impl<T: FromRow> Select<T> {
 
         self
     }
-
-    pub fn placeholders(&self) -> Placeholders {
-        if self.combines.is_empty() && self.with.is_empty() {
-            self.placeholders.clone()
-        } else {
-            let mut placeholders = vec![];
-            placeholders.extend(self.with.placeholders());
-            placeholders.push(self.placeholders.clone());
-            placeholders.extend(self.combines.placeholders());
-            Placeholders::from_iter(placeholders)
-        }
-    }
-
     pub fn where_clause(&self) -> &WhereClause {
         &self.where_clause
     }
@@ -266,15 +253,12 @@ impl<T: FromRow> Select<T> {
 
     fn combine(mut self, mut other: Combine<T>) -> Self {
         let withs = other.take_with();
-        let with_offset = self.with.offset();
+        let with_offset = self.get_with_offset();
         if !withs.is_empty() {
             let offset = self.with.extend(withs);
-            self.where_clause.add_offset(offset);
-            self.combines.add_offset(offset);
+            self.add_offset(offset);
         }
-        let offset =
-            self.combines.placeholders_id() + self.where_clause.placeholders() as i32 + with_offset;
-        other.add_offset(offset);
+        other.add_offset(self.get_statement_offset() + with_offset);
         self.combines.add_query(other);
         self
     }
@@ -320,17 +304,34 @@ impl<T: FromRow> Select<T> {
             self
         }
     }
-    pub fn with<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self {
-        let offset = self.with.with_query(other, alias);
-        self.where_clause.add_offset(offset);
-        self.combines.add_offset(offset);
-        self
+}
+
+impl<T: FromRow> WithQuery for Select<T> {
+    fn with_statements(&self) -> &With {
+        &self.with
     }
-    pub fn with_recursive<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self {
-        let offset = self.with.with_recursive(other, alias);
+    fn with_statements_mut(&mut self) -> &mut With {
+        &mut self.with
+    }
+
+    fn get_statement_offset(&self) -> i32 {
+        self.combines.placeholders_id() + self.where_clause.placeholders() as i32
+    }
+
+    fn add_offset(&mut self, offset: i32) {
         self.where_clause.add_offset(offset);
         self.combines.add_offset(offset);
-        self
+    }
+    fn placeholders(&self) -> Placeholders {
+        if self.combines.is_empty() && self.with.is_empty() {
+            self.placeholders.clone()
+        } else {
+            let mut placeholders = vec![];
+            placeholders.extend(self.with.placeholders());
+            placeholders.push(self.placeholders.clone());
+            placeholders.extend(self.combines.placeholders());
+            Placeholders::from_iter(placeholders)
+        }
     }
 }
 

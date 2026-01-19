@@ -3,7 +3,7 @@ use super::picked::Picked;
 use super::placeholders::Placeholders;
 use super::select::Select;
 use super::value::Value;
-use super::{Escape, FromRow, Query, ToSql};
+use super::{Delete, Escape, FromRow, Insert, Query, ToSql, Update};
 use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Hash)]
@@ -14,7 +14,7 @@ pub struct Record {
 /// A Query to create a temporary and named Record Set like in a WITH Statement or when creating a temporary Table
 /// # Example
 ///```
-/// use rwf::model::temporary::{TemporaryQuery, ToTemporaryQuery};
+/// use rwf::model::temporary::{TemporaryQuery, ToTemporaryQuery, WithQuery};
 /// use rwf::model::{ToSql, Model, Query};
 /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
 /// struct User {
@@ -67,8 +67,7 @@ pub trait ToTemporaryQuery {
 
 impl<T: FromRow> ToTemporaryQuery for Select<T> {
     fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
-        self.where_clause.add_offset(offset);
-        self.combines.add_offset(offset);
+        self.add_offset(offset);
         let offset =
             offset + self.where_clause.placeholders() as i32 + self.combines.placeholders_id();
         let alias = alias.to_string();
@@ -89,8 +88,7 @@ impl<T: FromRow> ToTemporaryQuery for Select<T> {
 }
 impl<T: FromRow> ToTemporaryQuery for Picked<T> {
     fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
-        self.select.where_clause.add_offset(offset);
-        self.select.combines.add_offset(offset);
+        self.add_offset(offset);
         let alias = alias.to_string();
         let offset = offset
             + self.select.where_clause.placeholders() as i32
@@ -107,6 +105,52 @@ impl<T: FromRow> ToTemporaryQuery for Picked<T> {
                 .collect(),
             offset,
         }
+    }
+}
+
+impl<T: FromRow> ToTemporaryQuery for Update<T> {
+    fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
+        self.add_offset(offset);
+        let offset = offset + self.get_statement_offset();
+        TemporaryQuery {
+            alias: alias.to_string(),
+            recursive: false,
+            as_stmt: self.to_sql(),
+            fields: vec![],
+            placeholders: self.placeholders,
+            offset,
+        }
+    }
+}
+
+impl<T: FromRow> ToTemporaryQuery for Delete<T> {
+    fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
+        self.add_offset(offset);
+        let offset = offset + self.get_statement_offset();
+        TemporaryQuery {
+            alias: alias.to_string(),
+            recursive: false,
+            as_stmt: self.to_sql(),
+            fields: vec![],
+            placeholders: self.placeholders,
+            offset,
+        }
+    }
+}
+
+impl<T: FromRow> ToTemporaryQuery for Insert<T> {
+    fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
+        self.add_offset(offset);
+        let offset = offset + self.get_statement_offset();
+        TemporaryQuery {
+            alias: alias.to_string(),
+            recursive: false,
+            as_stmt: self.to_sql(),
+            fields: vec![],
+            placeholders: self.placeholders(),
+            offset: 0,
+        }
+        .to_temporary("", offset)
     }
 }
 
@@ -137,6 +181,9 @@ impl<T: FromRow> ToTemporaryQuery for Query<T> {
                     offset,
                 }
             }
+            Query::Update(update) => update.to_temporary(alias, offset),
+            Query::Delete(delete) => delete.to_temporary(alias, offset),
+            Query::Insert(insert) => insert.to_temporary(alias, offset),
             _ => unimplemented!("ToTemporaryQuery is only implemented for select or picked or raw"),
         }
     }
@@ -227,8 +274,10 @@ impl With {
     }
     fn merge_with<T: FromRow>(&mut self, query: &mut Query<T>) -> i32 {
         match query {
-            Query::Select(select) => self.extend(std::mem::take(&mut select.with)),
-            Query::Picked(picked) => self.extend(std::mem::take(&mut picked.select.with)),
+            Query::Select(select) => self.extend(std::mem::take(select.with_statements_mut())),
+            Query::Picked(picked) => self.extend(std::mem::take(picked.with_statements_mut())),
+            Query::Update(update) => self.extend(std::mem::take(update.with_statements_mut())),
+            Query::Delete(delete) => self.extend(std::mem::take(delete.with_statements_mut())),
             _ => 0,
         }
     }
@@ -238,6 +287,9 @@ impl With {
         match query {
             Query::Select(select) => self.add(select, alias, false) + offset,
             Query::Picked(picked) => self.add(picked, alias, false) + offset,
+            Query::Update(update) => self.add(update, alias, false) + offset,
+            Query::Delete(delete) => self.add(delete, alias, false) + offset,
+            Query::Insert(insert) => self.add(insert, alias, false) + offset,
             Query::Raw { .. } => self.add(query, alias, false),
             _ => 0,
         }
@@ -272,4 +324,31 @@ impl ToSql for With {
             format!("WITH {} ", querys)
         }
     }
+}
+
+pub trait WithQuery {
+    fn with_statements(&self) -> &With;
+    fn get_with_offset(&self) -> i32 {
+        self.with_statements().offset()
+    }
+    fn with_statements_mut(&mut self) -> &mut With;
+    fn get_statement_offset(&self) -> i32;
+    fn add_offset(&mut self, offset: i32);
+    fn with<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self
+    where
+        Self: Sized,
+    {
+        let offset = self.with_statements_mut().with_query(other, alias);
+        self.add_offset(offset);
+        self
+    }
+    fn with_recursive<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self
+    where
+        Self: Sized,
+    {
+        let offset = self.with_statements_mut().with_recursive(other, alias);
+        self.add_offset(offset);
+        self
+    }
+    fn placeholders(&self) -> Placeholders;
 }

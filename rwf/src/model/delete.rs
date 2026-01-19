@@ -1,5 +1,6 @@
 //! Implements the `DELETE` statement.
 use super::{Column, Escape, FromRow, Model, Placeholders, Select, ToSql, WhereClause};
+use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -9,6 +10,8 @@ pub struct Delete<T> {
     where_clause: WhereClause,
     pub placeholders: Placeholders,
     marker: PhantomData<T>,
+    with: With,
+    using: Vec<String>,
 }
 
 impl<T: Model> Delete<T> {
@@ -19,6 +22,8 @@ impl<T: Model> Delete<T> {
             where_clause: WhereClause::default(),
             placeholders: Placeholders::default(),
             marker: PhantomData,
+            with: With::default(),
+            using: vec![],
         }
     }
 }
@@ -28,7 +33,7 @@ impl<T: Model> From<Select<T>> for Delete<T> {
         let mut delete = Delete::empty();
         delete.where_clause = select.where_clause;
         delete.placeholders = select.placeholders;
-
+        delete.with = select.with;
         delete
     }
 }
@@ -45,10 +50,34 @@ impl<T: Model> From<T> for Delete<T> {
 impl<T: FromRow> ToSql for Delete<T> {
     fn to_sql(&self) -> String {
         format!(
-            r#"DELETE FROM "{}"{} RETURNING *"#,
+            r#"{}DELETE FROM "{}"{} RETURNING *"#,
+            self.with.to_sql(),
             self.table_name.escape(),
             self.where_clause.to_sql(),
         )
+    }
+}
+
+impl<T: FromRow> WithQuery for Delete<T> {
+    fn with_statements(&self) -> &With {
+        &self.with
+    }
+
+    fn with_statements_mut(&mut self) -> &mut With {
+        &mut self.with
+    }
+
+    fn get_statement_offset(&self) -> i32 {
+        self.where_clause.placeholders() as i32
+    }
+
+    fn add_offset(&mut self, offset: i32) {
+        self.where_clause.add_offset(offset);
+    }
+    fn placeholders(&self) -> Placeholders {
+        let mut placeholders = self.with.placeholders();
+        placeholders.push(self.placeholders.clone());
+        Placeholders::from_iter(placeholders)
     }
 }
 
