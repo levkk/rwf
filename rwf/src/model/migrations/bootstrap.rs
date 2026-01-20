@@ -392,6 +392,7 @@ impl RwfDatabaseSchema {
             .await
     }
     pub(crate) fn max_applied_internal_migration() -> Scope<Self> {
+        use crate::model::temporary::WithQuery;
         Self::all()
             .with(
                 RwfSchemaMigration::last_applied_internal_migration(),
@@ -406,6 +407,7 @@ impl RwfDatabaseSchema {
     }
 
     pub(crate) fn applied_internal_migrations() -> Scope<Self> {
+        use crate::model::temporary::WithQuery;
         Self::all()
             .with(
                 RwfSchemaMigration::latest_applied_internal_migrations(),
@@ -428,10 +430,11 @@ impl RwfDatabaseSchema {
             .filter("requires", Value::Null)
     }
     pub(crate) fn full_migration_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        use crate::model::CombinedQuery;
         if let Some(target) = target {
             Self::internal_migrations()
                 .filter("migration", target.to_value())
-                .union(Self::all().add_join(Join::new(
+                .add_union(Self::all().add_join(Join::new(
                     Self::table_name(),
                     "recurse",
                     "requires",
@@ -440,7 +443,7 @@ impl RwfDatabaseSchema {
                 .select_recursive_with("recurse")
         } else {
             Self::internal_migration_root()
-                .union(Self::internal_migrations().add_join(Join::new(
+                .add_union(Self::internal_migrations().add_join(Join::new(
                     Self::table_name(),
                     "recurse",
                     "migration",
@@ -451,10 +454,11 @@ impl RwfDatabaseSchema {
     }
 
     pub(crate) fn full_rollback_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
+        use crate::model::CombinedQuery;
         if let Some(target) = target {
             Self::internal_migrations()
                 .filter("requires", target.to_value())
-                .union(Self::internal_migrations().add_join(Join::new(
+                .add_union(Self::internal_migrations().add_join(Join::new(
                     Self::table_name(),
                     "recurse",
                     "migration",
@@ -463,7 +467,7 @@ impl RwfDatabaseSchema {
                 .select_recursive_with("recurse")
         } else {
             Self::internal_migration_root()
-                .union(Self::internal_migrations().add_join(Join::new(
+                .add_union(Self::internal_migrations().add_join(Join::new(
                     Self::table_name(),
                     "recurse",
                     "migration",
@@ -474,11 +478,13 @@ impl RwfDatabaseSchema {
     }
 
     pub(crate) fn rollback_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
-        Self::full_rollback_chain(target).intersect(Self::applied_internal_migrations())
+        use crate::model::CombinedQuery;
+        Self::full_rollback_chain(target).add_intersect(Self::applied_internal_migrations())
     }
 
     pub(crate) fn migration_chain(target: Option<uuid::Uuid>) -> Scope<Self> {
-        Self::full_migration_chain(target).except(Self::applied_internal_migrations())
+        use crate::model::CombinedQuery;
+        Self::full_migration_chain(target).add_except(Self::applied_internal_migrations())
     }
 }
 
@@ -508,6 +514,7 @@ impl RwfSchemaMigration {
         ]
     }
     pub(crate) fn latest_migrations() -> Scope<Self> {
+        use crate::model::temporary::WithQuery;
         Self::all()
             .with(
                 Self::all()

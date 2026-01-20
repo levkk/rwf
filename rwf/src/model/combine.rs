@@ -183,7 +183,7 @@ impl<T: FromRow> std::fmt::Display for Combine<T> {
     }
 }
 
-impl<T: FromRow> std::ops::Deref for Combine<T> {
+impl<T: FromRow> Deref for Combine<T> {
     type Target = Query<T>;
     fn deref(&self) -> &Self::Target {
         match self {
@@ -197,7 +197,7 @@ impl<T: FromRow> std::ops::Deref for Combine<T> {
     }
 }
 
-impl<T: FromRow> std::ops::DerefMut for Combine<T> {
+impl<T: FromRow> DerefMut for Combine<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             Combine::UNION(q) => q,
@@ -280,5 +280,139 @@ impl<T: FromRow> Combines<T> {
     }
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+}
+
+pub trait CombinedQuery<T: FromRow>: Sized {
+    /// Append a Combine Query to the combined statements of the Query.
+    /// Should not executed manually, use `CombinedQuery::add_union`, `CombinedQuery::add_union_all` etc. instead.
+    fn combine(self, other: Combine<T>) -> Self;
+
+    /// Construct a combined `Query` with a `UNION` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_gt("id", 10).add_union(User::all().filter_lt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" > $1) UNION (SELECT * FROM "users" WHERE "users"."id" < $2)"#
+    /// )
+    /// ```
+    fn add_union(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::union(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+
+    /// Construct a combined `Query` with a `UNION ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_gt("id", 10).add_union_all(User::all().filter_lt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" > $1) UNION ALL (SELECT * FROM "users" WHERE "users"."id" < $2)"#
+    /// )
+    /// ```
+    fn add_union_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::union_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    /// Construct a combined `Query` with a `INTERSECT` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).add_intersect(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) INTERSECT (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
+    fn add_intersect(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::intersect(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    /// Construct a combined `Query` with a `INTERSECT ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).add_intersect_all(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) INTERSECT ALL (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
+    fn add_intersect_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::intersect_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    /// Construct a combined `Query` with a `EXCEPT` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).add_except(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) EXCEPT (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
+    fn add_except(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::except(other) {
+            self.combine(q)
+        } else {
+            self
+        }
+    }
+    /// Construct a combined `Query` with a `EXCEPT ALL` Statement
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// assert_eq!(
+    ///     User::all().filter_lt("id", 10).add_except_all(User::all().filter_gt("id", 5)).to_sql(),
+    ///     r#"(SELECT * FROM "users" WHERE "users"."id" < $1) EXCEPT ALL (SELECT * FROM "users" WHERE "users"."id" > $2)"#
+    /// )
+    /// ```
+    fn add_except_all(self, other: Query<T>) -> Self {
+        if let Ok(q) = Combine::except_all(other) {
+            self.combine(q)
+        } else {
+            self
+        }
     }
 }

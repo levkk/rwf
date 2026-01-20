@@ -246,7 +246,7 @@ impl ToSql for TemporaryQuery {
 pub struct With(Vec<TemporaryQuery>);
 
 impl With {
-    pub(super) fn offset(&self) -> i32 {
+    fn offset(&self) -> i32 {
         if let Some(with) = self.0.last() {
             with.offset
         } else {
@@ -279,11 +279,20 @@ impl With {
             Query::Picked(picked) => self.extend(std::mem::take(picked.with_statements_mut())),
             Query::Update(update) => self.extend(std::mem::take(update.with_statements_mut())),
             Query::Delete(delete) => self.extend(std::mem::take(delete.with_statements_mut())),
+            Query::Insert(insert) => self.extend(std::mem::take(insert.with_statements_mut())),
+            Query::InsertIfNotExists { select, .. } => {
+                self.extend(std::mem::take(select.with_statements_mut()))
+            }
             _ => 0,
         }
     }
 
-    pub fn with_query<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
+    /// Convert a `Query<T>` to a temporary statement via the ``ToTemporaryQuery' trait
+    /// Before that the `Query<T>` is checked for any WITH statements and if some are found, they are appended to own ones.
+    /// At least the difference beetween the old Offset and the new is returned.
+    ///
+    /// This method is called by the `TemporaryQuery` trait in the `with` method, no need to call it directly.
+    fn with_query<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
         let offset = self.merge_with(&mut query);
         match query {
             Query::Select(select) => self.add(select, alias, false) + offset,
@@ -291,23 +300,31 @@ impl With {
             Query::Update(update) => self.add(update, alias, false) + offset,
             Query::Delete(delete) => self.add(delete, alias, false) + offset,
             Query::Insert(insert) => self.add(insert, alias, false) + offset,
+            Query::InsertIfNotExists { select, .. } => self.add(select, alias, false) + offset,
             Query::Raw { .. } => self.add(query, alias, false),
-            _ => 0,
         }
     }
-    pub fn with_recursive<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
+
+    /// Convert a `Query<T>` to a recursive temporary statement via the ``ToTemporaryQuery' trait
+    /// Before that the `Query<T>` is checked for any WITH statements and if some are found, they are appended to own ones.
+    /// Last but not least the difference beetween the old Offset and the new is returned.
+    ///
+    /// This method is called by the `TemporaryQuery` trait in the `with_recursive` method, no need to call it directly.
+    /// Recursive Queries must noot contain Data Modifying Statements!
+    fn with_recursive<T: FromRow>(&mut self, mut query: Query<T>, alias: impl ToString) -> i32 {
         let offset = self.merge_with(&mut query);
         match query {
             Query::Select(select) => self.add(select, alias, true) + offset,
             Query::Picked(picked) => self.add(picked, alias, true) + offset,
+            Query::InsertIfNotExists { select, .. } => self.add(select, alias, false) + offset,
             Query::Raw { .. } => self.add(query, alias, true),
             _ => 0,
         }
     }
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    pub fn last(&mut self) -> Option<&mut TemporaryQuery> {
+    fn last(&mut self) -> Option<&mut TemporaryQuery> {
         self.0.last_mut()
     }
 }
@@ -328,13 +345,122 @@ impl ToSql for With {
 }
 
 pub trait WithQuery {
+    /// Get a reference to the with statements the current Query holds. Only for internal purposes
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let query = Product::all().filter_lt("stock", 100).add_except(Product::find(1));
+    ///
+    /// assert!(!query.with_statements().to_sql().starts_with("WITH"));
+    /// let query = query.with(Product::all().filter_gt("price", 999.99), "expansive_:products");
+    /// assert!(query.with_statements().to_sql().starts_with("WITH"));
+    /// ```
     fn with_statements(&self) -> &With;
+    /// Get the offset the query must add to all Placeholders caused by the with Queries
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let query = Product::all().filter_lt("stock", 100).add_except(Product::find(1));
+    /// let offset = query.get_with_offset();
+    /// assert_eq!(offset, 0);
+    /// let query = query.with(Product::all().filter_gt("price", 999.99), "expansive_:products");
+    /// assert_eq!(query.get_with_offset(), 1);
+    /// ```
     fn get_with_offset(&self) -> i32 {
         self.with_statements().offset()
     }
+    /// Get a mutable reference to the with statements the current Query holds
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let mut query = Product::all().filter_lt("stock", 100).add_except(Product::find(1)).with(Product::all().filter_gt("price", 999.99), "expansive_:products");
+    /// assert!(!query.with_is_empty());
+    /// let _ = std::mem::take(query.with_statements_mut());
+    /// assert!(query.with_is_empty());
+    /// ```
     fn with_statements_mut(&mut self) -> &mut With;
+    /// Get the offset the query causes by itself (or by combined queries)
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let query = Product::all().filter_lt("stock", 100);
+    /// assert_eq!(query.get_statement_offset(), 1);
+    /// let query = query.add_except(Product::find(1));
+    /// assert_eq!(query.get_statement_offset(), 2);
+    /// let query = query.with(Product::all().filter_gt("price", 999.99), "expansive_:products");
+    /// assert_eq!(query.get_statement_offset(), 2);
+    /// ```
     fn get_statement_offset(&self) -> i32;
+    /// Increate the placeholders of the WHERE CLAUSE.
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let mut query = Product::all().filter_lt("stock", 100);
+    /// assert_eq!(query.get_where_clause().placeholders(), 1);
+    /// query.add_offset(1);
+    /// assert_eq!(query.get_where_clause().placeholders(), 1);
+    /// ```
     fn add_offset(&mut self, offset: i32);
+    /// Construct a WITH Query and make it available to the current one.
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::join::Join;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[has_many(Order)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     low_credit: bool
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[belongs_to(User)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     user_id: i64,
+    ///     expensive: bool
+    /// }
+    /// assert_eq!(
+    ///     User::all().with(User::all().join::<Order>().filter("low_credit", true.to_value()).filter(Order::column("expensive"), true.to_value()), "to_investigate").add_join(Join::new(User::table_name(), "to_investigate", "id", "id")).to_sql(),
+    ///     r#"WITH "to_investigate" AS (SELECT "users".* FROM "users" INNER JOIN "orders" ON "users"."id" = "orders"."user_id" WHERE "users"."low_credit" = $1 AND "orders"."expensive" = $2) SELECT "users".* FROM "users" INNER JOIN "to_investigate" ON "to_investigate"."id" = "users"."id""#
+    /// )
+    /// ```
     fn with<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self
     where
         Self: Sized,
@@ -343,6 +469,35 @@ pub trait WithQuery {
         self.add_offset(offset);
         self
     }
+    /// Construct a recursive WITH Statement and make it available to the current one
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::join::Join;
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// #[belongs_to(Order)]
+    /// #[has_many(OrderItem)]
+    /// struct Order {
+    ///     id: Option<i64>,
+    ///     order_id: Option<i64>
+    /// }
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct OrderItem {
+    ///     id: Option<i64>,
+    ///     order_id: i64,
+    ///     item: String,
+    ///     price: f32
+    /// }
+    /// let mut query = OrderItem::all().with_recursive(Order::find_by("order_id", Value::Null).add_union(Order::all().add_join(Join::new(Order::table_name(), "recurse", "id", "order_id"))), "recurse").add_join(Join::new(OrderItem::table_name(), "recurse", "id", Order::foreign_key()));
+    /// if let Some(last) = query.last_with() {
+    ///     if last.fields_empty() {last.fields(Order::all_columns())}
+    /// }
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"WITH RECURSIVE "recurse"(id, order_id) AS ((SELECT * FROM "orders" WHERE "orders"."order_id" IS NULL LIMIT 1) UNION (SELECT "orders".* FROM "orders" INNER JOIN "recurse" ON "recurse"."id" = "orders"."order_id")) SELECT "order_items".* FROM "order_items" INNER JOIN "recurse" ON "recurse"."id" = "order_items"."order_id""#
+    /// )
+    ///
+    /// ```
     fn with_recursive<U: FromRow>(mut self, other: Query<U>, alias: impl ToString) -> Self
     where
         Self: Sized,
@@ -351,5 +506,64 @@ pub trait WithQuery {
         self.add_offset(offset);
         self
     }
+    /// Get all `Placeholders` of the current query no matter if the `Placeholders` is part of `Self` or `WIth` or `Combines`
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let query = Product::all().filter_lt("stock", 100).with(Product::all().filter_gt("price", 999.99), "expansive_:products").add_except(Product::find(1));
+    /// assert_eq!(
+    ///     query.placeholders(),
+    ///     Placeholders::from(vec![999.99.to_value(), 100.to_value(), 1.to_value()])
+    /// )
+    /// ```
     fn placeholders(&self) -> Placeholders;
+    /// Checks if any with statements exists in the current query
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let query = Product::all().filter_lt("stock", 100);
+    /// assert!(query.with_is_empty());
+    /// let query = query.with(Product::all().filter_gt("price", 999.99), "expansive_:products");
+    /// assert!(!query.with_is_empty());
+    /// ```
+    fn with_is_empty(&self) -> bool {
+        self.with_statements().is_empty()
+    }
+    /// Get the last statement created for the current Query.
+    /// Main purpose is, to check if columns are set correctly in a recursive statement (or update them otherwise)
+    /// # Example
+    /// ```
+    /// use rwf::model::Placeholders;
+    /// use rwf::model::prelude::*;
+    /// #[derive(Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct Product {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     stock: i16,
+    ///     price: f32
+    /// }
+    /// let mut query = Product::all().filter_lt("stock", 100);
+    /// assert!(query.last_with().is_none());
+    /// query = query.with(Product::all().filter_gt("price", 999.99), "expansive_products");
+    /// assert!(query.last_with().is_some());
+    /// ```
+    fn last_with(&mut self) -> Option<&mut TemporaryQuery> {
+        self.with_statements_mut().last()
+    }
 }

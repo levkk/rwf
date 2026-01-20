@@ -344,6 +344,28 @@ impl ToValue for Option<OffsetDateTime> {
     }
 }
 
+impl ToValue for time::Date {
+    fn to_value(&self) -> Value {
+        Value::Date(*self)
+    }
+}
+
+impl ToValue for time::Time {
+    fn to_value(&self) -> Value {
+        Value::Time(*self)
+    }
+}
+impl ToValue for Option<time::Date> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+impl ToValue for Option<time::Time> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
 impl ToValue for bool {
     fn to_value(&self) -> Value {
         Value::Boolean(*self)

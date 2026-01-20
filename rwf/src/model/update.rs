@@ -15,6 +15,7 @@ pub struct Update<T> {
     where_clause: WhereClause,
     marker: PhantomData<T>,
     with: With,
+    using: Vec<String>,
 }
 
 impl<T: Model> Update<T> {
@@ -27,6 +28,7 @@ impl<T: Model> Update<T> {
             where_clause: WhereClause::default(),
             marker: PhantomData,
             with: With::default(),
+            using: vec![],
         }
     }
 
@@ -130,11 +132,24 @@ impl<T: FromRow> ToSql for Update<T> {
             .collect::<Vec<_>>()
             .join(", ");
 
+        let using = if self.using.is_empty() {
+            String::new()
+        } else {
+            format!(
+                r#" FROM {} "#,
+                self.using
+                    .iter()
+                    .map(|s| format!(r#""{}""#, s.escape()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
         format!(
-            r#"{}UPDATE "{}" SET {}{} RETURNING *"#,
+            r#"{}UPDATE "{}" SET {}{}{} RETURNING *"#,
             self.with.to_sql(),
             self.table_name.escape(),
             sets,
+            using,
             self.where_clause.to_sql(),
         )
     }
