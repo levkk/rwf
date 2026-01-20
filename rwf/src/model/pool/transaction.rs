@@ -8,6 +8,7 @@ use tracing::info;
 /// Explicit PostgreSQL transaction.
 pub struct Transaction {
     connection: ConnectionGuard,
+    savepoints: Vec<String>,
     rollback: bool,
 }
 
@@ -25,6 +26,7 @@ impl Transaction {
 
         Ok(Self {
             connection,
+            savepoints: Vec::with_capacity(16),
             rollback: true,
         })
     }
@@ -60,6 +62,64 @@ impl Transaction {
         }
 
         Ok(())
+    }
+
+    /// Create a SAVEPOINT one can rollback to
+    pub async fn savepoint(&mut self, sp: impl ToString) -> Result<(), Error> {
+        let start = Instant::now();
+        self.connection
+            .query_cached("SAVEPOINT $1", &[&sp.to_string()])
+            .await?;
+        self.savepoints.push(sp.to_string());
+        if get_config().general.log_queries {
+            info!(
+                "SAVEPOINT {} ({:.3} ms)",
+                sp.to_string(),
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+        }
+        Ok(())
+    }
+    pub fn has_savepoint(&self) -> bool {
+        !self.savepoints.is_empty()
+    }
+    pub async fn release_savepoint(&mut self) -> Result<(), Error> {
+        if !self.has_savepoint() {
+            Ok(())
+        } else {
+            let start = Instant::now();
+            let sp = self.savepoints.pop().unwrap();
+            self.connection
+                .query_cached("RELEASE SAVEPOINT $1", &[&sp])
+                .await?;
+            if get_config().general.log_queries {
+                info!(
+                    "RELEASE SAVEPOINT {} ({:.3} ms)",
+                    sp,
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
+            }
+            Ok(())
+        }
+    }
+    pub async fn rollback_savepoint(&mut self) -> Result<(), Error> {
+        if !self.has_savepoint() {
+            Ok(())
+        } else {
+            let start = Instant::now();
+            let sp = self.savepoints.pop().unwrap();
+            self.connection
+                .query_cached("ROLLBACK TO $1", &[&sp])
+                .await?;
+            if get_config().general.log_queries {
+                info!(
+                    "ROLLBACK TO {} ({:.3} ms)",
+                    sp,
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
+            }
+            Ok(())
+        }
     }
 }
 
