@@ -264,7 +264,7 @@ impl<T: Model> FilterQuery for Query<T> {
             Query::Delete(delete) => delete.get_table_name(),
             Query::Picked(picked) => picked.get_table_name(),
             Query::InsertIfNotExists { select, .. } => select.get_table_name(),
-            Query::Insert(insert) => insert.get_table_name(),
+            //Query::Insert(insert) => insert.get_table_name(),
             _ => T::table_name(),
         }
     }
@@ -275,7 +275,7 @@ impl<T: Model> FilterQuery for Query<T> {
             Query::Delete(delete) => delete.get_where_clause(),
             Query::Picked(picked) => picked.get_where_clause(),
             Query::InsertIfNotExists { select, .. } => select.get_where_clause(),
-            Query::Insert(insert) => insert.get_where_clause(),
+            //Query::Insert(insert) => insert.get_where_clause(),
             _query => {
                 unimplemented!("FilterQuery is only implemented for SELECT, UPDATE and DELETE")
             }
@@ -288,7 +288,7 @@ impl<T: Model> FilterQuery for Query<T> {
             Query::Delete(delete) => delete.get_placeholders(),
             Query::Picked(picked) => picked.get_placeholders(),
             Query::InsertIfNotExists { select, .. } => select.get_placeholders(),
-            Query::Insert(insert) => insert.get_placeholders(),
+            //Query::Insert(insert) => insert.get_placeholders(),
             _query => {
                 unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
             }
@@ -301,7 +301,7 @@ impl<T: Model> FilterQuery for Query<T> {
             Query::Delete(delete) => delete.get_where_clause_mut(),
             Query::Picked(picked) => picked.get_where_clause_mut(),
             Query::InsertIfNotExists { select, .. } => select.get_where_clause_mut(),
-            Query::Insert(insert) => insert.get_where_clause_mut(),
+            //Query::Insert(insert) => insert.get_where_clause_mut(),
             _query => {
                 unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
             }
@@ -314,7 +314,7 @@ impl<T: Model> FilterQuery for Query<T> {
             Query::Delete(delete) => delete.get_placeholders_mut(),
             Query::Picked(picked) => picked.get_placeholders_mut(),
             Query::InsertIfNotExists { select, .. } => select.get_placeholders_mut(),
-            Query::Insert(insert) => insert.get_placeholders_mut(),
+            //Query::Insert(insert) => insert.get_placeholders_mut(),
             _query => {
                 unimplemented!("FilterQuery is only implemented for SELECT, UP  DATE and DELETE")
             }
@@ -335,7 +335,7 @@ impl<T: Model> FilterQuery for Query<T> {
                 insert,
                 created,
             },
-            Query::Insert(insert) => Query::Insert(insert.filter(column, value, join_op, op)),
+            //Query::Insert(insert) => Query::Insert(insert.filter(column, value, join_op, op)),
             query => query,
         }
     }
@@ -358,8 +358,8 @@ impl<T: Model> WithQuery for Query<T> {
             Query::Picked(picked) => picked.with_statements(),
             Query::Update(update) => update.with_statements(),
             Query::Delete(delete) => delete.with_statements(),
-            Query::Insert(insert) => insert.with_statements(),
             Query::InsertIfNotExists { select, .. } => select.with_statements(),
+            //Query::Insert(insert) => insert.with_statements(),
             query => unimplemented!("WithQuery is not implemented for {}", query.action()),
         }
     }
@@ -370,8 +370,8 @@ impl<T: Model> WithQuery for Query<T> {
             Query::Picked(picked) => picked.with_statements_mut(),
             Query::Update(update) => update.with_statements_mut(),
             Query::Delete(delete) => delete.with_statements_mut(),
-            Query::Insert(insert) => insert.with_statements_mut(),
             Query::InsertIfNotExists { select, .. } => select.with_statements_mut(),
+            //Query::Insert(insert) => insert.with_statements_mut(),
             query => unimplemented!("WithQuery is not implemented for {}", query.action()),
         }
     }
@@ -382,8 +382,8 @@ impl<T: Model> WithQuery for Query<T> {
             Query::Picked(picked) => picked.get_statement_offset(),
             Query::Update(update) => update.get_statement_offset(),
             Query::Delete(delete) => delete.get_statement_offset(),
-            Query::Insert(insert) => insert.get_statement_offset(),
             Query::InsertIfNotExists { select, .. } => select.get_statement_offset(),
+            //Query::Insert(insert) => insert.get_statement_offset(),
             _query => 0,
         }
     }
@@ -394,8 +394,8 @@ impl<T: Model> WithQuery for Query<T> {
             Query::Picked(picked) => picked.add_offset(offset),
             Query::Update(update) => update.add_offset(offset),
             Query::Delete(delete) => delete.add_offset(offset),
-            Query::Insert(insert) => insert.add_offset(offset),
             Query::InsertIfNotExists { select, .. } => select.add_offset(offset),
+            //Query::Insert(insert) => insert.add_offset(offset),
             _query => {}
         }
     }
@@ -406,8 +406,8 @@ impl<T: Model> WithQuery for Query<T> {
             Query::Picked(picked) => picked.placeholders(),
             Query::Update(update) => update.placeholders(),
             Query::Delete(delete) => delete.placeholders(),
-            Query::Insert(insert) => insert.placeholders(),
             Query::InsertIfNotExists { select, .. } => select.placeholders(),
+            Query::Insert(insert) => insert.placeholders.clone(),
             Query::Raw {
                 query: _,
                 placeholders,
@@ -1057,8 +1057,9 @@ impl<T: Model> Query<T> {
 
             Query::Insert(insert) => {
                 let query = self.to_sql();
-                let placeholders = insert.placeholders();
-                let values = placeholders.values();
+                //let placeholders = insert.placeholders();
+                //let values = placeholders.values();
+                let values = insert.placeholders.values();
                 client.query_cached(&query, &values).await
             }
 
@@ -1078,8 +1079,9 @@ impl<T: Model> Query<T> {
 
                 if result.is_empty() {
                     let query = insert.to_sql();
-                    let placeholders = insert.placeholders();
-                    let values = placeholders.values();
+                    //let placeholders = insert.placeholders();
+                    //let values = placeholders.values();
+                    let values = insert.placeholders.values();
                     client.query_cached(&query, &values).await
                 } else {
                     Ok(result)
@@ -1144,7 +1146,7 @@ impl<T: Model> Query<T> {
         let placeholders = match self {
             Query::Select(select) => select.placeholders(),
             Query::Update(update) => update.placeholders(),
-            Query::Insert(insert) => insert.placeholders(),
+            Query::Insert(insert) => insert.placeholders.clone(),
             Query::Picked(picked) => picked.placeholders(),
             _ => todo!("explain"),
         };

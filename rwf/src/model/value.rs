@@ -344,6 +344,17 @@ impl ToValue for Option<OffsetDateTime> {
     }
 }
 
+impl ToValue for PrimitiveDateTime {
+    fn to_value(&self) -> Value {
+        Value::Timestamp(*self)
+    }
+}
+impl ToValue for Option<PrimitiveDateTime> {
+    fn to_value(&self) -> Value {
+        Value::Optional(Box::new(self.as_ref().map(|v| v.to_value())))
+    }
+}
+
 impl ToValue for time::Date {
     fn to_value(&self) -> Value {
         Value::Date(*self)

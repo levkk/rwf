@@ -3,7 +3,7 @@ use super::picked::Picked;
 use super::placeholders::Placeholders;
 use super::select::Select;
 use super::value::Value;
-use super::{Delete, Escape, FromRow, Insert, Query, ToSql, Update};
+use super::{Delete, Escape, FromRow, Query, ToSql, Update};
 use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Hash)]
@@ -138,7 +138,7 @@ impl<T: FromRow> ToTemporaryQuery for Delete<T> {
         }
     }
 }
-
+/*
 impl<T: FromRow> ToTemporaryQuery for Insert<T> {
     fn to_temporary(mut self, alias: impl ToString, offset: i32) -> TemporaryQuery {
         self.add_offset(offset);
@@ -154,7 +154,7 @@ impl<T: FromRow> ToTemporaryQuery for Insert<T> {
         .to_temporary("", offset)
     }
 }
-
+*/
 impl<T: FromRow> ToTemporaryQuery for Query<T> {
     fn to_temporary(self, alias: impl ToString, mut offset: i32) -> TemporaryQuery {
         match self {
@@ -184,7 +184,7 @@ impl<T: FromRow> ToTemporaryQuery for Query<T> {
             }
             Query::Update(update) => update.to_temporary(alias, offset),
             Query::Delete(delete) => delete.to_temporary(alias, offset),
-            Query::Insert(insert) => insert.to_temporary(alias, offset),
+            //Query::Insert(insert) => insert.to_temporary(alias, offset),
             _ => unimplemented!("ToTemporaryQuery is only implemented for select or picked or raw"),
         }
     }
@@ -279,10 +279,10 @@ impl With {
             Query::Picked(picked) => self.extend(std::mem::take(picked.with_statements_mut())),
             Query::Update(update) => self.extend(std::mem::take(update.with_statements_mut())),
             Query::Delete(delete) => self.extend(std::mem::take(delete.with_statements_mut())),
-            Query::Insert(insert) => self.extend(std::mem::take(insert.with_statements_mut())),
             Query::InsertIfNotExists { select, .. } => {
                 self.extend(std::mem::take(select.with_statements_mut()))
             }
+            //Query::Insert(insert) => self.extend(std::mem::take(insert.with_statements_mut())),
             _ => 0,
         }
     }
@@ -299,9 +299,9 @@ impl With {
             Query::Picked(picked) => self.add(picked, alias, false) + offset,
             Query::Update(update) => self.add(update, alias, false) + offset,
             Query::Delete(delete) => self.add(delete, alias, false) + offset,
-            Query::Insert(insert) => self.add(insert, alias, false) + offset,
             Query::InsertIfNotExists { select, .. } => self.add(select, alias, false) + offset,
             Query::Raw { .. } => self.add(query, alias, false),
+            _ => unimplemented!("WITH is no6 implemented"), //Query::Insert(insert) => self.add(insert, alias, false) + offset,
         }
     }
 

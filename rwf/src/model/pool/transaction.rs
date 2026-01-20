@@ -64,11 +64,62 @@ impl Transaction {
         Ok(())
     }
 
+    /// Check if `Transaction` has any savepoints
+    /// # Example
+    /// ```
+    /// use rwf::model::start_transaction;
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), rwf::model::Error> {
+    ///     let mut tx =start_transaction().await?;
+    ///     assert!(!tx.has_savepoint());
+    ///     tx.savepoint().await?;
+    ///     assert!(tx.has_savepoint());
+    ///     Ok(())
+    /// }
+    ///
+    /// ```
+    pub fn has_savepoint(&self) -> bool {
+        !self.savepoints.is_empty()
+    }
     /// Create a SAVEPOINT one can rollback to
-    pub async fn savepoint(&mut self, sp: impl ToString) -> Result<(), Error> {
+    /// # Example
+    /// ```
+    /// use rwf::model::start_transaction;
+    /// use rwf::model::prelude::*;
+    ///
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct SPTest {
+    ///     id: Option<i64>,
+    ///     value: String
+    /// }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), rwf::model::Error> {
+    ///     let mut tx =start_transaction().await?;
+    ///
+    ///     tx.query_cached("CREATE TABLE s_p_tests(id bigserial primary key, value text)", &[]).await?;
+    ///     tx.savepoint().await?;
+    ///     let _ = SPTest::create(&[("value", "test value")]).fetch(&mut tx).await?;
+    ///
+    ///     assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         1
+    ///     );
+    ///
+    ///     tx.rollback_savepoint().await?;
+    ///
+    ///    assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         0
+    ///     );
+    ///     tx.rollback().await?;
+    ///     Ok(())
+    ///}
+    /// ```
+    pub async fn savepoint(&mut self) -> Result<(), Error> {
         let start = Instant::now();
+        let sp = format!("sp{}", self.savepoints.len());
         self.connection
-            .query_cached("SAVEPOINT $1", &[&sp.to_string()])
+            .query_cached(format!("SAVEPOINT {}", sp).as_str(), &[])
             .await?;
         self.savepoints.push(sp.to_string());
         if get_config().general.log_queries {
@@ -80,9 +131,50 @@ impl Transaction {
         }
         Ok(())
     }
-    pub fn has_savepoint(&self) -> bool {
-        !self.savepoints.is_empty()
-    }
+    /// Release the last SAVEPOINT (if any exists)
+    /// Merge all changes between now and its creation into the savepoint prior 9r the transaction (if the current savepoint is the only one)
+    /// # Example
+    /// ```
+    /// use rwf::model::start_transaction;
+    /// use rwf::model::prelude::*;
+    ///
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct SPTest {
+    ///     id: Option<i64>,
+    ///     value: String
+    /// }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), rwf::model::Error> {
+    ///     let mut tx =start_transaction().await?;
+    ///
+    ///     tx.query_cached("CREATE TABLE s_p_tests(id bigserial primary key, value text)", &[]).await?;
+    ///     tx.savepoint().await?;
+    ///     let _ = SPTest::create(&[("value", "test value")]).fetch(&mut tx).await?;
+    ///
+    ///     assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         1
+    ///     );
+    ///     tx.savepoint().await?;
+    ///     if let Err(_) = SPTest::create(&[("value", "another test value")]).fetch(&mut tx).await {
+    ///         tx.rollback_savepoint().await?;
+    ///     } else {
+    ///         tx.release_savepoint().await?;
+    ///     }
+    ///
+    ///    assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         2
+    ///     );
+    ///     tx.rollback_savepoint().await?;
+    ///     assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         0
+    ///     );
+    ///     tx.rollback().await?;
+    ///     Ok(())
+    ///}
+    /// ```
     pub async fn release_savepoint(&mut self) -> Result<(), Error> {
         if !self.has_savepoint() {
             Ok(())
@@ -90,7 +182,7 @@ impl Transaction {
             let start = Instant::now();
             let sp = self.savepoints.pop().unwrap();
             self.connection
-                .query_cached("RELEASE SAVEPOINT $1", &[&sp])
+                .query_cached(format!("RELEASE SAVEPOINT {}", sp).as_str(), &[])
                 .await?;
             if get_config().general.log_queries {
                 info!(
@@ -102,6 +194,48 @@ impl Transaction {
             Ok(())
         }
     }
+    /// ROLLBACK to last savepoint if any exists
+    /// The savepoint will be removed from `Transaction` thus the user have to issue another `Transaction::savepoint` if another rollback to the same SAVEPOINT may be performed
+    /// # Example
+    /// ```
+    /// use rwf::model::start_transaction;
+    /// use rwf::model::prelude::*;
+    ///
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct SPTest {
+    ///     id: Option<i64>,
+    ///     value: String
+    /// }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), rwf::model::Error> {
+    ///     let mut tx =start_transaction().await?;
+    ///
+    ///     tx.query_cached("CREATE TABLE s_p_tests(id bigserial primary key, value text)", &[]).await?;
+    ///     tx.savepoint().await?;
+    ///     let _ = SPTest::create(&[("value", "test value")]).fetch(&mut tx).await?;
+    ///
+    ///     assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         1
+    ///     );
+    ///     tx.savepoint().await?;
+    ///     if let Err(_) = SPTest::create(&[("value", 1234)]).fetch(&mut tx).await {
+    ///         tx.rollback_savepoint().await?;
+    ///     }
+    ///
+    ///    assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         1
+    ///     );
+    ///     tx.rollback_savepoint().await?;
+    ///     assert_eq!(
+    ///         SPTest::all().count(&mut tx).await?,
+    ///         0
+    ///     );
+    ///     tx.rollback().await?;
+    ///     Ok(())
+    ///}
+    /// ```
     pub async fn rollback_savepoint(&mut self) -> Result<(), Error> {
         if !self.has_savepoint() {
             Ok(())
@@ -109,7 +243,7 @@ impl Transaction {
             let start = Instant::now();
             let sp = self.savepoints.pop().unwrap();
             self.connection
-                .query_cached("ROLLBACK TO $1", &[&sp])
+                .query_cached(format!("ROLLBACK TO {}", sp).as_str(), &[])
                 .await?;
             if get_config().general.log_queries {
                 info!(
