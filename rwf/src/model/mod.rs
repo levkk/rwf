@@ -15,6 +15,7 @@ use tracing::{error, info};
 pub mod callbacks;
 pub mod column;
 pub mod combine;
+pub mod cursor;
 pub mod delete;
 pub mod error;
 pub mod escape;

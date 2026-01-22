@@ -19,6 +19,9 @@ impl Lock {
         self.skip_locked = true;
         self
     }
+    pub fn is_locked(&self) -> bool {
+        self.lock
+    }
 }
 
 impl ToSql for Lock {
