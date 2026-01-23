@@ -1,10 +1,19 @@
+use super::pool::Transaction;
 use super::ToConnectionRequest;
 use super::{FromRow, Query, Row};
+use crate::config::get_config;
+use crate::model::{ConnectionGuard, Error};
 use crate::{
     model::{Escape, Placeholders},
     prelude::*,
 };
+use std::borrow::Borrow;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
+use std::thread::yield_now;
 use std::{marker::PhantomData, sync::atomic::AtomicI64, time::Instant, vec};
+use tokio::sync::Mutex;
+use tracing::{error, info, warn};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub enum FetchDirection {
@@ -49,11 +58,31 @@ impl FetchDirection {
         match self {
             ABSOLUTE(0) => 0.eq(row_count),
             NEXT | PRIOR | FIRST | LAST => 1.eq(row_count),
-            RELATIVE(n) | ABSOLUTE(n) => 1.eq(row_count),
+            RELATIVE(_) | ABSOLUTE(_) => 1.eq(row_count),
 
             FORWARD(0) | BACKWARD(0) => 1.eq(row_count),
             FORWARD(n) | BACKWARD(n) => n.abs().eq(row_count),
             FORWARD_ALL | BACKWARD_ALL => 0.lt(row_count),
+        }
+    }
+    pub fn mormalized(&self) -> Self {
+        use FetchDirection::*;
+        match self {
+            FORWARD(n) | RELATIVE(n) => {
+                if 0.lt(n) {
+                    FORWARD(*n)
+                } else {
+                    BACKWARD(*n)
+                }
+            }
+            BACKWARD(n) => {
+                if 0.lt(n) {
+                    BACKWARD(*n)
+                } else {
+                    FORWARD(*n)
+                }
+            }
+            fd => *fd,
         }
     }
     pub fn to_position_update(&self, row_count: &i64) -> Self {
@@ -193,7 +222,7 @@ impl<T: FromRow + ?Sized> From<Query<T>> for DeclareCursor<T> {
     }
 }
 
-impl<T: Model> DeclareCursor<T> {
+impl<T: Model + Send + Sync> DeclareCursor<T> {
     pub fn insensitive(mut self) -> Self {
         self.sensitivity = Sensitivity::INSENSITIVE;
         self
@@ -217,6 +246,21 @@ impl<T: Model> DeclareCursor<T> {
     pub fn placeholders(&self) -> &Placeholders {
         self.query.get_placeholders()
     }
+    pub async fn create_model_cursor(
+        self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<ModelCursor<T>, Error> {
+        let conn = conn.to_connection_request()?.connection().unwrap();
+        conn.query_cached(self.to_sql().as_str(), &[]).await?;
+        let cur = ModelCursor::from(self);
+        Ok(cur)
+    }
+    pub async fn create_tx_model_cursor(self) -> Result<TxModelCursor<T>, Error> {
+        let mut tx = Pool::pool().transaction().await?;
+        self.create_model_cursor(&mut tx)
+            .await
+            .map(|mc| TxModelCursor { inner: mc, tx })
+    }
 }
 
 impl<T: Model> ToSql for DeclareCursor<T> {
@@ -232,39 +276,256 @@ impl<T: Model> ToSql for DeclareCursor<T> {
     }
 }
 
-#[derive(Debug)]
-pub struct ModelCursor<T: Model> {
-    name: String,
+#[derive(Debug, Clone, Ord, PartialEq, PartialOrd, Eq, Serialize, Deserialize)]
+pub struct CursorMeta {
+    sensitivity: Sensitivity,
+    is_scroll_able: bool,
+    hold: bool,
+    #[serde(skip, default = "std::time::Instant::now")]
     created: Instant,
+    name: String,
+}
+impl<T> From<DeclareCursor<T>> for CursorMeta
+where
+    T: FromRow,
+{
+    fn from(value: DeclareCursor<T>) -> Self {
+        Self {
+            sensitivity: value.sensitivity,
+            is_scroll_able: value.scroll,
+            hold: value.scroll,
+            created: Instant::now(),
+            name: value.name,
+        }
+    }
+}
+#[derive(Debug)]
+pub struct ModelCursor<T>
+where
+    T: Model + Send + Sync,
+    Self: Send + Sync,
+{
+    meta: CursorMeta,
     used: Instant,
     position: AtomicI64,
     fetched: AtomicI64,
     _marker: PhantomData<T>,
 }
+impl<T> From<DeclareCursor<T>> for ModelCursor<T>
+where
+    T: Model + Send + Sync,
+{
+    fn from(value: DeclareCursor<T>) -> Self {
+        Self {
+            meta: CursorMeta::from(value),
+            used: Instant::now(),
+            position: AtomicI64::new(0),
+            fetched: AtomicI64::new(0),
+            _marker: PhantomData,
+        }
+    }
+}
 
-struct Fetch<'a>
+pub struct TxModelCursor<T>
+where
+    T: Model + Send + Sync,
+    Self: Send + Sync,
+{
+    inner: ModelCursor<T>,
+    tx: Transaction,
+}
+/*
+impl<T> Deref for TxModelCursor<T>
+where
+    T: Model + Send + Sync,
+{
+    type Target = ModelCursor<T>;
+    fn deref(&self) -> &Self::Target {
+       &self.inner
+    }
+}
+impl<T> DerefMut for TxModelCursor<T>
+where
+    T: Model + Send + Sync,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+*/
+
+impl<T> std::ops::Deref for TxModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    type Target = dyn Cursor;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl<T> std::ops::DerefMut for TxModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<T> TransactionCursor for TxModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    fn tx(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
+}
+impl<T> TxModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    pub fn make_fetchable(self) -> Arc<Mutex<Self>> {
+        self.fetched();
+        Arc::new(Mutex::new(self))
+    }
+    pub fn make_dyn_fetchable(self) -> Arc<Mutex<dyn TransactionCursor>> {
+        self.make_fetchable()
+    }
+}
+
+impl ToFetch for Arc<Mutex<dyn TransactionCursor>> {
+    fn to_fetch(&self, direction: FetchDirection) -> Fetch {
+        Fetch {
+            direction,
+            cursor: self.clone(),
+            fetch: true,
+        }
+    }
+}
+
+struct Fetch
 where
     Self: Send + Sync,
 {
     fetch: bool,
     direction: FetchDirection,
-    cursor: &'a mut dyn Cursor,
+    cursor: Arc<Mutex<dyn TransactionCursor>>,
 }
 
-impl<'a> ToSql for Fetch<'a> {
+impl Fetch {
+    fn toggle_fetch(&mut self) -> () {
+        self.fetch = !self.fetch;
+    }
+    async fn fetch_cursor(&mut self) -> Result<Vec<tokio_postgres::Row>, Error> {
+        let query = self.to_sql();
+        if get_config().general.log_queries {
+            info!("Fetch Cursor: {}", query)
+        }
+        let cursor = &mut self.cursor.lock().await;
+        let rows = match cursor.tx().query_cached(query.as_str(), &[]).await {
+            Ok(rows) => rows,
+            Err(Error::RecordNotFound) => Vec::new(),
+            Err(e) => {
+                error!(
+                    "Error while executing FETCH on {} -- Error -> {:#?}",
+                    cursor.name(),
+                    e
+                );
+                return Err(e);
+            }
+        };
+        cursor.update(self.direction, rows.len() as i64);
+        Ok(rows)
+    }
+    async fn move_cursor(&mut self) -> Result<bool, Error> {
+        let query = self.to_sql();
+
+        if get_config().general.log_queries {
+            info!("Move Cursor: {}", query);
+        }
+        let cursor = &mut self.cursor.lock().await;
+        let pos_ok = match cursor.tx().query_cached(query.as_str(), &[]).await {
+            Ok(_) => {
+                let direction = std::mem::replace(&mut self.direction, FetchDirection::RELATIVE(0));
+                let query = self.to_sql();
+                if get_config().general.log_queries {
+                    info!(
+                        "Check if Curso {} has a valid Position after moving",
+                        cursor.name()
+                    );
+                }
+                if let Ok(rows) = cursor.tx().query_cached(query.as_str(), &[]).await {
+                    if rows.len() == 1 {
+                        let _ = std::mem::replace(&mut self.direction, direction);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Error while moving Cursor {} -- Error -> {:?}",
+                    cursor.name(),
+                    e
+                );
+                return Err(e);
+            }
+        };
+        if pos_ok {
+            cursor.update_used();
+            cursor.update_position(self.direction);
+        } else {
+            warn!("Failed to update Cutsor Position for {}", cursor.name());
+        }
+        Ok(pos_ok)
+    }
+    async fn execute(&mut self) -> Result<Vec<tokio_postgres::Row>, Error> {
+        if self.fetch {
+            self.fetch_cursor().await
+        } else {
+            self.move_cursor().await.map(|_| Vec::new())
+        }
+    }
+}
+
+trait ToFetch {
+    fn to_fetch(&self, direction: FetchDirection) -> Fetch;
+}
+
+impl ToSql for Fetch {
     fn to_sql(&self) -> String {
         format!(
             r#"{}{}FOR" {}""#,
             self.fetch.then(|| "FETCH").unwrap_or("MOVE"),
             self.direction.to_sql(),
-            self.cursor.name().escape()
+            self.cursor.blocking_lock().name().escape()
         )
     }
 }
 
 pub trait Cursor: Sync + Send {
-    fn name(&self) -> &str;
-    fn created(&self) -> Instant;
+    fn meta(&self) -> &CursorMeta;
+    fn scrollable(&self) -> bool {
+        self.meta().is_scroll_able
+    }
+    fn with_hold(&self) -> bool {
+        self.meta().hold
+    }
+    fn insensitive(&self) -> bool {
+        Sensitivity::INSENSITIVE.eq(&self.meta().sensitivity)
+    }
+    fn asensitive(&self) -> bool {
+        Sensitivity::ASENSITIVE.eq(&self.meta().sensitivity)
+    }
+    fn name(&self) -> &str {
+        self.meta().name.as_str()
+    }
+    fn created(&self) -> Instant {
+        self.meta().created
+    }
     fn last_used(&self) -> Instant;
     fn position(&self) -> i64;
     fn fetched(&self) -> i64;
@@ -298,13 +559,24 @@ pub trait Cursor: Sync + Send {
     fn get_position_mut(&mut self) -> &mut AtomicI64;
     fn get_fetched_mut(&mut self) -> &mut AtomicI64;
 }
+pub trait TransactionCursor
+where
+    Self: Send + Sync + Deref<Target = dyn Cursor> + DerefMut<Target = dyn Cursor> + 'static,
+{
+    fn tx(&mut self) -> &mut Transaction;
+}
+#[async_trait]
+pub trait ConnectionCursor<'a>: Send + Sync {
+    type Conn: ToConnectionRequest<'a>;
+    type Output;
+
+    fn conn(&'a mut self) -> Self::Conn;
+    fn cursor(&'a mut self) -> &'a mut dyn Cursor;
+}
 
 impl<T: Model + Send + Sync> Cursor for ModelCursor<T> {
-    fn name(&self) -> &str {
-        self.name.as_str()
-    }
-    fn created(&self) -> Instant {
-        self.created
+    fn meta(&self) -> &CursorMeta {
+        &self.meta
     }
     fn last_used(&self) -> Instant {
         self.used
@@ -325,17 +597,61 @@ impl<T: Model + Send + Sync> Cursor for ModelCursor<T> {
         &mut self.fetched
     }
 }
+/*
+struct TxModelCursor<T: Model, C: Cursor> where Self: Send + Sync {
+    cursor: C,
+    tx: Transaction,
+    _marker: PhantomData<T>
+}
 
-#[async_trait]
-trait FetchInternal<'a>: Cursor + Send + Sync {
-    async fn fetch_cursor(
-        fetch: Fetch<'a>,
-        req: impl ToConnectionRequest<'_> + Send,
-    ) -> Result<Vec<tokio_postgres::Row>, super::Error> {
-        let conn = req.to_connection_request()?.connection().unwrap();
-
-        let rows = conn.query_cached(fetch.to_sql().as_str(), &[]).await?;
-        fetch.cursor.update(fetch.direction, rows.len() as i64);
-        Ok(rows)
+impl<T: Model + Send + Sync, C: Cursor> Cursor for TxModelCursor<T, C> {
+    fn meta(&self) -> &CursorMeta { &self.cursor.meta() }
+    fn name(&self) -> &str {
+        self.cursor.name()
+    }
+    fn created(&self) -> Instant {
+        self.cursor.created()
+    }
+    fn last_used(&self) -> Instant {
+        self.cursor.last_used()
+    }
+    fn position(&self) -> i64 {
+        self.cursor.position()
+    }
+    fn fetched(&self) -> i64 {
+        self.cursor.fetched()
+    }
+    fn update_used(&mut self) -> () {
+        self.cursor.update_used()
+    }
+    fn get_position_mut(&mut self) -> &mut AtomicI64 {
+        self.cursor.get_position_mut()
+    }
+    fn get_fetched_mut(&mut self) -> &mut AtomicI64 {
+       self.cursor.get_fetched_mut()
     }
 }
+
+
+impl<'a, T: Model + Send + Sync, C: Cursor + Send + Sync> ConnectionCursor<'a> for TxModelCursor<T, C>
+{
+    type Conn = &'a mut Transaction;
+    type Output = T;
+
+    fn cursor(&'a mut self) ->  &'a mut dyn Cursor {
+        &mut self.cursor
+    }
+    fn conn(&'a mut self) -> &'a mut Transaction {
+       &mut self.tx
+    }
+}
+
+impl<'a, T: Model + Send + Sync, C: Cursor>  ToFetch<'a> for TxModelCursor<T, C> {
+    fn to_fetch(&'a mut self, direction: FetchDirection) -> Fetch<'a> {
+
+        let cur = self.cursor;
+        let tx = self.tx.;
+        let cc  self as &'a mut dyn ConnectionCursor;
+        Fetch { conn, cursor, direction, fetch: true }
+    }
+}*/
