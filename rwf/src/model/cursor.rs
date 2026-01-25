@@ -1,5 +1,5 @@
 use super::pool::Transaction;
-use super::ToConnectionRequest;
+use super::{Column, ToConnectionRequest, Value};
 use super::{FromRow, Query, Row};
 use crate::config::get_config;
 use crate::model::{ConnectionGuard, Error};
@@ -7,8 +7,11 @@ use crate::{
     model::{Escape, Placeholders},
     prelude::*,
 };
+use async_stream::try_stream;
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::{marker::PhantomData, sync::atomic::AtomicI64, time::Instant};
+use tokio_stream::Stream;
 use tracing::{error, info, warn};
 
 /// An Enum declaring the direction the cursor will fetch (important if the cursor is scrollable) #
@@ -753,6 +756,109 @@ impl<T: Model + Send + Sync> DeclareCursor<T> {
             .await
             .map(|mc| TxModelCursor { inner: mc, tx })
     }
+    /// Construct a `model::cursor::SelectiveCursor` from the declaration.
+    /// # CAUTION
+    /// Only defined for `Query::Picked`
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::cursor::{DeclareCursor, SelectiveCursor, Cursor};
+    ///
+    /// use rwf::model::Pool;
+    ///
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Error> {
+    /// // Use a transaction, otherwise the cursor have to be declared WITH HOLD
+    /// let mut tx = Pool::pool().transaction().await?;
+    /// tx.query_cached(format!(r#"CREATE TABLE IF NOT EXISTS users(id bigserial primary key, name text)"#).as_str(), &[]).await?;
+    /// let cursor = DeclareCursor::from(
+    ///     User::all().order(("id", "asc")).select_columns(&["name"])
+    /// )
+    ///     .name("cursor")
+    ///     .create_selective_cursor(&mut tx).await?;
+    /// assert!(!cursor.scrollable());
+    /// assert!(!cursor.with_hold());
+    /// assert_eq!(cursor.name(), "cursor");
+    /// tx.rollback().await?;
+    /// Ok(())
+    /// }
+    /// ```
+    pub async fn create_selective_cursor(
+        self,
+        conn: impl ToConnectionRequest<'_>,
+    ) -> Result<SelectiveCursor, Error> {
+        match &self.query {
+            Query::Picked(_) => {
+                let request = conn.to_connection_request()?;
+                match request.get().await? {
+                    None => {
+                        let conn = request.connection().unwrap();
+                        conn.query_cached(self.to_sql().as_str(), &[]).await?;
+                        Ok(SelectiveCursor::from(self))
+                    }
+                    Some(mut guard) => {
+                        guard.query_cached(self.to_sql().as_str(), &[]).await?;
+                        Ok(SelectiveCursor::from(self))
+                    }
+                }
+            }
+            _query => Err(Error::QueryError(
+                "Expected a picked query.".to_string(),
+                _query.to_sql(),
+            )),
+        }
+    }
+    /// Construct a `model::cursor::TxSelectiveCursor` from the declaration.
+    /// # CAUTION
+    /// This is only defined for `Query::Picked`
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::cursor::{DeclareCursor, TxSelectiveCursor, Cursor, TransactionCursor};
+    ///
+    /// use rwf::model::Pool;
+    ///
+    /// #[derive(Clone, rwf::prelude::Serialize, rwf::prelude::Deserialize, rwf::macros::Model)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String
+    /// }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Error> {
+    /// // INTERNAL: Ensure Table for Test exists. And give the Transaction to Cursor. Usually this is not required as the Cursor is able to create a Transaction by itself
+    /// let mut tx = Pool::pool().transaction().await?;
+    /// tx.query_cached(format!(r#"CREATE TABLE IF NOT EXISTS users(id bigserial primary key, name text)"#).as_str(), &[]).await?;
+    /// let declare = DeclareCursor::from(
+    ///     User::all().order(("id", "asc")).select_columns(&["name"])
+    /// ).name("cursor");
+    /// assert_eq!(
+    ///     declare.to_sql(),
+    ///     r#"DECLARE "cursor" BINARY INSENSITIVE NO SCROLL CURSOR WITHOUT HOLD FOR SELECT "users"."name" FROM "users" ORDER BY "id" ASC"#
+    /// );
+    /// let mut cursor = declare.create_tx_selective_cursor(Some(tx)).await?;
+    ///
+    /// assert!(!cursor.scrollable());
+    /// assert!(!cursor.with_hold());
+    /// assert_eq!(cursor.name(), "cursor");
+    /// // Close the Cursor and take back the Transaction -- Not required but a good practice
+    /// let mut tx = cursor.close().await?;
+    /// tx.rollback().await?;
+    /// Ok(())
+    /// }
+    /// ```
+    pub async fn create_tx_selective_cursor(
+        self,
+        tx: Option<Transaction>,
+    ) -> Result<TxSelectiveCursor, Error> {
+        let mut tx = tx.unwrap_or(Pool::pool().transaction().await?);
+        let cur = self.create_selective_cursor(&mut tx).await?;
+        Ok(TxSelectiveCursor { inner: cur, tx })
+    }
 }
 
 impl<T: Model> ToSql for DeclareCursor<T> {
@@ -921,6 +1027,42 @@ where
     }
 }
 
+#[derive(Debug)]
+pub struct SelectiveCursor
+where
+    Self: Send + Sync,
+{
+    inner: CursorData,
+    columns: Vec<Column>,
+}
+
+impl<T> From<DeclareCursor<T>> for SelectiveCursor
+where
+    T: FromRow,
+{
+    fn from(value: DeclareCursor<T>) -> Self {
+        let columns = match value.query {
+            Query::Picked(ref picked) => picked.clone().columns(),
+            _query => unimplemented!(),
+        };
+        Self {
+            inner: CursorData::from(value),
+            columns,
+        }
+    }
+}
+impl Deref for SelectiveCursor {
+    type Target = dyn Cursor;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl DerefMut for SelectiveCursor {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 pub struct TxModelCursor<T>
 where
     T: Model + Send + Sync,
@@ -952,6 +1094,39 @@ impl<T> TransactionCursor for TxModelCursor<T>
 where
     T: Model + Send + Sync + 'static,
 {
+    fn tx(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
+    fn take_tx(self) -> Transaction {
+        self.tx
+    }
+}
+
+pub struct TxSelectiveCursor
+where
+    Self: Send + Sync,
+{
+    inner: SelectiveCursor,
+    tx: Transaction,
+}
+impl Deref for TxSelectiveCursor {
+    type Target = dyn Cursor;
+    fn deref(&self) -> &Self::Target {
+        self.inner.deref()
+    }
+}
+impl DerefMut for TxSelectiveCursor {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.deref_mut()
+    }
+}
+impl AsRef<Vec<Column>> for TxSelectiveCursor {
+    fn as_ref(&self) -> &Vec<Column> {
+        &self.inner.columns
+    }
+}
+
+impl TransactionCursor for TxSelectiveCursor {
     fn tx(&mut self) -> &mut Transaction {
         &mut self.tx
     }
@@ -1093,10 +1268,7 @@ pub trait FetchableCursor {
     /// Declares how the Cursor get a Connection to execute a `FetchStmt`
     async fn conn(&mut self) -> Result<&mut ConnectionGuard, Error>;
     /// Internal fetch mechanism. If you overwrite this, then you will change the way the Trait work fundamentally
-    async fn fetch_internal(
-        &mut self,
-        stmt: FetchStmt,
-    ) -> Result<Option<Vec<tokio_postgres::Row>>, Error> {
+    async fn fetch_internal(&mut self, stmt: FetchStmt) -> Result<Vec<tokio_postgres::Row>, Error> {
         let query = stmt.to_sql();
         if get_config().general.log_queries {
             info!("Execute FetchStmt {}", query);
@@ -1106,16 +1278,20 @@ pub trait FetchableCursor {
                 Ok(rows) => {
                     self.cursor_data_mut()
                         .update(stmt.direction, rows.len() as i64);
-                    Ok(Some(rows))
+                    Ok(rows)
                 }
-                Err(Error::RecordNotFound) => Ok(None),
+                Err(Error::RecordNotFound) => Err(Error::RecordNotFound),
                 Err(e) => {
-                    error!(
-                        "Failed to fetch rows from Cursor {} -- Error -> {:?}",
-                        self.cursor_data().name(),
-                        e
-                    );
-                    Err(e)
+                    if let Error::RecordNotFound = e {
+                        Err(Error::RecordNotFound)
+                    } else {
+                        error!(
+                            "Failed to fetch rows from Cursor {} -- Error -> {:?}",
+                            self.cursor_data().name(),
+                            e
+                        );
+                        Err(e)
+                    }
                 }
             },
             FetchCmd::Move => match self.conn().await?.query_cached(query.as_str(), &[]).await {
@@ -1135,30 +1311,28 @@ pub trait FetchableCursor {
                                 self.cursor_data_mut().update_used();
                                 self.cursor_data_mut()
                                     .update_position(stmt.direction.to_position_update(&moved));
-                                Ok(None)
+                                Ok(vec![])
                             }
                             Err(e) => {
                                 warn!("Failed to update the current position of the cursor {} -- Error -> {:?}", self.cursor_data().name(), e);
-                                Ok(None)
+                                Err(Error::DatabaseError(e))
                             }
                         }
                     } else {
-                        warn!(
-                            "Failed to update the current position of the cursor {}",
-                            self.cursor_data().name()
-                        );
-                        Ok(None)
+                        self.cursor_data_mut().update_used();
+                        self.cursor_data_mut().update_position(stmt.direction);
+                        Ok(vec![])
                     }
                 }
             },
         }
     }
     /// Call to `Self::fetch_internal` and handle the type conversion after.
-    async fn fetch(&mut self, stmt: FetchStmt) -> Result<Option<Vec<Self::Output>>, Error>;
+    async fn fetch(&mut self, stmt: FetchStmt) -> Result<Vec<Self::Output>, Error>;
     /// Same as `Self::fetch` but verifies that the `FetchStmt` will return one result as maximum before.
     /// Internaly calls `Self::fetch`
     /// Will result in `[model::error::Error::QueryError]` if `FetchStmt` contains a `FetchDirection` which could return more then one Result or if the `FetchCmd` is `Move`
-    async fn fetch_one(&mut self, stmt: FetchStmt) -> Result<Option<Self::Output>, Error> {
+    async fn fetch_one(&mut self, stmt: FetchStmt) -> Result<Self::Output, Error> {
         use FetchDirection::*;
         if stmt.cmd == FetchCmd::Move {
             return Err(Error::QueryError("Exprected a FetchStmt with FETCH as the FetchCmd. Unable to fetch from cursor with a MOVE.".to_string(), stmt.to_sql()));
@@ -1182,10 +1356,40 @@ pub trait FetchableCursor {
                 ));
             }
         };
-        match self.fetch(stmt).await? {
-            Some(mut rows) => Ok(rows.pop()),
-            None => Ok(None),
+        Ok(self.fetch(stmt).await?.pop().unwrap())
+    }
+    async fn fetch_one_optional(&mut self, stmt: FetchStmt) -> Result<Option<Self::Output>, Error> {
+        match self.fetch_one(stmt).await {
+            Ok(row) => Ok(Some(row)),
+            Err(Error::RecordNotFound) => Ok(None),
+            Err(e) => Err(e),
         }
+    }
+    async fn fetch_optional(
+        &mut self,
+        stmt: FetchStmt,
+    ) -> Result<Option<Vec<Self::Output>>, Error> {
+        match self.fetch(stmt).await {
+            Ok(rows) => {
+                if !rows.is_empty() {
+                    Ok(Some(rows))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(Error::RecordNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+    fn stream(&mut self, stmt: FetchStmt) -> impl Stream<Item = Result<Self::Output, Error>>
+    where
+        Self: Sized + Send + Sync + Unpin,
+    {
+        Box::pin(try_stream! {
+            while let Some(obj) = self.fetch_one_optional(stmt.clone()).await? {
+                yield obj;
+            }
+        })
     }
 }
 
@@ -1207,15 +1411,356 @@ where
     async fn conn(&mut self) -> Result<&mut ConnectionGuard, Error> {
         Ok(self.tx().to_connection_request()?.connection().unwrap())
     }
-    async fn fetch(&mut self, stmt: FetchStmt) -> Result<Option<Vec<Self::Output>>, Error> {
-        if let Some(rows) = self.fetch_internal(stmt).await? {
-            let mut data = Vec::with_capacity(rows.len());
-            for row in rows.into_iter().map(Self::Output::from_row) {
-                data.push(row?);
-            }
-            Ok(Some(data))
+    async fn fetch(&mut self, stmt: FetchStmt) -> Result<Vec<Self::Output>, Error> {
+        let rows = self.fetch_internal(stmt).await?;
+        if rows.is_empty() {
+            Err(Error::RecordNotFound)
         } else {
-            Ok(None)
+            let mut data = Vec::with_capacity(rows.len());
+            for row in rows {
+                let converted = Self::Output::from_row(row);
+                data.push(converted?);
+            }
+            Ok(data)
         }
+    }
+}
+
+#[async_trait]
+impl FetchableCursor for TxSelectiveCursor {
+    type Output = HashMap<Column, Value>;
+
+    fn cursor_data(&self) -> &dyn Cursor {
+        self.deref()
+    }
+
+    fn cursor_data_mut(&mut self) -> &mut dyn Cursor {
+        self.deref_mut()
+    }
+
+    async fn conn(&mut self) -> Result<&mut ConnectionGuard, Error> {
+        Ok(self.tx().to_connection_request()?.connection().unwrap())
+    }
+    async fn fetch(&mut self, stmt: FetchStmt) -> Result<Vec<Self::Output>, Error> {
+        let rows = self.fetch_internal(stmt).await?;
+        if rows.is_empty() {
+            Err(Error::RecordNotFound)
+        } else {
+            let mut data = Vec::with_capacity(rows.len());
+            for row in rows {
+                let mut map = HashMap::with_capacity(row.len());
+                for col in self.as_ref() {
+                    map.insert(col.clone(), row.try_get(col.get_name())?);
+                }
+                data.push(map);
+            }
+            Ok(data)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::cursor::{DeclareCursor, FetchStmt, FetchableCursor, TransactionCursor};
+    use crate::model::prelude::*;
+    use crate::model::Placeholders;
+    use crate::prelude::*;
+    use tokio::time::sleep;
+    use tokio_postgres::Row;
+    use tokio_stream::StreamExt;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+    struct Employee {
+        id: Option<i32>,
+        name: String,
+        boss: Option<i32>,
+    }
+    impl FromRow for Employee {
+        fn from_row(row: Row) -> Result<Self, crate::model::Error>
+        where
+            Self: Sized,
+        {
+            Ok(Self {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                boss: row.try_get("boss")?,
+            })
+        }
+    }
+    impl Model for Employee {
+        fn table_name() -> &'static str {
+            "employees"
+        }
+
+        fn column_names() -> &'static [&'static str] {
+            &["name", "boss"]
+        }
+
+        fn id(&self) -> Value {
+            self.id.to_value()
+        }
+
+        fn values(&self) -> Vec<Value> {
+            vec![self.name.to_value(), self.boss.to_value()]
+        }
+
+        fn foreign_key() -> &'static str {
+            "employee_id"
+        }
+    }
+    impl Employee {
+        fn raw() -> Scope<Self> {
+            Query::Raw {
+                query: "SELECT * FROM (VALUES (1, 'bigboss', NULL), (2, 'section leader', 1), (3, 'team leader', 2), (4, 'Worker One', 3), (5, 'Worker two', 3)) as employees(id, name, boss) ORDER BY id asc".to_string(),
+                placeholders: Placeholders::new()
+            }
+        }
+        fn single() -> Scope<Self> {
+            Query::Raw {
+                query: "SELECT * FROM (VALUES (1, 'bigboss', NULL::INT)) as employees(id, name, boss) ORDER BY id asc".to_string(),
+                placeholders: Placeholders::new()
+            }
+        }
+        fn selective() -> Scope<Self> {
+            Self::raw()
+                .select_with("employed")
+                .select_columns(&["id", "name"])
+        }
+    }
+    #[tokio::test]
+    async fn test_tx_cursor_create() {
+        let res = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .create_tx_model_cursor(None)
+            .await;
+        assert!(res.is_ok());
+        let cursor = res.unwrap();
+        assert_eq!(cursor.name(), "cursor");
+        assert_eq!(
+            cursor.created().elapsed().as_secs(),
+            cursor.last_used().elapsed().as_secs()
+        );
+        assert!(!cursor.scrollable());
+        assert!(!cursor.with_hold());
+        assert!(cursor.insensitive());
+        assert_eq!(cursor.fetched(), 0);
+        assert_eq!(cursor.position(), 0);
+        assert_eq!(cursor.fetch_stmt(), FetchStmt::new("cursor"));
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+    #[tokio::test]
+    async fn test_fetch_cursor() {
+        let res = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .create_tx_model_cursor(None)
+            .await;
+        let mut cursor = res.unwrap();
+        let user = cursor.fetch_one(cursor.fetch_stmt()).await;
+        assert!(user.is_ok());
+        let user = user.unwrap();
+        assert_eq!(user.id(), Value::Optional(Box::new(Some(Value::Int(1)))));
+
+        sleep(tokio::time::Duration::from_secs(1)).await;
+
+        let user = cursor.fetch_one(cursor.fetch_stmt()).await;
+        assert!(user.is_ok());
+        let user = user.unwrap();
+        assert_eq!(user.id(), Value::Optional(Box::new(Some(Value::Int(2)))));
+
+        assert_eq!(cursor.position(), 2);
+        assert_eq!(cursor.fetched(), 2);
+        assert_ne!(
+            cursor.last_used().elapsed().as_secs(),
+            cursor.created().elapsed().as_secs()
+        );
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_scroll_cursor() {
+        let res = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await;
+        let mut cursor = res.unwrap();
+        let user1 = cursor.fetch_one(cursor.fetch_stmt()).await.unwrap();
+        assert_eq!(cursor.fetched(), 1);
+        assert_eq!(cursor.position(), 1);
+        let user2 = cursor.fetch_one(cursor.fetch_stmt().again()).await.unwrap();
+        assert_eq!(user1, user2);
+        assert_eq!(cursor.position(), 1);
+        assert_eq!(cursor.fetched(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_move_cursor() {
+        let mut cursor = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await
+            .unwrap();
+        assert!(cursor
+            .fetch_one(cursor.fetch_stmt().move_cursor())
+            .await
+            .is_err());
+        assert!(cursor
+            .fetch_one_optional(cursor.fetch_stmt().move_cursor())
+            .await
+            .is_err());
+        assert!(cursor
+            .fetch(cursor.fetch_stmt().move_cursor())
+            .await
+            .is_err());
+        assert!(cursor
+            .fetch_optional(cursor.fetch_stmt().move_cursor())
+            .await
+            .is_ok());
+        assert_eq!(cursor.position(), 2);
+        assert_eq!(cursor.fetched(), 0);
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_end_of_scursor() {
+        let mut cursor = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await
+            .unwrap();
+        assert!(cursor.fetch(cursor.fetch_stmt().forward(4)).await.is_ok());
+        let last_user = cursor.fetch_one(cursor.fetch_stmt()).await.unwrap();
+        assert_eq!(
+            last_user.id(),
+            Value::Optional(Box::new(Some(Value::Int(5))))
+        );
+        assert!(cursor.fetch_one(cursor.fetch_stmt()).await.is_err());
+        assert!(cursor.fetch(cursor.fetch_stmt()).await.is_err());
+        assert!(cursor.fetch_one_optional(cursor.fetch_stmt()).await.is_ok());
+        assert!(cursor.fetch_optional(cursor.fetch_stmt()).await.is_ok());
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_stream() {
+        let mut cursor = DeclareCursor::from(Employee::single())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await
+            .unwrap();
+        let mut stream = cursor.stream(cursor.fetch_stmt());
+        let user = stream.next().await;
+        assert!(user.is_some());
+        let user = user.unwrap();
+        assert!(user.is_ok());
+        let user = user.unwrap();
+        assert_eq!(user.id(), Value::Optional(Box::new(Some(Value::Int(1)))));
+
+        let user = stream.next().await;
+        assert!(user.is_none());
+        let user = stream.next().await;
+        assert!(user.is_none());
+        drop(stream);
+        let tx = cursor.close().await.unwrap();
+        tx.close();
+        tx.rollback().await.unwrap();
+
+        //assert!(user.is_some());
+        //let user = user.unwrap();
+        //assert_eq!(user.id(), Value::Optional(Box::new(Some(Value::Int(1)))));
+        //let user = cursor.next().await;
+        //assert!(user.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_stream_implementation() {
+        let mut cursor = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await
+            .unwrap();
+
+        let users: Vec<Employee> = cursor
+            .stream(cursor.fetch_stmt())
+            .map(|res| res.unwrap())
+            .collect()
+            .await;
+        assert_eq!(users.len(), 5);
+        assert_eq!(cursor.fetched(), 5);
+        assert_eq!(cursor.position(), 5);
+
+        let mut employees: Vec<Employee> = cursor
+            .stream(cursor.fetch_stmt().prior())
+            .map(|res| res.unwrap())
+            .collect()
+            .await;
+        assert_eq!(employees.len(), 5);
+        assert_eq!(cursor.fetched(), 10);
+        assert_eq!(cursor.position(), 0);
+
+        assert_ne!(employees, users);
+        employees.reverse();
+        assert_eq!(employees, users);
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_invalid_args() {
+        let mut cursor = DeclareCursor::from(Employee::raw())
+            .name("cursor")
+            .scroll()
+            .create_tx_model_cursor(None)
+            .await
+            .unwrap();
+
+        assert!(cursor
+            .stream(cursor.fetch_stmt().forward(10))
+            .next()
+            .await
+            .unwrap()
+            .is_err());
+
+        let errs: Vec<Result<Employee, crate::model::Error>> = cursor
+            .stream(cursor.fetch_stmt().forward(10))
+            .collect()
+            .await;
+        assert_eq!(errs.len(), 1);
+        cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_selective_cursor() {
+        let cursor = DeclareCursor::from(Employee::selective())
+            .name("cursor")
+            .create_tx_selective_cursor(None)
+            .await;
+        assert!(cursor.is_ok());
+        let mut cursor = cursor.unwrap();
+
+        let employed = cursor.fetch_one(cursor.fetch_stmt()).await;
+        assert!(employed.is_ok());
+        let employed = employed.unwrap();
+        assert_eq!(employed.len(), 2);
+        let cols = cursor.as_ref();
+        let vals = cols
+            .iter()
+            .map(|col| employed.get(col).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            vals,
+            vec![&Value::Int(1), &Value::String("bigboss".to_string())]
+        );
+        assert_eq!(
+            cols.as_slice(),
+            &[
+                Column::new("employed", "id"),
+                Column::new("employed", "name")
+            ]
+        );
+        cursor.close().await.unwrap().rollback().await.unwrap();
     }
 }

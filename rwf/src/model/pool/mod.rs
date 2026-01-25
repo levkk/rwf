@@ -525,7 +525,7 @@ mod test {
 
         let mut consume = vec![];
 
-        for i in 0..9 {
+        for i in 0..(get_config().database.pool_size - 1) {
             consume.push(pool.get().await);
             let expected = { pool.inner.lock().expected };
             let conns = { pool.inner.lock().connections.len() };
@@ -541,17 +541,23 @@ mod test {
         let mut conn = pool.get().await?;
         assert!(pool.get().await.is_err());
 
-        assert_eq!(pool.inner.lock().expected, 10);
+        assert_eq!(pool.inner.lock().expected, get_config().database.pool_size);
 
         conn.leak();
-        assert_eq!(pool.inner.lock().expected, 9);
+        assert_eq!(
+            pool.inner.lock().expected,
+            get_config().database.pool_size - 1
+        );
         assert!(pool.get().await.is_ok());
 
-        assert_eq!(pool.inner.lock().expected, 10);
+        assert_eq!(pool.inner.lock().expected, get_config().database.pool_size);
         assert_eq!(pool.inner.lock().connections.len(), 1);
         consume.clear();
-        assert_eq!(pool.inner.lock().connections.len(), 10);
-        assert_eq!(pool.inner.lock().expected, 10);
+        assert_eq!(
+            pool.inner.lock().connections.len(),
+            get_config().database.pool_size
+        );
+        assert_eq!(pool.inner.lock().expected, get_config().database.pool_size);
 
         Ok(())
     }

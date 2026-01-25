@@ -2666,8 +2666,11 @@ mod test {
     }
     #[tokio::test]
     async fn test_fetch_picked() {
-        let mut conn = get_connection().await.unwrap();
-        assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS products (id bigserial primary key, name varchar(255) not null)", &[]).await.is_ok());
+        let mut conn = Pool::pool().transaction().await.unwrap();
+        assert!(!conn.bad());
+        let create_table = conn.query_cached("CREATE TABLE IF NOT EXISTS products (id bigserial primary key, name varchar(255) not null)", &[]).await;
+        eprintln!("{:?}", create_table);
+        //assert!(create_table.is_ok());
         let prod = Product::create(&[("name", "Test Product".to_string().to_value())])
             .fetch(&mut conn)
             .await;
@@ -2691,6 +2694,7 @@ mod test {
     #[tokio::test]
     async fn test_fetch_aggregated() {
         let mut conn = get_connection().await.unwrap();
+
         assert!(conn.query_cached("CREATE TABLE IF NOT EXISTS order_items (id bigserial primary key,  order_id bigint not null, product_id bigint not null)", &[]).await.is_ok());
 
         let pos_one =
