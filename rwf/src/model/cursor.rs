@@ -16,8 +16,11 @@ use tracing::{error, info, warn};
 
 /// An Enum declaring the direction the cursor will fetch (important if the cursor is scrollable) #
 /// and how far the cursor moves. Not Required to interact directly with
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize, Hash, Default,
+)]
 pub enum FetchDirection {
+    #[default]
     NEXT,
     PRIOR,
     FIRST,
@@ -30,12 +33,6 @@ pub enum FetchDirection {
     BackwardAll,
 }
 
-impl Default for FetchDirection {
-    fn default() -> Self {
-        Self::NEXT
-    }
-}
-
 impl std::fmt::Display for FetchDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -43,11 +40,11 @@ impl std::fmt::Display for FetchDirection {
             Self::PRIOR => write!(f, "PRIOR"),
             Self::FIRST => write!(f, "FIRST"),
             Self::LAST => write!(f, "LAST"),
-            Self::ABSOLUTE(n) => write!(f, "{} {}", "ABSOLUTE", n),
-            Self::RELATIVE(n) => write!(f, "{} {}", "RELATIVE", n),
-            Self::FORWARD(n) => write!(f, "{} {}", "FORWARD", n),
+            Self::ABSOLUTE(n) => write!(f, "ABSOLUTE {}", n),
+            Self::RELATIVE(n) => write!(f, "RELATIVE {}", n),
+            Self::FORWARD(n) => write!(f, "FORWARD {}", n),
             Self::ForwardAll => write!(f, "FORWARD ALL"),
-            Self::BACKWARD(n) => write!(f, "{} {}", "BACKWARD", n),
+            Self::BACKWARD(n) => write!(f, "BACKWARD {}", n),
             Self::BackwardAll => write!(f, "BACKWARD ALL"),
         }
     }
@@ -133,9 +130,12 @@ impl FetchDirection {
 
 /// An Enum declaring whether the cursor shall fetch entries or just move its position.
 /// Not Required to interact directly with.
-#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Default,
+)]
 pub enum FetchCmd {
     Move,
+    #[default]
     Fetch,
 }
 
@@ -145,12 +145,6 @@ impl std::fmt::Display for FetchCmd {
             FetchCmd::Move => write!(f, "MOVE"),
             FetchCmd::Fetch => write!(f, "FETCH"),
         }
-    }
-}
-
-impl Default for FetchCmd {
-    fn default() -> Self {
-        Self::Fetch
     }
 }
 
@@ -409,16 +403,12 @@ impl FetchStmt {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize, Default)]
 pub enum Sensitivity {
+    #[default]
     INSENSITIVE,
     ASENSITIVE,
     SENSITIVE,
-}
-impl Default for Sensitivity {
-    fn default() -> Self {
-        Self::INSENSITIVE
-    }
 }
 
 impl std::fmt::Display for Sensitivity {
@@ -435,7 +425,7 @@ impl ToSql for Sensitivity {
     fn to_sql(&self) -> String {
         match self {
             Self::SENSITIVE => unimplemented!("Postgres has no support for SENSITIVE Cursors. SENSITIVE is only implemented for compability with the SQL Standard"),
-            sensitivity => format!(" {} ", sensitivity.to_string())
+            sensitivity => format!(" {} ", sensitivity)
         }
     }
 }
@@ -867,8 +857,8 @@ impl<T: Model> ToSql for DeclareCursor<T> {
             r#"DECLARE "{}" BINARY{}{}SCROLL CURSOR {} HOLD FOR {}"#,
             self.name.escape(),
             self.sensitivity.to_sql(),
-            self.scroll.then(|| "").unwrap_or("NO "),
-            self.hold.then(|| "WITH").unwrap_or("WITHOUT"),
+            if self.scroll { "" } else { "NO " },
+            if self.hold { "WITH" } else { "WITHOUT" },
             self.query.to_sql()
         )
     }
@@ -918,7 +908,7 @@ impl Clone for CursorData {
     fn clone(&self) -> Self {
         Self {
             meta: self.meta.clone(),
-            used: self.used.clone(),
+            used: self.used,
             position: AtomicI64::new(self.position.load(std::sync::atomic::Ordering::Relaxed)),
             fetched: AtomicI64::new(self.fetched.load(std::sync::atomic::Ordering::Relaxed)),
         }
@@ -978,7 +968,7 @@ impl Cursor for CursorData {
     fn fetched(&self) -> i64 {
         self.fetched.load(std::sync::atomic::Ordering::Relaxed)
     }
-    fn update_used(&mut self) -> () {
+    fn update_used(&mut self) {
         self.used = Instant::now();
     }
     fn get_position_mut(&mut self) -> &mut AtomicI64 {
@@ -1178,13 +1168,13 @@ pub trait Cursor: Sync + Send {
     /// The number of fetched Records by the Server
     fn fetched(&self) -> i64;
     /// Updates the Cursor Stats. Warps `update_position` `update_used` and `update_fetched`
-    fn update(&mut self, fd: FetchDirection, row_count: i64) -> () {
+    fn update(&mut self, fd: FetchDirection, row_count: i64) {
         self.update_used();
         self.update_fetched(row_count);
         self.update_position(fd.to_position_update(&row_count));
     }
     /// Adjust the current Position of the Cursor
-    fn update_position(&mut self, fd: FetchDirection) -> () {
+    fn update_position(&mut self, fd: FetchDirection) {
         use FetchDirection::*;
         let order = std::sync::atomic::Ordering::Relaxed;
         let cur = self.get_position_mut();
@@ -1202,7 +1192,7 @@ pub trait Cursor: Sync + Send {
         };
     }
     /// Increase the number of fetched records
-    fn update_fetched(&mut self, count: i64) -> () {
+    fn update_fetched(&mut self, count: i64) {
         self.get_fetched_mut()
             .fetch_add(count, std::sync::atomic::Ordering::Relaxed);
     }

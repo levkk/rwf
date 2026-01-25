@@ -165,7 +165,7 @@ async fn main() {
                         .migrations()
                         .first()
                         .map(|mig| mig.version);
-                    migrate::revert(minv.clone()).await;
+                    migrate::revert(minv).await;
                     migrate::downgrade(None).await;
                     migrate::upgrade(None).await;
                     migrate::migrate(None).await;

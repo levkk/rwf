@@ -124,7 +124,7 @@ impl<T: Model, C: ToColumn, V: ToValue> FromIterator<(C, V)> for Delete<T> {
 impl<T: Model, C: ToColumn, V: ToValue> From<&[(C, V)]> for Delete<T> {
     fn from(v: &[(C, V)]) -> Self {
         Self::from_iter(
-            v.into_iter()
+            v.iter()
                 .map(|(c, v)| (c.to_column(), v.to_value()))
                 .collect::<Vec<_>>(),
         )

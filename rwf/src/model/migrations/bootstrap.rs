@@ -86,7 +86,7 @@ pub(crate) fn parse_database_schema(data: &str) -> RwfDatabaseSchema {
             .unwrap()
             .as_sequence()
             .unwrap()
-            .into_iter()
+            .iter()
             .map(|val| val.as_str().unwrap().to_string())
             .collect(),
         down: yaml
@@ -94,7 +94,7 @@ pub(crate) fn parse_database_schema(data: &str) -> RwfDatabaseSchema {
             .unwrap()
             .as_sequence()
             .unwrap()
-            .into_iter()
+            .iter()
             .map(|val| val.as_str().unwrap().to_string())
             .collect(),
         description: yaml
@@ -297,7 +297,7 @@ impl RwfDatabaseSchema {
             if log_queries {
                 info!("{}", stmt);
             }
-            tx.query_cached(&stmt, &[]).await?;
+            tx.query_cached(stmt, &[]).await?;
         }
         migrate.fetch(tx).await?;
         Ok(())

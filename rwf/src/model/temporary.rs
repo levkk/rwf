@@ -51,7 +51,7 @@ impl TemporaryQuery {
     pub fn offset(&self) -> i32 {
         self.offset
     }
-    pub fn fields(&mut self, fields: Vec<Column>) -> () {
+    pub fn fields(&mut self, fields: Vec<Column>) {
         self.fields = fields
             .into_iter()
             .map(|col| Column::name(col.get_name()))
@@ -164,7 +164,7 @@ impl<T: FromRow> ToTemporaryQuery for Query<T> {
                 mut query,
                 placeholders,
             } => {
-                let mut val_placeholders = (1..placeholders.id()).into_iter().collect::<Vec<i32>>();
+                let mut val_placeholders = (1..placeholders.id()).collect::<Vec<i32>>();
                 val_placeholders.reverse();
                 for (idx, placeholder) in val_placeholders.iter().enumerate() {
                     query = query.replace(

@@ -227,7 +227,7 @@ fn parse_call(expr: &Expr, acc: &mut Vec<Response>) {
         let func = call.func.to_token_stream().to_string();
         if func == "Ok" {
             if call.args.len() == 1 {
-                return parse_call(call.args.iter().next().unwrap(), acc);
+                parse_call(call.args.iter().next().unwrap(), acc)
             }
         } else if func.starts_with("Response") {
             if func.contains("not_implemented") {
@@ -243,13 +243,13 @@ fn parse_call(expr: &Expr, acc: &mut Vec<Response>) {
     } else if let Expr::MethodCall(call) = expr {
         let mut builder = ResponseBuilder::default();
         parse_method_chain(call, &mut builder);
-        if !builder.ty.is_none() {
+        if builder.ty.is_some() {
             acc.push(builder.build());
         }
     } else if let Expr::If(expr_if) = expr {
         parse_block(expr_if.then_branch.stmts.clone(), acc);
         if let Some(ref else_expr) = expr_if.else_branch {
-            return parse_call(else_expr.1.as_ref(), acc);
+            parse_call(else_expr.1.as_ref(), acc)
         }
     } else if let Expr::Block(block) = expr {
         parse_block(block.block.stmts.clone(), acc)

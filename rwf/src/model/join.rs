@@ -151,12 +151,12 @@ impl ToSql for Join {
     fn to_sql(&self) -> String {
         format!(
             r#"{} "{}"{} ON {} = {}"#,
-            self.kind.to_string(),
+            self.kind,
             self.table_name.escape(),
             self.alias
                 .as_ref()
                 .map(|alias| format!(r#" AS "{}""#, alias.escape()))
-                .unwrap_or(String::new()),
+                .unwrap_or_default(),
             self.table_column.to_sql(),
             self.foreign_column.to_sql(),
         )
