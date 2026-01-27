@@ -38,6 +38,7 @@ pub mod temporary;
 pub mod update;
 pub mod value;
 
+use crate::model::cursor::DeclareCursor;
 pub use column::{Column, Columns, ToColumn};
 pub use combine::{Combine, CombinedQuery, Combines};
 pub use delete::Delete;
@@ -1017,6 +1018,40 @@ impl<T: Model> Query<T> {
             Query::Select(select) => Query::Select(select.group(columns.as_slice())),
             Query::Picked(picked) => Query::Picked(picked.group(columns.as_slice())),
             _ => self,
+        }
+    }
+    /// Converts the `Query` to a `DeclareCursor` Statement, after a check that the `Query` is valid for,
+    /// meaning it is one of `[Query::Select, Query::Picked, Query::Raw]`
+    /// # Example
+    ///
+    /// ```
+    /// # use rwf::macros::Model;
+    /// # use rwf::model::{Model, Query, Select, ToSql};
+    /// # #[derive(Clone, Debug, Model, rwf::prelude::Deserialize)]
+    /// # struct User {
+    /// #    id: Option<i64>,
+    /// #    email: String,
+    /// #    admin: bool,
+    /// # }
+    /// let declare = User::all().last_many(10).declare_cursor("cursor");
+    /// assert!(declare.is_ok());
+    /// let declare = declare.unwrap();
+    /// assert_eq!(
+    ///     declare.to_sql(),
+    ///     r#"DECLARE "cursor" BINARY INSENSITIVE NO SCROLL CURSOR WITHOUT HOLD FOR SELECT * FROM "users" ORDER BY "users"."id" DESC LIMIT 10"#
+    /// )
+    pub fn declare_cursor(self, name: impl ToString) -> Result<DeclareCursor<T>, Error>
+    where
+        T: Send + Sync,
+    {
+        match &self {
+            Query::Select(_) | Query::Picked(_) | Query::Raw { .. } => {
+                Ok(DeclareCursor::from(self).name(name))
+            }
+            query => Err(Error::QueryError(
+                "DECLARE Statements are not defined for data modifing Queries".to_string(),
+                query.to_sql(),
+            )),
         }
     }
 
