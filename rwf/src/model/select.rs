@@ -10,14 +10,31 @@ use crate::model::combine::{Combine, Combines};
 use crate::model::temporary::{With, WithQuery};
 use std::marker::PhantomData;
 
-#[derive(PartialEq, Debug, Clone, Copy, Eq, Ord, PartialOrd)]
+#[derive(PartialEq, Debug, Clone, Eq, Ord, PartialOrd)]
 pub enum Op {
     Equals,
-    NotEquals,
     LesserThan,
     GreaterThan,
     GreaterEqualThan,
     LesserEqualThan,
+    StartsWith,
+    EndsWith,
+    Contains,
+    Negation(Box<Self>),
+}
+impl std::ops::Not for Op {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        use Op::*;
+        match self {
+            Negation(inner) => *inner,
+            LesserThan => GreaterEqualThan,
+            GreaterThan => LesserEqualThan,
+            GreaterEqualThan => LesserThan,
+            LesserEqualThan => GreaterThan,
+            op => Negation(Box::new(op)),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -278,13 +295,25 @@ pub trait FilterQuery: Sized {
             value
         };
 
+        let mut mapper = |o: Op, col: Column, val: Value| {
+            match o {
+            Op::Equals => filter.add(col, val),
+            Op::LesserThan => filter.lt(col, val),
+            Op::GreaterThan => filter.gt(col, val),
+            Op::GreaterEqualThan => filter.gte(col, val),
+            Op::LesserEqualThan => filter.lte(col, val),
+            Op::StartsWith => filter.starts_with(col, val),
+            Op::EndsWith => filter.ends_with(col, val),
+            Op::Contains => filter.contains(col, val),
+            operation => unimplemented!("Direct conversion for Op {:?} into Clause is not implenented. Negation should be handelt outside of this clousure.", operation)
+        }
+        };
         match op {
-            Op::Equals => filter.add(column, value),
-            Op::NotEquals => filter.add_not(column, value),
-            Op::LesserThan => filter.lt(column, value),
-            Op::GreaterThan => filter.gt(column, value),
-            Op::GreaterEqualThan => filter.gte(column, value),
-            Op::LesserEqualThan => filter.lte(column, value),
+            Op::Negation(inner) => {
+                mapper(*inner, column, value);
+                filter.negate_last();
+            }
+            operation => mapper(operation, column, value),
         }
 
         match join_op {
@@ -293,7 +322,6 @@ pub trait FilterQuery: Sized {
         };
         self
     }
-
     /// Creates a Equal or IN Operation and append it to the existing.
     /// # Example
     /// ```
@@ -389,7 +417,7 @@ pub trait FilterQuery: Sized {
     /// );
     /// ```
     fn filter_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::And, Op::NotEquals);
+        self = self.filter(column, value, JoinOp::And, !Op::Equals);
         self
     }
 
@@ -422,7 +450,7 @@ pub trait FilterQuery: Sized {
     /// );
     /// ```
     fn filter_or_not(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
-        self = self.filter(column, value, JoinOp::Or, Op::NotEquals);
+        self = self.filter(column, value, JoinOp::Or, !Op::Equals);
         self
     }
 
@@ -533,6 +561,117 @@ pub trait FilterQuery: Sized {
     /// ```
     fn filter_lte(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::LesserEqualThan);
+        self
+    }
+    /// Filter a String column for a Substring
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id:Option<i64>,
+    ///     name: String,
+    /// }   
+    /// let select: Select<User> = Select::new("users", "id").filter_contains("name", "es");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" LIKE '%' || $1 || '%'"#
+    /// )
+    ///
+    /// ```
+    fn filter_contains(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::Contains);
+        self
+    }
+    /// Filter a Text column for values not containing the Value
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id:Option<i64>,
+    ///     name: String,
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_not_contains("name", "es");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."name" NOT LIKE '%' || $1 || '%'"#
+    /// )
+    ///
+    /// ```
+    fn filter_not_contains(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, !Op::Contains);
+        self
+    }
+    /// Filter a String column for entries that starts with a string
+    /// # Example
+    /// ```
+    ///use rwf::model::prelude::*;
+    ///use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_starts_with("mail", "name".to_column());
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."mail" LIKE "name" || '%'"#
+    /// );
+    ///
+    /// ```
+    fn filter_starts_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::StartsWith);
+        self
+    }
+    /// Filter a String column for entries that starts with a string
+    /// # Example
+    /// ```
+    ///use rwf::model::Placeholders;
+    ///use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_not_starts_with("mail", "name".to_column());
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."mail" NOT LIKE "name" || '%'"#
+    /// );
+    ///
+    /// ```
+    fn filter_not_starts_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, !Op::StartsWith);
+        self
+    }
+    /// Filter String Column for a substring it ends with
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::placeholders::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_ends_with("mail", ".tld");
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."mail" LIKE '%' || $1"#
+    /// )
+    ///
+    ///
+    /// ```
+    fn filter_ends_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, Op::EndsWith);
         self
     }
 }

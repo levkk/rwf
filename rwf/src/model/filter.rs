@@ -1,9 +1,8 @@
 //! Implements the `WHERE` clause for `SELECT`, `UPDATE`, and `DELETE` statements.
 
+use std::ops::{Deref, Not};
+
 use super::{Column, ToSql, ToValue, Value};
-use crate::model::filter::Comparison::{
-    Equal, GreaterEqualThan, GreaterThan, In, LesserEqualThan, LesserThan, NotEqual, NotIn,
-};
 
 /// The WHERE clause of a SQL query.
 #[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
@@ -17,10 +16,6 @@ enum Comparison {
     Equal((Column, Value)),
     /// x IN (1, 2, 3)
     In((Column, Value)),
-    /// X NOT IN (1, 2, 3)
-    NotIn((Column, Value)),
-    /// x <> 1
-    NotEqual((Column, Value)),
     /// (x = 1 AND y = 2)
     Filter(Filter),
     /// x > 1
@@ -31,6 +26,27 @@ enum Comparison {
     GreaterEqualThan((Column, Value)),
     /// x <= 1
     LesserEqualThan((Column, Value)),
+    /// x LIKE '%hello%'
+    Contains((Column, Value)),
+    /// x LIKE 'hello%'
+    StartsWith((Column, Value)),
+    /// x LIKE '%hello'
+    EndsWith((Column, Value)),
+    Negation(Box<Self>),
+}
+impl Not for Comparison {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        use Comparison::*;
+        match self {
+            Negation(comparison) => (*comparison).into(),
+            GreaterThan((col, val)) => LesserEqualThan((col, val)),
+            GreaterEqualThan((col, val)) => LesserThan((col, val)),
+            LesserThan((col, val)) => GreaterEqualThan((col, val)),
+            LesserEqualThan((col, val)) => GreaterThan((col, val)),
+            comp => Negation(Box::new(comp)),
+        }
+    }
 }
 
 impl Comparison {
@@ -40,25 +56,30 @@ impl Comparison {
         match self {
             Equal((_, v)) => v.placeholder(),
             In((_, v)) => v.placeholder(),
-            NotIn((_, v)) => v.placeholder(),
-            NotEqual((_, v)) => v.placeholder(),
             GreaterThan((_, v)) => v.placeholder(),
             LesserThan((_, v)) => v.placeholder(),
             GreaterEqualThan((_, v)) => v.placeholder(),
             LesserEqualThan((_, v)) => v.placeholder(),
+            Contains((_, v)) => v.placeholder(),
+            StartsWith((_, v)) => v.placeholder(),
+            EndsWith((_, v)) => v.placeholder(),
+            Negation(v) => v.placeholder(),
             _ => false,
         }
     }
     fn add_offset(&mut self, offset: i32) {
+        use Comparison::*;
         if let Value::Placeholder(val) = match self {
             Equal((_, v)) => v,
             In((_, v)) => v,
-            NotIn((_, v)) => v,
-            NotEqual((_, v)) => v,
             GreaterThan((_, v)) => v,
             GreaterEqualThan((_, v)) => v,
             LesserThan((_, v)) => v,
             LesserEqualThan((_, v)) => v,
+            Contains((_, v)) => v,
+            StartsWith((_, v)) => v,
+            EndsWith((_, v)) => v,
+            Negation(v) => return v.add_offset(offset),
             _ => return,
         } {
             *val += offset;
@@ -79,14 +100,6 @@ impl ToSql for Comparison {
                 }
             }
             In((column, value)) => format!("{} = ANY({})", column.to_sql(), value.to_sql()),
-            NotIn((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
-            NotEqual((column, value)) => {
-                if value.is_null() {
-                    format!("{} IS NOT NULL", column.to_sql())
-                } else {
-                    format!("{} <> {}", column.to_sql(), value.to_sql())
-                }
-            }
             Filter(filter) => format!("({})", filter.to_sql()),
             GreaterThan((column, value)) => format!("{} > {}", column.to_sql(), value.to_sql()),
             LesserThan((column, value)) => format!("{} < {}", column.to_sql(), value.to_sql()),
@@ -96,6 +109,40 @@ impl ToSql for Comparison {
             LesserEqualThan((column, value)) => {
                 format!("{} <= {}", column.to_sql(), value.to_sql())
             }
+            Contains((column, value)) => {
+                format!("{} LIKE '%' || {} || '%'", column.to_sql(), value.to_sql())
+            }
+            StartsWith((column, value)) => {
+                format!("{} LIKE {} || '%'", column.to_sql(), value.to_sql())
+            }
+            EndsWith((column, value)) => {
+                format!("{} LIKE '%' || {}", column.to_sql(), value.to_sql())
+            }
+            Negation(inner) => match inner.deref() {
+                Equal((a, b)) => {
+                    if b.is_null() {
+                        format!("{} IS NOT NULL", a.to_sql())
+                    } else {
+                        format!("{} <> {}", a.to_sql(), b.to_sql())
+                    }
+                }
+                In((column, value)) => format!("{} <> ANY({})", column.to_sql(), value.to_sql()),
+                Filter(filter) => format!("NOT ({})", filter.to_sql()),
+                Contains((column, value)) => {
+                    format!(
+                        "{} NOT LIKE '%' || {} || '%'",
+                        column.to_sql(),
+                        value.to_sql()
+                    )
+                }
+                StartsWith((column, value)) => {
+                    format!("{} NOT LIKE {} || '%'", column.to_sql(), value.to_sql())
+                }
+                EndsWith((column, value)) => {
+                    format!("{} NOT LIKE '%' || {}", column.to_sql(), value.to_sql())
+                }
+                comp => comp.to_sql(),
+            },
         }
     }
 }
@@ -230,19 +277,18 @@ impl Filter {
         }
     }
 
-    /// Add a negated predicate to the filter, using the AND operator.
-    pub fn add_not(&mut self, column: Column, value: impl ToValue) {
-        let value = value.to_value();
-        match value {
-            Value::Record(value) => {
-                self.clauses.push(Comparison::NotIn((column, *value)));
-            }
-            value => {
-                self.clauses.push(Comparison::NotEqual((column, value)));
-            }
-        }
+    pub fn starts_with(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::StartsWith((column, value.to_value())));
     }
-
+    pub fn ends_with(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::EndsWith((column, value.to_value())));
+    }
+    pub fn contains(&mut self, column: Column, value: impl ToValue) {
+        self.clauses
+            .push(Comparison::Contains((column, value.to_value())));
+    }
     pub fn gt(&mut self, column: Column, value: impl ToValue) {
         self.clauses
             .push(Comparison::GreaterThan((column, value.to_value())));
@@ -261,6 +307,12 @@ impl Filter {
     pub fn lte(&mut self, column: Column, value: impl ToValue) {
         self.clauses
             .push(Comparison::LesserEqualThan((column, value.to_value())));
+    }
+
+    pub fn negate_last(&mut self) -> () {
+        if let Some(clause) = self.clauses.pop() {
+            self.clauses.push(!clause)
+        }
     }
 
     /// Append all predicates of the filter into the current filter.
@@ -355,10 +407,10 @@ mod test {
                     Column::new("table_name", "column_a"),
                     Value::String("value".into()),
                 )),
-                Comparison::NotEqual((Column::new("table_name", "column_b"), Value::Integer(42))),
+                !Comparison::Equal((Column::new("table_name", "column_b"), Value::Integer(42))),
                 Comparison::Filter(Filter {
                     clauses: vec![
-                        Comparison::NotIn((
+                        !Comparison::In((
                             Column::new("table_x", "column_y"),
                             Value::List(vec![Value::Integer(56), Value::Integer(67)]),
                         )),
@@ -385,7 +437,7 @@ mod test {
         let a = Filter {
             clauses: vec![
                 Comparison::Equal((Column::new("table", "column_a"), Value::Integer(5))),
-                Comparison::NotEqual((Column::new("table", "column_a"), Value::Integer(125))),
+                !Comparison::Equal((Column::new("table", "column_a"), Value::Integer(125))),
             ],
             op: JoinOp::Or,
         };
@@ -393,7 +445,7 @@ mod test {
         let b = Filter {
             clauses: vec![
                 Comparison::Equal((Column::new("table", "column_b"), Value::Integer(42))),
-                Comparison::NotEqual((Column::new("table", "column_b"), Value::Integer(56))),
+                !Comparison::Equal((Column::new("table", "column_b"), Value::Integer(56))),
             ],
             op: JoinOp::And,
         };

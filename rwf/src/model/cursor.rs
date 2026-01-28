@@ -699,7 +699,11 @@ impl<T: Model + Send + Sync> DeclareCursor<T> {
         conn: impl ToConnectionRequest<'_>,
     ) -> Result<ModelCursor<T>, Error> {
         let conn = conn.to_connection_request()?.connection().unwrap();
-        conn.query_cached(self.to_sql().as_str(), &[]).await?;
+        conn.query_cached(
+            self.to_sql().as_str(),
+            self.placeholders().values().as_slice(),
+        )
+        .await?;
         let cur = ModelCursor::from(self);
         Ok(cur)
     }
@@ -788,11 +792,20 @@ impl<T: Model + Send + Sync> DeclareCursor<T> {
                 match request.get().await? {
                     None => {
                         let conn = request.connection().unwrap();
-                        conn.query_cached(self.to_sql().as_str(), &[]).await?;
+                        conn.query_cached(
+                            self.to_sql().as_str(),
+                            self.placeholders().values().as_slice(),
+                        )
+                        .await?;
                         Ok(SelectiveCursor::from(self))
                     }
                     Some(mut guard) => {
-                        guard.query_cached(self.to_sql().as_str(), &[]).await?;
+                        guard
+                            .query_cached(
+                                self.to_sql().as_str(),
+                                self.placeholders().values().as_slice(),
+                            )
+                            .await?;
                         Ok(SelectiveCursor::from(self))
                     }
                 }
@@ -2289,5 +2302,62 @@ mod tests {
         );
 
         cursor.close().await.unwrap().rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_string_filtered() {
+        let q = Employee::selective().filter_starts_with("name", "Worker%");
+        let cursor = q
+            .declare_cursor("cursor")
+            .unwrap()
+            .create_tx_selective_cursor(None)
+            .await;
+        if let Err(ref e) = cursor {
+            eprintln!("{:?}", e);
+        }
+        assert!(cursor.is_ok());
+        let mut cursor = cursor.unwrap();
+        let employed = cursor
+            .fetch(cursor.fetch_stmt().forward_all())
+            .await
+            .unwrap();
+        assert_eq!(employed.len(), 2);
+        let tx = cursor.close().await.unwrap();
+        let cursor = Employee::selective()
+            .filter_contains("name", "leader")
+            .declare_cursor("cursor")
+            .unwrap()
+            .create_tx_selective_cursor(Some(tx))
+            .await;
+        if let Err(ref e) = cursor {
+            eprintln!("{:?}", e);
+        }
+
+        assert!(cursor.is_ok());
+        let mut cursor = cursor.unwrap();
+        let employed = cursor
+            .fetch(cursor.fetch_stmt().forward_all())
+            .await
+            .unwrap();
+        assert_eq!(employed.len(), 2);
+        let tx = cursor.close().await.unwrap();
+
+        let cursor = Employee::selective()
+            .filter_ends_with("name", "boss")
+            .declare_cursor("cursor")
+            .unwrap()
+            .create_tx_selective_cursor(Some(tx))
+            .await;
+        if let Err(ref e) = cursor {
+            eprintln!("{:?}", e);
+        }
+        assert!(cursor.is_ok());
+        let mut cursor = cursor.unwrap();
+        let employed = cursor
+            .fetch(cursor.fetch_stmt().forward_all())
+            .await
+            .unwrap();
+        assert_eq!(employed.len(), 1);
+        cursor.close().await.unwrap();
     }
 }
