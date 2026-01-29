@@ -11,7 +11,7 @@ pub struct WhereClause {
 }
 
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
-enum Comparison {
+pub(super) enum Comparison {
     /// x = 1
     Equal((Column, Value)),
     /// x IN (1, 2, 3)
@@ -32,6 +32,8 @@ enum Comparison {
     StartsWith((Column, Value)),
     /// x LIKE '%hello'
     EndsWith((Column, Value)),
+    /// Negates the inner operation.
+    /// x = y => x <> y
     Negation(Box<Self>),
 }
 impl Not for Comparison {
@@ -50,6 +52,23 @@ impl Not for Comparison {
 }
 
 impl Comparison {
+    pub(super) fn new(op: super::select::Op, column: Column, value: Value) -> Self {
+        use super::select::Op;
+        match op {
+            Op::Equals => match value {
+                Value::Record(val) => Self::In((column, *val)),
+                val => Self::Equal((column, val)),
+            },
+            Op::LesserThan => Self::LesserThan((column, value)),
+            Op::GreaterThan => Self::GreaterThan((column, value)),
+            Op::GreaterEqualThan => Self::GreaterEqualThan((column, value)),
+            Op::LesserEqualThan => Self::LesserEqualThan((column, value)),
+            Op::StartsWith => Self::StartsWith((column, value)),
+            Op::EndsWith => Self::EndsWith((column, value)),
+            Op::Contains => Self::Contains((column, value)),
+            Op::Negation(inner) => !Self::new(*inner, column, value),
+        }
+    }
     fn placeholder(&self) -> bool {
         use Comparison::*;
 
@@ -262,6 +281,10 @@ impl Filter {
 
     pub fn is_empty(&self) -> bool {
         self.clauses.is_empty()
+    }
+
+    pub(super) fn push(&mut self, clause: Comparison) {
+        self.clauses.push(clause);
     }
 
     /// Add a predicate to the filter, using the AND operator.

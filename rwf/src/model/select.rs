@@ -295,26 +295,7 @@ pub trait FilterQuery: Sized {
             value
         };
 
-        let mut mapper = |o: Op, col: Column, val: Value| {
-            match o {
-            Op::Equals => filter.add(col, val),
-            Op::LesserThan => filter.lt(col, val),
-            Op::GreaterThan => filter.gt(col, val),
-            Op::GreaterEqualThan => filter.gte(col, val),
-            Op::LesserEqualThan => filter.lte(col, val),
-            Op::StartsWith => filter.starts_with(col, val),
-            Op::EndsWith => filter.ends_with(col, val),
-            Op::Contains => filter.contains(col, val),
-            operation => unimplemented!("Direct conversion for Op {:?} into Clause is not implenented. Negation should be handelt outside of this clousure.", operation)
-        }
-        };
-        match op {
-            Op::Negation(inner) => {
-                mapper(*inner, column, value);
-                filter.negate_last();
-            }
-            operation => mapper(operation, column, value),
-        }
+        filter.push(super::filter::Comparison::new(op, column, value));
 
         match join_op {
             JoinOp::And => self.get_where_clause_mut().concat(filter),
@@ -672,6 +653,163 @@ pub trait FilterQuery: Sized {
     /// ```
     fn filter_ends_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
         self = self.filter(column, value, JoinOp::And, Op::EndsWith);
+        self
+    }
+    /// Filter String Column for values not ending with a specific  substring it ends with
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::placeholders::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_not_ends_with("mail", ".tld");
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE "users"."mail" NOT LIKE '%' || $1"#
+    /// )
+    ///
+    ///
+    /// ```
+    fn filter_not_ends_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::And, !Op::EndsWith);
+        self
+    }
+    /// Filter by a String column for a Substring. Combine with an or clause
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id:Option<i64>,
+    ///     name: String,
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_gt("id", 0).filter_or_contains("name", "es");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."name" LIKE '%' || $2 || '%')"#
+    /// )
+    ///
+    /// ```
+    fn filter_or_contains(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, Op::Contains);
+        self
+    }
+    /// Filter a Text column for values not containing the Value
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::select::Select;
+    /// use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id:Option<i64>,
+    ///     name: String,
+    /// }
+    /// let select: Select<User> = Select::new("users", "id").filter_gt("id", 0).filter_or_not_contains("name", "es");
+    /// assert_eq!(
+    ///     select.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."name" NOT LIKE '%' || $2 || '%')"#
+    /// )
+    ///
+    /// ```
+    fn filter_or_not_contains(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, !Op::Contains);
+        self
+    }
+    /// Filter a String column for entries that starts with a string
+    /// # Example
+    /// ```
+    ///use rwf::model::prelude::*;
+    ///use rwf::model::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_gt("id", 0).filter_or_starts_with("mail", "name".to_column());
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."mail" LIKE "name" || '%')"#
+    /// );
+    ///
+    /// ```
+    fn filter_or_starts_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, Op::StartsWith);
+        self
+    }
+    /// Filter a String column for entries that starts with a string
+    /// # Example
+    /// ```
+    ///use rwf::model::Placeholders;
+    ///use rwf::model::prelude::*;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_gt("id", 0).filter_or_not_starts_with("mail", "name".to_column());
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."mail" NOT LIKE "name" || '%')"#
+    /// );
+    ///
+    /// ```
+    fn filter_or_not_starts_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, !Op::StartsWith);
+        self
+    }
+    /// Filter String Column for a substring it ends with
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::placeholders::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_gt("id", 0).filter_or_ends_with("mail", ".tld");
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."mail" LIKE '%' || $2)"#
+    /// )
+    ///
+    ///
+    /// ```
+    fn filter_or_ends_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, Op::EndsWith);
+        self
+    }
+    /// Filter String Column for values not ending with a specific  substring it ends with
+    /// # Example
+    /// ```
+    /// use rwf::model::prelude::*;
+    /// use rwf::model::placeholders::Placeholders;
+    /// #[derive(Debug, Clone, rwf::macros::Model, rwf::prelude::Serialize, rwf::prelude::Deserialize)]
+    /// struct User {
+    ///     id: Option<i64>,
+    ///     name: String,
+    ///     mail: String
+    /// }
+    /// let query = User::all().filter_gt("id", 0).filter_or_not_ends_with("mail", ".tld");
+    /// assert_eq!(
+    ///     query.to_sql(),
+    ///     r#"SELECT * FROM "users" WHERE ("users"."id" > $1) OR ("users"."mail" NOT LIKE '%' || $2)"#
+    /// )
+    ///
+    ///
+    /// ```
+    fn filter_or_not_ends_with(mut self, column: impl ToColumn, value: impl ToValue) -> Self {
+        self = self.filter(column, value, JoinOp::Or, !Op::EndsWith);
         self
     }
 }
