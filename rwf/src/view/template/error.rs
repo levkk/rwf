@@ -15,7 +15,7 @@ pub enum Error {
     ExpressionSyntax(TokenWithContext),
 
     #[error("expected token \"{0}\", but have token \"{0}\" instead")]
-    WrongToken(TokenWithContext, Token),
+    WrongToken(TokenWithContext, Box<Token>),
 
     #[error("reached end of file while performing \"{0}\", did you forget a closing tag?")]
     Eof(&'static str),

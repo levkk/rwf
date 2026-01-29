@@ -51,7 +51,7 @@ pub enum Error {
 
     /// The ORM returned an error.
     #[error("database error: {0}")]
-    Orm(#[from] crate::model::Error),
+    Orm(#[from] Box<crate::model::Error>),
 
     /// The user isn't logged in.
     #[error("unauthorized")]
@@ -100,5 +100,10 @@ impl From<crate::controller::Error> for Error {
 impl From<time::error::ComponentRange> for Error {
     fn from(error: time::error::ComponentRange) -> Error {
         Error::Time(error)
+    }
+}
+impl From<crate::model::Error> for Error {
+    fn from(value: crate::model::Error) -> Self {
+        Self::Orm(value.boxed())
     }
 }

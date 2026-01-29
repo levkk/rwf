@@ -14,7 +14,7 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 
     #[error("database error: {0}")]
-    OrmError(#[from] crate::model::Error),
+    OrmError(#[from] Box<crate::model::Error>),
 
     #[error("job error: {0}")]
     JobError(#[from] crate::job::Error),
@@ -60,5 +60,10 @@ impl Error {
 impl From<crate::http::Error> for Error {
     fn from(error: crate::http::Error) -> Self {
         Error::HttpError(Box::new(error))
+    }
+}
+impl From<crate::model::Error> for Error {
+    fn from(error: crate::model::Error) -> Self {
+        Self::OrmError(error.boxed())
     }
 }

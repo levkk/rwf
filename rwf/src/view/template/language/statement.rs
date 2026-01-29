@@ -12,7 +12,7 @@ macro_rules! expect {
     ($got:expr, $expected:expr) => {
         if $got.token() != $expected {
             // println!("{}:{}", file!(), line!());
-            return Err(Error::WrongToken($got, $expected));
+            return Err(Error::WrongToken($got, Box::new($expected)));
         }
     };
 }

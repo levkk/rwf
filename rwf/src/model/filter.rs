@@ -41,7 +41,7 @@ impl Not for Comparison {
     fn not(self) -> Self::Output {
         use Comparison::*;
         match self {
-            Negation(comparison) => (*comparison),
+            Negation(comparison) => *comparison,
             GreaterThan((col, val)) => LesserEqualThan((col, val)),
             GreaterEqualThan((col, val)) => LesserThan((col, val)),
             LesserThan((col, val)) => GreaterEqualThan((col, val)),

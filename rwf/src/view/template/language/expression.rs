@@ -332,7 +332,7 @@ impl Expression {
                     let next = iter.next().ok_or(Error::Eof("expected closing bracket"))?;
                     match next.token() {
                         Token::SquareBracketEnd => (),
-                        token => return Err(Error::WrongToken(next, token)),
+                        token => return Err(Error::WrongToken(next, Box::new(token))),
                     }
                     Expression::Function {
                         term: Box::new(expr),
