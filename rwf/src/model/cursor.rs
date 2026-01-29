@@ -1402,7 +1402,7 @@ pub trait Cursor: Sync + Send {
     /// The number of fetched Records by the Server
     fn fetched(&self) -> i64;
     /// Emit a Info Log with the basic Dursor (Meta)Data
-    fn log_info(&self) -> () {
+    fn log_info(&self) {
         info!(
             r#"CurorStats(name="{}", sensitivity={}, scrollable={}, hold={}) -> Since Creation {} were {} entires fetched. Currently at positionm {}. Last used ({:.3} ms)"#,
             self.name(),

@@ -41,7 +41,7 @@ impl Not for Comparison {
     fn not(self) -> Self::Output {
         use Comparison::*;
         match self {
-            Negation(comparison) => (*comparison).into(),
+            Negation(comparison) => (*comparison),
             GreaterThan((col, val)) => LesserEqualThan((col, val)),
             GreaterEqualThan((col, val)) => LesserThan((col, val)),
             LesserThan((col, val)) => GreaterEqualThan((col, val)),
@@ -332,7 +332,7 @@ impl Filter {
             .push(Comparison::LesserEqualThan((column, value.to_value())));
     }
 
-    pub fn negate_last(&mut self) -> () {
+    pub fn negate_last(&mut self) {
         if let Some(clause) = self.clauses.pop() {
             self.clauses.push(!clause)
         }
