@@ -217,7 +217,7 @@ pub trait ToSql {
 /// }
 /// ```
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
-pub enum Query<T: FromRow + ?Sized = Row> {
+pub enum Query<T: FromRow = Row> {
     /// Represents a `SELECT` query.
     Select(Select<T>),
     /// Represents an `UPDATE` statement.

@@ -90,7 +90,7 @@ impl Request {
                 }
             }
 
-            return Err(Error::ContentTooLarge(head));
+            return Err(Error::ContentTooLarge(Box::new(head)));
         }
 
         let mut body = vec![0u8; content_length];

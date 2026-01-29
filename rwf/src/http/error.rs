@@ -1,7 +1,6 @@
 //! Errors returned by the HTTP protocol implementation.
 
 use thiserror::Error;
-
 use super::Head;
 
 /// Errors returned by the HTTP implementation.
@@ -22,11 +21,11 @@ pub enum Error {
 
     /// Error returned by a controller.
     #[error("{0}")]
-    Controller(crate::controller::Error),
+    Controller(Box<crate::controller::Error>),
 
     /// Error returned by cryptographic functions.
     #[error("{0}")]
-    Crypto(#[from] crate::crypto::Error),
+    Crypto(#[from] Box<crate::crypto::Error>),
 
     /// Error encoding/decoding UTF-8.
     /// All text used by Rwf must be UTF-8 encoded.
@@ -39,7 +38,7 @@ pub enum Error {
 
     /// Something wrong with a time, probably out of range.
     #[error("{0}")]
-    Time(time::error::ComponentRange),
+    Time(Box<time::error::ComponentRange>),
 
     /// A required parameter is missing, e.g. from a `POST` form.
     #[error("parameter is missing")]
@@ -59,7 +58,7 @@ pub enum Error {
 
     /// HTTP request exceeds configured size.
     #[error("content too large")]
-    ContentTooLarge(Head),
+    ContentTooLarge(Box<Head>),
 
     /// Model used as user doesn't have an integer id column.
     #[error("user model id is not an integer")]
@@ -93,17 +92,22 @@ impl Error {
 
 impl From<crate::controller::Error> for Error {
     fn from(error: crate::controller::Error) -> Error {
-        Error::Controller(error)
+        Error::Controller(Box::new(error))
     }
 }
 
 impl From<time::error::ComponentRange> for Error {
     fn from(error: time::error::ComponentRange) -> Error {
-        Error::Time(error)
+        Error::Time(Box::new(error))
     }
 }
 impl From<crate::model::Error> for Error {
     fn from(value: crate::model::Error) -> Self {
         Self::Orm(value.boxed())
+    }
+}
+impl From<crate::crypto::Error> for Error {
+    fn from(error: crate::crypto::Error) -> Self {
+        Self::Crypto(Box::new(error))
     }
 }

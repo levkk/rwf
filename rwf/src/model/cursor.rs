@@ -432,7 +432,7 @@ impl ToSql for Sensitivity {
 
 /// Constructor for a Cursor from a Query
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeclareCursor<T: FromRow + ?Sized = Row> {
+pub struct DeclareCursor<T: FromRow = Row> {
     query: Query<T>,
     sensitivity: Sensitivity,
     hold: bool,
@@ -440,7 +440,7 @@ pub struct DeclareCursor<T: FromRow + ?Sized = Row> {
     name: String,
 }
 
-impl<T: FromRow + ?Sized> From<Query<T>> for DeclareCursor<T> {
+impl<T: FromRow> From<Query<T>> for DeclareCursor<T> {
     fn from(value: Query<T>) -> Self {
         match value {
             Query::Select(select) => {

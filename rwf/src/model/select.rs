@@ -38,7 +38,7 @@ impl std::ops::Not for Op {
 }
 
 #[derive(Debug, Default, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
-pub struct Select<T: FromRow + ?Sized> {
+pub struct Select<T: FromRow> {
     pub table_name: String,
     pub primary_key: String,
     pub columns: Columns,
