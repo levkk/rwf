@@ -1,7 +1,7 @@
+use rand::Rng;
 use rwf::http::Server;
 use rwf::prelude::*;
-
-use rand::Rng;
+use std::str::FromStr;
 
 #[derive(Clone, rwf::macros::Model, Serialize, Deserialize)]
 struct User {
