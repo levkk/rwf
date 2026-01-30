@@ -1,6 +1,6 @@
 migration: f57d1f18-f0c7-11f0-9c88-2218e57cbd42
 name: migrations
-kind: INTERNAL
+kind: Internal
 down:
   - DROP TABLE rwf_migrations
 up:
