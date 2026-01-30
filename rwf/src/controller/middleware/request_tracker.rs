@@ -65,6 +65,7 @@ impl AnalyticsCookie {
 }
 
 /// HTTP request tracker.
+#[derive(Default)]
 pub struct RequestTracker {}
 
 impl RequestTracker {
@@ -76,15 +77,15 @@ impl RequestTracker {
 
 #[crate::async_trait]
 impl Middleware for RequestTracker {
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         Ok(Outcome::Forward(request))
     }
 
     async fn handle_response(
         &self,
         request: &Request,
-        mut response: Response,
-    ) -> Result<Response, Error> {
+        mut response: Box<Response>,
+    ) -> Result<Box<Response>, Error> {
         let method = request.method().to_string();
         let path = request.path().path().to_string();
         let query = request.path().query().to_json();
@@ -109,7 +110,7 @@ impl Middleware for RequestTracker {
                 .max_age(Duration::days(399))
                 .build();
 
-            response = response.cookie(cookie);
+            *response = response.cookie(cookie);
         }
 
         if let Ok(mut conn) = Pool::connection().await {
@@ -143,7 +144,7 @@ mod test {
     #[tokio::test]
     async fn test_request_tracker() {
         let request = Request::default();
-        let response = Response::default();
+        let response = Box::new(Response::default());
 
         let mut response = RequestTracker::new()
             .handle_response(&request, response)

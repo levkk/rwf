@@ -45,11 +45,8 @@ impl Parse for TurboStreamInput {
 
         let mut context: Vec<ContextInput> = vec![];
 
-        loop {
-            match input.parse() {
-                Ok(context_input) => context.push(context_input),
-                Err(_) => break,
-            };
+        while let Ok(context_input) = input.parse() {
+            context.push(context_input)
         }
 
         Ok(TurboStreamInput {

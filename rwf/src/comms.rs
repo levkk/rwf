@@ -75,12 +75,17 @@ pub struct Messages {
     websocket: Arc<Mutex<HashMap<SessionId, Websocket>>>,
 }
 
-impl Messages {
-    /// Create new messages channel.
-    pub fn new() -> Self {
+impl Default for Messages {
+    fn default() -> Self {
         Self {
             websocket: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+}
+impl Messages {
+    /// Create new messages channel.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     fn websocket_disconnect(&self, session_id: &SessionId) {

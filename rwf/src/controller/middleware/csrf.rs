@@ -42,6 +42,7 @@ pub static CSRF_HEADER: &str = "X-CSRF-Token";
 pub static CSRF_INPUT: &str = "rwf_csrf_token";
 
 /// CSRF protection middleware.
+#[derive(Default)]
 pub struct Csrf;
 
 impl Csrf {
@@ -53,7 +54,7 @@ impl Csrf {
 
 #[async_trait]
 impl Middleware for Csrf {
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         if request.skip_csrf() {
             return Ok(Outcome::Forward(request));
         }
@@ -79,7 +80,7 @@ impl Middleware for Csrf {
             }
         }
 
-        Ok(Outcome::Stop(request, Response::csrf_error()))
+        Ok(Outcome::Stop(request, Box::new(Response::csrf_error())))
     }
 }
 

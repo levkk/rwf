@@ -30,7 +30,7 @@ impl Default for SecureId {
 
 #[async_trait::async_trait]
 impl Middleware for SecureId {
-    async fn handle_request(&self, mut request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, mut request: Box<Request>) -> Result<Outcome, Error> {
         let id = request.parameter::<String>("id");
         if self.transform_response {
             if let Ok(mut data) = request.json_raw() {
@@ -57,7 +57,7 @@ impl Middleware for SecureId {
         if let Ok(Some(id)) = id {
             // Block requests to a numeric ID.
             if self.block_unencrypted && id.chars().all(|c| c.is_numeric()) {
-                return Ok(Outcome::Stop(request, Response::not_found()));
+                return Ok(Outcome::Stop(request, Box::new(Response::not_found())));
             }
 
             let path = request.path().clone();
@@ -70,7 +70,7 @@ impl Middleware for SecureId {
 
                 return Ok(Outcome::Forward(request));
             } else {
-                return Ok(Outcome::Stop(request, Response::not_found()));
+                return Ok(Outcome::Stop(request, Box::new(Response::not_found())));
             }
         }
 
@@ -79,8 +79,8 @@ impl Middleware for SecureId {
     async fn handle_response(
         &self,
         _request: &Request,
-        response: Response,
-    ) -> Result<Response, Error> {
+        mut response: Box<Response>,
+    ) -> Result<Box<Response>, Error> {
         Ok(if self.transform_response {
             if let Body::Json(ref data) = response.get_body() {
                 let mut data: serde_json::Value = serde_json::from_slice(data)?;
@@ -99,7 +99,8 @@ impl Middleware for SecureId {
                         }
                     }
                 }
-                response.body(Body::Json(serde_json::to_vec(&data)?))
+                *response = response.body(Body::Json(serde_json::to_vec(&data)?));
+                response
             } else {
                 response
             }
@@ -131,16 +132,16 @@ impl utoipa::Modify for SecureId {
                 utoipa::openapi::RefOr::Ref(utoipa::openapi::Ref::from_schema_name("encrypted_id"));
             if self.transform_response {
                 for schema in components.schemas.values_mut() {
-                    if let utoipa::openapi::RefOr::T(schema) = schema {
-                        if let utoipa::openapi::schema::Schema::Object(obj) = schema {
-                            if obj.schema_type
-                                == utoipa::openapi::schema::SchemaType::Type(
-                                    utoipa::openapi::schema::Type::Object,
-                                )
-                            {
-                                if let Some(id) = obj.properties.get_mut("id") {
-                                    *id = encrypted_id.clone();
-                                }
+                    if let utoipa::openapi::RefOr::T(utoipa::openapi::schema::Schema::Object(obj)) =
+                        schema
+                    {
+                        if obj.schema_type
+                            == utoipa::openapi::schema::SchemaType::Type(
+                                utoipa::openapi::schema::Type::Object,
+                            )
+                        {
+                            if let Some(id) = obj.properties.get_mut("id") {
+                                *id = encrypted_id.clone();
                             }
                         }
                     }

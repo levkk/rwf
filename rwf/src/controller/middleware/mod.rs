@@ -34,9 +34,9 @@ pub mod request_tracker;
 pub enum Outcome {
     /// Forward the request to the next middleware in the chain, or if none are left,
     /// to the controller.
-    Forward(Request),
+    Forward(Box<Request>),
     /// Intercept the request, and return the response instead.
-    Stop(Request, Response),
+    Stop(Box<Request>, Box<Response>),
 }
 
 /// HTTP middleware, code which runs before a request is sent to a controller
@@ -60,12 +60,12 @@ pub enum Outcome {
 ///     // allowed to proceed.
 ///     async fn handle_request(
 ///         &self,
-///         request: Request
+///         request: Box<Request>
 ///     ) -> Result<Outcome, Error> {
 ///         if request.header("X-Custom-Header").is_some() {
 ///             Ok(Outcome::Forward(request))
 ///         } else {
-///             Ok(Outcome::Stop(request, Response::forbidden()))
+///             Ok(Outcome::Stop(request, Box::new(Response::forbidden())))
 ///         }
 ///     }
 ///
@@ -73,9 +73,9 @@ pub enum Outcome {
 ///     async fn handle_response(
 ///         &self,
 ///         request: &Request,
-///         response: Response
-///     ) -> Result<Response, Error> {
-///         let response = response.header("X-Middleware", "1");
+///         mut response: Box<Response>
+///     ) -> Result<Box<Response>, Error> {
+///         *response = response.header("X-Middleware", "1");
 ///         Ok(response)
 ///     }
 /// }
@@ -86,15 +86,15 @@ pub trait Middleware: Send + Sync + utoipa::Modify {
     /// Process the request before it reaches the controller. You can modify it,
     /// forward it without modification, or block the request entirely
     /// and return a response.
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error>;
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error>;
 
     /// Process the response returned by a controller. You can modify it
     /// or forward it without modification.
     async fn handle_response(
         &self,
         request: &Request,
-        response: Response,
-    ) -> Result<Response, Error> {
+        response: Box<Response>,
+    ) -> Result<Box<Response>, Error> {
         Ok(response)
     }
 
@@ -137,7 +137,7 @@ impl MiddlewareHandler {
         }
     }
 
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         debug!(
             "{} {} => {}",
             "middleware".purple(),
@@ -150,8 +150,8 @@ impl MiddlewareHandler {
     async fn handle_response(
         &self,
         request: &Request,
-        response: Response,
-    ) -> Result<Response, Error> {
+        response: Box<Response>,
+    ) -> Result<Box<Response>, Error> {
         debug!(
             "{} {} <= {}",
             "middleware".purple(),
@@ -192,7 +192,8 @@ impl MiddlewareSet {
     }
 
     /// Handle an incoming request, by sending it through the middleware chain.
-    pub async fn handle_request(&self, mut request: Request) -> Result<(Outcome, usize), Error> {
+    pub async fn handle_request(&self, request: Request) -> Result<(Outcome, usize), Error> {
+        let mut request = Box::new(request);
         for (idx, middleware) in self.handlers.iter().enumerate() {
             match middleware.handle_request(request).await? {
                 Outcome::Forward(req) => request = req,
@@ -213,16 +214,17 @@ impl MiddlewareSet {
     pub async fn handle_response(
         &self,
         request: &Request,
-        mut response: Response,
+        response: Response,
         executed: usize,
     ) -> Result<Response, Error> {
+        let mut response = Box::new(response);
         // Skip middleware that didn't run because the request was stopped.
         let skip = self.handlers.len() - executed;
         for middleware in self.handlers.iter().rev().skip(skip) {
             response = middleware.handle_response(request, response).await?;
         }
 
-        Ok(response)
+        Ok(*response)
     }
 
     /// Returns a clone of the middleware wrappers. They cannot be executed manually.

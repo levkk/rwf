@@ -328,7 +328,6 @@ async fn create_schema_tables(tx: &mut Transaction, log_queries: bool) -> Result
     Ok(())
 }
 /// Update known Schemas
-
 async fn update_database_schema(tx: &mut Transaction, log_queries: bool) -> Result<(), Error> {
     let migrations = migrations::migrations();
     let new_migrations = match RwfDatabaseSchema::latest_version(&mut (*tx)).await {

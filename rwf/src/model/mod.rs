@@ -1909,7 +1909,6 @@ pub trait Model: FromRow + for<'de> Deserialize<'de> {
     ///     format!(r#"OUTER JOIN "projects" ON "users"."id" = "projects"."user_id""#)
     /// )
     /// ```
-
     fn join_outer<F: Association<Self>>() -> Joined<Self, F> {
         Joined::new(F::construct_outer_join())
     }

@@ -351,7 +351,7 @@ impl std::fmt::Display for Cookie {
 /// ```
 ///
 /// The resulting cookie can be set on a response, which will send it to the client.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CookieBuilder {
     cookie: Cookie,
 }

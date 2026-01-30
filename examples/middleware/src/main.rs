@@ -7,14 +7,14 @@ struct BlockBadHeader;
 
 #[rwf::async_trait]
 impl Middleware for BlockBadHeader {
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         if let Some(value) = request.headers().get("x-user-id") {
             if let Ok(_id) = value.parse::<i64>() {
                 return Ok(Outcome::Forward(request));
             }
         }
 
-        Ok(Outcome::Stop(request, Response::bad_request()))
+        Ok(Outcome::Stop(request, Box::new(Response::bad_request())))
     }
 }
 impl utoipa::Modify for BlockBadHeader {

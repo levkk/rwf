@@ -7,9 +7,12 @@ pub struct LoggedInCheck;
 
 #[rwf::async_trait]
 impl Middleware for LoggedInCheck {
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         if request.session().authenticated() {
-            return Ok(Outcome::Stop(request, Response::new().redirect("/chat")));
+            return Ok(Outcome::Stop(
+                request,
+                Box::new(Response::new().redirect("/chat")),
+            ));
         }
 
         Ok(Outcome::Forward(request))

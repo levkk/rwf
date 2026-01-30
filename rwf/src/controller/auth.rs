@@ -65,8 +65,8 @@ impl AuthHandler {
     }
 
     /// Get the authentication method.
-    pub fn auth(&self) -> &Box<dyn Authentication> {
-        &self.auth
+    pub fn auth(&self) -> &dyn Authentication {
+        self.auth.as_ref().as_ref()
     }
 }
 

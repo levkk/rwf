@@ -104,7 +104,7 @@ impl RateLimiter {
 
 #[async_trait]
 impl Middleware for RateLimiter {
-    async fn handle_request(&self, request: Request) -> Result<Outcome, Error> {
+    async fn handle_request(&self, request: Box<Request>) -> Result<Outcome, Error> {
         let peer = match request
             .headers()
             .get("x-forwarded-for")
@@ -144,7 +144,7 @@ impl Middleware for RateLimiter {
         };
 
         if too_many {
-            Ok(Outcome::Stop(request, Response::too_many()))
+            Ok(Outcome::Stop(request, Box::new(Response::too_many())))
         } else {
             Ok(Outcome::Forward(request))
         }
@@ -153,8 +153,8 @@ impl Middleware for RateLimiter {
     async fn handle_response(
         &self,
         request: &Request,
-        response: Response,
-    ) -> Result<Response, Error> {
+        mut response: Box<Response>,
+    ) -> Result<Box<Response>, Error> {
         if let Some(rate) = self
             .state
             .lock()
@@ -162,7 +162,8 @@ impl Middleware for RateLimiter {
             .get(&request.peer().ip())
             .map(|c| c.rate)
         {
-            Ok(response.header("x-rwf-request-rate", rate.to_string()))
+            *response = response.header("x-rwf-request-rate", rate.to_string());
+            Ok(response)
         } else {
             Ok(response)
         }

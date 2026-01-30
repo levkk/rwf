@@ -104,22 +104,6 @@ impl FormData {
         }
     }
 
-    /// An owning iterator over the form data. All values except files are included.
-    pub fn into_iter(self) -> IntoIter<String, String> {
-        match self {
-            FormData::UrlEncoded(query) => query.into_iter(),
-            FormData::Multipart(multipart) => {
-                let entries = multipart
-                    .entries
-                    .into_iter()
-                    .filter(|entry| entry.1.content_disposition.filename.is_none())
-                    .map(|entry| (entry.0, entry.1.to_string().unwrap_or("".to_string())))
-                    .collect::<BTreeMap<String, String>>();
-                entries.into_iter()
-            }
-        }
-    }
-
     /// Return a [`Result`] instead of [`Option`] for the required parameter. When used in combination with
     /// the `?` operator, a controller will return `400 - Bad Request` automatically if the parameter is not set or is set
     /// to the wrong data type.
@@ -190,6 +174,25 @@ macro_rules! read_line {
 
         buf
     }};
+}
+/// An owning iterator over the form data. All values except files are included.
+impl std::iter::IntoIterator for FormData {
+    type Item = (String, String);
+    type IntoIter = std::collections::btree_map::IntoIter<String, String>;
+    fn into_iter(self) -> IntoIter<String, String> {
+        match self {
+            FormData::UrlEncoded(query) => query.into_iter(),
+            FormData::Multipart(multipart) => {
+                let entries = multipart
+                    .entries
+                    .into_iter()
+                    .filter(|entry| entry.1.content_disposition.filename.is_none())
+                    .map(|entry| (entry.0, entry.1.to_string().unwrap_or("".to_string())))
+                    .collect::<BTreeMap<String, String>>();
+                entries.into_iter()
+            }
+        }
+    }
 }
 
 /// A file uploaded via a `multipart/form-data` form.

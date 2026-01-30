@@ -21,8 +21,7 @@ mod render;
 ///
 /// - `Model::table_name` returns the name of the struct, lowercased and pluralized
 /// - `Model::column_names` returns the list of struct fields, in the order they are defined
-/// - `Model::values`, given an instance of the struct, returns the list of field values, converted
-/// to `Value` in the order they are defined on the struct; the field values must implement the `ToValue` trait
+/// - `Model::values`, given an instance of the struct, returns the list of field values, converted to `Value` in the order they are defined on the struct; the field values must implement the `ToValue` trait
 /// - `Model::id` returns the value of the primary key, which is assumed to be the `id` field
 /// - `Model::foreign_key` returns the name of the foreign key column refering to this model; this is stylized as struct name, lowercased, concatenated with `"_id"`
 ///
