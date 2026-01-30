@@ -8,6 +8,7 @@
 //!
 //! ```
 //! # use rwf::view::*;
+//! # use std::str::FromStr;
 //! let template = Template::from_str("<h1><%= title %></h1>").unwrap();
 //! let mut context = Context::new();
 //!

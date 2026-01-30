@@ -370,15 +370,15 @@ mod test {
             "<li>1</li><li>hello</li><li>3.45</li><li>variable value</li>"
         );
 
-        let result = Statement::from_str(
+        let result: Statement = std::str::FromStr::from_str(
             "
 <% for v in [1, 2, 3].enumerate %>
 <p><%= v.0 + 1 %>. <%= v.1 %></p>
 <% end %>
         "
             .trim(),
-        )?
-        .evaluate(&Context::default())?;
+        )?;
+        let result = result.evaluate(&Context::default())?;
 
         assert_eq!(result, "\n<p>1. 1</p>\n\n<p>2. 2</p>\n\n<p>3. 3</p>\n");
 

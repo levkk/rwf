@@ -58,13 +58,14 @@ impl Template {
         })
     }
 
+    /// DEPRECATED! USE std::str::FromStr instead
     /// Read and compile a template from a string.
     ///
     /// # Example
     ///
     /// ```
     /// # use rwf::view::template::*;
-    /// let template = Template::from_str("<%= 1 + 5 %>").unwrap();
+    /// let template = Template::_from_str("<%= 1 + 5 %>").unwrap();
     /// let result = template.render_default().unwrap();
     ///
     /// assert_eq!(result, "6");
