@@ -1,5 +1,6 @@
 //! Represents the database table column.
 
+use std::hash::Hasher;
 use super::{Escape, ToSql, ToValue, Value};
 use std::str::FromStr;
 
@@ -103,7 +104,7 @@ impl<T: ToAggregation + Sized> ToAggregation for &T {
 }
 
 /// PostgreSQL table column.
-#[derive(Debug, Clone, Hash, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
 pub struct Column {
     table_name: String,
     column_name: String,
@@ -136,6 +137,15 @@ impl PartialEq for Column {
 }
 impl Eq for Column {}
 
+impl std::hash::Hash for Column {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.table_name.hash(state);
+        self.column_name.hash(state);
+        if let Some(val) = self.as_value.as_ref() {val.hash(state);}
+        self.agg.hash(state);
+        self.alias.hash(state);
+    }
+}
 impl std::fmt::Display for Column {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_sql())

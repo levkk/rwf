@@ -96,6 +96,7 @@ impl<T: FromRow> Picked<T> {
         )
     }
 
+    #[allow(clippy::wrong_self_convention)]
     /// Workaround because `FromRow::from_row` accept no `&self` Parameter
     pub(super) fn from_row(&self, row: tokio_postgres::Row) -> Result<Self, Error> {
         let mut data = Vec::new();

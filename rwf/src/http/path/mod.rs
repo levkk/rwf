@@ -65,6 +65,8 @@ impl Path {
         self.base.len()
     }
 
+    pub fn is_empty(&self) -> bool {self.base.len() == 0}
+
     /// Get the parsed query.
     pub fn query(&self) -> &Query {
         &self.query

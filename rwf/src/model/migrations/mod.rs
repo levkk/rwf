@@ -1,5 +1,6 @@
 //! Implements database migrations, a deterministic mechanism to change the database schema.
 pub mod bootstrap;
+#[allow(clippy::module_inception)]
 mod migrations;
 pub mod model;
 
@@ -396,10 +397,11 @@ pub fn info(version: Option<uuid::Uuid>) {
             eprintln!("{}", mig.description());
         }
     } else {
-        let version = version.unwrap();
-        for mig in migrations::migrations() {
-            if mig.migration == version {
-                eprintln!("{}", serde_norway::to_string(&mig).unwrap());
+        if let Some(version) = version {
+            for mig in migrations::migrations() {
+                if mig.migration == version {
+                    eprintln!("{}", serde_norway::to_string(&mig).unwrap());
+                }
             }
         }
     }
@@ -444,7 +446,7 @@ mod test {
         if let Query::Select(select) = latest {
             assert_eq!(
                 select.placeholders(),
-                Placeholders::from(vec![SchemaState::APPLIED.to_value()])
+                Placeholders::from(vec![SchemaState::Applied.to_value()])
             )
         } else {
             panic!("Expected SELECT STATEMENT")
@@ -461,8 +463,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -480,8 +482,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -500,8 +502,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -519,8 +521,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -538,8 +540,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    Value::String("INTERNAL".to_string()),
-                    Value::String("INTERNAL".to_string())
+                    Value::String("Internal".to_string()),
+                    Value::String("Internal".to_string())
                 ])
             );
         } else {
@@ -558,10 +560,10 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaKind::Internal.to_value(),
+                    SchemaKind::Internal.to_value(),
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -580,7 +582,7 @@ mod test {
         if let Query::Select(select) = chain {
             assert_eq!(
                 select.placeholders(),
-                Placeholders::from(vec![SchemaKind::INTERNAL.to_value(), Value::Uuid(target)])
+                Placeholders::from(vec![SchemaKind::Internal.to_value(), Value::Uuid(target)])
             );
         } else {
             panic!("Expected SELECT QUERY")
@@ -599,10 +601,10 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
+                    SchemaKind::Internal.to_value(),
                     Value::Uuid(target),
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             );
         } else {
@@ -621,8 +623,8 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaKind::INTERNAL.to_value(),
+                    SchemaKind::Internal.to_value(),
+                    SchemaKind::Internal.to_value(),
                 ])
             )
         } else {
@@ -641,9 +643,9 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
+                    SchemaKind::Internal.to_value(),
                     Value::Uuid(target),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaKind::Internal.to_value()
                 ])
             )
         }
@@ -660,10 +662,10 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaKind::Internal.to_value(),
+                    SchemaKind::Internal.to_value(),
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         } else {
@@ -683,11 +685,11 @@ mod test {
             assert_eq!(
                 select.placeholders(),
                 Placeholders::from(vec![
-                    SchemaKind::INTERNAL.to_value(),
+                    SchemaKind::Internal.to_value(),
                     Value::Uuid(target),
-                    SchemaKind::INTERNAL.to_value(),
-                    SchemaState::APPLIED.to_value(),
-                    SchemaKind::INTERNAL.to_value()
+                    SchemaKind::Internal.to_value(),
+                    SchemaState::Applied.to_value(),
+                    SchemaKind::Internal.to_value()
                 ])
             )
         }

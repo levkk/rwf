@@ -352,6 +352,7 @@ impl Pool {
         }
     }
 
+    #[allow(clippy::self_named_constructors)]
     pub fn pool() -> Self {
         get_pool()
     }

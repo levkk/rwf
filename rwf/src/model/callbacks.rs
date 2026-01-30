@@ -58,8 +58,10 @@ impl<T: FromRow> TryFrom<&Query<T>> for CallbackKind {
 /// A Registry for Callbacks assoziatet with a `Model`
 #[derive(Default)]
 pub struct CallbackRegistry {
-    inner: Arc<RwLock<BTreeMap<&'static str, BTreeMap<CallbackKind, Vec<Box<dyn InnerCallback>>>>>>,
+    inner: Arc<RwLock<CallbackMap>>,
 }
+type CallbackMap = BTreeMap<&'static str, CallbackKindMap>;
+type CallbackKindMap = BTreeMap<CallbackKind, Vec<Box<dyn InnerCallback>>>;
 
 impl CallbackRegistry {
     /// Add a new Callback for a specific `Model`

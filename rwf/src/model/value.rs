@@ -116,10 +116,7 @@ impl Value {
 
     /// Checks if this value is a placeholder, as opposed to an actual value.
     pub fn placeholder(&self) -> bool {
-        match self {
-            Value::Placeholder(_) => true,
-            _ => false,
-        }
+        matches!(self, Value::Placeholder(_))
     }
 }
 

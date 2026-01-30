@@ -42,8 +42,8 @@ macro_rules! migration_enum {
     };
 }
 
-migration_enum!(SchemaState, UNKNOWN, CREATED, APPLIED, UNAPPLIED, REMOVED);
-migration_enum!(SchemaKind, INTERNAL, FEATURE);
+migration_enum!(SchemaState, Unknown, Created, Applied, Unapplied, Removed);
+migration_enum!(SchemaKind, Internal, Feature);
 
 #[derive(
     Debug,
@@ -238,13 +238,13 @@ impl crate::model::Association<RwfDatabaseSchema> for RwfSchemaMigration {}
 #[allow(unused)]
 impl SchemaState {
     fn active(&self) -> bool {
-        self.eq(&Self::APPLIED)
+        self.eq(&Self::Applied)
     }
     fn deactivated(&self) -> bool {
-        self.eq(&Self::UNAPPLIED)
+        self.eq(&Self::Unapplied)
     }
     fn created(&self) -> bool {
-        self.eq(&Self::CREATED)
+        self.eq(&Self::Created)
     }
 }
 
@@ -291,7 +291,7 @@ impl RwfDatabaseSchema {
         info!("Apply InternalMiigration {}\t{}", self.name, self.migration);
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), self.id()),
-            ("state", SchemaState::APPLIED.to_value()),
+            ("state", SchemaState::Applied.to_value()),
         ]);
         for stmt in &self.up {
             if log_queries {
@@ -313,7 +313,7 @@ impl RwfDatabaseSchema {
         );
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), self.id()),
-            ("state", SchemaState::UNAPPLIED.to_value()),
+            ("state", SchemaState::Unapplied.to_value()),
         ]);
         for stmt in &self.down {
             if log_queries {
@@ -336,7 +336,7 @@ impl RwfDatabaseSchema {
         let applied = applied.fetch(&mut (*tx)).await?;
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), applied.id()),
-            ("state", SchemaState::CREATED.to_value()),
+            ("state", SchemaState::Created.to_value()),
         ]);
 
         if log_queries {
@@ -353,7 +353,7 @@ impl RwfDatabaseSchema {
     ) -> Result<(), Error> {
         let migrate = RwfSchemaMigration::create(&[
             (Self::foreign_key(), self.id()),
-            ("state", SchemaState::REMOVED.to_value()),
+            ("state", SchemaState::Removed.to_value()),
         ]);
         let removed = self.destroy();
 
@@ -380,7 +380,7 @@ impl RwfDatabaseSchema {
             .await
         {
             Ok(Some(mig)) => Ok(SchemaState::from(&mig)),
-            Ok(None) => Ok(SchemaState::UNKNOWN),
+            Ok(None) => Ok(SchemaState::Unknown),
             Err(e) => Err(e),
         }
     }
@@ -422,7 +422,7 @@ impl RwfDatabaseSchema {
     }
 
     pub(crate) fn internal_migrations() -> Scope<Self> {
-        Self::filter("kind", SchemaKind::INTERNAL.to_value())
+        Self::filter("kind", SchemaKind::Internal.to_value())
     }
     pub(crate) fn internal_migration_root() -> Scope<Self> {
         Self::internal_migrations()
@@ -530,13 +530,13 @@ impl RwfSchemaMigration {
             ))
     }
     pub(crate) fn latest_applied_migrations() -> Scope<Self> {
-        Self::latest_migrations().filter("state", SchemaState::APPLIED.to_value())
+        Self::latest_migrations().filter("state", SchemaState::Applied.to_value())
     }
 
     pub(crate) fn latest_applied_internal_migrations() -> Scope<Self> {
         Self::latest_applied_migrations()
             .join::<RwfDatabaseSchema>()
-            .filter(RwfDatabaseSchema::column("kind"), SchemaKind::INTERNAL)
+            .filter(RwfDatabaseSchema::column("kind"), SchemaKind::Internal)
     }
 
     pub(crate) fn last_applied_internal_migration() -> Scope<Self> {

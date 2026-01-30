@@ -28,18 +28,18 @@ use tracing::{debug, error, info, warn};
 
 /// Type of TCP connection used by the client.
 enum Conn {
-    Plain(BufReader<BufWriter<TcpStream>>),
-    Tls(BufReader<BufWriter<TlsStream<TcpStream>>>),
+    Plain(Box<BufReader<BufWriter<TcpStream>>>),
+    Tls(Box<BufReader<BufWriter<TlsStream<TcpStream>>>>),
 }
 
 impl From<TcpStream> for Conn {
     fn from(value: TcpStream) -> Self {
-        Self::Plain(BufReader::new(BufWriter::new(value)))
+        Self::Plain(Box::new(BufReader::new(BufWriter::new(value))))
     }
 }
 impl From<TlsStream<TcpStream>> for Conn {
     fn from(value: TlsStream<TcpStream>) -> Self {
-        Self::Tls(BufReader::new(BufWriter::new(value)))
+        Self::Tls(Box::new(BufReader::new(BufWriter::new(value))))
     }
 }
 
@@ -174,6 +174,11 @@ impl Server {
     }
 
     fn tls_config() -> Result<Option<TlsAcceptor>, Error> {
+        if rustls::crypto::CryptoProvider::get_default().is_none() {
+            rustls::crypto::ring::default_provider()
+                .install_default()
+                .unwrap();
+        }
         let config = get_config();
         if let Some(ref cert_file) = config.general.cert_file {
             if let Some(ref key_file) = config.general.key_file {

@@ -3,7 +3,7 @@ use super::{Column, Escape, FromRow, Model, Placeholders, ToColumn, ToSql, ToVal
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
-pub struct Insert<T: FromRow + ?Sized> {
+pub struct Insert<T: FromRow> {
     table_name: String,
     columns: Vec<Column>,
     pub placeholders: Placeholders,

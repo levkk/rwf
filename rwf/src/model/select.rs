@@ -108,7 +108,7 @@ impl<T: FromRow> Select<T> {
     }
 
     pub fn join(mut self, join: Join) -> Self {
-        self.joins = self.joins.add(join);
+        self.joins = self.joins.add_join(join);
         self.columns = self.columns.table_name(&self.table_name);
         self
     }
@@ -119,7 +119,7 @@ impl<T: FromRow> Select<T> {
 
     pub fn add_joins(mut self, joins: Joins) -> Self {
         for join in joins.joins() {
-            self.joins = self.joins.add(join.clone());
+            self.joins = self.joins.add_join(join.clone());
         }
 
         self

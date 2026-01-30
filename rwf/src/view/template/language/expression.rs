@@ -260,7 +260,7 @@ impl Expression {
                 let mut buffer = vec![];
                 let mut args = vec![];
                 let _ = iter.next().ok_or(Error::Eof("function args start"));
-                while let Some(next) = iter.next() {
+                for next in iter.by_ref() {
                     match next.token() {
                         Token::RoundBracketEnd => {
                             if !buffer.is_empty() {

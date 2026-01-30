@@ -175,7 +175,7 @@ impl Joins {
         Self::default()
     }
 
-    pub fn add(mut self, join: Join) -> Self {
+    pub fn add_join(mut self, join: Join) -> Self {
         self.joins.push(join);
         self
     }
@@ -222,13 +222,13 @@ impl<S: Model, T: Model> Joined<S, T> {
         Self {
             a: PhantomData,
             b: PhantomData,
-            joins: Joins::new().add(join),
+            joins: Joins::new().add_join(join),
         }
     }
 
     pub fn join<U: Association<T>>(self) -> Joined<S, U> {
         let joins = self.joins.clone();
-        let joins = joins.add(U::construct_join());
+        let joins = joins.add_join(U::construct_join());
         Joined {
             a: PhantomData,
             b: PhantomData,
@@ -236,7 +236,7 @@ impl<S: Model, T: Model> Joined<S, T> {
         }
     }
     pub fn add_join<U: Model>(self, join: Join) -> Joined<S, U> {
-        let joins = self.joins.clone().add(join);
+        let joins = self.joins.clone().add_join(join);
         Joined {
             a: PhantomData,
             b: PhantomData,

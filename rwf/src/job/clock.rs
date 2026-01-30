@@ -39,8 +39,8 @@ impl ScheduledJob {
     }
 
     /// Get the job handler.
-    pub fn job(&self) -> &Box<dyn Job> {
-        &self.job.job
+    pub fn job(&self) -> &dyn Job {
+        self.job.job.as_ref()
     }
 
     /// Create new scheduled job.
