@@ -62,12 +62,13 @@ impl PageController for ModelController {
                 let table_name = model.clone();
                 let rows = Pool::pool()
                     .with_connection(|mut conn| async move {
+                        let offset = format!(" OFFSET {}", (page - 1) * 25);
                         Row::find_by_sql(
                             format!(
                                 "SELECT * FROM \"{}\" {}LIMIT 25{}",
                                 table_name.escape(),
                                 order_by,
-                                format!(" OFFSET {}", (page - 1) * 25),
+                                offset
                             ),
                             &[],
                         )
@@ -79,10 +80,10 @@ impl PageController for ModelController {
                 for row in rows {
                     data.push(row.values()?);
                 }
-
+                let title = format!("{} | Rust Web Framework", model);
                 render!(request,
                     "templates/rwf_admin/model.html",
-                    "title" => format!("{} | Rust Web Framework", model),
+                    "title" => title,
                     "table_name" => model,
                     "columns" => columns,
                     "rows" => data,
