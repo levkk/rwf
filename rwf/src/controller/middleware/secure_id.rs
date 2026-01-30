@@ -169,18 +169,17 @@ impl utoipa::Modify for SecureId {
                                     }
                                 }
                             }
-                            if let Some(schema) = content.schema.as_mut() {
-                                if let utoipa::openapi::RefOr::T(schema) = schema {
-                                    if let utoipa::openapi::schema::Schema::Object(obj) = schema {
-                                        if obj.schema_type
-                                            == utoipa::openapi::schema::SchemaType::Type(
-                                                utoipa::openapi::schema::Type::Object,
-                                            )
-                                        {
-                                            if let Some(id) = obj.properties.get_mut("id") {
-                                                *id = encrypted_id.clone();
-                                            }
-                                        }
+                            if let Some(utoipa::openapi::RefOr::T(
+                                utoipa::openapi::schema::Schema::Object(obj),
+                            )) = content.schema.as_mut()
+                            {
+                                if obj.schema_type
+                                    == utoipa::openapi::schema::SchemaType::Type(
+                                        utoipa::openapi::schema::Type::Object,
+                                    )
+                                {
+                                    if let Some(id) = obj.properties.get_mut("id") {
+                                        *id = encrypted_id.clone();
                                     }
                                 }
                             }

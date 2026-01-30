@@ -125,14 +125,10 @@ impl Config {
         for path in ["rwf.toml", "Rwf.toml", "Rum.toml"] {
             let path = Path::new(path);
             if path.is_file() {
-                return match Self::load(path) {
-                    Ok(config) => config,
-                    Err(err) => {
-                        let mut config = Config::default();
-                        config.error = Some(err);
-                        config
-                    }
-                };
+                return Self::load(path).unwrap_or_else(|err| Config {
+                    error: Some(err),
+                    ..Self::default()
+                });
             }
         }
 

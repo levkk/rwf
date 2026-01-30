@@ -10,6 +10,7 @@ use syn::{
     parse_quote, Expr, ExprMethodCall, ImplItem, ItemStruct, Lit, LitStr, Stmt, Token, Type,
 };
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ResponseTypes {
     HTML,
@@ -168,14 +169,13 @@ impl ToTokens for Responses {
                     if res.json.is_some() {
                         let typ = res.json.as_ref().unwrap();
                         content.push(quote! {(#typ = #content_type)});
-                    } else if res.ty == ResponseTypes::HTML {
-                        content.push(quote! {(String= #content_type)});
+                    } else if matches!(
+                        res.ty,
+                        ResponseTypes::HTML | ResponseTypes::TEXT | ResponseTypes::TURBO
+                    ) {
+                        content.push(quote! {(String = #content_type)});
                     } else if res.ty == ResponseTypes::JSON {
                         content.push(quote! {(serde_json::Value = #content_type)});
-                    } else if res.ty == ResponseTypes::TEXT {
-                        content.push(quote! {(String = #content_type)})
-                    } else if res.ty == ResponseTypes::TURBO {
-                        content.push(quote! {(String = #content_type)})
                     } else {
                         content.clear();
                         inner.push(res.to_token_stream());

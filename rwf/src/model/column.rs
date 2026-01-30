@@ -5,7 +5,6 @@ use std::hash::Hasher;
 use std::str::FromStr;
 
 /// Possible Aggregation to execute
-
 macro_rules! impl_aggregation {
     ($($opts:ident),*)  => {
         #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, crate::prelude::Serialize, crate::prelude::Deserialize)]

@@ -307,6 +307,10 @@ impl Message {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     fn op_code(&self) -> OpCode {
         match self {
             Self::Text(_) => OpCode::Text,
