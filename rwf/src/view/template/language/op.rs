@@ -40,10 +40,7 @@ impl Op {
 
     /// Is this a binary operator, i.e. an operation between two terms?
     pub fn binary(&self) -> bool {
-        match self {
-            Op::Not => false,
-            _ => true,
-        }
+        matches!(self, Op::Not)
     }
 
     /// Evaluate the operation on a value.

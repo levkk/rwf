@@ -34,6 +34,16 @@ pub struct Template {
     path: Option<PathBuf>,
 }
 
+impl std::str::FromStr for Template {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Template {
+            program: Program::from_str(s)?,
+            path: None,
+        })
+    }
+}
+
 impl Template {
     /// Read and compile a template from disk.
     pub fn new(path: impl AsRef<Path> + std::marker::Copy) -> Result<Self, Error> {
@@ -43,7 +53,7 @@ impl Template {
         };
 
         Ok(Template {
-            program: Program::from_str(&text)?,
+            program: std::str::FromStr::from_str(&text)?,
             path: Some(path.as_ref().to_owned()),
         })
     }
@@ -59,9 +69,9 @@ impl Template {
     ///
     /// assert_eq!(result, "6");
     /// ```
-    pub fn from_str(template: &str) -> Result<Self, Error> {
+    pub fn _from_str(template: &str) -> Result<Self, Error> {
         Ok(Template {
-            program: Program::from_str(template)?,
+            program: std::str::FromStr::from_str(template)?,
             path: None,
         })
     }

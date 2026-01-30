@@ -66,7 +66,7 @@ impl Context {
         match self.get("request") {
             Some(Value::Hash(hash)) => match hash.get("session") {
                 Some(Value::Hash(session)) => match session.get("session_id") {
-                    Some(session_id) => Ok(session_id.to_string()),
+                    Some(session_id) => Ok(session_id.get_string()),
                     None => Err(Error::Runtime(
                         "session_id is missing from the context".into(),
                     )),

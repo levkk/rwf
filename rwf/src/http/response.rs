@@ -24,7 +24,7 @@ use crate::{config::get_config, controller::Session};
 
 static ERROR_TEMPLATE: Lazy<Template> = Lazy::new(|| {
     let template = include_str!("error.html");
-    Template::from_str(template).unwrap()
+    std::str::FromStr::from_str(template).unwrap()
 });
 
 /// Response status, e.g. 404, 200, etc.

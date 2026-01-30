@@ -8,7 +8,7 @@ use super::{Context, Template};
 use crate::view::template::lexer::value::ToTemplateValue;
 
 static TEMPLATE: Lazy<Template> =
-    Lazy::new(|| Template::from_str(include_str!("stream.html")).unwrap());
+    Lazy::new(|| std::str::FromStr::from_str(include_str!("stream.html")).unwrap());
 
 /// Turbo Stream.
 ///

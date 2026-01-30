@@ -260,13 +260,7 @@ impl Expression {
                 let mut buffer = vec![];
                 let mut args = vec![];
                 let _ = iter.next().ok_or(Error::Eof("function args start"));
-
-                loop {
-                    let next = match iter.next() {
-                        Some(next) => next,
-                        None => break,
-                    };
-
+                while let Some(next) = iter.next() {
                     match next.token() {
                         Token::RoundBracketEnd => {
                             if !buffer.is_empty() {
@@ -633,7 +627,7 @@ mod test {
 
         let result = "<% decrypt_number(n) %>".evaluate(&context)?;
 
-        assert_eq!(result.to_string(), String::from("1"));
+        assert_eq!(result.get_string(), String::from("1"));
 
         Ok(())
     }

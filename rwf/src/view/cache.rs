@@ -73,7 +73,7 @@ impl Templates {
             return Ok(t.clone());
         }
 
-        let template = Arc::new(Template::from_str(src)?);
+        let template = Arc::<Template>::new(std::str::FromStr::from_str(src)?);
 
         if cache_templates {
             self.templates
@@ -108,7 +108,7 @@ impl Templates {
     ///         .unwrap();
     /// ```
     pub fn preload_str(&mut self, path: impl AsRef<Path> + Copy, src: &str) -> Result<(), Error> {
-        let template = Arc::new(Template::from_str(src)?);
+        let template = Arc::<Template>::new(std::str::FromStr::from_str(src)?);
         self.templates
             .insert(path.as_ref().to_owned(), template.clone());
 

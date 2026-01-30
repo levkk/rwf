@@ -18,9 +18,9 @@ use crate::model::Value as ModelValue;
 use crate::view::template::Template;
 
 static TURBO_STREAM: Lazy<Template> =
-    Lazy::new(|| Template::from_str(include_str!("../turbo-stream.html")).unwrap());
+    Lazy::new(|| std::str::FromStr::from_str(include_str!("../turbo-stream.html")).unwrap());
 static HEAD: Lazy<Template> =
-    Lazy::new(|| Template::from_str(include_str!("../head.html")).unwrap());
+    Lazy::new(|| std::str::FromStr::from_str(include_str!("../head.html")).unwrap());
 
 /// A constant value, e.g. `5` or `"hello world"`.
 #[derive(Debug, PartialEq, Clone)]
@@ -187,25 +187,9 @@ impl Value {
     ) -> Result<Self, Error> {
         match method_name {
             "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
-            "integer" => {
-                return Ok(Value::Boolean(match self {
-                    Value::Integer(_) => true,
-                    _ => false,
-                }))
-            }
-            "float" => {
-                return Ok(Value::Boolean(match self {
-                    Value::Float(_) => true,
-                    _ => false,
-                }))
-            }
-            "numeric" => {
-                return Ok(Value::Boolean(match self {
-                    Value::Integer(_) => true,
-                    Value::Float(_) => true,
-                    _ => false,
-                }))
-            }
+            "integer" => return Ok(Value::Boolean(matches!(self, Value::Integer(_)))),
+            "float" => return Ok(Value::Boolean(matches!(self, Value::Float(_)))),
+            "numeric" => return Ok(Value::Boolean(matches!(self, Value::Integer(_) | Value::Float(_)))),
             _ => (),
         };
 
@@ -268,7 +252,7 @@ impl Value {
                 "is_empty" | "blank" | "empty" => Value::Boolean(value.is_empty()),
                 "br" => Value::SafeString(crate::safe_html(value).replace("\n", "<br>")),
                 "replace" | "sub" => match &args {
-                    &[v, r] => Value::String(value.replace(&v.to_string(), &r.to_string())),
+                    &[v, r] => Value::String(value.replace(&v.get_string(), &r.get_string())),
                     _ => {
                         return Err(Error::Runtime(
                             "replace takes two arguments: value and replacement".into(),
@@ -430,7 +414,7 @@ impl Value {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn get_string(&self) -> String {
         match self {
             Value::String(s) => s.clone(),
             Value::Integer(n) => n.to_string(),
@@ -499,6 +483,7 @@ impl_integer!(u64); // Could very much overflow
 impl_integer!(u32);
 impl_integer!(u16);
 impl_integer!(u8);
+
 
 impl ToTemplateValue for time::OffsetDateTime {
     fn to_template_value(&self) -> Result<Value, Error> {

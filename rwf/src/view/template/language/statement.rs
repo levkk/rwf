@@ -56,10 +56,16 @@ pub enum Statement {
 
     Render(PathBuf),
 }
-
+impl std::str::FromStr for Statement {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = s.tokenize()?;
+        Statement::parse(&mut tokens.into_iter().peekable())
+    }
+}
 impl Statement {
     /// Compile statement from text.
-    pub fn from_str(string: &str) -> Result<Self, Error> {
+    pub fn _from_str(string: &str) -> Result<Self, Error> {
         let tokens = string.tokenize()?;
         Statement::parse(&mut tokens.into_iter().peekable())
     }
@@ -101,12 +107,12 @@ impl Statement {
 
                 Ok(result)
             }
-            Statement::PrintRaw(expression) => Ok(expression.evaluate(context)?.to_string()),
+            Statement::PrintRaw(expression) => Ok(expression.evaluate(context)?.get_string()),
             Statement::Print(expression) => {
                 let value = expression.evaluate(context)?;
                 Ok(match value {
                     Value::SafeString(s) => s,
-                    value => crate::safe_html(&value.to_string()),
+                    value => crate::safe_html(&value.get_string()),
                 })
             }
             Statement::For {

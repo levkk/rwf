@@ -35,8 +35,16 @@ impl Program {
     }
 
     /// Compile the program from source.
-    pub fn from_str(source: &str) -> Result<Self, Error> {
+    pub fn _from_str(source: &str) -> Result<Self, Error> {
         let tokens = source.tokenize()?;
+        Program::parse(tokens)
+    }
+}
+
+impl std::str::FromStr for Program {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = s.tokenize()?;
         Program::parse(tokens)
     }
 }
