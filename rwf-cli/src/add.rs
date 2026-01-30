@@ -2,6 +2,7 @@ use rwf::controller::Error;
 use rwf::macros::context;
 use rwf::view::Template;
 use std::path::Path;
+use std::str::FromStr;
 use tokio::fs::{read_dir, File};
 use tokio::io::AsyncWriteExt;
 

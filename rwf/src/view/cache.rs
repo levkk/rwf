@@ -18,6 +18,7 @@ use parking_lot::{Mutex, MutexGuard};
 static TEMPLATES: Lazy<Mutex<Templates>> = Lazy::new(|| Mutex::new(Templates::new()));
 
 /// Templates cache.
+#[derive(Default)]
 pub struct Templates {
     templates: HashMap<PathBuf, Arc<Template>>,
 }
@@ -25,9 +26,7 @@ pub struct Templates {
 impl Templates {
     /// Create new empty template cache.
     pub fn new() -> Self {
-        Self {
-            templates: HashMap::new(),
-        }
+        Self::default()
     }
 
     /// Retrieve a template from the cache. If the template doesn't exist, it will be fetched

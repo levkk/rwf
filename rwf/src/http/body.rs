@@ -16,7 +16,7 @@ pub enum Body {
     File {
         path: PathBuf,
         file: File,
-        metadata: Metadata,
+        metadata: Box<Metadata>,
     },
     /// UTF-8 encoded HTML.
     Html(String),
@@ -108,6 +108,10 @@ impl Body {
             Text(text) => text.len(),
             FileInclude { bytes, .. } => bytes.len(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Get the body's MIME type. This determines the value of the `Content-Type` header.
@@ -243,7 +247,7 @@ impl From<(PathBuf, File, Metadata)> for Body {
         Self::File {
             path: file.0,
             file: file.1,
-            metadata: file.2,
+            metadata: Box::new(file.2),
         }
     }
 }

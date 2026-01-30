@@ -189,7 +189,12 @@ impl Value {
             "nil" | "null" | "blank" => return Ok(Value::Boolean(self == &Value::Null)),
             "integer" => return Ok(Value::Boolean(matches!(self, Value::Integer(_)))),
             "float" => return Ok(Value::Boolean(matches!(self, Value::Float(_)))),
-            "numeric" => return Ok(Value::Boolean(matches!(self, Value::Integer(_) | Value::Float(_)))),
+            "numeric" => {
+                return Ok(Value::Boolean(matches!(
+                    self,
+                    Value::Integer(_) | Value::Float(_)
+                )))
+            }
             _ => (),
         };
 
@@ -483,7 +488,6 @@ impl_integer!(u64); // Could very much overflow
 impl_integer!(u32);
 impl_integer!(u16);
 impl_integer!(u8);
-
 
 impl ToTemplateValue for time::OffsetDateTime {
     fn to_template_value(&self) -> Result<Value, Error> {

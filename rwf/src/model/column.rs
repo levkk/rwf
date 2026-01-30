@@ -1,7 +1,7 @@
 //! Represents the database table column.
 
-use std::hash::Hasher;
 use super::{Escape, ToSql, ToValue, Value};
+use std::hash::Hasher;
 use std::str::FromStr;
 
 /// Possible Aggregation to execute
@@ -141,7 +141,9 @@ impl std::hash::Hash for Column {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.table_name.hash(state);
         self.column_name.hash(state);
-        if let Some(val) = self.as_value.as_ref() {val.hash(state);}
+        if let Some(val) = self.as_value.as_ref() {
+            val.hash(state);
+        }
         self.agg.hash(state);
         self.alias.hash(state);
     }

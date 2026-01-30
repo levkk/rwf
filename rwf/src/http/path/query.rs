@@ -13,7 +13,7 @@ use crate::http::{urldecode, urlencode};
 /// ```text
 /// page=5&page_size=25
 /// ```
-#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize)]
+#[derive(Debug, Clone, crate::prelude::Deserialize, crate::prelude::Serialize, Default)]
 pub struct Query {
     query: BTreeMap<String, String>,
 }
@@ -21,9 +21,7 @@ pub struct Query {
 impl Query {
     /// Create new empty query.
     pub fn new() -> Self {
-        Self {
-            query: BTreeMap::new(),
-        }
+        Self::default()
     }
 
     /// Parse query from a GET request.
@@ -118,7 +116,15 @@ impl Query {
     ///     // ...
     /// }
     /// ```
-    pub fn into_iter(self) -> IntoIter<String, String> {
+    pub fn iter_params(self) -> IntoIter<String, String> {
+        self.into_iter()
+    }
+}
+
+impl std::iter::IntoIterator for Query {
+    type Item = (String, String);
+    type IntoIter = std::collections::btree_map::IntoIter<String, String>;
+    fn into_iter(self) -> Self::IntoIter {
         self.query.into_iter()
     }
 }

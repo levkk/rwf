@@ -101,14 +101,14 @@ struct OpenapiOpenapi;
 #[derive(Clone)]
 pub enum OpenApiNesterOptions {
     Fn(fn() -> utoipa::openapi::OpenApi),
-    Value(utoipa::openapi::OpenApi),
+    Value(Box<utoipa::openapi::OpenApi>),
 }
 
 impl OpenApiNesterOptions {
     pub fn get_openapi(&self) -> utoipa::openapi::OpenApi {
         match self {
             OpenApiNesterOptions::Fn(func) => func(),
-            OpenApiNesterOptions::Value(value) => value.clone(),
+            OpenApiNesterOptions::Value(value) => value.as_ref().clone(),
         }
     }
 }
@@ -118,7 +118,7 @@ pub trait IntoOpenApiNesterOption {
 }
 impl IntoOpenApiNesterOption for utoipa::openapi::OpenApi {
     fn into_nester_option(self) -> OpenApiNesterOptions {
-        OpenApiNesterOptions::Value(self)
+        OpenApiNesterOptions::Value(Box::new(self))
     }
 }
 impl IntoOpenApiNesterOption for OpenApiNesterOptions {

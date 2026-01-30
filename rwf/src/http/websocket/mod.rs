@@ -240,6 +240,7 @@ impl Meta {
         })
     }
 
+    #[allow(clippy::len_without_is_empty)]
     fn len(&self) -> usize {
         self.len
     }

@@ -1,7 +1,7 @@
 //! Errors returned by the HTTP protocol implementation.
 
-use thiserror::Error;
 use super::Head;
+use thiserror::Error;
 
 /// Errors returned by the HTTP implementation.
 #[derive(Error, Debug)]

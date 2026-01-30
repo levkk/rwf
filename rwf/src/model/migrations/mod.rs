@@ -396,12 +396,10 @@ pub fn info(version: Option<uuid::Uuid>) {
         for mig in migrations::migrations() {
             eprintln!("{}", mig.description());
         }
-    } else {
-        if let Some(version) = version {
-            for mig in migrations::migrations() {
-                if mig.migration == version {
-                    eprintln!("{}", serde_norway::to_string(&mig).unwrap());
-                }
+    } else if let Some(version) = version {
+        for mig in migrations::migrations() {
+            if mig.migration == version {
+                eprintln!("{}", serde_norway::to_string(&mig).unwrap());
             }
         }
     }

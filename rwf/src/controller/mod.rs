@@ -802,13 +802,10 @@ pub trait WebsocketController: Controller {
                 _ = check.tick() => {
                     debug!("{} check session \"{}\"", "websocket".purple(), session_id);
 
-                    let closed = match timeout(
+                    let closed = matches!(timeout(
                         config.websocket.ping_timeout().unsigned_abs(),
                         DataFrame::new_ping().flush(&mut stream)
-                    ).await {
-                        Ok(Ok(_)) => false,
-                        _ => true,
-                    };
+                    ).await, Ok(Ok(_)));
 
                     lost_pings += 1;
 
