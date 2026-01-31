@@ -335,7 +335,7 @@ impl std::fmt::Display for IdType {
     }
 }
 /// Type of session provided by the client in the request.
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SessionId {
     /// Guest user. All visitors are given a guest session.
     Guest(String),

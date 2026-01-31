@@ -1,0 +1,26 @@
+<html>
+    <head>
+        <title>RWF Cursor Example</title>
+        <%- rwf_head %>
+    </head>
+    <body>
+        <%= rwf_turbo_stream("/ws") %>
+        <div class="container">
+            <div class="card">
+                <div class="card-body">
+                    <ul class="list-group" id="entries"></ul>
+                </div>
+                <div class="card-footer">
+                    <form method="get" id="direction-form">
+                        <label for="direction">Direction: </label>
+                        <select id="direction" name="direction">
+                            <option value="next">Next</option>
+                            <option vaLue="prev">Previous</option>
+                        </select>
+                        <input type="submit" value="send">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

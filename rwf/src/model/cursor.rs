@@ -1042,6 +1042,16 @@ where
     }
 }
 
+impl<T> ToTransactionCursor for ModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    type TxCursor = TxModelCursor<T>;
+    fn to_transaction_cursor(self, tx: Transaction) -> Self::TxCursor {
+        TxModelCursor { inner: self, tx }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct SelectedValues {
     data: Vec<Value>,
@@ -1276,6 +1286,12 @@ impl TargetedCursor for SelectiveCursor {
         })
     }
 }
+impl ToTransactionCursor for SelectiveCursor {
+    type TxCursor = TxSelectiveCursor;
+    fn to_transaction_cursor(self, tx: Transaction) -> Self::TxCursor {
+        TxSelectiveCursor { inner: self, tx }
+    }
+}
 
 pub struct TxModelCursor<T>
 where
@@ -1324,7 +1340,15 @@ where
         self.tx
     }
 }
-
+impl<T> DecoupleTransactionCursor for TxModelCursor<T>
+where
+    T: Model + Send + Sync + 'static,
+{
+    type InnerTargetedCursor = ModelCursor<T>;
+    fn decouple(self) -> (Self::InnerTargetedCursor, Transaction) {
+        (self.inner, self.tx)
+    }
+}
 pub struct TxSelectiveCursor
 where
     Self: Send + Sync,
@@ -1356,6 +1380,12 @@ impl TransactionCursor for TxSelectiveCursor {
     }
     fn take_tx(self) -> Transaction {
         self.tx
+    }
+}
+impl DecoupleTransactionCursor for TxSelectiveCursor {
+    type InnerTargetedCursor = SelectiveCursor;
+    fn decouple(self) -> (Self::InnerTargetedCursor, Transaction) {
+        (self.inner, self.tx)
     }
 }
 
@@ -1635,6 +1665,18 @@ where
     async fn release_savepoint(&mut self) -> Result<(), Error> {
         self.tx().release_savepoint().await
     }
+}
+
+pub trait DecoupleTransactionCursor
+where
+    Self: TransactionCursor,
+{
+    type InnerTargetedCursor: TargetedCursor;
+    fn decouple(self) -> (Self::InnerTargetedCursor, Transaction);
+}
+pub trait ToTransactionCursor {
+    type TxCursor: TransactionCursor;
+    fn to_transaction_cursor(self, tx: Transaction) -> Self::TxCursor;
 }
 
 /// A Cursor which is self-contained fetchable. Means everything to handle fetches from the Cursor is implemented

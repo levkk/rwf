@@ -698,6 +698,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cursor"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "4.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
