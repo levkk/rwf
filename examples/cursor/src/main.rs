@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 use tokio::sync::Mutex;
 
-#[derive(Debug, Clone, Serialize, Deserialize, macros::Model)]
+#[derive(Debug, Clone, Serialize, Deserialize, macros::Model, PartialEq, Eq)]
 pub struct AppLog {
     id: Option<i64>,
     ts: OffsetDateTime,
@@ -96,4 +96,30 @@ async fn main() -> Result<(), rwf::http::Error> {
     ])
     .launch()
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppLog;
+    use rwf::model::prelude::*;
+    use tokio_stream::{Stream, StreamExt};
+    #[tokio::test]
+    async fn test_cur_eq_query() {
+        let query = AppLog::all().order(("id", "asc"));
+        let mut tx = Pool::pool().transaction().await.unwrap();
+        let query_res = query.clone().fetch_all(&mut tx).await.unwrap();
+        let mut cur = query
+            .declare_cursor("cursor")
+            .unwrap()
+            .create_tx_model_cursor(Some(tx))
+            .await
+            .unwrap();
+        let cur_res: Vec<AppLog> = cur
+            .stream(cur.fetch_stmt())
+            .map(|log| log.unwrap())
+            .collect()
+            .await;
+        cur.close().await.unwrap();
+        assert_eq!(query_res, cur_res);
+    }
 }
