@@ -103,8 +103,11 @@ mod tests {
     use super::AppLog;
     use rwf::model::prelude::*;
     use tokio_stream::{Stream, StreamExt};
+    use rwf::model::migrate;
+
     #[tokio::test]
     async fn test_cur_eq_query() {
+        migrate().await.unwrap();
         let query = AppLog::all().order(("id", "asc"));
         let mut tx = Pool::pool().transaction().await.unwrap();
         let query_res = query.clone().fetch_all(&mut tx).await.unwrap();
