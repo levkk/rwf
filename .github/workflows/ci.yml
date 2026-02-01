@@ -33,6 +33,7 @@ jobs:
                   sudo -u postgres createuser --superuser --login $USER
                   createdb $USER
                   createdb rwf_users
+                  createdb rwf_cursor
                   psql postgres://$USER@127.0.0.1:5432/$USER -c "SELECT 1" > /dev/null
             - uses: actions/checkout@v4
             - uses: actions-rs/toolchain@v1
