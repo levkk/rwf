@@ -101,9 +101,9 @@ async fn main() -> Result<(), rwf::http::Error> {
 #[cfg(test)]
 mod tests {
     use super::AppLog;
-    use rwf::model::prelude::*;
-    use tokio_stream::{Stream, StreamExt};
     use rwf::model::migrate;
+    use rwf::model::prelude::*;
+    use tokio_stream::StreamExt;
 
     #[tokio::test]
     async fn test_cur_eq_query() {

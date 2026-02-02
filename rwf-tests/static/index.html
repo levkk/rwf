@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>hello-wasm example</title>
+  </head>
+  <body>
+    <script type="module">
+      import init, { greet, sum } from "./pkg/wasm.js";
+
+      init().then(() => {
+        greet("WebAssembly");
+	window.rswasm = {
+		sum: sum,
+		greet: greet
+	}
+      });
+    </script>
+  </body>
+</html>

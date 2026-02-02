@@ -552,6 +552,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "complex-queries"
+version = "0.1.0"
+dependencies = [
+ "rwf",
+]
+
+[[package]]
 name = "console-api"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
