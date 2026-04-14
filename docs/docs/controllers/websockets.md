@@ -28,7 +28,7 @@ The trait has two methods of interest: the first handles new WebSocket connectio
 incoming messages from the client.
 
 ```rust
-use rwf::controller::Websocket;
+use rwf::controller::WebsocketController;
 use rwf::prelude::*;
 
 #[derive(Default, macros::WebsocketController)]
@@ -37,17 +37,17 @@ struct Echo;
 #[async_trait]
 impl WebsocketController for Echo {
     /// Run some code when a new client connects to the WebSocket server.
-    async fn handle_connection(
+    async fn client_connected(
         &self,
         client: &SessionId,
     ) -> Result<(), Error> {
-        log::info!("Client {:?} connected to the echo server", client);
+        println!("Client {:?} connected to the echo server", client);
 
         Ok(())
     }
 
     /// Run some code when a client sends a message to the server.
-    async fn handle_message(
+    async fn client_message(
         &self,
         client: &SessionId,
         message: Message,
@@ -113,7 +113,7 @@ use rwf::http::{Server, self};
 
 #[tokio::main]
 async fn main() -> Result<(), http::Error> {
-    let server = Server::new(vec![
+    Server::new(vec![
         route!("/websocket" => Echo),
     ])
     .launch()
@@ -131,3 +131,12 @@ const ws = new WebSocket("ws://localhost:8000/websocket");
 
 If everything works, you should see a log line in the terminal where the server is running, indicating a new
 client has joined the party.
+
+Now, send the server a message, with an event listener set up to print any messages received:
+
+```javascript
+ws.onmessage = (event) => console.log(event.data);
+ws.send("Hey there");
+```
+
+You should see `Hey there` echoed back to you on the console.
